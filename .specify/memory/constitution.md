@@ -11,7 +11,7 @@
 
 **Project**: Tech Inventory (self-hosted family device catalog)
 **Version**: 1.0.0
-**Ratified**: 2025-01-XX
+**Ratified**: 2026-05-17
 **Amendment process**: PR with ADR; affected sections re-versioned
 
 ---
@@ -24,6 +24,7 @@ When in doubt, defer in this order:
 3. **`specs/00X-*/spec.md`** (current feature spec)
 4. **`specs/00X-*/plan.md`** (technical plan)
 5. **`specs/00X-*/tasks.md`** (active work)
+6. **`specs/_backlog/F0XX-*.md`** (Feature Backlog)
 6. **Agent's judgment** (lowest — and must be voiced, not assumed)
 
 If a lower document conflicts with a higher one, **stop and raise it**.
@@ -65,6 +66,9 @@ If a lower document conflicts with a higher one, **stop and raise it**.
 - URL-versioned: `/api/v1/...`
 - Breaking changes require a new version + 6-month deprecation window
 - Contracts live in `src/TechInventory.Contracts` (shared with clients)
+
+### 2.6 Convention over Configuration
+ - Where possible resource names are derived from conventions over configurations 
 
 ---
 
@@ -112,12 +116,13 @@ If a lower document conflicts with a higher one, **stop and raise it**.
 ## 4. Data & Persistence
 
 ### 4.1 Database
-- **sqllite+**
+- **sqlite**
 - **EF Core** code-first migrations; checked in; reviewed
 - No schema changes outside migrations — ever
 - Migration comments justify every new index
 
 ### 4.2 Query Discipline
+- Repository Pattern. No sql queries sprinkled through the code.
 - All queries **parameterized** (EF Core enforces this — no raw SQL with concat)
 - N+1 queries audited; use `.Include()` or projection
 - No `.ToList()` before filtering
@@ -128,18 +133,13 @@ If a lower document conflicts with a higher one, **stop and raise it**.
 - Audit columns on all mutable tables: `CreatedAt`, `CreatedBy`, `ModifiedAt`, `ModifiedBy`
 - **AuditEvent** table records all mutations (append-only, never updated)
 
-### 4.4 Backups
-- Nightly automated SQL backups
-- Backup retention: 30 daily, 12 monthly
-- Quarterly restore drill (documented in runbook)
-- Off-host backup copy required for production
-
 ---
 
 ## 5. Security (Non-Negotiable)
 
 ### 5.1 Authentication
-- **Microsoft Entra ID only** — no local accounts, no password handling
+- First Account for system administrator and local testing 
+- **Microsoft Entra ID ** — for standard user accounts and production 
 - OIDC authorization code flow + PKCE
 - JWT validation: issuer, audience, signature, expiry (`exp`), not-before (`nbf`)
 - Token lifetime ≤ 1 hour; refresh tokens rotated
@@ -156,10 +156,9 @@ If a lower document conflicts with a higher one, **stop and raise it**.
 - `.env.example` documents required variables
 - Production secrets via Docker secrets or external vault
 - Pre-commit hook scans for secrets (`gitleaks`)
-- Rotation cadence: 90 days for any long-lived secrets
 
 ### 5.4 Transport & Headers
-- **TLS 1.3** at reverse proxy; TLS 1.2 minimum
+- **TLS 1.2** minium at reverse proxy
 - **HSTS** enabled with preload
 - **CSP** with strict-dynamic where supported
 - **SRI** for any external scripts
@@ -190,7 +189,6 @@ If a lower document conflicts with a higher one, **stop and raise it**.
 - `npm audit --audit-level=moderate` clean
 - **Dependabot / Renovate** enabled for all package ecosystems
 - **SBOM** generated per release (CycloneDX)
-- **Trivy** scans every container image; High/Critical fail the build
 - Pinned versions with lockfiles committed
 
 ---
@@ -215,15 +213,167 @@ If a lower document conflicts with a higher one, **stop and raise it**.
 - Named volumes for state; bind mounts only when justified
 
 ### 6.3 Networking
-- Reverse proxy (**Caddy**) terminates TLS
-- API not exposed to host network — only via proxy
-- DB only on internal compose network
-- Separate networks for `public`, `app`, `data` tiers
+- The app stack assumes an **external reverse proxy** terminates TLS
+  (see §5.4). It is not bundled.
+- DB is **never** exposed beyond the internal compose network
+- Internal networks:
+  - `app` — API + Web
+  - `data` — API + DB (DB joined only here)
+- The deployer's proxy is responsible for:
+  - Public DNS and port 443 binding
+  - WAF / rate limiting at the edge (optional but recommended)
+  - IP allow/deny lists if used
+- Documented integration patterns in `docs/deployment/`:
+  - `npm.md` — nginx proxy manager (shared Docker network)
+  - `traefik.md` — Traefik (labels-based discovery)
+  - `caddy.md` — Caddy (Caddyfile reverse_proxy)
+  - `external.md` — proxy on separate host (host port binding)
 
 ### 6.4 Secrets in Deployment
 - `.env` (gitignored) for local
 - Docker secrets or sealed-secrets for prod
 - No secrets in image layers (verified via Trivy)
+
+## 6.5 Web Client (PWA) — Non-Negotiable
+
+### 6.5.1 Framework & Language
+- **SvelteKit** with TypeScript **strict mode** (`strict: true`, `noUncheckedIndexedAccess: true`)
+- **No `any`**; use `unknown` + narrowing
+- Vite as build tool; pnpm as package manager
+- One web project: `src/TechInventory.Web/`
+
+### 6.5.2 API Consumption
+- TypeScript API client **generated from OpenAPI** (e.g., `openapi-typescript-codegen` or `kiota`)
+- **No hand-written `fetch` calls** to our API — always via the generated client
+- Client regenerated in CI when `openapi.yaml` changes
+- Versioned: `/api/v1/` only; never call unversioned endpoints
+
+### 6.5.3 Architecture & State
+- **Server state** managed via a query library (TanStack Query / SWR-style) with cache, retry, stale-while-revalidate
+- **UI state** kept local to components or in Svelte stores; never co-mingled with server state
+- **No global state singletons** for server data
+- **Routes are thin**: data loading in `+page.ts` / `+layout.ts`; rendering in `+page.svelte`
+- **No business logic in components** — extract to pure functions or stores
+
+### 6.5.4 Component Discipline
+- Components are **composable, single-purpose, < 200 lines**
+- Props are typed; no implicit `any`
+- Every interactive component supports:
+  - **Loading state**
+  - **Empty state**
+  - **Error state**
+  - **Success state**
+- No component reaches outside its props/slots for data (no prop drilling > 2 levels — use context)
+
+### 6.5.5 Design System
+- **Design tokens** (color, spacing, typography, radius, shadow) defined once in `src/lib/tokens.css`
+- **No magic values** in components — reference tokens via CSS custom properties
+- **Tailwind CSS** configured to consume tokens (no arbitrary values like `mt-[13px]`)
+- **Dark mode** via `prefers-color-scheme` + manual override, persisted per user
+- **Component library** in `src/lib/components/` — documented in Storybook (or equivalent) for v2
+
+### 6.5.6 Accessibility (Operationalized WCAG 2.2 AA)
+- Semantic HTML first; ARIA only when no native equivalent
+- **Every interactive element** is keyboard-operable
+- **Focus visible** at all times; never `outline: none` without replacement
+- **Color contrast** ≥ 4.5:1 text, ≥ 3:1 large text & UI components
+- **Touch targets** ≥ 24×24 CSS px (WCAG 2.2 SC 2.5.8); 44×44 preferred
+- **Forms**: every input has a `<label>`; errors announced via `aria-live`
+- **Modals**: focus trap, return focus on close, Escape dismisses
+- **Motion**: respect `prefers-reduced-motion`; no auto-playing animation > 5s
+- **Screen reader testing** required for any net-new view (NVDA or VoiceOver)
+- **axe-core** in unit + E2E tests; **zero violations** required to merge
+
+### 6.5.7 Responsive & Mobile
+- **Mobile** PWA first class citizen equal to desktop design
+- Design for 360px width minimum
+- Responsive Design for mobile browsers but installable PWA is recommened
+- Breakpoints: `sm 640`, `md 768`, `lg 1024`, `xl 1280` (Tailwind defaults)
+- Touch-friendly: no hover-only affordances; everything tap-accessible
+- **Safe-area insets** respected on iOS PWA
+
+### 6.5.8 PWA Requirements
+- **Installable** on iOS, Android, desktop (Chrome/Edge)
+- Web App Manifest with: name, short_name, icons (192, 512, maskable), theme_color, background_color, display=standalone
+- **Service Worker** via `vite-plugin-pwa`:
+  - Pre-cache app shell
+  - Runtime cache for API GETs (stale-while-revalidate, 5-min TTL)
+  - **Mutations require online** — fail gracefully with retry queue (v2)
+  - Update prompt on new SW available
+- **Offline page** for navigation when uncached
+- Lighthouse PWA audit must pass
+
+### 6.5.9 Performance Budgets (Per Route)
+| Metric | Budget | Enforcement |
+|---|---|---|
+| First Contentful Paint | ≤ 1.5s on 4G | Lighthouse CI |
+| Largest Contentful Paint | ≤ 2.5s | Lighthouse CI |
+| Time to Interactive | ≤ 3.0s | Lighthouse CI |
+| Total Blocking Time | ≤ 200ms | Lighthouse CI |
+| Cumulative Layout Shift | ≤ 0.1 | Lighthouse CI |
+| Initial JS bundle (gzipped) | ≤ 150KB | `size-limit` |
+| Per-route JS chunk (gzipped) | ≤ 50KB | `size-limit` |
+| Image LCP element | < 100KB, AVIF/WebP | manual review |
+| Lighthouse Performance score | ≥ 90 | CI fails < 90 |
+| Lighthouse Accessibility | = 100 | CI fails < 100 |
+| Lighthouse Best Practices | ≥ 95 | CI fails < 95 |
+| Lighthouse SEO | ≥ 90 | CI fails < 90 |
+
+### 6.5.10 Security (Client-Side)
+- **MSAL.js** for Entra ID; PKCE; tokens in memory or sessionStorage (**never** localStorage)
+- **No tokens in URLs, logs, or analytics**
+- **CSP** strict; nonce-based for inline scripts where unavoidable
+- **No third-party scripts** without ADR
+- **No `dangerouslySetInnerHTML` equivalent** (`{@html}` in Svelte) without sanitization + ADR
+- **Subresource Integrity (SRI)** on any external resource
+- Client-side validation **mirrors** server-side (FluentValidation → Zod) — but **never replaces it**
+- **Error messages** never leak server internals; map to user-safe copy
+
+### 6.5.11 Forms
+- **Zod** schemas for client validation; shape mirrors server contracts
+- **Single source of truth**: schemas live in `src/TechInventory.Web/src/lib/schemas/`
+- Inline validation on blur; submission validation on submit
+- Disabled submit during request; never double-submit
+- Optimistic updates only for non-destructive actions (with rollback)
+- Destructive actions require explicit confirmation (typed name for delete, etc.)
+
+### 6.5.12 Internationalization
+- **All user-facing strings** in i18n catalogs (`src/lib/i18n/en.json`)
+- **No hard-coded strings** in components
+- Date, time, number, currency formatting via `Intl` APIs
+- Locale fallback chain: user preference → browser → `en`
+- v1 ships English; architecture must not block adding locales
+
+### 6.5.13 Telemetry & Privacy
+- **No third-party analytics** (no Google Analytics, no Mixpanel, etc.)
+- **Self-hosted only** if telemetry is added (e.g., Plausible/Umami in own container)
+- **No PII** in any client logs
+- **Opt-in** for any telemetry; default off
+- Errors reported to **self-hosted** error tracking (or local logs); never to SaaS
+
+### 6.5.14 Testing (Web)
+- **Unit**: Vitest + Testing Library; co-located `*.test.ts`
+- **Component**: every interactive component has a test for each state (loading/empty/error/success)
+- **E2E**: Playwright on critical user paths (sign in, list, detail, import, export)
+- **Accessibility**: `axe-core` in unit + Playwright; zero violations
+- **Visual regression**: optional v2 (Percy / Chromatic / Playwright snapshots)
+- **No snapshot tests** for component HTML (brittle); prefer behavioral assertions
+
+### 6.5.15 Browser Support
+- **Evergreen only**: last 2 versions of Chrome, Edge, Safari, Firefox
+- Mobile Safari iOS 16+
+- Chrome Android last 2 versions
+- **No IE, no legacy Edge, no transpile to ES5**
+- Target: `ES2022`
+- Polyfills justified per ADR
+
+### 6.5.16 Build & Deploy
+- Production build deterministic; no env-dependent code
+- Source maps generated, uploaded to error tracker, **not served publicly**
+- Static assets fingerprinted; long-cache via `Cache-Control: immutable`
+- HTML uncached; revalidated each request
+- Served by **Caddy** with compression (gzip + brotli)
+- Reverse Proxy considered external concern of the application - TLS termination 
 
 ---
 
@@ -389,7 +539,7 @@ A task is **done** when:
 
 | Version | Date | Author | Changes |
 |---|---|---|---|
-| 1.0.0 | 2025-01-XX | [You] | Initial ratification |
+| 1.0.0 | 2026-05-17 | [You] | Initial ratification |
 
 ---
 
@@ -397,5 +547,3 @@ A task is **done** when:
 
 By contributing to this project, every agent (human or AI) accepts these terms.
 The constitution is the contract. Code that violates it is not "done."
-
-> 🛡️ *Discipline now is freedom later.*

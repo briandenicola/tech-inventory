@@ -7,7 +7,7 @@
 ## C4 Level 2 — Containers
 - `web`   SvelteKit PWA (Caddy-served)
 - `api`   ASP.NET Core 10
-- `db`    SQL Server 2022
+- `db`    sqllite
 - `proxy` Caddy (TLS, routing)
 - `backup` SQL backup sidecar
 

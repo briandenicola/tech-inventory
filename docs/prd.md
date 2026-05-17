@@ -1,0 +1,364 @@
+# Tech Inventory — Product Requirements Document
+
+**Status**: Draft v0.1
+**Owner**: [Your Name]
+**Last Updated**: 2025-01-XX
+**Review Cadence**: Quarterly
+
+---
+
+## 1. Vision
+
+A **self-hosted, family-friendly technology inventory** that captures the lifecycle of every device passing through the household — from purchase through retirement — turning 20+ years of SharePoint exports and scattered receipts into a single, searchable, beautiful source of truth.
+
+> *"Know what we have, what we had, what it cost, and what happened to it — without trusting a third-party cloud."*
+
+---
+
+## 2. Problem Statement
+
+Over two decades of accumulating technology, the household has:
+
+- **Fragmented records** across SharePoint lists, spreadsheets, email receipts, and memory
+- **No single answer** to "do we still have that?", "when did we buy this?", "what's the warranty status?"
+- **Lost institutional knowledge** when devices are gifted, sold, recycled, or stolen
+- **No safe family-shared view** — current tools are either personal or fully public
+- **Privacy concerns** — device serials, locations, and ownership shouldn't live in a third-party SaaS
+
+### Pain Points
+| Persona | Pain |
+|---|---|
+| Admin (you) | Can't quickly answer warranty/value/disposal questions |
+| Family member | Doesn't know what's available or where things are |
+| Future you | Will lose this knowledge entirely if not consolidated |
+
+---
+
+## 3. Goals & Non-Goals
+
+### Goals (v1)
+- ✅ Import 20 years of SharePoint CSV data losslessly
+- ✅ Provide a fast, modern web UI + installable PWA
+- ✅ Authenticate family members via Microsoft Entra ID
+- ✅ Run entirely self-hosted on home infrastructure
+- ✅ Make all functionality available via versioned REST API
+- ✅ Preserve full history — nothing is hard-deleted
+
+### Goals (v2+)
+- 📸 Photo attachments per device
+- 🔔 Warranty/replacement reminders
+- 💰 Depreciation and total-cost-of-ownership tracking
+- 📍 Location tracking (home / lent out / stored / disposed)
+- 🔄 Lifecycle workflows (in-use → retired → recycled/sold/gifted)
+
+### Non-Goals
+- ❌ Multi-tenant SaaS — single household only
+- ❌ Enterprise CMDB features (discovery, agents, configuration drift)
+- ❌ Public sharing or social features
+- ❌ Mobile-native apps (PWA is sufficient)
+- ❌ Real-time collaboration / multi-user editing locks
+- ❌ Integration marketplace
+- ❌ Local-account auth (Entra ID only)
+
+---
+
+## 4. Target Users
+
+### Primary: Household Admin
+- **Profile**: Technical, runs home infrastructure, organized
+- **Needs**: Import, edit, audit, full control, API access
+- **Role**: `Admin` (full read/write/delete, user management)
+
+### Secondary: Adult Family Members
+- **Profile**: Moderately technical, occasional use
+- **Needs**: Look up devices, claim ownership, request changes
+- **Role**: `Member` (read all, write own)
+
+### Tertiary: Younger Family Members
+- **Profile**: Casual, mobile-first
+- **Needs**: "What is this thing?" / "Whose is this?"
+- **Role**: `Viewer` (read-only, limited fields)
+
+### Anti-persona
+- ❌ External users, guests, vendors, contractors — explicitly excluded
+
+---
+
+## 5. Key Use Cases (User Stories)
+
+### Admin
+- **U1**: As Admin, I import the SharePoint CSV so historical data is preserved.
+- **U2**: As Admin, I edit any device record so I can correct or enrich data.
+- **U3**: As Admin, I view audit history so I can see who changed what.
+- **U4**: As Admin, I export filtered data so I can use it elsewhere.
+- **U5**: As Admin, I retire a device so its lifecycle is tracked.
+- **U6**: As Admin, I assign roles so family members get appropriate access.
+
+### Member
+- **U7**: As Member, I search by name/brand/year so I find what I need fast.
+- **U8**: As Member, I claim ownership of a device so records reflect reality.
+- **U9**: As Member, I add notes to my devices so context is preserved.
+- **U10**: As Member, I view a timeline of household tech for nostalgia/context.
+
+### Viewer
+- **U11**: As Viewer, I browse devices on my phone so I can identify things.
+- **U12**: As Viewer, I see what's currently in use vs retired.
+
+### System
+- **U13**: As System, I authenticate users via Entra ID so no passwords are stored.
+- **U14**: As System, I log every mutation so a full audit trail exists.
+- **U15**: As System, I work offline (read-only) so the PWA is useful on flaky networks.
+
+---
+
+## 6. Functional Requirements
+
+### F1. Data Import
+- Accept SharePoint CSV exports
+- Map columns to canonical schema (configurable)
+- Detect duplicates by serial/model+date
+- Dry-run mode with preview
+- Partial-success handling (per-row errors)
+- Audit record per import batch
+
+### F2. Device Management
+- CRUD on devices with rich metadata (see Data Model section)
+- Soft delete (status → `Retired` or `Disposed`)
+- Bulk operations (tag, retire, export)
+- Free-text search + faceted filters (brand, category, year, owner, status, location)
+- Saved views per user
+
+### F3. Browse Experiences
+- **Dashboard**: counts, charts, "recently added", "warranty expiring soon" (v2)
+- **List view**: sortable table, paginated, filterable
+- **Timeline view**: grouped by year and "tech era" (e.g., iPhone Era, Smart-Home Era, AI Era)
+- **Detail view**: all metadata, history, related devices, photos (v2)
+
+### F4. Export
+- CSV, JSON formats
+- Filtered or full
+- Includes audit metadata optionally
+
+### F5. Authentication & Authorization
+- Microsoft Entra ID OIDC (External ID tenant for family)
+- Roles: `Admin`, `Member`, `Viewer`
+- Per-endpoint policy enforcement (default-deny)
+- Session timeout configurable
+- Sign-out on all devices (admin override)
+
+### F6. API
+- REST, JSON, OpenAPI 3.1 documented at `/swagger`
+- URL-versioned (`/api/v1/...`)
+- Pagination, filtering, sorting per RFC conventions
+- Rate-limited per user
+- ProblemDetails (RFC 7807) error responses
+
+### F7. Audit & History
+- Every mutation logged (who, what, when, before/after)
+- Audit query endpoint (Admin only)
+- Immutable audit table (append-only)
+
+### F8. Admin Console
+- User list with roles, last login
+- Import history
+- System health view
+- Backup/restore status
+
+---
+
+## 7. Non-Functional Requirements
+
+| Category | Requirement |
+|---|---|
+| **Performance** | P95 API response < 300ms on home LAN; PWA TTI < 2s |
+| **Availability** | 99% (best-effort, single-host); graceful offline read |
+| **Scale** | 10,000 devices; 10 concurrent users; 50 RPS sustained |
+| **Security** | OWASP ASVS L2; OWASP API Top 10 (2023) verified; SBOM per release |
+| **Privacy** | Data never leaves the host; no telemetry to third parties |
+| **Accessibility** | WCAG 2.2 AA on web client |
+| **Browser support** | Last 2 versions of Chrome, Edge, Safari, Firefox |
+| **Internationalization** | English v1; i18n-ready architecture |
+| **Observability** | Structured logs (Serilog), OpenTelemetry traces, healthchecks |
+| **Backup** | Nightly SQL backups; restore tested quarterly |
+| **Recovery** | RTO 4h; RPO 24h |
+| **Maintainability** | Test coverage ≥ 85%; ADRs for material decisions |
+
+---
+
+## 8. Data Model (High-Level)
+
+> Detailed schema lives in `specs/001-core-api/data-model.md`.
+
+### Core Entities
+- **Device**: id, name, model, serial, brand, category, purchaseDate, purchasePrice, currency, status, ownerId, locationId, notes, retiredDate, disposalMethod, audit columns
+- **Brand**: id, name, website, notes
+- **Category**: id, name, parentId (hierarchical), icon
+- **Owner**: id, displayName, entraObjectId, role
+- **Location**: id, name, type (home/storage/external)
+- **Tag**: id, name, color
+- **DeviceTag**: deviceId, tagId
+- **Attachment** (v2): id, deviceId, filename, contentType, size, uploadedBy
+- **AuditEvent**: id, entityType, entityId, action, userId, timestamp, payload (JSON)
+- **ImportBatch**: id, filename, importedBy, rowCount, status, log
+
+### Key Invariants
+- A Device's `ownerId` must reference an active Owner
+- A retired Device is read-only except for `notes` and `disposalMethod`
+- AuditEvents are append-only — never updated or deleted
+
+---
+
+## 9. Technical Architecture (Summary)
+
+> Full detail in `docs/architecture.md`.
+
+- **Backend**: ASP.NET Core 10 Web API, Clean Architecture (Domain / Application / Infrastructure / API)
+- **Database**: sqllite, EF Core code-first migrations
+- **Auth**: Microsoft Entra ID (External ID), OIDC + PKCE
+- **Web client**: SvelteKit PWA, MSAL.js, generated TS client from OpenAPI
+- **Deployment**: Docker Compose, self-hosted, Caddy reverse proxy with TLS
+- **Observability**: Serilog → file/Seq, OpenTelemetry, healthchecks
+- **CI/CD**: GitHub Actions, container images to GHCR
+
+---
+
+## 10. Constraints & Assumptions
+
+### Constraints
+- Must run on home infrastructure (single Docker host)
+- Must use Entra ID — no other identity providers
+- Must not require an internet connection for core read operations
+- Initial dataset is the SharePoint CSV — schema must accommodate its quirks
+
+### Assumptions
+- Family is comfortable using Entra ID (or willing to learn once)
+- Home network is reasonably reliable for write operations
+- Admin will perform backups verification
+- < 10,000 devices total over project lifetime
+
+---
+
+## 11. Risks & Mitigations
+
+| Risk | Likelihood | Impact | Mitigation |
+|---|---|---|---|
+| Entra ID setup friction for family | High | Med | Step-by-step onboarding doc; magic-link fallback consideration in v2 |
+| Self-hosted downtime | Med | Low | Offline read in PWA; weekly backup verification |
+| Data loss | Low | High | Nightly backups, quarterly restore drills, off-host backup copy |
+| SharePoint CSV schema surprises | High | Med | Dry-run import; flexible column mapping |
+| Scope creep | High | Med | Strict backlog discipline; this PRD as gate |
+| AI agent drift during development | Med | Med | Spec Kit + constitution + audits (see development docs) |
+| Family doesn't adopt | Med | Low | Mobile-first PWA; minimize required interaction |
+| Container/host compromise | Low | High | Non-root containers, read-only FS, network isolation, regular patching |
+
+---
+
+## 12. Success Metrics
+
+### Launch Criteria (v1)
+- [ ] 100% of SharePoint CSV imported without data loss
+- [ ] All 3 user roles functional with Entra ID
+- [ ] PWA installable on iOS and Android
+- [ ] Deployable via single `docker compose up`
+- [ ] CI quality gate green (tests, security scans, SBOM)
+- [ ] Restore from backup verified
+
+### Health Metrics (Post-Launch)
+- 📈 Devices catalogued (target: 100% of household by 90 days)
+- 📈 Family member sign-ins per month (target: ≥ 1/member)
+- 📈 P95 API latency (target: < 300ms)
+- 📈 CI quality gate pass rate (target: 100%)
+- 📈 Audit findings: 0 High/Critical open > 7 days
+
+---
+
+## 13. Release Plan
+
+### Phase 0 — Foundation (Weeks 1–2)
+- Project bootstrap, Spec Kit, constitution, PRD, threat model
+- Backlog populated
+- Local dev environment running
+
+### Phase 1 — Core API (Weeks 3–5) → `specs/001-core-api`
+- Domain model, EF Core, migrations
+- CRUD endpoints, OpenAPI
+- Import endpoint (CSV)
+- Unit + integration tests
+
+### Phase 2 — Auth (Weeks 6–7) → `specs/002-auth-entra`
+- Entra ID integration
+- Roles, policies
+- Audit log
+
+### Phase 3 — Infrastructure (Week 8) → `specs/003-infrastructure`
+- Docker Compose for prod
+- Caddy + TLS
+- Backups, healthchecks
+
+### Phase 4 — Web PWA (Weeks 9–12) → `specs/004-web-pwa`
+- SvelteKit client
+- MSAL.js auth
+- Dashboard, list, detail, timeline, import, export
+- Offline read cache, installable
+
+### Phase 5 — Hardening & Launch (Weeks 13–14)
+- Threat model review
+- Performance pass
+- Backup/restore drill
+- Family onboarding docs
+
+### v2 Candidates (post-launch)
+- Photo attachments
+- Warranty reminders
+- Depreciation tracking
+- Location/lifecycle workflows
+- Bulk-edit UI
+
+> Active feature ideas tracked in `specs/_backlog/`.
+
+---
+
+## 14. Open Questions
+
+- [ ] External ID vs. Workforce tenant — which is right for family use?
+- [ ] Backup destination — second host on LAN, external drive, or encrypted off-site?
+- [ ] Should disposed devices be hidden by default or shown with strikethrough?
+- [ ] Currency handling — single household currency or per-device?
+- [ ] Should kids' Viewer role hide purchase prices?
+- [ ] Photo storage — DB blob, host volume, or object storage (MinIO)?
+
+---
+
+## 15. Glossary
+
+| Term | Definition |
+|---|---|
+| **Device** | Any physical technology item being tracked |
+| **Tech Era** | Curated time band (e.g., "Smart-Home Era 2014–2018") for timeline grouping |
+| **Owner** | Family member to whom a device is assigned |
+| **Location** | Where a device physically lives |
+| **Retired** | Device no longer in active use but still tracked |
+| **Disposed** | Device physically gone (sold, gifted, recycled, stolen, lost) |
+| **Entra ID** | Microsoft's cloud identity platform |
+| **PWA** | Progressive Web App — installable web app |
+| **PRD** | This document |
+
+---
+
+## 16. References
+
+- `.specify/memory/constitution.md` — engineering & security rules
+- `docs/architecture.md` — technical architecture
+- `docs/threat-model.md` — STRIDE analysis
+- `specs/_backlog/` — feature pipeline
+- `specs/00X-*/spec.md` — active feature specs
+- OWASP ASVS, OWASP API Top 10 — security baselines
+- WCAG 2.2 AA — accessibility baseline
+
+---
+
+## 17. Revision History
+
+| Version | Date | Author | Changes |
+|---|---|---|---|
+| 0.1 | 2025-01-XX | [You] | Initial draft |

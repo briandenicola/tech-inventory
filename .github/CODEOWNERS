@@ -1,0 +1,8 @@
+# Default owners
+*       @your-github-handle
+
+# Sensitive areas
+.specify/                   @your-github-handle
+.github/                    @your-github-handle
+deploy/                     @your-github-handle
+src/TechInventory.Api/      @your-github-handle

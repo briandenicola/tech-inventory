@@ -112,3 +112,14 @@ Agent Scribe initialized and ready for work.
 **Notes:** R10 missed both inbox files; coordinator manually merged in commit 5c23575. Lesson logged for future Scribe runs: always run `Get-ChildItem` directly on inbox dir, don't trust glob output alone.
 
 ### 2026-05-18 (Phase 1 Round 7)
+## Phase 2 Round 13 — R4 + R5 Joint Close-Out — `[your-sha]`
+
+**Inbox merged:** 2 files → 9 decisions (Apone T23 8 + Vasquez R5 1)
+**Coordinator-captured:** D-087 (Apone's ESLint downgrade outside her decision-drop habit)
+**Tasks flipped:** T23, T24, T25 ✅ (T26 still queued for Apone)
+**History entries:** Apone R4-T23 + Vasquez R5 + Scribe R13
+**Decision ledger:** D-001 → D-087 (87 total, contiguous)
+**Phase 2 progress:** 24/53 tasks (45%)
+**Rounds closed:** Round 4 fully (5/5); Round 5 partial (2/3 — T26 pending)
+
+**Inbox check:** Verified via `Get-ChildItem` (per R10 lesson). Both expected files present.

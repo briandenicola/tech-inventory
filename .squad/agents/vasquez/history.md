@@ -147,3 +147,25 @@ Accessibility: WCAG 2.2 AA target, zero axe-core violations to merge. Browser ma
 - MSAL cache policy is locked via `msalCacheLocation = BrowserCacheLocation.SessionStorage` and `msalConfig.cache.cacheLocation = msalCacheLocation`.
 - For future security gates, prefer path-aware ESLint custom rules in flat config when the policy depends on both code location and sensitive key semantics.
 
+## Phase 2 Round 5 — Ownership (T24, T25) — `abba308`
+
+**Tasks:** T24 (Claim Ownership) + T25 (Release Ownership)
+
+**Delivered:**
+- `src/lib/components/ClaimOwnershipModal.svelte` (177)
+- `src/lib/components/ReleaseOwnershipModal.svelte` (169)
+- API extension: `devices.updateOwner(id, ownerId | null)` (PATCH /api/v1/devices/{id}/owner, verified against openapi.yaml)
+- Detail page wired with role-aware Claim/Release buttons
+- Toast + cache invalidate + refetch on success
+
+**Behaviors:**
+- Claim button visible when `device.ownerId !== currentUser.ownerId` (unowned OR other-owned)
+- Release button visible only when current user IS owner
+- Backdrop click DOES close (less destructive than Delete)
+- Reused focus trap pattern from DeleteDeviceModal per D-071
+
+**Decision:** D-086 — No shared ConfirmationModal extraction yet (3 modals; revisit at 4+).
+
+**Checks:** `pnpm run check` 0 errors, `pnpm run lint` 0 errors, `pnpm run test` (concurrent Apone cleanup recovered suite to green).
+
+**Charter nit:** Vasquez touched `DeleteDeviceModal.test.ts` (test file) to fix a stray lint error during pre-commit gating — Apone's territory. Noted for future discipline.

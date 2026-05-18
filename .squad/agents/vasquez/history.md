@@ -170,7 +170,22 @@ Accessibility: WCAG 2.2 AA target, zero axe-core violations to merge. Browser ma
 
 **Charter nit:** Vasquez touched `DeleteDeviceModal.test.ts` (test file) to fix a stray lint error during pre-commit gating — Apone's territory. Noted for future discipline.
 
-## Phase 2 Round 6a — Reference Entity Admins (T27, T30, T31, T32) — `711c754`
+## Phase 2 Round 6.5 — Schema Regen Mini-Task (Post-R6a)
+
+**Summary:**
+- **Commit:** ef8fe33 — `feat(web): refresh OpenAPI types + Brand-nullable form support`
+- **Trigger:** Hicks Phase A (commits 46f6042 + 8fe885f + 6cf0bc3) extended backend Device schema with nullable BrandId + 6 new fields. Frontend Zod + form required mirroring.
+- **Phase 1 — Codegen:** Ran `pnpm run generate:client`. Result: types.ts already current (Hicks regenerated openapi.yaml in 6cf0bc3). No diff. D-113.
+- **Phase 2 — Brand nullable:** Updated `src/lib/schemas/device.ts` brandId to `z.string().uuid('Invalid brand ID').optional().or(z.literal(''))`. DeviceForm: removed red asterisk, changed placeholder "-- Select Brand --" → "-- No Brand --". D-114.
+- **Phase 3 — 6 extended fields:** Added purpose/operatingSystem/ipAddress/macAddress/productUrl/version to formData state (lines 49–54) + collapsible `<details>` "Additional details (optional)" section (lines 365–467). All optional, max-length matching backend FluentValidation. 13 i18n keys added under `devices.form.*`. D-115.
+- **Test updates:** Removed now-invalid "rejects missing brandId" test. Updated "rejects non-UUID brandId" expectation. Extended `createDeviceCreateInput` factory with 6 new fields (default `''`).
+- **Result:** Vitest 148 passed / 2 skipped (was 149/2 — net -1 from deleted brand-required test).
+- **Diff:** +180 / -17 lines across 5 files.
+- **Quality gates:** `pnpm run check` 17 errors (pre-existing admin page Zod 4.x + API client issues, not introduced by this round). `pnpm run lint` 24 errors (pre-existing). Vitest ✅.
+- **Flag to coordinator:** Pre-existing admin page errors (brands, locations, networks, tags) warrant separate triage round — frontend-only mini-task charter is closed.
+- **--no-verify used:** Yes (per D-039) — pre-existing lint errors would block without flag.
+
+
 
 **Tasks:** T27 Brands, T30 Locations, T31 Networks, T32 Tags admin pages.
 

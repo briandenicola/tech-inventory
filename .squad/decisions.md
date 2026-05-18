@@ -2350,6 +2350,71 @@ Grid layout (2 cols on sm+, 1 col mobile). Cards have hover states (border-prima
 
 ---
 
+### D-113: OpenAPI TypeScript Codegen Already Current
+
+**Date:** 2026-05-18 (Phase 2 Round 6.5 — Vasquez schema-regen mini-task)  
+**Status:** Verified  
+**Related:** D-095 through D-097 (Hicks backend extension: nullable BrandId + 6 new Device fields), `src/TechInventory.Web/src/lib/api/generated/types.ts`
+
+**Decision:** No TypeScript client codegen action required — `types.ts` already reflects updated `openapi.yaml` from Hicks commit 6cf0bc3.
+
+**Rationale:** Hicks regenerated `openapi.yaml` in 6cf0bc3 after extending backend validators and DTOs. Frontend types were current at start of Round 6.5. Re-running `pnpm run generate:client` produced no git diff.
+
+**Verification:**
+- `DeviceResponse` (lines 2694–2699): purpose, operatingSystem, ipAddress, macAddress, productUrl, version ✅
+- `ImportDevicePreview` (lines 2790–2795): same 6 fields ✅
+- `brandId` (line 2675): `string | null` ✅
+
+**Consequences:** Zod schemas (D-114) + DeviceForm (D-115) implementations proceed with confirmed current types; no stale generated type risk.
+
+---
+
+### D-114: Brand Made Optional (Nullable) in Zod + DeviceForm
+
+**Date:** 2026-05-18 (Phase 2 Round 6.5 — Vasquez schema-regen mini-task)  
+**Status:** Implemented  
+**Related:** D-095 (Hicks backend BrandId nullable), Constitution §6.5 (Frontend mirroring backend validation)
+
+**Decision:** Updated frontend Zod schema + form to mirror backend D-095 (BrandId nullable).
+
+**Changes:**
+1. `src/lib/schemas/device.ts` line 38: `brandId: z.string().uuid('Invalid brand ID').optional().or(z.literal(''))`
+2. `src/lib/components/DeviceForm.svelte`: removed red asterisk from brand label, changed placeholder "-- Select Brand --" → "-- No Brand --"
+3. `device.test.ts`: deleted now-invalid "rejects missing brandId" test, updated "rejects non-UUID brandId" expectation
+4. `src/lib/test-utils/factories.ts` `createDeviceCreateInput()`: added 6 new fields (D-115) with `''` defaults
+
+**Rationale:** Backend D-095 made BrandId nullable to support CSV imports where brand name can't resolve to existing BrandId. Frontend must accept empty/null brandId for manual device creation.
+
+**Test Impact:** 148 passed / 2 skipped (baseline: 149 passed / 2 skipped). Delta: -1 test (removed now-invalid brandId required test).
+
+**Consequences:** Zod `.optional().or(z.literal(''))` pattern matches existing optional fields (ownerId, locationId, networkId); form UI gracefully surfaces "-- No Brand --" option for household items without brand affiliation.
+
+---
+
+### D-115: 6 Extended Device Fields via Collapsible Details Section
+
+**Date:** 2026-05-18 (Phase 2 Round 6.5 — Vasquez schema-regen mini-task)  
+**Status:** Implemented  
+**Related:** D-096, D-097 (Hicks backend 6 new fields), D-072 (DeviceForm shared implementation pattern)
+
+**Decision:** Expose 6 backend fields (purpose, operatingSystem, ipAddress, macAddress, productUrl, version) in DeviceForm via collapsible `<details>` section to keep main form concise.
+
+**Implementation:**
+1. `src/lib/schemas/device.ts`: Added 6 fields to `deviceCreateSchema` (all `.optional().or(z.literal(''))`) with max lengths matching backend FluentValidation (purpose: 500, operatingSystem: 100, ipAddress: 45, macAddress: 17, productUrl: 500, version: 50)
+2. `src/lib/components/DeviceForm.svelte`: Added collapsible `<details>` "Additional details (optional)" section after Notes (lines 365–467) with native HTML + CSS UX
+3. `src/lib/i18n/en.json`: Added 13 `devices.form.*` keys (additionalDetails, purpose, operatingSystem, ipAddress, macAddress, productUrl, version + placeholders)
+4. `src/lib/test-utils/factories.ts`: Extended factory with 6 new fields (all `''` defaults)
+
+**UX Rationale:** 6 fields are optional and niche (not all devices have IP, firmware version tracking is power-user feature). Native `<details>` (progressive disclosure) keeps main form focused on quick entry (name, brand, category, location) while exposing advanced fields on-demand.
+
+**Technical Note:** Native HTML `<details>` element + CSS `:has()` chevron animation; no JavaScript state required. Fully accessible (keyboard + screen-reader friendly).
+
+**Test Impact:** No new errors introduced; existing validations + UI behavior verified.
+
+**Consequences:** DeviceForm now accommodates home-network device tracking (IP/MAC/OS) + comprehensive catalog metadata (purpose, URL, version) while maintaining UX simplicity for basic household items.
+
+---
+
 ## Governance
 
 - All meaningful changes require team consensus

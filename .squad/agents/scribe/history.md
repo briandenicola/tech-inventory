@@ -146,3 +146,20 @@ Agent Scribe initialized and ready for work.
 
 **Inbox check:** Verified via `Get-ChildItem` (per R10 lesson).
 
+---
+
+## Phase 2 Round 15 — D-113..D-115 Mini-Merge (Vasquez Schema-Regen)
+
+**Inbox merged:** 1 file → 3 decisions
+- `vasquez-schema-regen.md` → D-113, D-114, D-115
+
+**Decision ledger:** D-001 → D-115 (112 active + 3 reserved [D-083..D-085] = 115 total)
+
+**Tasks flipped:** NONE (mini-task, not numbered T-task)
+
+**History entries:** Vasquez Round 6.5 (schema-regen 3-phase arc: codegen + nullable brand + extended fields) + Scribe R15 (this entry)
+
+**Phase 2 progress:** 28/53 tasks (53%) — no T-task changes (mini-merge only)
+
+**Notes:** Vasquez completed schema-regen micro-task post-R6a to mirror Hicks's backend extension (D-095..D-097). Frontend types already current; Zod + form mirrored nullable brandId + 6 extended fields via collapsible section. Pre-existing admin page lint errors flagged to Coordinator (not introduced this round). Vitest 148 passed / 2 skipped (net -1 from deleted brandId-required test).
+

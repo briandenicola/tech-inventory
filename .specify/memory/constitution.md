@@ -396,6 +396,13 @@ If a lower document conflicts with a higher one, **stop and raise it**.
 - Flaky tests are bugs — fix or remove within 1 sprint
 - Tests must be deterministic — no real time, randomness, or network without controls
 
+### 7.4 Local-First Testing
+- All required test types must be runnable locally with one documented
+  command (see PRD §7.5.5)
+- **Playwright** is the required E2E framework — no substitutes
+- CI runs the same commands a developer runs locally
+- Flaky tests are bugs (see PRD §7.5.8)
+
 ---
 
 ## 8. Workflow & Git
@@ -487,6 +494,13 @@ If drift is suspected:
 - **Runbooks** (`docs/runbooks/`): backup, restore, upgrade, incident
 - **Onboarding** (`docs/onboarding/`): family member sign-up steps
 
+### 11.1 Reference Implementations
+- `docs/references.md` lists prior art that informs design decisions
+- References are advisory; the constitution and PRD remain authoritative
+- Patterns borrowed from references must be cited (repo + SHA + path) in
+  the commit message and (if material) in an ADR
+- Code copied verbatim requires an ADR including license review
+
 ---
 
 ## 12. Audit & Continuous Improvement
@@ -519,6 +533,9 @@ A task is **done** when:
 - [ ] `tasks.md` checked off
 - [ ] PR merged with signed commits
 - [ ] Constitution compliance self-verified in PR
+- [ ] Playwright tests added or updated for any UI-facing change
+- [ ] `make test` runs green locally on the change branch
+- [ ] No new flaky tests (E2E run twice locally without failure)
 
 ---
 

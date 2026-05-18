@@ -7,6 +7,10 @@
 - Run the verify pipeline before declaring done
 - Update `tasks.md`, `SESSION-NOTES.md`, `.copilot-state.md` at session end
 - Cite the constitution by section when making design decisions
+- When a spec or task mentions an `R<N>` reference (see `docs/references.md`),
+  consult that reference at its pinned SHA before designing or coding
+- Cite reference borrowings as `R<N>:<path>@<sha>` in commit messages
+- Never copy code from references without explicit ADR approval
 
 ## Never
 - Use `any` / `dynamic` / `@ts-ignore` without inline justification

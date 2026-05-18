@@ -1,26 +1,25 @@
 # Tech Inventory — Product Requirements Document
 
 **Status**: Draft v0.1
-**Owner**: [Your Name]
-**Last Updated**: 2025-01-XX
-**Review Cadence**: Quarterly
+**Owner**: Brian Denicola
+**Last Updated**: 2025-05-17
 
 ---
 
 ## 1. Vision
 
-A **self-hosted, family-friendly technology inventory** that captures the lifecycle of every device passing through the household — from purchase through retirement — turning 20+ years of SharePoint exports and scattered receipts into a single, searchable, beautiful source of truth.
+A **self-hosted, family-friendly appliance, devices, and technology inventory tracker** that captures the lifecycle of every device passing through the household — from purchase through retirement — into a single, searchable, beautiful source of truth.
 
-> *"Know what we have, what we had, what it cost, and what happened to it — without trusting a third-party cloud."*
 
 ---
 
 ## 2. Problem Statement
 
-Over two decades of accumulating technology, the household has:
+Over two decades of accumulating technology in a SharePoint List has:
 
-- **Fragmented records** across SharePoint lists, spreadsheets, email receipts, and memory
-- **No single answer** to "do we still have that?", "when did we buy this?", "what's the warranty status?"
+- **Not mobile friendly**
+- **Not extensible** to include newer AI capabilities 
+- **Data quality issues** inherit with SharePoint Lists
 - **Lost institutional knowledge** when devices are gifted, sold, recycled, or stolen
 - **No safe family-shared view** — current tools are either personal or fully public
 - **Privacy concerns** — device serials, locations, and ownership shouldn't live in a third-party SaaS
@@ -28,28 +27,30 @@ Over two decades of accumulating technology, the household has:
 ### Pain Points
 | Persona | Pain |
 |---|---|
-| Admin (you) | Can't quickly answer warranty/value/disposal questions |
-| Family member | Doesn't know what's available or where things are |
-| Future you | Will lose this knowledge entirely if not consolidated |
+| Admin (you) | Sharing device information with external concerns |
+| Family member | Can't performan simple CRUD operations on mobile devices |
+| Family member | SharePoint lists are visually boring and difficult to use
 
 ---
 
 ## 3. Goals & Non-Goals
 
 ### Goals (v1)
-- ✅ Import 20 years of SharePoint CSV data losslessly
+- ✅ Import SharePoint CSV data losslessly
 - ✅ Provide a fast, modern web UI + installable PWA
 - ✅ Authenticate family members via Microsoft Entra ID
 - ✅ Run entirely self-hosted on home infrastructure
 - ✅ Make all functionality available via versioned REST API
 - ✅ Preserve full history — nothing is hard-deleted
-
-### Goals (v2+)
-- 📸 Photo attachments per device
-- 🔔 Warranty/replacement reminders
-- 💰 Depreciation and total-cost-of-ownership tracking
-- 📍 Location tracking (home / lent out / stored / disposed)
+- ✅ Export all data and images
+- ✅ Observaibility 
+- ✅ Administrator and User setting screens to manage the application
 - 🔄 Lifecycle workflows (in-use → retired → recycled/sold/gifted)
+- 📍 Location tracking (home / lent out / stored / disposed)
+
+### Goals (v1.5)
+- 📸 Photo attachments per device
+- 🔔 AI analysis of device image to automation data entry
 
 ### Non-Goals
 - ❌ Multi-tenant SaaS — single household only
@@ -58,7 +59,6 @@ Over two decades of accumulating technology, the household has:
 - ❌ Mobile-native apps (PWA is sufficient)
 - ❌ Real-time collaboration / multi-user editing locks
 - ❌ Integration marketplace
-- ❌ Local-account auth (Entra ID only)
 
 ---
 
@@ -93,21 +93,34 @@ Over two decades of accumulating technology, the household has:
 - **U4**: As Admin, I export filtered data so I can use it elsewhere.
 - **U5**: As Admin, I retire a device so its lifecycle is tracked.
 - **U6**: As Admin, I assign roles so family members get appropriate access.
+- **U7**: As Admin, I manage the list of **Locations** (e.g., "Living Room",
+  "Garage", "Storage Bin A3") so that family members select from a consistent
+  set when recording where a device lives.
+- **U8**: As Admin, I manage the list of **Networks** (e.g., "Home Wi-Fi 5GHz",
+  "IoT VLAN", "Guest") so that devices can be tagged with the network they
+  connect to from a curated list.
+- **U9**: As Admin, I manage the list of **Categories** (e.g., "Phone",
+  "Laptop", "Smart Home > Lighting") so that every device is classified
+  consistently from a hierarchical taxonomy.
+- **U10**: As Admin, I can create a full export of all items in the household
 
 ### Member
-- **U7**: As Member, I search by name/brand/year so I find what I need fast.
-- **U8**: As Member, I claim ownership of a device so records reflect reality.
-- **U9**: As Member, I add notes to my devices so context is preserved.
-- **U10**: As Member, I view a timeline of household tech for nostalgia/context.
+- **U11**: As Member, I search by name/brand/year so I find what I need fast.
+- **U12**: As Member, I claim ownership of a device so records reflect reality.
+- **U13**: As Member, I add notes to my devices so context is preserved.
+- **U14**: As Member, I view a timeline of household tech for nostalgia/context.
+- **U15**: As Member, I can perform CRUD operations on any device in the household 
+- **U16**: As Member, I can appliy one or more category labels to a device
 
 ### Viewer
-- **U11**: As Viewer, I browse devices on my phone so I can identify things.
-- **U12**: As Viewer, I see what's currently in use vs retired.
+- **U17**: As Viewer, I browse devices on my phone so I can identify things.
+- **U18**: As Viewer, I see what's currently in use vs retired.
+- **U19**: As Member, I can upload a profile image for my account
 
 ### System
-- **U13**: As System, I authenticate users via Entra ID so no passwords are stored.
-- **U14**: As System, I log every mutation so a full audit trail exists.
-- **U15**: As System, I work offline (read-only) so the PWA is useful on flaky networks.
+- **U20**: As System, I authenticate users via Entra ID so no passwords are stored.
+- **U21**: As System, I log every mutation so a full audit trail exists.
+- **U22**: As System, I work offline (read-only) so the PWA is useful on flaky networks.
 
 ---
 
@@ -116,7 +129,6 @@ Over two decades of accumulating technology, the household has:
 ### F1. Data Import
 - Accept SharePoint CSV exports
 - Map columns to canonical schema (configurable)
-- Detect duplicates by serial/model+date
 - Dry-run mode with preview
 - Partial-success handling (per-row errors)
 - Audit record per import batch
@@ -133,6 +145,7 @@ Over two decades of accumulating technology, the household has:
 - **List view**: sortable table, paginated, filterable
 - **Timeline view**: grouped by year and "tech era" (e.g., iPhone Era, Smart-Home Era, AI Era)
 - **Detail view**: all metadata, history, related devices, photos (v2)
+- **Quietly elegant. Mid-2010s Apple in spirit**: minimal, typographic, uncluttered.
 
 ### F4. Export
 - CSV, JSON formats
@@ -140,6 +153,7 @@ Over two decades of accumulating technology, the household has:
 - Includes audit metadata optionally
 
 ### F5. Authentication & Authorization
+- Local Account for default administrator 
 - Microsoft Entra ID OIDC (External ID tenant for family)
 - Roles: `Admin`, `Member`, `Viewer`
 - Per-endpoint policy enforcement (default-deny)
@@ -161,8 +175,8 @@ Over two decades of accumulating technology, the household has:
 ### F8. Admin Console
 - User list with roles, last login
 - Import history
+- Export data
 - System health view
-- Backup/restore status
 
 ---
 
@@ -182,6 +196,101 @@ Over two decades of accumulating technology, the household has:
 | **Backup** | Nightly SQL backups; restore tested quarterly |
 | **Recovery** | RTO 4h; RPO 24h |
 | **Maintainability** | Test coverage ≥ 85%; ADRs for material decisions |
+
+## 7.1       Local Testing & Validation
+
+Every contributor — human or AI — must be able to validate a change end-to-end
+on their own machine before opening a pull request. CI exists to *enforce*
+quality, not to *discover* it. If a test only runs in CI, it is not part of
+this project's testing strategy.
+
+### 7.5.1 Principles
+- **Local-first**: every test type runnable in this section must run on a
+  developer laptop with one documented command, without cloud dependencies
+- **Hermetic**: tests must not depend on external services, internet access,
+  or shared state. The full stack runs in Docker Compose locally
+- **Fast feedback**: unit tests complete in seconds; the full suite in
+  minutes, not tens of minutes
+- **Deterministic**: a passing test today passes tomorrow. Flaky tests are
+  treated as failing tests and fixed or quarantined within one working day
+- **Reproducible**: any failure observed locally is reproducible by another
+  developer with the same commit checked out
+
+### 7.5.2 Required Test Types
+
+| Type | Tool | Scope | Required? |
+|---|---|---|---|
+| Unit (backend) | xUnit + FluentAssertions | Domain + Application layers | ✅ Mandatory |
+| Unit (frontend) | Vitest + Testing Library | Components, stores, utilities | ✅ Mandatory |
+| Integration (API) | xUnit + Testcontainers | API + real PostgreSQL | ✅ Mandatory |
+| Contract | Schemathesis or equivalent | OpenAPI spec ↔ live API | ✅ Mandatory |
+| **End-to-End (UI)** | **Playwright** | **Full PWA against real stack** | ✅ **Mandatory** |
+| Accessibility | axe-core (in Vitest + Playwright) | All UI routes | ✅ Mandatory |
+| Performance | Lighthouse CI | Key routes (see §6.5.9) | ✅ Mandatory |
+| Visual regression | Playwright snapshots | High-value views only | ⚠️ Optional (v2) |
+| Load | k6 or NBomber | Throughput baselines | ⚠️ Optional (v2) |
+
+### 7.5.3 Playwright (Mandatory E2E)
+- **Playwright** is the required end-to-end testing tool. No alternative
+  framework (Cypress, Selenium, Puppeteer, etc.) is accepted.
+- Tests live in `tests/e2e/` at the repo root
+- Tests run against the **full local Docker Compose stack**, not a mocked API
+- **Browser matrix (minimum)**: Chromium, WebKit, Firefox — all three must
+  pass in CI. Local dev may run Chromium-only for speed
+- **Viewport matrix**: at minimum one mobile (375×667) and one desktop
+  (1280×800) viewport per critical flow
+- **Authentication**: a documented Playwright fixture provisions a test
+  user via Entra ID test tenant or a documented local-dev auth bypass
+  (the bypass is **never** available in production builds — enforced at
+  the API layer)
+- **Network policy**: Playwright tests must not reach external hosts; any
+  outbound call to a non-localhost address fails the test
+- **Data setup**: tests create their own data via API calls or a documented
+  seed endpoint; tests must not rely on a pre-existing dataset
+- **Tear-down**: each test cleans up data it created, or runs against a
+  fresh database snapshot per test file
+- **Traces & video**: Playwright traces and videos retained on failure;
+  uploaded as CI artifacts; locally available in `playwright-report/`
+- **Page Object Model**: shared UI affordances captured in `tests/e2e/pages/`;
+  test files describe scenarios, not low-level selectors
+
+### 7.5.4 Critical User Journeys (Playwright Coverage Required)
+The following journeys **must** have at least one passing Playwright test
+before any v1 release:
+
+1. **Sign in** (Entra ID happy path; sign-out)
+2. **Sign in denied** (user without role assignment is refused gracefully)
+3. **Create device** (Member fills form, saves, sees device in list)
+4. **Edit device** (Member changes fields, saves, sees changes persisted)
+5. **Delete device** (Member deletes with confirmation; device gone from list)
+6. **Browse and filter** (Viewer applies filters, results update, URL reflects
+   state, reload preserves view)
+7. **Detail view** (Viewer opens a device, sees all reference data resolved
+   to human-readable labels)
+8. **Import CSV** (Admin uploads a CSV; preview shown; errors surfaced;
+   commit succeeds)
+9. **Export CSV** (Admin exports current filtered view; downloaded file
+   parses cleanly)
+10. **Reference data admin** (Admin creates a new Location; it appears
+    immediately in the device-create form)
+11. **Role enforcement** (Viewer cannot see edit/delete affordances;
+    direct navigation to edit routes is refused)
+12. **Offline app shell** (PWA shell loads when API is unreachable;
+    cached data viewable; mutations queued or refused gracefully)
+13. **Accessibility smoke** (every route above passes axe-core with
+    zero violations)
+
+Additional journeys are added to this list as features ship. Removing a
+journey from this list requires an ADR.
+
+### 7.5.5 The `make test` Contract
+A developer must be able to run the following from a clean checkout:
+
+```bash
+make up        # bring up the full local stack (API, web, db)
+make test      # run all mandatory tests against the running stack
+make down      # tear down
+```
 
 ---
 

@@ -1,15 +1,13 @@
 # Architecture
 
 ## C4 Level 1 — Context
-[Family users] → [Caddy proxy] → [API] → [SQL]
+[Family users] → [External Proxy] → [UI] → [API] → [SQLite Db]
                               ↘ [Entra ID]
 
 ## C4 Level 2 — Containers
-- `web`   SvelteKit PWA (Caddy-served)
+- `web`   SvelteKit UI + PWA 
 - `api`   ASP.NET Core 10
-- `db`    sqllite
-- `proxy` Caddy (TLS, routing)
-- `backup` SQL backup sidecar
+- `db`    sqlite
 
 ## Key Decisions
 See `docs/adr/`.

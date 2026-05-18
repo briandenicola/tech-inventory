@@ -4,6 +4,24 @@ Append-only log. Newest entries at the top.
 
 ---
 
+## 2026-05-18 — Hicks T16-T19 repositories, audit stamping, and MediatR behaviors
+- Added `AddApplication()` / `AddInfrastructure()` wiring so the API now registers concrete repositories, `AuditSaveChangesInterceptor`, `ICurrentUserService`, `IUnitOfWork`, scoped `IAuditContext`, and MediatR pipeline behaviors in the intended order (Validation first, Audit last)
+- Implemented `Repository<TEntity, TKey>` plus all concrete Infrastructure repositories under `src/TechInventory.Infrastructure/Persistence/Repositories/`; exact-ID reads stay unit-of-work aware, list queries hide inactive reference rows by default, `IAuditEventRepository.AppendAsync` remains save-free, and Device list defaults exclude disposed rows unless explicitly filtered back in
+- Added `AuditSaveChangesInterceptor`, `IAuditable`, `IAuditContext`, `ValidationBehavior`, and `AuditBehavior`; validation failures now return `Error.Code = "Validation"` with an `Error.ValidationErrors` dictionary, and audit BEFORE/AFTER payloads come from handler-populated `IAuditContext` + request JSON fallback
+- Verified `dotnet format --verify-no-changes`, `dotnet build -c Release`, and `dotnet test -c Release` all pass from the repo root on Windows; attempted `scripts/verify.ps1`, but it stalled during the build phase after repeated waits, so final validation used the requested direct dotnet commands
+- Next: Hicks can move into T20+ command/query handlers while Apone targets the new repository/behavior seams for broader Application coverage
+
+---
+
+## 2026-05-18 — Apone T44/T45 behavior + repository coverage follow-through
+- Added direct Application behavior tests under `tests/TechInventory.UnitTests/Application/Behaviors/` for ValidationBehavior aggregation/pass-through, AuditBehavior success/failure/no-op cases, and a composed Validation→Audit pipeline assertion that failing validation never writes an AuditEvent
+- Added SQLite-backed repository integration coverage under `tests/TechInventory.IntegrationTests/Repositories/` for Brand/Category/Owner/Location/Network/Tag CRUD + active-filter + audit-stamp checks, Device CRUD/filter/audit-stamp checks, and AuditEvent append-only persistence checks
+- Hardened `tests/TechInventory.IntegrationTests/IntegrationTestFactory.cs` cleanup retries so SQLite file locks from `WebApplicationFactory` disposal do not fail otherwise-green integration runs
+- Verified `dotnet test tests\TechInventory.UnitTests\TechInventory.UnitTests.csproj -c Release`, `dotnet test tests\TechInventory.IntegrationTests\TechInventory.IntegrationTests.csproj -c Release`, `dotnet test -c Release`, and `dotnet test -c Release --collect:"XPlat Code Coverage"`
+- Coverage snapshot from the latest merged unit+integration reports: Domain 81.40%, Application 40.53%, Infrastructure 88.98%
+
+---
+
 ## 2026-05-18 — Hicks T11-T15 audit event, persistence, and repository seams
 - Added immutable `AuditEvent` and `ImportBatch` domain entities under `src/TechInventory.Domain/Entities/`; `AuditEvent` now exposes `Actor`, `EntityType`, `EntityId`, `Action`, `Timestamp`, `BeforePayload`, and `AfterPayload` with no public mutation surface
 - Added Application-layer repository abstractions plus shared `Result<T>`, `Result`, `PageRequest`, and `PagedResult<T>` under `src/TechInventory.Application/`; `IAuditEventRepository` is append/query only and repository contracts never expose `IQueryable`

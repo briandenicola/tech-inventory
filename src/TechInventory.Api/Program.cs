@@ -1,11 +1,10 @@
 using System.Diagnostics;
-using System.Reflection;
-using FluentValidation;
-using MediatR;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Serilog;
+using TechInventory.Application;
+using TechInventory.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,12 +23,8 @@ builder.Services.AddControllers();
 // Problem Details for RFC 7807 error responses
 builder.Services.AddProblemDetails();
 
-// MediatR: scan Application assembly (will be wired when Application has handlers)
-var applicationAssembly = Assembly.Load("TechInventory.Application");
-builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(applicationAssembly));
-
-// FluentValidation: scan Application assembly
-builder.Services.AddValidatorsFromAssembly(applicationAssembly);
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration);
 
 // OpenAPI / Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -59,7 +54,7 @@ app.UseExceptionHandler();
 app.UseStatusCodePages();
 
 // Swagger in Development and optionally in Production
-if (app.Environment.IsDevelopment() || 
+if (app.Environment.IsDevelopment() ||
     bool.TryParse(app.Configuration["Features:SwaggerInProduction"], out var enableSwagger) && enableSwagger)
 {
     app.UseSwagger();
@@ -90,3 +85,5 @@ finally
 {
     Log.CloseAndFlush();
 }
+
+public partial class Program;

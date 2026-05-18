@@ -1,10 +1,16 @@
 using Microsoft.EntityFrameworkCore;
+using TechInventory.Application.Abstractions.Persistence;
 using TechInventory.Domain.Entities;
+using TechInventory.Infrastructure.Persistence.Interceptors;
 
 namespace TechInventory.Infrastructure.Persistence;
 
-public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+public sealed class AppDbContext(
+    DbContextOptions<AppDbContext> options,
+    AuditSaveChangesInterceptor auditSaveChangesInterceptor) : DbContext(options), IUnitOfWork
 {
+    private readonly AuditSaveChangesInterceptor _auditSaveChangesInterceptor = auditSaveChangesInterceptor ?? throw new ArgumentNullException(nameof(auditSaveChangesInterceptor));
+
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 
     public DbSet<Brand> Brands => Set<Brand>();
@@ -26,6 +32,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Owner> Owners => Set<Owner>();
 
     public DbSet<Tag> Tags => Set<Tag>();
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        base.OnConfiguring(optionsBuilder);
+        optionsBuilder.AddInterceptors(_auditSaveChangesInterceptor);
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

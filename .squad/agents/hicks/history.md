@@ -100,3 +100,8 @@ Phase 1 lands in `specs/001-core-api/`. Pattern references: **R1** for MediatR h
 - Repository abstractions now live in `src/TechInventory.Application/Abstractions/Repositories/`, not Domain. Every method is async, every signature carries `CancellationToken`, expected failures return `Result<T>` or `Result`, paged reads use `PagedResult<T>`, and `IQueryable` never crosses the boundary.
 - `IAuditEventRepository` exposes `AppendAsync`, `GetByIdAsync`, and paged `ListAsync` only; there is no update/delete/remove surface. `IImportBatchRepository` is add/read only, while mutable aggregates use the shared `IAggregateRepository<TAggregate>` base plus materialized list/query methods.
 - Infrastructure concrete repositories did not land in this round. What did land in Infrastructure is `AppDbContext`, entity configurations, append-only save guards for `AuditEvent`/`ImportBatch`, and the `InitialCoreApi` migration.
+
+**Cross-agent notes (Phase 1 Round 3):**
+- Apone locked the append-only contract with 8 AuditEvent reflection tests; immutability now executable spec.
+- Hudson pre-deployed integration test factory: concrete repositories will inherit SQLite per-test-class isolation when T16 lands.
+- Append-only enforcement strategy finalized (D-017): AppDbContext save guards + `IAuditEventRepository` interface contract form the double seam.

@@ -158,3 +158,22 @@ Playwright layout: tests in `tests/e2e/`, Page Object Model in `tests/e2e/pages/
 - Assert immutability from the outside: constructor sets payloads/action/timestamp once, then tests verify there are no public mutator methods or writable public setters for audit fields
 - Pair that with later consumer/repository tests that only allow add/create semantics; any update/delete contract should be absent or explicitly throw so append-only is executable, not just documented
 
+### 2026-05-18: T11-T15 reflection contract coverage
+
+**Reflection-based append-only assertion pattern:**
+- When the entity surface matters more than implementation details, resolve the type by name and assert the public API contract directly: payload/action/timestamp capture, UTC timestamps, and zero public setters or mutator methods
+- For `AuditEvent`, pair constructor guard tests with action-specific payload-transition tests (`Created` requires after, `Updated` requires before+after, `Deleted` requires before) so append-only behavior is locked at construction time
+
+**Repository contract assertion pattern:**
+- Application-layer repository interface tests can reflect every method signature and enforce the contract in one pass: async return type, `CancellationToken` present, and no `IQueryable` leakage anywhere in the interface surface
+- `IAuditEventRepository` gets an extra append-only guard: require `AppendAsync` and forbid any method name matching `Update|Delete|Remove`
+
+**NSubstitute interface-contract pattern:**
+- Use `Substitute.For(new[] { interfaceType }, Array.Empty<object>())` when the interface is discovered by reflection; that keeps the test executable before consumer handlers exist and still proves the seam is mock-friendly
+- Keep the reflection helper centralized (`tests/TechInventory.UnitTests/Support/ContractReflectionAssertions.cs`) so future contract suites reuse the same sample-value and signature-inspection logic
+
+**Cross-agent notes (Phase 1 Round 3):**
+- Reflection pattern (D-019) now team-wide template for Domain/Application contracts; 19 tests green proving immutability and async signatures.
+- Hicks confirmed AppDbContext append-only guards work; no public mutator surface escapes.
+- Hudson confirmed integration factory plays nicely with migration discovery; concrete repositories T16 will inherit SQLite isolation automatically.
+

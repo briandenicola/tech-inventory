@@ -328,6 +328,90 @@ SvelteKit uses **Tailwind CSS v4.3.0** with `@tailwindcss/vite` plugin.
 
 ---
 
+### D-017: AuditEvent Append-Only Enforcement Strategy
+
+**By:** Hicks (Backend Developer)  
+**Date:** 2026-05-18  
+**Status:** Decided & implemented (T11 complete)  
+**Related:** `src/TechInventory.Domain/Entities/AuditEvent.cs`, `src/TechInventory.Infrastructure/Persistence/AppDbContext.cs`
+
+**Decision:** Keep `AuditEvent` / `ImportBatch` outside the mutable `Entity` base contract. Repository abstractions live in `TechInventory.Application/Abstractions/Repositories/`, enforcing append-only behavior at both the interface seam and `AppDbContext` save pipeline.
+
+**Shape:**
+- `AuditEvent`: immutable public properties (`Actor`, `EntityType`, `EntityId`, `Action`, `Timestamp`, `BeforePayload`, `AfterPayload`). No public setters or mutators. Private EF Core constructor only.
+- `ImportBatch`: immutable public fields, derived `ProcessedCount` / `HasErrors` helpers, private EF constructor.
+- `IAuditEventRepository`: `AppendAsync` + query-only methods; no update/delete surface.
+- `AppDbContext` save guard: reject modified or deleted `AuditEvent` rows as second-line safeguard.
+
+**Implications:**
+- AuditEvent append-only contract locked at construction. No public API for state changes.
+- Repository contracts in Application layer formalize the seam above Domain where `Result<T>`, paging DTOs, and query criteria live without leaking EF Core.
+- Concrete repositories deferred to Phase 2 (T16) after handler patterns settle.
+
+**Open questions for future rounds:**
+1. Dedicated immutable-domain-base type for append-only records, or keep stand-alone?
+2. Narrow `TechInventory.Application/Abstractions/Repositories/` namespace split before handlers land?
+3. All immutable persistence records get DbContext guards, or only security-sensitive append-only data?
+
+---
+
+### D-018: SQLite Integration Isolation + Hermetic E2E Contract
+
+**By:** Hudson (DevOps / Platform)  
+**Date:** 2026-05-18  
+**Status:** Decided & implemented  
+**Related:** `tests/TechInventory.IntegrationTests/IntegrationTestFactory.cs`, `Taskfile.yml`, `scripts/verify.sh`
+
+**Decision:** Backend integration tests use **in-process SQLite with one fresh file per test class**, parameterized by test class marker type. `task test:e2e` owns the hermetic Playwright lifecycle: `docker compose up -d --build` → wait for `/health/ready` → run Playwright → `docker compose down -v`.
+
+**Rationale:**
+- SQLite in-process matches production behavior (embedded in API) better than Testcontainers.
+- Per-test-class database keeps integration suites isolated without per-test-method startup cost.
+- One-shot E2E task gives CI and local laptops identical contract, including mandatory teardown.
+
+**Consequences:**
+- Future integration test classes follow pattern: `SomeFeatureTests : IClassFixture<IntegrationTestFactory<SomeFeatureTests>>`
+- SQLite file maps cleanly to owning test class; no cross-test contamination.
+- Hicks registers `AppDbContext` against `ConnectionStrings:Default`; TODO hook in factory `ConfigureServices(...)` is override point if needed.
+- Apone expands HTTP coverage on same factory once migrations land; `task test:integration` is entry point.
+
+**Trade-off noted:** Per-test-class isolation adds minimal overhead but guarantees data cleanliness. Testcontainers avoided for simplicity.
+
+---
+
+### D-019: Reflection-Based Contract Test Pattern
+
+**By:** Apone (QA)  
+**Date:** 2026-05-18  
+**Status:** Decided & implemented  
+**Related:** `tests/TechInventory.UnitTests/Support/ContractReflectionAssertions.cs`, `tests/TechInventory.UnitTests/Domain/AuditEventTests.cs`, `tests/TechInventory.UnitTests/Application/Abstractions/RepositoryInterfaceContractTests.cs`
+
+**Pattern:** Contract-first testing for Domain entities and Application abstractions using reflection:
+1. Resolve target type by full name from owning assembly
+2. Use shared deterministic sample values for reproducible construction
+3. Assert at the seam: immutable public surface, async repository signatures, `CancellationToken` on every method, no `IQueryable` leakage
+4. Add NSubstitute mockability checks so future handler tests inherit the same seam contract
+
+**Why adopt team-wide:**
+- QA locks contracts early without depending on implementation shape
+- Tests stay stable across refactors (enforce public API, not private wiring)
+- Future Domain entities, repositories, and handler abstractions reuse helper instead of re-learning reflection
+
+**Implementation:**
+- `tests/TechInventory.UnitTests/Support/ContractReflectionAssertions.cs` — Centralized reflection + type resolution + method introspection + NSubstitute setup
+- `tests/TechInventory.UnitTests/Support/DeterministicSampleValues.cs` — Canonical test data (ULIDs, currency codes, dates, role enums)
+- 8 AuditEvent append-only tests + 11 repository interface contract tests (19 total)
+
+**Adoption guidelines:**
+- Apply to immutable Domain entities (AuditEvent, ImportBatch, future audit/import records)
+- Apply to all Application-layer abstractions (repository interfaces, handler request/response contracts)
+- Pair with NSubstitute mockability gate to catch breaking interface changes early
+- Keep tests readable by using descriptive assertion names (`AssertAsyncMethod`, `AssertNoCancellationTokenOmitted`)
+
+**Team reuse note:** Append result-type and cancellation-token patterns to this decision when future phases land validation commands and query handlers.
+
+---
+
 ## Governance
 
 - All meaningful changes require team consensus

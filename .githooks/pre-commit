@@ -9,4 +9,23 @@ if ! command -v node >/dev/null 2>&1; then
   exit 1
 fi
 
+if ! command -v dotnet >/dev/null 2>&1; then
+  echo "dotnet is required to run the Tech Inventory pre-commit hook." >&2
+  exit 1
+fi
+
+echo "🔍 [1/3] Checking .NET code formatting..."
+dotnet format --verify-no-changes
+
+echo ""
+echo "✨ [2/3] Linting frontend..."
+cd "$REPO_ROOT/src/TechInventory.Web"
+pnpm run lint
+cd "$REPO_ROOT"
+
+echo ""
+echo "🎭 [3/3] Scanning for auth tokens and secrets..."
 node ./scripts/check-security.mjs --staged
+
+echo ""
+echo "✅ Pre-commit checks passed!"

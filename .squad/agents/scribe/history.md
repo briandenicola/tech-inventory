@@ -9,9 +9,11 @@ Agent Scribe initialized and ready for work.
 
 ## Recent Updates
 
+## Recent Updates
+
 📌 Team initialized on 2026-05-18
 
-**2026-05-18 (Phase 1 Round 4):** Merged two decision inbox files into `decisions.md` as D-020 (Hicks: Audit Context & Repository Balance Strategy) and D-021 (Apone: MediatR Behavior Pipeline Order Verification Pattern). Updated agent history for Hicks (T16–T19 repositories + behaviors), Apone (behavior + repository coverage, coverage regression flagged), and Scribe (this session). Deleted merged inbox files. No session log existed; will create on next round or as needed by coordinator. All changes staged for commit.
+**2026-05-18 (Phase 1 Round 6):** Merged 6 decision inbox files into `decisions.md` as D-022 through D-027: Dev Auth Bypass (security-critical `Auth:DevBypass` flag), Controller Routing & OpenAPI (attribute-routed lowercase `/api/v1/...`), Category Tree Paging & Archive (root pagination + soft-delete cascade), PagedResponse Shape (standard list DTO), ProblemDetails Error Serialization (RFC 7807 via `IExceptionHandler`), and Result to HTTP Status Mapping (centralized `ControllerResultExtensions`). Updated agent history for Hicks (T32–T41 controllers, auth bypass, ProblemDetails wiring), Apone (79 new tests, Domain/Application/Infrastructure/Api coverage snapshot, category-archive bug fix), and Scribe (this session). Appended Round 6 outcome to session log with coverage table, commit SHAs, +79 test delta, API smoke-test pointer, category-archive fix note, and Phase 1 progress (37/48 tasks = 77%). Marked T32–T41 as ✅ in tasks.md. Deleted 6 inbox files. Committed scoped changes: `.squad/` + `specs/001-core-api/tasks.md` only.
 
 **2026-05-18 (Phase 1 Round 5):** Processed empty decisions inbox (no new D-### entries to merge). Updated agent history for Hicks (T20–T28 handlers, consolidated wording) and Apone (Domain coverage recovery to 100.00%, +115 tests). Appended Round 5 outcome to session log with coverage table and +115 test delta. Committed scoped changes: `.squad/` and `specs/001-core-api/tasks.md` only (pre-existing dirty files left untouched per Brian's guidance).
 

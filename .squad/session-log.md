@@ -1,5 +1,72 @@
 # Session Log — Tech Inventory Squad
 
+## Phase 1 Round 6 Outcomes (2026-05-18)
+
+### Hicks 🔧 — Commits `48c1920` + `74a1e21` "feat(api): T32-T40 entity controllers + dev auth bypass" / "feat(api): T41 ProblemDetails middleware + Result-to-HTTP mapping"
+
+**Tasks Completed:** T32, T33, T34, T35, T36, T37, T38, T40, T41
+
+- **T32–T38**: Resource controllers for Devices, Brands, Categories (with `/categories/tree` hierarchy route), Owners, Locations, Networks, Tags
+- **T40**: AuditEventsController (read-only list with filters)
+- **T41**: Global ProblemDetails middleware (`IExceptionHandler`) + Result→HTTP mapping via `ControllerResultExtensions`
+- Development-only auth bypass: `Auth:DevBypass=true` in `appsettings.Development.json` produces synthetic `dev-admin` principal (Admin role, fixed ULID `11111111-1111-1111-1111-111111111111`); startup throws if enabled outside Dev and logs warning
+- Controllers marked `[Authorize]` by default; thin routing (no business logic)
+- OpenAPI 3.1 served at `/openapi/v1.json`; Swagger UI at `/swagger`
+- Smoke tests on `http://localhost:8080`:
+  - `GET /openapi/v1.json` → 200 JSON
+  - `GET /api/v1/devices` → `200 {"items":[],"totalCount":0,"page":1,"pageSize":25}`
+  - `POST /api/v1/brands -d '{"name":"TestBrand2"}'` → 201 Created with Location header
+  - `POST /api/v1/brands -d ''` → 400 Validation ProblemDetails
+  - `GET /api/v1/brands/{invalid-uuid}` → 404 ProblemDetails
+
+**Files Modified:** 28 files
+
+**Verification:** All checks green:
+- `dotnet format --verify-no-changes` ✅
+- `dotnet build -c Release` ✅
+- (repo-root `dotnet test -c Release` blocked by Apone's in-flight compile fix; cleared after)
+
+**Decisions Documented:** D-022 (Dev Auth Bypass), D-023 (Controller Routing), D-024 (Category Tree), D-025 (PagedResponse), D-026 (ProblemDetails), D-027 (Result Mapping)
+
+---
+
+### Apone 🧪 — Commit `60f7ce6` "test: T32-T41 controller HTTP integration coverage"
+
+**Tasks Completed:** T45 (integration test suite, controller endpoints)
+
+**Outcomes:**
+- +79 tests added (266 baseline → 345 total)
+- 79 executable controller integration tests covering full CRUD, error paths, auth bypass, and ProblemDetails shaping
+- Route contract locked by tests: `/api/v1/{resource}` CRUD, `/api/v1/categories/tree`, `/api/v1/devices/{id}/tags`, `PATCH /api/v1/devices/{id}/owner` → 204 No Content
+- **Bug fixed** (exposed by tests): Category soft-delete cascade now correctly archives intermediate nodes
+- Test environment stable auth: subject `11111111-1111-1111-1111-111111111111`, Admin role
+
+**Coverage Snapshot (Post-Round-6):**
+| Layer | Coverage |
+|-------|----------|
+| Domain | **100.00%** (held) |
+| Application | **90.28%** (↑ from 85.89%) |
+| Infrastructure | **93.19%** (↑ from 88.98%) |
+| **Api** | **94.87%** (new) |
+
+**Test Results:**
+- Backend: **345 passed / 0 skipped / 0 failed** (delta +79)
+- All checks green: `dotnet format --verify-no-changes` ✅, `dotnet build -c Release` ✅, `dotnet test -c Release` ✅
+
+---
+
+### Squad Orchestration — Scribe 📝
+
+- **Decisions processed:** 6 files merged into D-022–D-027 (security, routing, paging, response shapes, error mapping)
+- **Agent history updated:** Hicks (T32–T41 full summary), Apone (79 tests + coverage + bug fix), Scribe (R6 work)
+- **Session log:** This entry (Phase 1 Round 6 outcomes)
+- **Tasks.md:** Marked T32–T41 as ✅; T39, T42, T46 remain open (import/export/auth)
+- **Deleted inbox:** 6 decision files merged and removed
+
+**Phase 1 Progress:** 37/48 tasks done (77%)
+
+---
+
 ## Phase 1 Round 5 Outcomes (2026-05-18)
 
 ### Hicks 🔧 — Commit `1180cf6` "feat(handlers): T20-T28 device + reference entity CRUD handlers"

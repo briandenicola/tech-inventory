@@ -482,6 +482,195 @@ SvelteKit uses **Tailwind CSS v4.3.0** with `@tailwindcss/vite` plugin.
 
 ---
 
+### D-022: Development Auth Bypass — `Auth:DevBypass` Flag
+
+**By:** Hicks (Backend / API)  
+**Date:** 2026-05-18  
+**Status:** Decided & implemented (T41)  
+**Related:** `src/TechInventory.Api/Program.cs`, `src/TechInventory.Api/Authentication/`, `appsettings.Development.json`, Constitution §5.1–§5.2, `docs/auth-design.md`
+
+**Decision:**
+
+Add a Development-only `Auth:DevBypass` flag. When `true` in `Development`, the API authenticates every request as a synthetic `dev-admin` principal with fixed `sub` / `oid` claims (`11111111-1111-1111-1111-111111111111`) and `Admin` role so Brian can exercise secured endpoints with curl or Bruno. When `false`, the API falls back to a placeholder auth handler that returns 401 until real Entra JWT bearer wiring lands (T46).
+
+**Rationale:**
+
+Constitution requires default-deny authorization on every endpoint. Path A2 for Round 6 also requires a runnable API Brian can hit immediately. A gated Development bypass preserves `[Authorize]` on the real controller surface while making local smoke testing and manual API exploration possible before T46/Tenant bearer work is complete.
+
+**Guardrails:**
+
+- `Auth:DevBypass` defaults to `true` only in `appsettings.Development.json`
+- `Auth:DevBypass` defaults to `false` in `appsettings.json`
+- Startup throws if the flag is enabled outside Development (guards against accidental production activation)
+- Startup logs a warning that `Auth:DevBypass` is enabled and every request is authenticated as `dev-admin`; the runtime message is assembled in code to avoid secret-scan false positives
+
+**Consequences:**
+
+1. MUST be `false` outside Development — runtime check enforces this at startup.
+2. Any production deploy requires the Entra path complete (T46 — real OIDC/bearer token wiring).
+3. Startup warning is the runtime guard — missing a config value in production would be caught immediately.
+4. Test environment (integration tests) uses the same bypass; test actors are stable `11111111-1111-1111-1111-111111111111` (Admin).
+
+---
+
+### D-023: Controller Routing & OpenAPI Surface
+
+**By:** Hicks (Backend / API)  
+**Date:** 2026-05-18  
+**Status:** Decided & implemented (T32–T40)  
+**Related:** `src/TechInventory.Api/Controllers/`, `src/TechInventory.Api/Features/Categories/`, `src/TechInventory.Api/Program.cs`, `specs/001-core-api/tasks.md` (T32–T40)
+
+**Decision:**
+
+Use classic attribute-routed controllers with explicit lowercase `/api/v1/...` paths instead of minimal APIs.
+
+- Resource controllers use explicit routes like `/api/v1/devices`, `/api/v1/brands`, and `/api/v1/audit-events`
+- Categories expose both paged roots (`GET /api/v1/categories`) and full hierarchy (`GET /api/v1/categories/tree`)
+- OpenAPI JSON is served at `/openapi/v1.json` while Swagger UI stays at `/swagger`
+
+**Rationale:**
+
+Apone's controller-focused integration suite and the task wording both favor a conventional controller surface. Explicit lowercase routes remove ambiguity around tokenized `[controller]` casing and make the curl/Bruno examples stable for Brian this session.
+
+**Implementation:**
+
+- 8 resource controllers: `DevicesController`, `BrandsController`, `CategoriesController`, `OwnersController`, `LocationsController`, `NetworksController`, `TagsController`, `AuditEventsController`
+- Each controller marked `[Authorize]` at the class level; MediatR wires business logic
+- Device tags live at `/api/v1/devices/{id}/tags` and `/api/v1/devices/{id}/tags/{tagId}`
+- Owner assignment via `PATCH /api/v1/devices/{id}/owner` returns 204 No Content
+- OpenAPI 3.1 metadata configured in `Program.cs` via `builder.Services.AddOpenApi()` and `app.MapOpenApi()`
+
+---
+
+### D-024: Category Tree Paging & Archive Semantics
+
+**By:** Hicks (Backend / API)  
+**Date:** 2026-05-18  
+**Status:** Decided & implemented (T23)  
+**Related:** `src/TechInventory.Application/Categories/`, `specs/001-core-api/tasks.md` (T23), `specs/001-core-api/plan.md` §2.1
+
+**Decision:**
+
+For category handlers:
+1. `ListCategoriesQuery` returns a recursive tree and paginates only root categories.
+2. Updating a category branch must reject cycles and rebalance descendant `Depth` values so stored depth stays consistent.
+3. Deleting a category cascades `IsActive = false` through the subtree rather than leaving active children attached to an inactive parent.
+
+**Rationale:**
+
+Repository returns a flat category set. Handler layer is the narrowest place to assemble the tree, preserve the max-depth invariant, and avoid orphaned active children when a parent is archived.
+
+**Implementation:**
+
+- `UpdateCategoryCommand` validates no cycles and rebalances descendant depths
+- `DeleteCategoryCommand` cascades soft-delete through the subtree
+- `ListCategoriesQuery` paginates root nodes; `TotalCount` reflects root count, not total rows
+- `GetCategoryByIdQuery` returns full subtree under the fetched root
+
+**Consequences:**
+
+Root-only pagination means `TotalCount` reflects root nodes, not total category rows. That keeps the tree coherent for callers without splitting descendants across pages.
+
+---
+
+### D-025: PagedResponse Shape
+
+**By:** Hicks (Backend / API)  
+**Date:** 2026-05-18  
+**Status:** Decided & implemented (T20–T28, T32–T40)  
+**Related:** `src/TechInventory.Application/Common/Paging/PagedResponse.cs`, `specs/001-core-api/tasks.md` (T21–T27), Constitution §4.2
+
+**Decision:**
+
+Adopt `PagedResponse<T>` in Application as the standard list-query DTO shape with:
+- `Items`
+- `TotalCount`
+- `Page`
+- `PageSize`
+
+**Rationale:**
+
+Repository seams already use `PagedResult<T>` internally, but handler/query DTOs needed an outward-facing response type that matches the API acceptance criteria (`totalCount`, `page`, `pageSize`) without leaking repository implementation details.
+
+**Implementation:**
+
+- `ListDevicesQuery` → `PagedResponse<DeviceResponse>`
+- `ListBrandsQuery` → `PagedResponse<BrandResponse>`
+- `ListCategoriesQuery` → `PagedResponse<CategoryResponse>`
+- `ListOwnersQuery` → `PagedResponse<OwnerResponse>`
+- `ListLocationsQuery` → `PagedResponse<LocationResponse>`
+- `ListNetworksQuery` → `PagedResponse<NetworkResponse>`
+- `ListTagsQuery` → `PagedResponse<TagResponse>`
+- `ListAuditEventsQuery` → `PagedResponse<AuditEventResponse>`
+
+**Notes:**
+
+For hierarchical categories, pagination applies to root nodes while each returned root preserves its full descendant tree.
+
+---
+
+### D-026: ProblemDetails Error Serialization
+
+**By:** Hicks (Backend / API)  
+**Date:** 2026-05-18  
+**Status:** Decided & implemented (T41)  
+**Related:** `src/TechInventory.Api/ExceptionHandling/ApiExceptionHandler.cs`, `specs/001-core-api/tasks.md` (T41), `specs/001-core-api/plan.md` §4.2, D-020, D-021
+
+**Decision:**
+
+Use `IExceptionHandler` + `ProblemDetailsFactory` as the single API failure serializer.
+
+- Validation failures (`Error.Code == "Validation"`) become `ValidationProblemDetails` with an `errors` dictionary keyed by property name
+- `NotFound` becomes 404 ProblemDetails
+- `Conflict` becomes 409 ProblemDetails
+- Other expected failures default to 400 ProblemDetails
+- Unhandled exceptions become 500 ProblemDetails; only the exception message is surfaced in Development, never stack traces outside Development
+
+**Rationale:**
+
+Application handlers already normalize expected failures into `Result`/`Error`, so the API layer should translate that contract once rather than per action. Using `ProblemDetailsFactory` keeps RFC 7807 fields (`type`, `title`, `status`, `detail`, `instance`) aligned with ASP.NET conventions while preserving the D-020 validation error dictionary shape.
+
+**Implementation:**
+
+- `ApiExceptionHandler` implements `IExceptionHandler` and is registered in `Program.cs`
+- All failures (Result.Failure and exceptions) flow through one ProblemDetails translator
+- RFC 7807 compliance: `type` URN, `title` (status-specific), `status` (HTTP code), `detail` (error message), `instance` (request path)
+
+---
+
+### D-027: Result to HTTP Status Mapping
+
+**By:** Hicks (Backend / API)  
+**Date:** 2026-05-18  
+**Status:** Decided & implemented (T32–T41)  
+**Related:** `src/TechInventory.Api/Common/ControllerResultExtensions.cs`, `src/TechInventory.Api/Controllers/`, `specs/001-core-api/tasks.md` (T32–T41), `specs/001-core-api/plan.md` §2.2, §4.1–§4.2
+
+**Decision:**
+
+Centralize success-path Result mapping in `ControllerResultExtensions`.
+
+- `Result<T>.Success` → `Ok(...)` for normal reads/updates
+- `Result<T>.Success` → `CreatedAtAction(...)` for POST creates
+- `Result.Success` / non-body patch results → `NoContent()`
+- Any `Result.Failure` throws `ResultFailureException`, which the global exception handler (D-026) converts into ProblemDetails JSON
+
+**Rationale:**
+
+Controllers stay thin and repetitive mapping logic lives in one place, while the exception pipeline owns all failure serialization. The split is deliberate: controllers stay focused on request→MediatR→success response, and the exception layer owns every failure status/body rule.
+
+**Implementation:**
+
+- `ControllerResultExtensions` provides `.ToActionResult()` and `.ToCreatedAtResult(...)` helpers
+- `ResultFailureException` wraps `Result.Failure` errors for exception pipeline dispatch
+- Controllers use: `return (await Mediator.Send(cmd)).ToActionResult();` or `.ToCreatedAtResult(...)`
+- PATCH device owner: `return (await Mediator.Send(cmd)).ToActionResult();` returns 204 No Content
+
+**Consequences:**
+
+All failure paths go through the exception handler (D-026). Controllers cannot return custom error responses; all must flow through ProblemDetails.
+
+---
+
 ## Governance
 
 - All meaningful changes require team consensus

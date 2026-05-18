@@ -26,7 +26,8 @@ Phase 1 lands in `specs/001-core-api/`. Pattern references: **R1** for MediatR h
 
 ## Recent Updates
 
-**2026-05-18:** Phase 0 parallel scaffolding complete. Security baseline now in effect (`docs/security-baseline.md`). **Currency strategy decision OPEN and blocks T04** — awaiting Brian's decision. Apone's integration test suite awaits `/health` endpoint wiring — see `tests/TechInventory.IntegrationTests/ApiSmokeTests.HealthEndpoint_Returns200Ok()` (currently skipped).
+**2026-05-18 (Phase 1 Round 1):** Domain layer T01–T05 complete and tested. `EntityId` ULID primitives, `Currency` ISO 4217 value object, `Household`/`Device`/`Brand` aggregates with currency inheritance and retired-device edit guards all implemented. 13 Domain unit tests green (85% coverage). Currency decision finalized (D-008): per-device with household default. Pre-commit hook deployed for token-storage enforcement (Hudson). Vasquez's ESLint gate live. Apone's Domain contract tests executable. `dotnet build -c Release` ✅, `dotnet test -c Release` ✅, `dotnet format --verify-no-changes` ✅. Phase 2: Repository layer + Application command/query handlers.
+
 
 ## Learnings
 
@@ -73,3 +74,11 @@ Phase 1 lands in `specs/001-core-api/`. Pattern references: **R1** for MediatR h
 - Microsoft.AspNetCore.Diagnostics is redundant in Web SDK (pruned package warning → removed)
 - Microsoft.AspNetCore.OpenApi (v10.0.8) source generator has compatibility issues with Swashbuckle; removed in favor of Swashbuckle-only approach
 - dotnet CLI `add package` occasionally hits file lock contention; resolved by manual csproj edits or retry
+
+### 2026-05-18: Domain currency and aggregate foundations (Phase 1 T01-T05)
+
+- `AggregateRoot : Entity` is the shared domain base shape. `Entity` owns `Id`, `CreatedAt`, `CreatedBy`, `ModifiedAt`, `ModifiedBy`, plus `Touch()` / `SetAuditMetadata()` so Infrastructure can stamp audit columns later without leaking EF Core into Domain.
+- `Currency` lives in `src/TechInventory.Domain/ValueObjects/Currency.cs` as a record value object. It trims input, uppercases it, requires exactly three ASCII letters, and rejects any code outside the embedded ISO 4217 allowlist.
+- `Household` owns `DefaultCurrency`. `Device.Create(...)` takes a `Household` and falls back to `household.DefaultCurrency` when a per-device currency is not supplied; after creation, `Device.Currency` is independent and can diverge through `UpdateDetails(...)`.
+- `Device.UpdateDetails(...)` throws when `Status == Retired`; only `UpdateNotes(...)` and `UpdateDisposalMethod(...)` remain legal for retired/disposed records. `UpdateDisposalMethod(...)` itself throws unless status is `Retired` or `Disposed`.
+- Apone test targets: currency normalization (`usd` → `USD`), invalid code/length rejection, device creation inheriting household currency, explicit device currency override, retired-device general edits throwing, and retired/disposed-only disposal-method rules.

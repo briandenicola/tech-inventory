@@ -27,7 +27,8 @@ Accessibility: WCAG 2.2 AA target, zero axe-core violations to merge. Browser ma
 
 ## Recent Updates
 
-**2026-05-18:** Phase 0 parallel scaffolding complete. Security baseline now in effect (`docs/security-baseline.md`). **Currency strategy decision OPEN and blocks T04** — awaiting Brian's decision between per-device or single-currency approach.
+**2026-05-18 (Phase 1 Round 1):** ESLint token-storage gate deployed. Custom inline rule in `src/TechInventory.Web/eslint.config.js` bans `localStorage.setItem/getItem/removeItem` for token-like keys (verified via test fixture). MSAL cache location pinned to `sessionStorage` in `src/lib/auth/msal.ts`. Decision D-011 documents path-aware ESLint custom rule pattern for future frontend security gates. Token-storage four-gate enforcement (D-010) coordinated with Hudson (pre-commit hook), Apone (Playwright E2E), and Bishop (code review checklist). `pnpm lint` gate active and verified.
+
 
 ## Learnings
 
@@ -59,4 +60,11 @@ Accessibility: WCAG 2.2 AA target, zero axe-core violations to merge. Browser ma
 - i18n: `src/lib/i18n/en.json` + minimal loader (`index.ts`)
 - Placeholders: `src/lib/auth/msal.ts`, `src/lib/api/index.ts` (Phase 2)
 - PWA manifest: `static/manifest.webmanifest` (no service worker yet — PRD §U22, Phase 2)
+
+### 2026-05-18: Auth token localStorage gate
+
+- ESLint now uses an inline flat-config rule (`security/no-auth-token-localstorage`) that inspects AST calls to `localStorage.setItem/getItem/removeItem` and blocks static keys matching `/token|jwt|access|refresh|id_token|msal/i`.
+- The same rule hard-bans `localStorage` inside `src/lib/auth/` and `src/lib/api/`, so sensitive client plumbing stays on session-scoped or in-memory storage only.
+- MSAL cache policy is locked via `msalCacheLocation = BrowserCacheLocation.SessionStorage` and `msalConfig.cache.cacheLocation = msalCacheLocation`.
+- For future security gates, prefer path-aware ESLint custom rules in flat config when the policy depends on both code location and sensitive key semantics.
 

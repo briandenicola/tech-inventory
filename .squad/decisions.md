@@ -2,18 +2,22 @@
 
 ## Active Decisions
 
-### D-001: Use Entra External ID (Not Workforce) — **PROPOSED**
+### D-001: Entra Tenant Type — Workforce (Not External ID) — **DECIDED**
 
-**Proposed by:** Bishop (Security & Auth Specialist)  
-**Date:** 2026-05-18  
-**Status:** Awaiting Brian approval  
-**Related:** PRD §14, `docs/auth-design.md`
+**Decided by:** Brian (via Copilot, 2026-05-18T14:09:24Z)  
+**Related:** PRD §14, `docs/auth-design.md` (v2.0), `.squad/decisions/inbox/copilot-directive-2026-05-18T140924Z-entra-tenant.md`
 
-Family authentication should use **Microsoft Entra External ID (CIAM model), not Workforce ID.** External ID is designed for consumer/partner scenarios, supports self-service sign-up (MSA, Google, Apple), and costs 70% less (~$1.50–7.50/mo vs. $20–40/mo for Workforce).
+**Decision:** Use the existing household **Workforce Entra ID tenant** (same tenant used for Office, Teams, etc.). Tech Inventory registers as one more app in that mix.
 
-**Trade-offs:** Simpler ops and consumer-friendly UX (upside) vs. no significant downside for family use case.
+**Rationale:** Users already provisioned in Workforce tenant; no External ID sign-up flow needed. Simpler operations.
 
-**Next:** Brian approves or requests revision. Hicks updates spec to reference External ID. Phase 2 spike: Set up External ID tenant in Azure Portal.
+**Implications:**
+- App registration in household's existing Workforce tenant
+- Roles (Admin / Member / Viewer) mapped via App Roles or Security Groups
+- `docs/auth-design.md` revised to reflect Workforce choice (v2.0 complete)
+- Token issuer/audience: `login.microsoftonline.com/{tenant-id}`
+
+**Next:** Bishop revises auth-design.md (Phase 0.5 ✅ complete). Hicks wires AuthN in Phase 2.
 
 ---
 
@@ -112,23 +116,185 @@ SvelteKit uses **Tailwind CSS v4.3.0** with `@tailwindcss/vite` plugin.
 
 ---
 
-### D-008: Currency Strategy — **OPEN**
+### D-008: Currency Strategy — **DECIDED**
 
-**Proposed by:** Ripley (Lead Architect)  
+**Decided by:** Brian (via Copilot, 2026-05-18T14:09:24Z)  
+**Related:** PRD §14, `specs/001-core-api/spec.md`, `.squad/decisions/inbox/copilot-directive-2026-05-18T140924Z-currency.md`
+
+**Decision:** Per-device currency. `Device` carries `Currency` (ISO 4217 code). `Household` has `DefaultCurrency`; new devices inherit unless overridden at creation.
+
+**Rationale:** Single-household app but imported data may have mixed currencies (gifts, travel). Per-device avoids data loss; minimal schema cost. No exchange-rate conversion needed.
+
+**Implications:**
+- `Currency` value object (ISO 4217, 3-char, validated)
+- `Household.DefaultCurrency` inherited by new devices
+- Per-device override supported at creation/edit time
+- DTOs + FluentValidation validate against ISO 4217 allowlist
+- T04 (Device entity) unblocked
+
+**Status:** Implemented. Phase 1 T01–T05 (Hicks) complete.
+
+---
+
+### D-009: OIDC Scopes & App Role Mapping
+
+**By:** Bishop (Security & Auth Specialist)  
 **Date:** 2026-05-18  
-**Status:** Open — **BLOCKS T04 in Phase 1 tasks.md**  
-**Related:** PRD §14 (open question), `specs/001-core-api/spec.md`
+**Status:** Decided & implemented  
+**Related:** `docs/auth-design.md` (v2.0), `.squad/decisions/inbox/bishop-entra-scopes-and-roles.md`
 
-**Two options:**
+**OIDC Scopes:** `openid profile email offline_access` (minimal surface, no Graph API delegation).
 
-1. **Single currency** — Household-wide setting (e.g., USD); `Device.PurchasePrice` is decimal, currency implied.
-2. **Per-device currency** — `Device.PurchasePrice` (decimal) + `Device.Currency` (ISO 4217 string, 3 chars, nullable); household default in config; CSV import stores whatever exists.
+**App Roles → Local Roles:**
+- `admin` (Entra) → `Admin` (Tech Inventory): full read/write/delete, user mgmt, audit query, system config
+- `member` → `Member`: read all devices, write own-owned devices, update profile
+- `viewer` → `Viewer`: read-only
 
-**Considerations:** Single-household app (most purchases one currency) but imported SharePoint data may have mixed currencies (gifts, travel). Per-device avoids data loss; minimal schema cost (3 chars/row). No exchange-rate conversion needed (display as stored).
+**Mapping Logic:**
+1. Extract JWT `app_roles` claim (list)
+2. Empty list → reject 401
+3. First element maps to Tech Inventory role; unknown values → reject 401
+4. First-login: create `Owner` record with mapped role, `EntraObjectId`, `Email`
 
-**Proposal:** Per-device with household default. Migration to single-currency later is trivial if needed.
+**Token Validation (per ASVS V2.10.2):**
+- Signature via Entra JWKS
+- Issuer: `https://login.microsoftonline.com/{tenant-id}/v2.0`
+- Audience: app client ID
+- Expiry + not-before checks
+- Required claims: `oid`, `email`, `app_roles`
 
-**Decision needed from:** Brian — confirm per-device approach or mandate single-currency.
+**Phase 2 open questions:** Multi-role support, guest user fallback, local role override conflict resolution.
+
+---
+
+### D-010: Token Storage Enforcement — Four-Gate Model
+
+**By:** Brian (via Copilot, 2026-05-18T14:09:24Z)  
+**Status:** Decided & all gates deployed ✅  
+**Related:** `.squad/decisions/inbox/copilot-directive-2026-05-18T140924Z-token-storage.md`
+
+**Decision:** Forbid `localStorage` for auth tokens via four gates:
+
+1. **ESLint Rule** (Vasquez): Custom path-aware rule in `src/TechInventory.Web/eslint.config.js` bans `localStorage.setItem/getItem/removeItem` for token-like keys
+2. **Pre-commit Hook** (Hudson): `.githooks/pre-commit` scans for `localStorage` + token patterns; gitleaks with `.gitleaks.toml`
+3. **Playwright Assertion** (Apone): `tests/e2e/security/token-storage.spec.ts` verifies tokens not in `localStorage` post-login (6 browser projects)
+4. **Code Review Checklist** (Bishop): security review template includes token-storage audit
+
+**MSAL.js:** Cache location pinned to `BrowserCacheLocation.SessionStorage` (or in-memory).
+
+**Implementation:** All gates verified; pre-commit hook blocks localStorage+token attempts; pnpm lint fails on violations.
+
+---
+
+### D-011: Path-Aware ESLint Custom Rules
+
+**By:** Vasquez (Frontend Developer)  
+**Date:** 2026-05-18  
+**Status:** Implemented & approved  
+**Related:** `.squad/decisions/inbox/vasquez-path-aware-eslint-security-gates.md`
+
+**Pattern:** Adopt inline custom ESLint rules in flat config for security policies that depend on both:
+1. The API shape being called
+2. The file/module boundary where that call appears
+
+**Rationale:** Token-storage policy needed two dimensions at once (ban token keys + stricter enforcement in auth modules). Inline rules stay in-repo, versioned with app, easy to extend.
+
+**Reuse guidance:** Use for future frontend security gates:
+- Forbidding risky browser APIs in auth/network modules
+- Blocking hard-coded secrets or bearer-token headers in client code
+- Enforcing stricter rules in service-worker or PWA cache code
+
+**Shape:** Normalize file paths, inspect AST call sites, match sensitive key names with explicit regex, emit clear remediation messages.
+
+---
+
+### D-012: Repo-Managed Git Hooks
+
+**By:** Hudson (DevOps)  
+**Date:** 2026-05-18  
+**Status:** Implemented & verified  
+**Related:** `.squad/decisions/inbox/hudson-repo-managed-security-hooks.md`
+
+**Decision:** Adopt repo-managed Git hooks at `.githooks/pre-commit` backed by `task hooks:install`, pinned gitleaks binary at `.tools/gitleaks/`, and shared Node scanner (`scripts/check-security.mjs`).
+
+**Why:**
+- Cross-platform without requiring Python, Go, or repo-root package manager
+- Local hook and PR CI run same token-storage regex and gitleaks config
+- Single-command setup on fresh clone: `task hooks:install`
+
+**Enforcement Pattern:**
+- Ban auth token persistence: `/localStorage\s*\.(set|get|remove)Item\s*\(\s*['"\`][^'"\`]*?(token|jwt|access|refresh|id_token|msal)/i`
+- Run gitleaks with `.gitleaks.toml`
+- CI mirrors hook by scanning PR/push diff with `node scripts/check-security.mjs --diff-range <range>`
+
+**Verification:** Hook verified; attempted storage of auth token via browser API correctly rejected.
+
+---
+
+### D-013: Domain Entity Base & Currency Validation
+
+**By:** Hicks (Backend / Domain)  
+**Date:** 2026-05-18  
+**Status:** Implemented & tested  
+**Related:** `.squad/decisions/inbox/hicks-domain-primitives-currency-validation.md`
+
+**Decision:** Model Domain aggregates on `AggregateRoot : Entity`, with `Entity` owning shared identifier and audit metadata hooks. Value objects as records on minimal `ValueObject` base. Validate `Currency` in Domain against ISO 4217 allowlist.
+
+**Why:**
+- Infrastructure can stamp audit metadata later via `SetAuditMetadata()` / `Touch()` without EF Core dependencies in Domain
+- `Device.Create(...)` inherits `Household.DefaultCurrency` while allowing per-device override
+- Deterministic Domain tests on currency normalization, retirement guards without waiting on FluentValidation or MediatR
+
+**Implications:**
+- `Entity` base: `Id` (ULID), audit properties, `SetAuditMetadata()`, `Touch()` methods
+- `Currency` value object: ISO 4217 validation, case-insensitive normalization
+- `Household` aggregate: `Name`, `DefaultCurrency`, audit hooks
+- `Device` aggregate: `HouseholdId`, `Name`, `Brand`, `Currency`, `Status` (Active/Retired/Archived), `PurchaseDate`, `RetiredDate`
+- Retired-device invariant: only `RetiredDate` editable once `Status == Retired`
+- `Brand` entity: lightweight domain object for categorization
+
+**Test Coverage:** 13 Domain unit tests green (Currency VO, Household default, Device inheritance/override, empty-name rejection, retired-device edit restrictions).
+
+---
+
+### D-014: Currency Contract Tests as Executable Spec
+
+**By:** Apone (QA)  
+**Date:** 2026-05-18  
+**Status:** Implemented (13 tests green)  
+**Related:** `.squad/decisions/inbox/apone-currency-contract-tests.md`
+
+**Pattern:** Domain currency tests assert spec directly against public API:
+- `Currency.From(...)`, `new Household(...)`, `Device.Create(...)` express business contract plainly
+- Assert ISO 4217 happy-path (`USD`), lowercase normalization, wrong-length rejection, non-allowlist rejection
+- Assert household-default inheritance, per-device override, mismatched currency validity, retired-device write restrictions
+
+**Why:** Keeps tests readable as executable spec instead of coupled to implementation details.
+
+**Coverage:** 13 tests in `tests/TechInventory.UnitTests/Domain/` (Currency, Household, Device):
+- 4 Currency tests (valid/invalid codes, normalization, allowlist)
+- 3 Household tests (default inheritance, override, audit touch)
+- 6 Device tests (currency inheritance, override, retired guards, role mismatch logging, status transitions)
+
+---
+
+### D-015: Playwright Token-Storage Inspection Pattern
+
+**By:** Apone (QA)  
+**Date:** 2026-05-18  
+**Status:** Implemented (6 browser projects green)  
+**Related:** `.squad/decisions/inbox/apone-token-storage-inspection.md`
+
+**Pattern:** Playwright token-storage checks snapshot both `localStorage` and `sessionStorage` via `page.evaluate`, assert token-like keys never in `localStorage`, MSAL keys allowed in `sessionStorage`.
+
+**Shape:**
+- Centralize regex for token-like keys
+- Read storage keys only; values irrelevant for policy gate
+- Use mocked login flow until real auth lands; swap page setup while keeping assertions
+
+**Why:** Gives Bishop's storage decision executable guard now instead of waiting on full auth wiring.
+
+**Implementation:** `tests/e2e/security/token-storage.spec.ts` runs across 6 Playwright projects (Chromium, WebKit, Firefox × desktop + mobile). All green.
 
 ---
 

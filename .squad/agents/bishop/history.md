@@ -2,7 +2,7 @@
 
 - **Owner:** Brian
 - **Project:** Tech Inventory — self-hosted family device tracker. Single household. Privacy-first — data never leaves the host, no third-party telemetry.
-- **Stack:** Microsoft Entra ID (External ID tenant for family), OIDC + PKCE flow. ASP.NET Core 10 auth/authorization. MSAL.js on the SvelteKit client. Roles: `Admin`, `Member`, `Viewer`. Local account for default administrator. Audit log (append-only AuditEvent table).
+- **Stack:** Microsoft Entra ID (Workforce tenant — household existing tenant), OIDC + PKCE flow. ASP.NET Core 10 auth/authorization. MSAL.js on the SvelteKit client. Roles: `Admin`, `Member`, `Viewer`. Local account for default administrator (bootstrap). Audit log (append-only AuditEvent table).
 - **Created:** 2026-05-18
 
 ## Core Context
@@ -31,13 +31,38 @@ Discipline (constitution / copilot-instructions.md):
 - No third-party analytics or scripts without ADR
 - Never log secrets/PII (Serilog destructuring policies)
 
-Open question I should weigh in on (PRD §14): "External ID vs. Workforce tenant — which is right for family use?" Lean External ID — Workforce is for employees, External ID supports consumer-style identities (which is what family members are).
+Open question resolved (PRD §14): "External ID vs. Workforce tenant — which is right for family use?" **DECIDED by Brian: Workforce tenant** (household existing tenant). External ID recommendation withdrawn. See decision `copilot-directive-2026-05-18T140924Z-entra-tenant.md`.
 
 ## Recent Updates
 
-**2026-05-18:** Phase 0 parallel scaffolding complete. Security baseline (`docs/security-baseline.md`) now in effect across all implementers. **Currency strategy decision OPEN and blocks T04** — awaiting Brian's decision. Entra External ID decision marked PROPOSED, awaiting Brian approval (recommended for family use case, 70% cost reduction vs. Workforce).
+**2026-05-18 (Phase 1 Round 1):** Auth design revision complete. `docs/auth-design.md` v2.0 now reflects Workforce Entra ID tenant choice (Brian decided 2026-05-18T14:09:24Z). OIDC scopes (`openid profile email offline_access`), app role mapping (admin/member/viewer), token validation checklist (ASVS V2.10.2) documented in decision D-009. Phase 2 authN wiring unblocked. Currency decision finalized (D-008): per-device with household default. Hicks completes Domain T01–T05. Vasquez + Hudson deploy token-storage enforcement gates (D-010: 4-gate model). Apone writes 13 Domain unit tests + Playwright token-storage E2E across 6 browsers. All Phase 1 Round 1 orchestration complete; decisions merged to `.squad/decisions.md`.
+
 
 ## Learnings
+
+### Entra Tenant Decision — REVERSED (2026-05-18)
+
+**What changed**: External ID recommendation → Workforce tenant decision.
+
+**Context**: 
+- Bishop recommended Entra External ID for family use (70% cost savings, consumer-friendly).
+- Brian decided: Use the household's **existing Workforce tenant** (same tenant for Office, Teams, etc.).
+- **Why**: Simpler ops (one tenant to manage); users already provisioned; aligns with self-hosted philosophy.
+
+**Implications for Phase 2**:
+1. App registration in household's Entra tenant (not new External ID tenant).
+2. No self-service sign-up flow; only household users can sign in (already provisioned by IT).
+3. App roles defined: `admin`, `member`, `viewer` (mapped in Entra app manifest).
+4. MSAL.js config: authority = `https://login.microsoftonline.com/{household-tenant-id}`.
+5. First-login handler: Create `Owner` by `EntraObjectId` (auto-onboard).
+6. Token issuer/audience/scope: Standard Workforce OIDC (`openid profile email offline_access`); no Graph API.
+
+**Scope mapping** (final detail for Hicks):
+- **JWT claim `app_roles`**: List of role values assigned to user (e.g., `["member", "admin"]`).
+- **Backend**: Use first role from list as primary authorization role (app_roles[0]).
+- **Storage**: Mirror in local `Owner.role` column for safety + optional override via admin UI.
+
+**Cost impact**: Aligned with zero-cost for Workforce tenant (part of household Office subscription). External ID per-auth fees avoided entirely.
 
 ### ASVS L2 Controls Most Relevant to Tech Inventory
 

@@ -52,7 +52,8 @@ Playwright layout: tests in `tests/e2e/`, Page Object Model in `tests/e2e/pages/
 
 ## Recent Updates
 
-**2026-05-18:** Phase 0 parallel scaffolding complete. Security baseline now in effect (`docs/security-baseline.md`). **Currency strategy decision OPEN and blocks T04** — awaiting Brian's decision. `task test` handoff to Hudson complete — Playwright E2E ready to wire into Taskfile.yml.
+**2026-05-18 (Phase 1 Round 1):** Domain + integration tests complete. 13 xUnit tests in `tests/TechInventory.UnitTests/Domain/` covering Currency VO, Household defaults, Device inheritance/override, retired-device edit guards. `/health` integration test unskipped and passing. Playwright token-storage E2E (`tests/e2e/security/token-storage.spec.ts`) verifies no token-like keys in `localStorage` across 6 browser projects (Chromium, WebKit, Firefox × desktop + mobile). Decisions D-014 (Currency contract tests as executable spec) and D-015 (Playwright token-storage inspection pattern) document test patterns. 85% Domain layer coverage maintained. Token-storage four-gate enforcement (D-010) coordinated with Vasquez (ESLint), Hudson (pre-commit hook), and Bishop (code review checklist).
+
 
 ## Learnings
 
@@ -123,4 +124,20 @@ Playwright layout: tests in `tests/e2e/`, Page Object Model in `tests/e2e/pages/
 - Wire auth fixture (coordinate with Bishop)
 - Unskip journey tests one-by-one as Hicks (API) and Vasquez (UI) deliver features
 - Enforce 85% coverage floor on Domain + Application via `dotnet test --collect:"XPlat Code Coverage"`
+
+### 2026-05-18: Domain currency contracts + token storage gate
+
+**Domain test patterns:**
+- `tests/TechInventory.UnitTests/Domain/` now carries direct spec-contract tests for `Currency`, `Household`, and `Device`
+- Currency coverage locks the ISO 4217 behavior: uppercase accepted, lowercase normalized to uppercase, wrong-length rejected, non-allowlist rejected
+- Device coverage locks household default inheritance, explicit per-device override, mismatched household/device currency validity, empty-name rejection, and retired-device read-only rules except notes + disposal method
+
+**SessionStorage assertion approach:**
+- `tests/e2e/security/token-storage.spec.ts` fulfills a mocked `http://localhost/mock-login` page with `page.route(...)` so browser storage is available under a real origin
+- `tests/e2e/security/storage-inspection.ts` uses `page.evaluate(...)` to snapshot `localStorage` and `sessionStorage` keys only
+- Assertion contract: no key matching `/token|jwt|access|refresh|id_token|msal/i` may exist in `localStorage`; MSAL keys are allowed in `sessionStorage`
+
+**Skipped vs ready-to-run:**
+- Ready now: 13 Domain unit tests, 1 `/health` integration test, and 1 Playwright token-storage spec across the 6-browser matrix
+- Skipped awaiting Hicks for this slice: none — Hicks landed `Currency`, `Household`, `Device`, and `/health` while the tests were being authored
 

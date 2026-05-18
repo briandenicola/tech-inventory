@@ -21,6 +21,18 @@ Agent Scribe initialized and ready for work.
 
 ## Learnings
 
+### 2026-05-19 (Phase 2 Round 9) — Merge Round 2 Close-Out
+
+**Inbox:** 0 decision files (confirmed empty via glob). No D-052+ merges required.
+
+**Tasks:** 5 tasks flipped to ✅ (T09, T10, T11, T12, T13) in `specs/002-frontend-mvp/tasks.md`. Round 2 summary line marked complete.
+
+**Histories updated:** Vasquez (Round 2 R2 T09–T13 summary), Bishop (Round 2 T11 backend endpoint), Scribe (this entry).
+
+**Decisions:** Ledger remains D-001 through D-051 (no changes).
+
+**Phase 2 progress:** 14/53 tasks complete (Rounds 0+1+2 done). Round 3 (Devices List: T14–T18) ready for dispatch.
+
 ### 2026-05-19 (Phase 2 Round 8) — Merge Phase 2 R0/R1 Decisions (D-035–D-051)
 
 **What I shipped:**

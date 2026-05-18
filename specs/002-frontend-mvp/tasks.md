@@ -35,11 +35,11 @@
 
 | ID | Task | Owner | Description | Definition of Done | Dependencies | Ref |
 |----|------|-------|-------------|-------------------|--------------|-----|
-| T09 | Wire MSAL.js login/logout flow | Vasquez | Implement login button (`+page.svelte` or `+layout.svelte`). Call `msalInstance.loginRedirect()` on click. Handle redirect callback in `/auth/callback` route. Store JWT in sessionStorage via MSAL. Implement logout: clear sessionStorage + call `msalInstance.logoutRedirect()`. | Login redirects to Entra; callback extracts token; sessionStorage contains JWT; logout clears session. | T05, T06 | Spec §4.1, J1, J3 |
-| T10 | Create auth store (current user context) | Vasquez | Svelte store `src/lib/stores/auth.ts`: `currentUser` (id, email, displayName, role), `isAuthenticated`, `isLoading`. Populate on mount via `/api/v1/owners/me` call (new endpoint — see T11). | Auth store populated; components can subscribe to `$currentUser`; role available for UI adaptation. | T09 | Spec §4.3 |
-| T11 | [Backend] Add `/api/v1/owners/me` endpoint | Bishop | New endpoint: `GET /api/v1/owners/me` returns `OwnerResponse` for current user (`ICurrentUserService` → `Owner` lookup). | Endpoint returns current user; integration test green. | T07 | Spec §7.3 |
-| T12 | Protected route guard | Vasquez | SvelteKit load function (`+page.ts` or `+layout.ts`) checks `$currentUser.isAuthenticated`. Redirect to `/auth/login` if not authenticated. Optionally check role (e.g., Admin-only routes redirect non-admins to `/403`). | Unauthenticated users redirected to login; authenticated users see protected content; role-based redirects work. | T10 | Spec §5, J13 |
-| T13 | App shell layout (header + nav) | Vasquez | Create `+layout.svelte`: header with logo, user display name, sign-out button. Nav links (Devices, Import, Export, Admin — visibility based on role). Mobile hamburger menu. Footer with version + links. | App shell renders; nav adapts to role; mobile-responsive; axe-core zero violations. | T10, T12 | Spec §4.4, §6.1 |
+| ✅ T09 | Wire MSAL.js login/logout flow | Vasquez | Implement login button (`+page.svelte` or `+layout.svelte`). Call `msalInstance.loginRedirect()` on click. Handle redirect callback in `/auth/callback` route. Store JWT in sessionStorage via MSAL. Implement logout: clear sessionStorage + call `msalInstance.logoutRedirect()`. | Login redirects to Entra; callback extracts token; sessionStorage contains JWT; logout clears session. | T05, T06 | Spec §4.1, J1, J3 |
+| ✅ T10 | Create auth store (current user context) | Vasquez | Svelte store `src/lib/stores/auth.ts`: `currentUser` (id, email, displayName, role), `isAuthenticated`, `isLoading`. Populate on mount via `/api/v1/owners/me` call (new endpoint — see T11). | Auth store populated; components can subscribe to `$currentUser`; role available for UI adaptation. | T09 | Spec §4.3 |
+| ✅ T11 | [Backend] Add `/api/v1/owners/me` endpoint | Bishop | New endpoint: `GET /api/v1/owners/me` returns `OwnerResponse` for current user (`ICurrentUserService` → `Owner` lookup). | Endpoint returns current user; integration test green. | T07 | Spec §7.3 |
+| ✅ T12 | Protected route guard | Vasquez | SvelteKit load function (`+page.ts` or `+layout.ts`) checks `$currentUser.isAuthenticated`. Redirect to `/auth/login` if not authenticated. Optionally check role (e.g., Admin-only routes redirect non-admins to `/403`). | Unauthenticated users redirected to login; authenticated users see protected content; role-based redirects work. | T10 | Spec §5, J13 |
+| ✅ T13 | App shell layout (header + nav) | Vasquez | Create `+layout.svelte`: header with logo, user display name, sign-out button. Nav links (Devices, Import, Export, Admin — visibility based on role). Mobile hamburger menu. Footer with version + links. | App shell renders; nav adapts to role; mobile-responsive; axe-core zero violations. | T10, T12 | Spec §4.4, §6.1 |
 
 ---
 
@@ -151,7 +151,7 @@
 ### Round Breakdown:
 - **Round 0 (Foundation)**: 6 tasks (T01-T05, T05a) — [Brian] + [P] parallel
 - **Round 1 (Backend Auth)**: 3 tasks (T06-T08) — Bishop
-- **Round 2 (Login + Shell)**: 5 tasks (T09-T13) — Vasquez + Bishop
+- **Round 2 (Login + Shell)**: ✅ 5 tasks (T09-T13) — Vasquez + Bishop
 - **Round 3 (Devices List)**: 5 tasks (T14-T18) — Vasquez + Apone
 - **Round 4 (Device CRUD)**: 5 tasks (T19-T23) — Vasquez + Apone
 - **Round 5 (Ownership)**: 3 tasks (T24-T26) — Vasquez + Apone

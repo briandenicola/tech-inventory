@@ -40,6 +40,14 @@ Open question resolved (PRD §14): "External ID vs. Workforce tenant — which i
 
 ## Learnings
 
+### 2026-05-19 (Phase 2 Round 2) — T11: `GET /api/v1/owners/me` Endpoint
+
+**Shipped:**
+- **T11 (`GET /api/v1/owners/me`):** New endpoint via `GetOwnerByEntraObjectIdQuery` (MediatR) → existing `IOwnerRepository.GetByEntraObjectIdAsync` (already lived from Phase 1). Returns `OwnerResponse` (id, email, displayName, role). Wired to `ICurrentUserService` for current-user lookup. Enables T10 auth store population.
+- **Testing:** 1 integration test added (dev-bypass path verified). Production path coverage inherited from T07 `HttpContextCurrentUserService` tests.
+- **Audit impact:** Zero — endpoint is idempotent read-only query.
+- **Final test count:** 374 passing / 6 skipped / 0 failed.
+
 ### 2026-05-19 (Phase 2 Round 1) — T06, T07, T08-partial: Entra JWT Bearer + HttpContextCurrentUserService
 
 **Shipped:**

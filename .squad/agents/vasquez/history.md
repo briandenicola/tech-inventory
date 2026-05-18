@@ -34,6 +34,17 @@ Accessibility: WCAG 2.2 AA target, zero axe-core violations to merge. Browser ma
 
 ## Learnings
 
+### 2026-05-19 (Phase 2 Round 2) — T09, T10, T12, T13: Login + Auth Store + Protected Routes + App Shell
+
+**Shipped:**
+- **T09 (MSAL login/logout):** Login button calls `msalInstance.loginRedirect()`. Redirect callback in `/auth/callback` extracts token. Logout clears sessionStorage + calls `msalInstance.logoutRedirect()`.
+- **T10 (auth store):** Svelte store `src/lib/stores/auth.ts` with `currentUser` (id, email, displayName, role), `isAuthenticated`, `isLoading`. Populated on mount via `GET /api/v1/owners/me`; graceful 404 fallback mitigates T11-dependency.
+- **T12 (protected route guard):** SvelteKit `(authenticated)` route group guard via load function. Redirects unauthenticated → `/auth/login`. Role-based redirects (admin-only → `/403`).
+- **T13 (app shell):** `+layout.svelte` with header (logo, user name, sign-out button), role-aware nav (Devices/Import/Export/Admin visibility), mobile hamburger (CSS `:has` selector), footer (version + links), dark mode via `prefers-color-scheme`.
+- Minor: hand-rolled i18n loader extended with `{param}` string interpolation (5 lines; preserves zero-dep stance from D-047).
+
+**Testing deferred:** Component tests deferred to Apone's Round 3+ E2E sweep per "1-2 tests per surface" rule. All `pnpm run check` / `pnpm run lint` / `pnpm run test` ✅.
+
 ### 2026-05-19 (Phase 2 Round 0) — T02, T03, T04, T05: Foundation + Client Gen + MSAL Config
 
 **Shipped:**

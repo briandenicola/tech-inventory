@@ -45,7 +45,13 @@
 		purchaseDate: initialData.purchaseDate ?? '',
 		purchasePrice: initialData.purchasePrice ?? null,
 		currencyCode: initialData.currencyCode ?? 'USD', // TODO D-070: Household default currency
-		notes: initialData.notes ?? ''
+		notes: initialData.notes ?? '',
+		purpose: initialData.purpose ?? '',
+		operatingSystem: initialData.operatingSystem ?? '',
+		ipAddress: initialData.ipAddress ?? '',
+		macAddress: initialData.macAddress ?? '',
+		productUrl: initialData.productUrl ?? '',
+		version: initialData.version ?? ''
 	});
 
 	let errors = $state<Record<string, string>>({});
@@ -176,7 +182,7 @@
 	<!-- Brand -->
 	<div>
 		<label for="brandId" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
-			{t('devices.columns.brand')} <span class="text-danger-600">*</span>
+			{t('devices.columns.brand')}
 		</label>
 		<select
 			id="brandId"
@@ -185,7 +191,7 @@
 			disabled={isDisabled('brandId')}
 			class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors hover:border-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:hover:border-neutral-600 dark:focus:border-primary-500 dark:disabled:bg-neutral-900"
 		>
-			<option value="">-- Select Brand --</option>
+			<option value="">-- No Brand --</option>
 			{#each refData.brands as brand (brand.id)}
 				<option value={brand.id}>{brand.name}</option>
 			{/each}
@@ -362,6 +368,140 @@
 			<p class="mt-1 text-sm text-danger-600 dark:text-danger-400">{errors.notes}</p>
 		{/if}
 	</div>
+
+	<!-- Additional Details (collapsible) -->
+	<details class="group">
+		<summary class="cursor-pointer list-none text-sm font-medium text-neutral-900 dark:text-neutral-100">
+			<span class="inline-flex items-center gap-2">
+				<svg
+					class="h-4 w-4 transition-transform group-open:rotate-90"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					aria-hidden="true"
+				>
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+				</svg>
+				{t('devices.form.additionalDetails')}
+			</span>
+		</summary>
+
+		<div class="mt-4 space-y-6 border-l-2 border-neutral-200 pl-4 dark:border-neutral-800">
+			<!-- Purpose -->
+			<div>
+				<label for="purpose" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+					{t('devices.form.purpose')}
+				</label>
+				<textarea
+					id="purpose"
+					bind:value={formData.purpose}
+					onblur={() => handleBlur('purpose')}
+					disabled={isDisabled('purpose')}
+					rows="3"
+					class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus:border-primary-500 dark:disabled:bg-neutral-900"
+					placeholder={t('devices.form.purposePlaceholder')}
+				></textarea>
+				{#if touched.purpose && errors.purpose}
+					<p class="mt-1 text-sm text-danger-600 dark:text-danger-400">{errors.purpose}</p>
+				{/if}
+			</div>
+
+			<!-- Operating System -->
+			<div>
+				<label for="operatingSystem" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+					{t('devices.form.operatingSystem')}
+				</label>
+				<input
+					id="operatingSystem"
+					type="text"
+					bind:value={formData.operatingSystem}
+					onblur={() => handleBlur('operatingSystem')}
+					disabled={isDisabled('operatingSystem')}
+					class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus:border-primary-500 dark:disabled:bg-neutral-900"
+					placeholder={t('devices.form.operatingSystemPlaceholder')}
+				/>
+				{#if touched.operatingSystem && errors.operatingSystem}
+					<p class="mt-1 text-sm text-danger-600 dark:text-danger-400">{errors.operatingSystem}</p>
+				{/if}
+			</div>
+
+			<!-- IP Address -->
+			<div>
+				<label for="ipAddress" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+					{t('devices.form.ipAddress')}
+				</label>
+				<input
+					id="ipAddress"
+					type="text"
+					bind:value={formData.ipAddress}
+					onblur={() => handleBlur('ipAddress')}
+					disabled={isDisabled('ipAddress')}
+					class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus:border-primary-500 dark:disabled:bg-neutral-900"
+					placeholder={t('devices.form.ipAddressPlaceholder')}
+				/>
+				{#if touched.ipAddress && errors.ipAddress}
+					<p class="mt-1 text-sm text-danger-600 dark:text-danger-400">{errors.ipAddress}</p>
+				{/if}
+			</div>
+
+			<!-- MAC Address -->
+			<div>
+				<label for="macAddress" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+					{t('devices.form.macAddress')}
+				</label>
+				<input
+					id="macAddress"
+					type="text"
+					bind:value={formData.macAddress}
+					onblur={() => handleBlur('macAddress')}
+					disabled={isDisabled('macAddress')}
+					class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus:border-primary-500 dark:disabled:bg-neutral-900"
+					placeholder={t('devices.form.macAddressPlaceholder')}
+				/>
+				{#if touched.macAddress && errors.macAddress}
+					<p class="mt-1 text-sm text-danger-600 dark:text-danger-400">{errors.macAddress}</p>
+				{/if}
+			</div>
+
+			<!-- Product URL -->
+			<div>
+				<label for="productUrl" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+					{t('devices.form.productUrl')}
+				</label>
+				<input
+					id="productUrl"
+					type="url"
+					bind:value={formData.productUrl}
+					onblur={() => handleBlur('productUrl')}
+					disabled={isDisabled('productUrl')}
+					class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus:border-primary-500 dark:disabled:bg-neutral-900"
+					placeholder={t('devices.form.productUrlPlaceholder')}
+				/>
+				{#if touched.productUrl && errors.productUrl}
+					<p class="mt-1 text-sm text-danger-600 dark:text-danger-400">{errors.productUrl}</p>
+				{/if}
+			</div>
+
+			<!-- Version -->
+			<div>
+				<label for="version" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+					{t('devices.form.version')}
+				</label>
+				<input
+					id="version"
+					type="text"
+					bind:value={formData.version}
+					onblur={() => handleBlur('version')}
+					disabled={isDisabled('version')}
+					class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus:border-primary-500 dark:disabled:bg-neutral-900"
+					placeholder={t('devices.form.versionPlaceholder')}
+				/>
+				{#if touched.version && errors.version}
+					<p class="mt-1 text-sm text-danger-600 dark:text-danger-400">{errors.version}</p>
+				{/if}
+			</div>
+		</div>
+	</details>
 
 	<!-- Action buttons -->
 	<div class="flex justify-end gap-3 border-t border-neutral-200 pt-6 dark:border-neutral-800">

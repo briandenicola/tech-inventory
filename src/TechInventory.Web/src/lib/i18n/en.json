@@ -183,6 +183,21 @@
 			"currency": "Currency",
 			"notes": "Notes"
 		},
+		"form": {
+			"additionalDetails": "Additional details (optional)",
+			"purpose": "Purpose",
+			"purposePlaceholder": "What is this device used for?",
+			"operatingSystem": "Operating System",
+			"operatingSystemPlaceholder": "e.g., Windows 11, macOS 15, Ubuntu 24.04",
+			"ipAddress": "IP Address",
+			"ipAddressPlaceholder": "e.g., 192.168.1.100",
+			"macAddress": "MAC Address",
+			"macAddressPlaceholder": "e.g., 00:1A:2B:3C:4D:5E",
+			"productUrl": "Product URL",
+			"productUrlPlaceholder": "https://example.com/product",
+			"version": "Version / Firmware",
+			"versionPlaceholder": "e.g., v2.4.1, Build 12345"
+		},
 		"sort": {
 			"sortBy": "Sort by",
 			"ascending": "Ascending",

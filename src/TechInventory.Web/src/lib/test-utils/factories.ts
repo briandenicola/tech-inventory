@@ -131,6 +131,12 @@ export function createDeviceCreateInput(
 		purchasePrice: null,
 		currencyCode: 'USD',
 		notes: '',
+		purpose: '',
+		operatingSystem: '',
+		ipAddress: '',
+		macAddress: '',
+		productUrl: '',
+		version: '',
 		...overrides
 	};
 }

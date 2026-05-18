@@ -6,7 +6,7 @@
  * Backend constraints (from CreateDeviceCommand + UpdateDeviceCommand validators):
  * - name: required, max 200
  * - serial: optional, max 100
- * - brandId: required UUID
+ * - brandId: optional UUID (nullable per D-095)
  * - categoryId: required UUID
  * - ownerId: optional UUID
  * - locationId: optional UUID
@@ -15,6 +15,12 @@
  * - purchasePrice: optional, >= 0
  * - currency: optional, 3-char ISO code (USD, EUR, etc.)
  * - notes: optional, max 2000
+ * - purpose: optional, max 500
+ * - operatingSystem: optional, max 100
+ * - ipAddress: optional, max 45
+ * - macAddress: optional, max 17
+ * - productUrl: optional, max 500
+ * - version: optional, max 50
  * 
  * Related: specs/002-frontend-mvp/spec.md J5-J8, Constitution §4.3
  */
@@ -34,7 +40,7 @@ export const deviceCreateSchema = z.object({
 		.max(100, 'Serial number must be 100 characters or less')
 		.optional()
 		.or(z.literal('')),
-	brandId: z.string().uuid('Brand is required'),
+	brandId: z.string().uuid('Invalid brand ID').optional().or(z.literal('')),
 	categoryId: z.string().uuid('Category is required'),
 	ownerId: z.string().uuid().optional().or(z.literal('')),
 	locationId: z.string().uuid().optional().or(z.literal('')),
@@ -50,7 +56,13 @@ export const deviceCreateSchema = z.object({
 		.optional()
 		.or(z.literal(null)),
 	currencyCode: z.string().length(3, 'Currency code must be 3 characters (e.g., USD)').optional().or(z.literal('')),
-	notes: z.string().max(2000, 'Notes must be 2000 characters or less').optional().or(z.literal(''))
+	notes: z.string().max(2000, 'Notes must be 2000 characters or less').optional().or(z.literal('')),
+	purpose: z.string().max(500, 'Purpose must be 500 characters or less').optional().or(z.literal('')),
+	operatingSystem: z.string().max(100, 'Operating system must be 100 characters or less').optional().or(z.literal('')),
+	ipAddress: z.string().max(45, 'IP address must be 45 characters or less').optional().or(z.literal('')),
+	macAddress: z.string().max(17, 'MAC address must be 17 characters or less').optional().or(z.literal('')),
+	productUrl: z.string().max(500, 'Product URL must be 500 characters or less').optional().or(z.literal('')),
+	version: z.string().max(50, 'Version must be 50 characters or less').optional().or(z.literal(''))
 });
 
 export type DeviceCreateInput = z.infer<typeof deviceCreateSchema>;

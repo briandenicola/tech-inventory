@@ -12,7 +12,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "generate:client": "openapi-typescript ../../openapi.yaml -o src/lib/api/generated/types.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -30,6 +31,7 @@
     "eslint-plugin-svelte": "^2.46.1",
     "globals": "^15.14.0",
     "jsdom": "^25.0.1",
+    "openapi-typescript": "^7.13.0",
     "prettier": "^3.4.2",
     "prettier-plugin-svelte": "^3.3.2",
     "svelte": "^5.17.1",
@@ -42,6 +44,7 @@
     "vitest-axe": "^1.0.0-pre.5"
   },
   "dependencies": {
-    "@azure/msal-browser": "^3.28.0"
+    "@azure/msal-browser": "^3.28.0",
+    "zod": "^4.4.3"
   }
 }

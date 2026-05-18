@@ -13,6 +13,9 @@ node_modules/
 dist/
 .svelte-kit/
 
+# Frontend generated files
+src/TechInventory.Web/src/lib/api/generated/
+
 # Env / secrets
 .env
 .env.local

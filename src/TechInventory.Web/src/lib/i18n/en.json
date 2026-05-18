@@ -6,5 +6,400 @@
 			"home": "Home",
 			"skipToContent": "Skip to content"
 		}
+	},
+	"common": {
+		"actions": {
+			"save": "Save",
+			"cancel": "Cancel",
+			"delete": "Delete",
+			"edit": "Edit",
+			"create": "Create",
+			"add": "Add",
+			"search": "Search",
+			"filter": "Filter",
+			"sort": "Sort",
+			"export": "Export",
+			"import": "Import",
+			"claim": "Claim",
+			"release": "Release",
+			"retire": "Retire",
+			"close": "Close",
+			"confirm": "Confirm",
+			"back": "Back",
+			"next": "Next",
+			"previous": "Previous",
+			"submit": "Submit",
+			"reset": "Reset",
+			"clear": "Clear",
+			"download": "Download",
+			"upload": "Upload",
+			"retry": "Retry"
+		},
+		"nouns": {
+			"device": "Device",
+			"devices": "Devices",
+			"brand": "Brand",
+			"brands": "Brands",
+			"manufacturer": "Manufacturer",
+			"manufacturers": "Manufacturers",
+			"category": "Category",
+			"categories": "Categories",
+			"model": "Model",
+			"models": "Models",
+			"owner": "Owner",
+			"owners": "Owners",
+			"location": "Location",
+			"locations": "Locations",
+			"network": "Network",
+			"networks": "Networks",
+			"tag": "Tag",
+			"tags": "Tags"
+		},
+		"states": {
+			"loading": "Loading…",
+			"error": "Error",
+			"empty": "No items found",
+			"success": "Success",
+			"saving": "Saving…",
+			"deleting": "Deleting…",
+			"processing": "Processing…",
+			"uploading": "Uploading…"
+		},
+		"validation": {
+			"required": "This field is required",
+			"tooLong": "This field is too long",
+			"tooShort": "This field is too short",
+			"invalidFormat": "Invalid format",
+			"invalidEmail": "Invalid email address",
+			"invalidUrl": "Invalid URL",
+			"invalidDate": "Invalid date",
+			"mustBePositive": "Must be a positive number",
+			"mustMatch": "Fields must match"
+		}
+	},
+	"auth": {
+		"signIn": {
+			"button": "Sign In",
+			"title": "Sign In to Tech Inventory",
+			"description": "Sign in with your household account"
+		},
+		"signOut": {
+			"button": "Sign Out",
+			"confirm": "Are you sure you want to sign out?"
+		},
+		"sessionExpired": "Your session has expired. Please sign in again.",
+		"accessDenied": "Access denied. You do not have permission to view this page.",
+		"welcomeMessage": "Welcome back, {name}!",
+		"unauthorized": "You must be signed in to access this page."
+	},
+	"navigation": {
+		"home": "Home",
+		"devices": "Devices",
+		"brands": "Brands",
+		"manufacturers": "Manufacturers",
+		"categories": "Categories",
+		"models": "Models",
+		"owners": "Owners",
+		"locations": "Locations",
+		"networks": "Networks",
+		"tags": "Tags",
+		"imports": "Import",
+		"exports": "Export",
+		"settings": "Settings",
+		"admin": "Admin"
+	},
+	"devices": {
+		"list": {
+			"title": "Devices",
+			"addButton": "Add Device",
+			"emptyState": "No devices yet. Add your first device to get started.",
+			"emptyFiltered": "No devices match your filters."
+		},
+		"detail": {
+			"title": "Device Details",
+			"editButton": "Edit Device",
+			"deleteButton": "Delete Device",
+			"claimButton": "Claim Ownership",
+			"releaseButton": "Release Ownership"
+		},
+		"create": {
+			"title": "Add Device",
+			"subtitle": "Enter device information"
+		},
+		"edit": {
+			"title": "Edit Device",
+			"subtitle": "Update device information",
+			"retiredNotice": "This device is retired. Only notes and disposal information can be edited."
+		},
+		"delete": {
+			"title": "Delete Device",
+			"confirmPrompt": "Type the device name to confirm deletion:",
+			"reasonLabel": "Reason for deletion",
+			"reasonPlaceholder": "Why is this device being removed?",
+			"success": "Device deleted successfully"
+		},
+		"columns": {
+			"name": "Name",
+			"serial": "Serial Number",
+			"assetTag": "Asset Tag",
+			"brand": "Brand",
+			"model": "Model",
+			"category": "Category",
+			"status": "Status",
+			"owner": "Owner",
+			"location": "Location",
+			"network": "Network",
+			"acquiredOn": "Acquired On",
+			"retiredOn": "Retired On",
+			"purchasePrice": "Purchase Price",
+			"currency": "Currency",
+			"notes": "Notes"
+		},
+		"filters": {
+			"title": "Filters",
+			"searchPlaceholder": "Search devices…",
+			"brandLabel": "Brand",
+			"categoryLabel": "Category",
+			"ownerLabel": "Owner",
+			"locationLabel": "Location",
+			"networkLabel": "Network",
+			"statusLabel": "Status",
+			"yearRangeLabel": "Purchase Year Range"
+		}
+	},
+	"ownership": {
+		"claim": {
+			"title": "Claim Ownership",
+			"confirmPrompt": "Do you want to claim ownership of this device?",
+			"success": "Ownership claimed successfully"
+		},
+		"release": {
+			"title": "Release Ownership",
+			"confirmPrompt": "Do you want to release ownership of this device?",
+			"success": "Ownership released successfully"
+		},
+		"currentOwner": "Current Owner",
+		"noOwner": "No owner",
+		"history": {
+			"title": "Ownership History",
+			"claimedOn": "Claimed on {date}",
+			"releasedOn": "Released on {date}"
+		}
+	},
+	"import": {
+		"title": "Import Devices",
+		"upload": {
+			"title": "Upload CSV File",
+			"dragDropPrompt": "Drag and drop a CSV file here, or click to select",
+			"fileSizeExceeded": "Files must be 10MB or smaller",
+			"invalidFileType": "Only CSV files are supported"
+		},
+		"preview": {
+			"title": "Preview Import",
+			"validRows": "{count} valid rows",
+			"invalidRows": "{count} invalid rows",
+			"missingLookups": "Missing reference data",
+			"validationErrors": "Validation Errors"
+		},
+		"commit": {
+			"title": "Commit Import",
+			"confirmPrompt": "Are you sure you want to import these devices?",
+			"success": "Import completed successfully",
+			"summary": "{processed} devices processed, {errors} errors"
+		}
+	},
+	"export": {
+		"title": "Export Devices",
+		"formatLabel": "Export Format",
+		"csvFormat": "CSV",
+		"jsonFormat": "JSON",
+		"downloadButton": "Download Export",
+		"filterTitle": "Filter Devices",
+		"success": "Export downloaded successfully",
+		"emptyState": "No devices to export with current filters"
+	},
+	"brands": {
+		"list": {
+			"title": "Brands",
+			"addButton": "Add Brand",
+			"emptyState": "No brands yet. Add your first brand.",
+			"showInactive": "Show Inactive"
+		},
+		"detail": {
+			"title": "Brand Details"
+		},
+		"create": {
+			"title": "Add Brand"
+		},
+		"edit": {
+			"title": "Edit Brand"
+		},
+		"columns": {
+			"name": "Name",
+			"website": "Website",
+			"notes": "Notes",
+			"status": "Status"
+		}
+	},
+	"manufacturers": {
+		"list": {
+			"title": "Manufacturers",
+			"addButton": "Add Manufacturer",
+			"emptyState": "No manufacturers yet."
+		},
+		"detail": {
+			"title": "Manufacturer Details"
+		},
+		"create": {
+			"title": "Add Manufacturer"
+		},
+		"edit": {
+			"title": "Edit Manufacturer"
+		}
+	},
+	"categories": {
+		"list": {
+			"title": "Categories",
+			"addButton": "Add Category",
+			"emptyState": "No categories yet.",
+			"expandAll": "Expand All",
+			"collapseAll": "Collapse All"
+		},
+		"detail": {
+			"title": "Category Details"
+		},
+		"create": {
+			"title": "Add Category",
+			"parentLabel": "Parent Category",
+			"noneOption": "(None - Root Category)"
+		},
+		"edit": {
+			"title": "Edit Category"
+		},
+		"columns": {
+			"name": "Name",
+			"parent": "Parent",
+			"icon": "Icon",
+			"description": "Description"
+		}
+	},
+	"models": {
+		"list": {
+			"title": "Models",
+			"addButton": "Add Model",
+			"emptyState": "No models yet."
+		},
+		"detail": {
+			"title": "Model Details"
+		},
+		"create": {
+			"title": "Add Model"
+		},
+		"edit": {
+			"title": "Edit Model"
+		}
+	},
+	"owners": {
+		"list": {
+			"title": "Owners",
+			"addButton": "Add Owner",
+			"emptyState": "No owners yet."
+		},
+		"detail": {
+			"title": "Owner Details"
+		},
+		"create": {
+			"title": "Add Owner"
+		},
+		"edit": {
+			"title": "Edit Owner"
+		},
+		"columns": {
+			"name": "Name",
+			"email": "Email",
+			"role": "Role",
+			"entraObjectId": "Entra Object ID"
+		},
+		"roles": {
+			"admin": "Admin",
+			"member": "Member",
+			"viewer": "Viewer"
+		}
+	},
+	"locations": {
+		"list": {
+			"title": "Locations",
+			"addButton": "Add Location",
+			"emptyState": "No locations yet."
+		},
+		"detail": {
+			"title": "Location Details"
+		},
+		"create": {
+			"title": "Add Location"
+		},
+		"edit": {
+			"title": "Edit Location"
+		},
+		"columns": {
+			"name": "Name",
+			"type": "Type",
+			"description": "Description"
+		},
+		"types": {
+			"home": "Home",
+			"storage": "Storage",
+			"external": "External"
+		}
+	},
+	"networks": {
+		"list": {
+			"title": "Networks",
+			"addButton": "Add Network",
+			"emptyState": "No networks yet."
+		},
+		"detail": {
+			"title": "Network Details"
+		},
+		"create": {
+			"title": "Add Network"
+		},
+		"edit": {
+			"title": "Edit Network"
+		},
+		"columns": {
+			"name": "Name",
+			"description": "Description"
+		}
+	},
+	"tags": {
+		"list": {
+			"title": "Tags",
+			"addButton": "Add Tag",
+			"emptyState": "No tags yet."
+		},
+		"detail": {
+			"title": "Tag Details"
+		},
+		"create": {
+			"title": "Add Tag"
+		},
+		"edit": {
+			"title": "Edit Tag"
+		},
+		"columns": {
+			"name": "Name",
+			"color": "Color"
+		}
+	},
+	"errors": {
+		"networkError": "Network error. Please check your connection and try again.",
+		"serverError": "Server error. Please try again later.",
+		"notFoundError": "The requested item was not found.",
+		"unauthorizedError": "You are not authorized to perform this action.",
+		"forbiddenError": "Access forbidden. You do not have permission.",
+		"validationError": "Please correct the errors in the form.",
+		"unknownError": "An unexpected error occurred. Please try again.",
+		"retryButton": "Try Again"
 	}
 }

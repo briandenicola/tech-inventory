@@ -12,6 +12,14 @@ Append-only log. Newest entries at the top.
 
 ---
 
+## 2026-05-18 — Apone Round 7 import/export integration + OpenAPI contract coverage
+- Added T45 coverage under `tests/TechInventory.IntegrationTests/Controllers/ImportsControllerTests.cs` and `ExportControllerTests.cs`, exercising preview/commit/list/get-by-id import flows, config-driven 413 handling, lookup auto-creation, CSV/JSON exports, filtered exports, and large-dataset export reads against the real SQLite `WebApplicationFactory` harness
+- Added T46 coverage under `tests/TechInventory.IntegrationTests/Contract/` with reusable OpenAPI canonicalization/schema helpers, runtime-vs-committed drift assertions, and endpoint schema checks for brands/categories/devices/owners/locations/networks/tags/audit-events/import preview; the export 200-body schema assertion remains intentionally skipped until `/api/v1/exports/devices` advertises that response schema
+- Verified `dotnet format --verify-no-changes` ✅, `dotnet build -c Release` ✅, `dotnet test -c Release --no-build` ✅ (`240` unit + `129` integration passed, `1` skipped), `dotnet list package --vulnerable --include-transitive` ✅, and fresh unit+integration Cobertura merges at **Domain 100.00% / Application 91.58% / Infrastructure 94.33% / Api 91.63%**
+- `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify.ps1` now reaches Playwright after backend + frontend install/check/lint, but cannot finish in this environment because `docker` is unavailable for `scripts\run-e2e.ps1`
+
+---
+
 ## 2026-05-18 — Hicks Round 6 controllers, ProblemDetails, and dev auth bypass
 - Replaced the stub `src\TechInventory.Api\Controllers\DevicesController.cs` and added concrete `BrandsController`, `CategoriesController`, `OwnersController`, `LocationsController`, `NetworksController`, `TagsController`, and `AuditEventsController`; all routes now sit under `/api/v1/...`, are `[Authorize]`, and dispatch through MediatR with no business logic in controllers
 - Added `src\TechInventory.Api\Common\ControllerResultExtensions.cs` plus `ExceptionHandling\ResultFailureException.cs` / `ApiExceptionHandler.cs` so controller success paths stay terse while `Result.Failure` and unhandled exceptions become RFC 7807 ProblemDetails; validation now returns an `errors` dictionary, 404/409 map cleanly, and 500s stay generic outside Development

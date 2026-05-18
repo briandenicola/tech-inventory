@@ -52,6 +52,8 @@ Playwright layout: tests in `tests/e2e/`, Page Object Model in `tests/e2e/pages/
 
 ## Recent Updates
 
+**2026-05-18 (Phase 1 Round 7):** Import/export close-out coverage landed under `tests/TechInventory.IntegrationTests/Controllers/ImportsControllerTests.cs`, `ExportControllerTests.cs`, and `tests/TechInventory.IntegrationTests/Contract/`. The import suite now locks preview/commit/list/get-by-id behavior, config-driven 413 handling, malformed-row reporting, and lookup auto-creation during commit; the export suite locks CSV/JSON happy paths, status filtering, and large-dataset export reads on the real SQLite `WebApplicationFactory` harness. T46 now has a reusable OpenAPI drift/schema harness that canonicalizes `/openapi/v1.json` against committed `openapi.yaml` and validates representative endpoint payloads, with one intentional skip remaining until `/api/v1/exports/devices` declares a 200-body schema. Final backend verification: `dotnet format --verify-no-changes` ✅, `dotnet build -c Release` ✅, `dotnet test -c Release --no-build` ✅ (**369 passed / 1 skipped**), `dotnet list package --vulnerable --include-transitive` ✅, and fresh merged coverage at **Domain 100.00% / Application 91.58% / Infrastructure 94.33% / Api 91.63%**. `scripts\verify.ps1` advanced through frontend install/check/lint and then stopped only because this environment lacks `docker` for the Playwright compose step.
+
 **2026-05-18 (Phase 1 Round 6):** Controller HTTP integration coverage landed under `tests/TechInventory.IntegrationTests/Controllers/` for Devices, Brands, Categories, Owners, Locations, Networks, Tags, AuditEvents, ProblemDetails, and the Development auth bypass. Added **79** executable integration tests on top of Hudson's `IntegrationTestFactory<TMarker>` harness, with per-test database resets preserving D-018 isolation while keeping one SQLite file per test class. Hicks's landed route shapes are now locked by tests: CRUD lives at `/api/v1/{resource}`, categories expose `GET /api/v1/categories/tree`, audit events list at `/api/v1/audit-events`, device tag routes are `/api/v1/devices/{id}/tags` and `/api/v1/devices/{id}/tags/{tagId}`, and `PATCH /api/v1/devices/{id}/owner` returns **204 No Content**. Development auth bypass is also executable now: the test environment authenticates as a stable fixed subject with Admin role, and audit events capture that actor. Final backend suite summary: **345 passed / 0 skipped / 0 failed** (delta **+79** vs Round 5). Fresh merged coverage snapshot: **Domain 100.00%**, **Application 90.28%**, **Infrastructure 93.19%**, **Api 94.87%**. All requested checks green: `dotnet format --verify-no-changes` ✅, `dotnet build -c Release` ✅, `dotnet test -c Release` ✅, `dotnet test -c Release --collect:"XPlat Code Coverage"` ✅. **Bug fixed:** Category-archive tracking bug exposed by integration tests — surgical fix included (soft-delete cascade now correctly sets parent `IsActive=false` on ancestors when deleting intermediate nodes).
 
 **2026-05-18 (Phase 1 Round 5):** Domain coverage fully recovered to 100.00% (from 81.40% regression flagged in R4). Added targeted coverage for `AuditEvent` default-timestamp guards and `ImportBatch` EF-safe private-constructor behavior via reflection-based immutability tests. Converted 102 skip-when-waiting handler scaffolds into 115 executable xUnit/NSubstitute tests once Hicks's T20–T28 handlers landed; handler test contracts lock active-reference validation, duplicate-name rejection via `Error.Code = "Conflict"`, BEFORE-snapshot audit capture, and owner delete-blocking invariant. Final coverage snapshot: **Domain 100.00%**, **Application 85.89%**, **Infrastructure 88.98%**. Backend test suite: **266 passed / 0 skipped**. All checks green: `dotnet format --verify-no-changes` ✅, `dotnet build -c Release` ✅, `dotnet test -c Release` ✅.
@@ -66,6 +68,20 @@ Playwright layout: tests in `tests/e2e/`, Page Object Model in `tests/e2e/pages/
 ## Learnings
 
 <!-- Append new learnings below. Each entry is something lasting about the project. -->
+
+### 2026-05-18: Import/export integration + OpenAPI drift patterns
+
+**Import controller test pattern:**
+- For config-driven API limits, derive a marker-specific `IntegrationTestFactory<TMarker>` and override configuration with `Imports:MaxFileSizeBytes` so 413 paths are executable without posting multi-megabyte fixtures.
+- `POST /api/v1/imports/commit` requires a seeded `Household`; malformed-CSV commit cases should assert the returned batch/error summary instead of assuming a 400 transport failure.
+
+**Export controller test pattern:**
+- Use `HttpCompletionOption.ResponseHeadersRead` plus body parsing for export assertions, but avoid transfer-encoding assumptions under `TestServer`; the in-memory host may buffer even when the controller streams.
+- Check `Content-Disposition` from either `response.Headers` or `response.Content.Headers` because `TestServer` can surface it through either collection.
+
+**OpenAPI contract pattern:**
+- Keep committed-vs-runtime drift checks and endpoint schema checks in the same `tests\TechInventory.IntegrationTests\Contract\` harness: canonicalize documents once, then validate representative JSON payloads with a local schema walker.
+- Resolve the committed spec from repo-root `openapi.yaml` first, with `src\TechInventory.Api\openapi.yaml` as a transition fallback for older branches.
 
 ### 2026-05-18: Test Infrastructure Scaffolding
 

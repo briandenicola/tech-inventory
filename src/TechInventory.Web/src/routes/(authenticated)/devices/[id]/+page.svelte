@@ -1,0 +1,435 @@
+<script lang="ts">
+	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
+	import { t } from '$lib/i18n';
+	import { devices } from '$lib/api/client';
+	import { referenceDataStore } from '$lib/stores/referenceData';
+	import { authStore } from '$lib/stores/auth';
+	import { showToast } from '$lib/stores/toast';
+	import { invalidateDevicesCache } from '$lib/queries/devices';
+	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
+	import ErrorState from '$lib/components/ErrorState.svelte';
+	import DeleteDeviceModal from '$lib/components/DeleteDeviceModal.svelte';
+	import type { DeviceResponse } from '$lib/queries/devices';
+
+	/**
+	 * T19: Device detail page — all fields, resolved references, breadcrumbs, role-aware Edit/Delete buttons
+	 * 
+	 * States: loading → success/error/notFound
+	 * Breadcrumbs: Home > Devices > {Device Name}
+	 * Edit button: visible to Admin + Member
+	 * Delete button: visible to Admin only
+	 * 
+	 * Related: specs/002-frontend-mvp/spec.md J5
+	 */
+
+	const deviceId = $derived($page.params.id);
+	const currentUser = $derived($authStore.currentUser);
+	const refData = $derived($referenceDataStore);
+
+	// Role checks
+	const canEdit = $derived(
+		currentUser?.role === 'Admin' || currentUser?.role === 'Member'
+	);
+	const canDelete = $derived(currentUser?.role === 'Admin');
+
+	// Device state
+	let device = $state<DeviceResponse | null>(null);
+	let isLoading = $state(true);
+	let error = $state<string | null>(null);
+	let notFound = $state(false);
+
+	// Delete modal state
+	let showDeleteModal = $state(false);
+
+	// Fetch device
+	async function fetchDevice() {
+		if (!deviceId) return; // Guard against undefined
+
+		isLoading = true;
+		error = null;
+		notFound = false;
+
+		try {
+			const result = await devices.get(deviceId);
+			device = result as DeviceResponse;
+		} catch (err) {
+			console.error('[device-detail] Fetch failed:', err);
+			if (err instanceof Error && 'status' in err && (err as unknown as { status: number }).status === 404) {
+				notFound = true;
+			} else {
+				error = err instanceof Error ? err.message : 'Failed to load device';
+			}
+		} finally {
+			isLoading = false;
+		}
+	}
+
+	// Load device on mount
+	$effect(() => {
+		void fetchDevice();
+	});
+
+	// Resolve reference data (brand, category, owner, location, network names)
+	const brandName = $derived(
+		device?.brandId ? refData.brands.find((b) => b.id === device!.brandId)?.name ?? 'Unknown' : '—'
+	);
+	const categoryName = $derived(
+		device?.categoryId
+			? refData.categories.find((c) => c.id === device!.categoryId)?.name ?? 'Unknown'
+			: '—'
+	);
+	const ownerName = $derived(
+		device?.ownerId ? refData.owners.find((o) => o.id === device!.ownerId)?.name ?? 'Unknown' : '—'
+	);
+	const locationName = $derived(
+		device?.locationId
+			? refData.locations.find((l) => l.id === device!.locationId)?.name ?? 'Unknown'
+			: '—'
+	);
+	const networkName = $derived(
+		device?.networkId
+			? refData.networks.find((n) => n.id === device!.networkId)?.name ?? 'Unknown'
+			: '—'
+	);
+
+	// Status badge color
+	function getStatusColor(status: string | null): string {
+		switch (status) {
+			case 'Active':
+				return 'bg-success-100 text-success-800 dark:bg-success-900 dark:text-success-100';
+			case 'Retired':
+				return 'bg-warning-100 text-warning-800 dark:bg-warning-900 dark:text-warning-100';
+			case 'Disposed':
+				return 'bg-neutral-200 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200';
+			default:
+				return 'bg-neutral-100 text-neutral-700 dark:bg-neutral-900 dark:text-neutral-300';
+		}
+	}
+
+	// Format date (relative + absolute tooltip)
+	function formatDate(dateStr: string | null): string {
+		if (!dateStr) return '—';
+		const date = new Date(dateStr);
+		return date.toLocaleDateString('en-US', {
+			year: 'numeric',
+			month: 'short',
+			day: 'numeric'
+		});
+	}
+
+	function formatDateTime(dateStr: string | null): string {
+		if (!dateStr) return '—';
+		const date = new Date(dateStr);
+		return date.toLocaleString('en-US', {
+			year: 'numeric',
+			month: 'short',
+			day: 'numeric',
+			hour: '2-digit',
+			minute: '2-digit'
+		});
+	}
+
+	// Handle delete
+	async function handleDelete(reason: string) {
+		if (!device) return;
+
+		try {
+			await devices.delete(device.id, reason);
+			invalidateDevicesCache();
+			showToast({
+				type: 'success',
+				message: `${device.name ?? 'Device'} deleted successfully`
+			});
+			goto('/devices');
+		} catch (err) {
+			console.error('[device-detail] Delete failed:', err);
+			const errorMsg =
+				err instanceof Error && 'detail' in err
+					? (err as unknown as { detail: string }).detail
+					: 'Failed to delete device';
+			showToast({ type: 'error', message: errorMsg });
+		} finally {
+			showDeleteModal = false;
+		}
+	}
+</script>
+
+<!-- Breadcrumbs -->
+<nav class="mb-4 flex text-sm text-neutral-600 dark:text-neutral-400" aria-label="Breadcrumb">
+	<ol class="flex items-center space-x-2">
+		<li>
+			<a href="/" class="hover:text-primary-600 dark:hover:text-primary-400">
+				{t('navigation.home')}
+			</a>
+		</li>
+		<li>
+			<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+				<path
+					fill-rule="evenodd"
+					d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
+					clip-rule="evenodd"
+				/>
+			</svg>
+		</li>
+		<li>
+			<a href="/devices" class="hover:text-primary-600 dark:hover:text-primary-400">
+				{t('common.nouns.devices')}
+			</a>
+		</li>
+		<li>
+			<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+				<path
+					fill-rule="evenodd"
+					d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
+					clip-rule="evenodd"
+				/>
+			</svg>
+		</li>
+		<li aria-current="page" class="font-medium text-neutral-900 dark:text-neutral-100">
+			{device?.name ?? 'Device'}
+		</li>
+	</ol>
+</nav>
+
+<!-- Page header -->
+<div class="mb-6 flex items-center justify-between">
+	<h1 class="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
+		{t('devices.detail.title')}
+	</h1>
+
+	<!-- Action buttons (role-aware) -->
+	{#if device && !isLoading}
+		<div class="flex gap-3">
+			{#if canEdit}
+				<a
+					href="/devices/{device.id}/edit"
+					class="inline-flex items-center gap-2 rounded-lg border border-primary-600 bg-white px-4 py-2 text-sm font-medium text-primary-600 transition-colors hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-primary-500 dark:bg-neutral-900 dark:text-primary-400 dark:hover:bg-neutral-800"
+				>
+					<svg
+						class="h-4 w-4"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						aria-hidden="true"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+						/>
+					</svg>
+					{t('common.actions.edit')}
+				</a>
+			{/if}
+
+			{#if canDelete}
+				<button
+					type="button"
+					onclick={() => (showDeleteModal = true)}
+					class="inline-flex items-center gap-2 rounded-lg border border-danger-600 bg-white px-4 py-2 text-sm font-medium text-danger-600 transition-colors hover:bg-danger-50 focus:outline-none focus:ring-2 focus:ring-danger-500 focus:ring-offset-2 dark:border-danger-500 dark:bg-neutral-900 dark:text-danger-400 dark:hover:bg-neutral-800"
+				>
+					<svg
+						class="h-4 w-4"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						aria-hidden="true"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+						/>
+					</svg>
+					{t('common.actions.delete')}
+				</button>
+			{/if}
+		</div>
+	{/if}
+</div>
+
+<!-- Content -->
+{#if isLoading}
+	<LoadingSkeleton rows={5} />
+{:else if notFound}
+	<div class="rounded-lg border border-warning-200 bg-warning-50 p-12 text-center dark:border-warning-900 dark:bg-warning-950">
+		<svg
+			class="mx-auto h-16 w-16 text-warning-600 dark:text-warning-400"
+			fill="none"
+			viewBox="0 0 24 24"
+			stroke="currentColor"
+			aria-hidden="true"
+		>
+			<path
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				stroke-width="1.5"
+				d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+			/>
+		</svg>
+		<h2 class="mt-4 text-lg font-semibold text-warning-900 dark:text-warning-100">
+			Device Not Found
+		</h2>
+		<p class="mt-2 text-sm text-warning-700 dark:text-warning-300">
+			This device does not exist or has been deleted.
+		</p>
+		<a
+			href="/devices"
+			class="mt-6 inline-flex items-center gap-2 rounded-lg bg-warning-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-warning-700 focus:outline-none focus:ring-2 focus:ring-warning-500 focus:ring-offset-2 dark:bg-warning-500 dark:hover:bg-warning-600"
+		>
+			{t('common.actions.back')} to Devices
+		</a>
+	</div>
+{:else if error}
+	<ErrorState {error} onRetry={fetchDevice} />
+{:else if device}
+	<!-- Device details grid -->
+	<div class="space-y-6">
+		<!-- Status badge -->
+		<div>
+			<span
+				class="inline-flex items-center rounded-full px-3 py-1 text-sm font-medium {getStatusColor(
+					device.status
+				)}"
+			>
+				{device.status ?? 'Unknown'}
+			</span>
+		</div>
+
+		<!-- Fields grid (two-column on desktop) -->
+		<div class="grid gap-6 sm:grid-cols-2">
+			<!-- Name -->
+			<div>
+				<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+					{t('devices.columns.name')}
+				</dt>
+				<dd class="mt-1 text-base font-semibold text-neutral-900 dark:text-neutral-100">
+					{device.name ?? '—'}
+				</dd>
+			</div>
+
+			<!-- Serial Number -->
+			<div>
+				<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+					{t('devices.columns.serial')}
+				</dt>
+				<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">
+					{device.serialNumber ?? '—'}
+				</dd>
+			</div>
+
+			<!-- Brand -->
+			<div>
+				<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+					{t('devices.columns.brand')}
+				</dt>
+				<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">{brandName}</dd>
+			</div>
+
+			<!-- Category -->
+			<div>
+				<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+					{t('devices.columns.category')}
+				</dt>
+				<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">{categoryName}</dd>
+			</div>
+
+			<!-- Owner -->
+			<div>
+				<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+					{t('devices.columns.owner')}
+				</dt>
+				<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">{ownerName}</dd>
+			</div>
+
+			<!-- Location -->
+			<div>
+				<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+					{t('devices.columns.location')}
+				</dt>
+				<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">{locationName}</dd>
+			</div>
+
+			<!-- Network -->
+			<div>
+				<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+					{t('devices.columns.network')}
+				</dt>
+				<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">{networkName}</dd>
+			</div>
+
+			<!-- Purchase Date -->
+			<div>
+				<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+					{t('devices.columns.purchaseDate')}
+				</dt>
+				<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">
+					{formatDate(device.purchaseDate)}
+				</dd>
+			</div>
+
+			<!-- Purchase Price -->
+			<div>
+				<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+					{t('devices.columns.purchasePrice')}
+				</dt>
+				<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">
+					{#if device.purchasePrice !== null && device.currencyCode}
+						{device.currencyCode} {device.purchasePrice.toFixed(2)}
+					{:else}
+						—
+					{/if}
+				</dd>
+			</div>
+		</div>
+
+		<!-- Notes (full-width) -->
+		{#if device.notes}
+			<div>
+				<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+					{t('devices.columns.notes')}
+				</dt>
+				<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">
+					{device.notes}
+				</dd>
+			</div>
+		{/if}
+
+		<!-- Audit trail (created/modified timestamps) -->
+		<div class="border-t border-neutral-200 pt-6 dark:border-neutral-800">
+			<h3 class="text-sm font-medium text-neutral-600 dark:text-neutral-400">Audit Trail</h3>
+			<dl class="mt-2 space-y-1 text-sm text-neutral-600 dark:text-neutral-400">
+				<div>
+					<span class="font-medium">Created:</span>
+					<time datetime={device.createdAt} title={formatDateTime(device.createdAt)}>
+						{formatDateTime(device.createdAt)}
+					</time>
+					{#if device.createdBy}
+						<span> by {device.createdBy}</span>
+					{/if}
+				</div>
+				<div>
+					<span class="font-medium">Last Modified:</span>
+					<time datetime={device.modifiedAt} title={formatDateTime(device.modifiedAt)}>
+						{formatDateTime(device.modifiedAt)}
+					</time>
+					{#if device.modifiedBy}
+						<span> by {device.modifiedBy}</span>
+					{/if}
+				</div>
+			</dl>
+		</div>
+	</div>
+{/if}
+
+<!-- Delete confirmation modal -->
+{#if showDeleteModal && device}
+	<DeleteDeviceModal
+		deviceName={device.name ?? 'Device'}
+		onConfirm={handleDelete}
+		onCancel={() => (showDeleteModal = false)}
+	/>
+{/if}

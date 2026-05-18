@@ -8,7 +8,7 @@
 -->
 <script lang="ts">
 	import { toasts, dismissToast } from '$lib/stores/toast';
-	import { fade, fly } from 'svelte/transition';
+	import { fly } from 'svelte/transition';
 
 	const activeToasts = $derived($toasts);
 </script>

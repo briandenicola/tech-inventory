@@ -32,7 +32,8 @@
 	// Reference data from store
 	const refData = $derived($referenceDataStore);
 
-	// Form state
+	// Form state (capture initial values at component creation; no reactivity to prop changes)
+	// This is intentional: initialData is only read once when form mounts
 	let formData = $state<Record<string, unknown>>({
 		name: initialData.name ?? '',
 		serialNumber: initialData.serialNumber ?? '',

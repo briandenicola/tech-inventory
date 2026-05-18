@@ -332,6 +332,36 @@ export const locations = {
 		)
 };
 
+// Networks
+export const networks = {
+	list: async (
+		params?: paths['/api/v1/networks']['get']['parameters']['query']
+	) => apiFetch<GetResponse<paths['/api/v1/networks']>>(`/api/v1/networks${buildQueryString(params)}`),
+
+	get: async (id: string) =>
+		apiFetch<GetResponse<paths['/api/v1/networks/{id}']>>(`/api/v1/networks/${encodeURIComponent(id)}`),
+
+	create: async (body: PostRequestBody<paths['/api/v1/networks']>) =>
+		apiFetch<PostResponse<paths['/api/v1/networks']>>(`/api/v1/networks`, {
+			method: 'POST',
+			body: JSON.stringify(body)
+		}),
+
+	update: async (id: string, body: PutRequestBody<paths['/api/v1/networks/{id}']>) =>
+		apiFetch<PutResponse<paths['/api/v1/networks/{id}']>>(`/api/v1/networks/${encodeURIComponent(id)}`, {
+			method: 'PUT',
+			body: JSON.stringify(body)
+		}),
+
+	deactivate: async (id: string) =>
+		apiFetch<void>(
+			`/api/v1/networks/${encodeURIComponent(id)}/deactivate`,
+			{
+				method: 'PATCH'
+			}
+		)
+};
+
 // Imports
 export const imports = {
 	preview: async (formData: FormData) =>

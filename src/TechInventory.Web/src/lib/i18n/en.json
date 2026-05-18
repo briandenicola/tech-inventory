@@ -150,10 +150,27 @@
 			"location": "Location",
 			"network": "Network",
 			"acquiredOn": "Acquired On",
+			"purchaseDate": "Purchase Date",
 			"retiredOn": "Retired On",
 			"purchasePrice": "Purchase Price",
 			"currency": "Currency",
 			"notes": "Notes"
+		},
+		"sort": {
+			"sortBy": "Sort by",
+			"ascending": "Ascending",
+			"descending": "Descending",
+			"sortByName": "Sort by Name",
+			"sortByPurchaseDate": "Sort by Purchase Date",
+			"sortByCreatedAt": "Sort by Date Added"
+		},
+		"pagination": {
+			"page": "Page",
+			"of": "of",
+			"pageSize": "Items per page",
+			"previous": "Previous Page",
+			"next": "Next Page",
+			"showing": "Showing {start} to {end} of {total} devices"
 		},
 		"filters": {
 			"title": "Filters",
@@ -164,7 +181,19 @@
 			"locationLabel": "Location",
 			"networkLabel": "Network",
 			"statusLabel": "Status",
-			"yearRangeLabel": "Purchase Year Range"
+			"yearRangeLabel": "Purchase Year Range",
+			"yearMinLabel": "From Year",
+			"yearMaxLabel": "To Year",
+			"clearAll": "Clear All Filters",
+			"filterButton": "Filter",
+			"closeFilters": "Close Filters",
+			"allOption": "All",
+			"statusActive": "Active",
+			"statusRetired": "Retired",
+			"statusDisposed": "Disposed",
+			"statusInRepair": "In Repair",
+			"statusLent": "Lent",
+			"resultsAnnouncement": "{count} devices found"
 		}
 	},
 	"ownership": {

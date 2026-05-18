@@ -59,10 +59,10 @@
 
 | ID | Task | Owner | Description | Definition of Done | Dependencies | Ref |
 |----|------|-------|-------------|-------------------|--------------|-----|
-| T19 | Device detail page (`/devices/[id]`) | Vasquez | Render device detail: all fields, resolved reference names (brand/category/owner/location/network), tags, audit trail (created/modified timestamps). Breadcrumbs. Edit/Delete buttons (role-aware). | Detail renders; breadcrumbs; role-aware affordances; axe-core zero violations. | T14 | Spec §5, J5 |
-| T20 | Device create page (`/devices/new`) | Vasquez | Form: name, brand (dropdown), serial, category (tree select), owner (dropdown), location (dropdown), network (dropdown), purchase date, purchase price, currency (dropdown with household default pre-filled), notes. Zod schema mirrors backend FluentValidation. Inline validation on blur. | Form renders; validation on blur; household default currency pre-filled; submit creates device; redirect to detail on success. | T02, T14 | Spec §5, J6 |
-| T21 | Device edit page (`/devices/[id]/edit`) | Vasquez | Pre-populate form with existing device data. Retired devices show read-only badge; only notes/disposal editable. Submit updates device. Toast notification on success. | Edit form works; retired-device guard active; toast on success; redirect to detail. | T19, T20 | Spec §5, J7 |
-| T22 | Delete device confirmation modal | Vasquez | Modal: "Type device name to confirm" input. Disabled submit until match. Call `DELETE /api/v1/devices/{id}` with reason in body. Toast on success; redirect to list. | Modal works; confirmation required; device soft-deleted; redirect to list; toast shown. | T19 | Spec §5, J8 |
+| ✅ T19 | Device detail page (`/devices/[id]`) | Vasquez | Render device detail: all fields, resolved reference names (brand/category/owner/location/network), tags, audit trail (created/modified timestamps). Breadcrumbs. Edit/Delete buttons (role-aware). | Detail renders; breadcrumbs; role-aware affordances; axe-core zero violations. | T14 | Spec §5, J5 |
+| ✅ T20 | Device create page (`/devices/new`) | Vasquez | Form: name, brand (dropdown), serial, category (tree select), owner (dropdown), location (dropdown), network (dropdown), purchase date, purchase price, currency (dropdown with household default pre-filled), notes. Zod schema mirrors backend FluentValidation. Inline validation on blur. | Form renders; validation on blur; household default currency pre-filled; submit creates device; redirect to detail on success. | T02, T14 | Spec §5, J6 |
+| ✅ T21 | Device edit page (`/devices/[id]/edit`) | Vasquez | Pre-populate form with existing device data. Retired devices show read-only badge; only notes/disposal editable. Submit updates device. Toast notification on success. | Edit form works; retired-device guard active; toast on success; redirect to detail. | T19, T20 | Spec §5, J7 |
+| ✅ T22 | Delete device confirmation modal | Vasquez | Modal: "Type device name to confirm" input. Disabled submit until match. Call `DELETE /api/v1/devices/{id}` with reason in body. Toast on success; redirect to list. | Modal works; confirmation required; device soft-deleted; redirect to list; toast shown. | T19 | Spec §5, J8 |
 | T23 | Device form component tests | Apone | Vitest tests: create form validation, edit form pre-population, retired-device edit guard, delete confirmation, currency default. | 6+ component tests green; axe-core zero violations. | T20, T21, T22 | Spec §6.2 |
 
 ---
@@ -153,7 +153,7 @@
 - **Round 1 (Backend Auth)**: 3 tasks (T06-T08) — Bishop
 - **Round 2 (Login + Shell)**: ✅ 5 tasks (T09-T13) — Vasquez + Bishop
 - **Round 3 (Devices List)**: 5/5 ✅ (T14-T18 complete; T18 with 4 documented E2E deferrals) — Vasquez + Apone
-- **Round 4 (Device CRUD)**: 5 tasks (T19-T23) — Vasquez + Apone
+- **Round 4 (Device CRUD)**: 4/5 ✅ (T19-T22 complete; T23 in flight with Apone) — Vasquez + Apone
 - **Round 5 (Ownership)**: 3 tasks (T24-T26) — Vasquez + Apone
 - **Round 6 (Reference Entities)**: 7 tasks (T27-T33) — Vasquez + Apone
 - **Round 7 (Import)**: 4 tasks (T34-T37) — Vasquez + Apone

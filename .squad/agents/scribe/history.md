@@ -77,6 +77,24 @@ Agent Scribe initialized and ready for work.
 - Short decision summaries (1 paragraph) scale better than long docs. Link to inbox file path for full rationale if needed.
 - Mark partial tasks (like T08) explicitly so coordinator can spawn follow-up rounds.
 
+## 2026-05-19 (Phase 2 Round 12) — R4 Mid-Merge (Vasquez T19-T22) — `[commit-sha-pending]`
+
+**Inbox merged:** 1 file (vasquez-phase2-round4-device-crud.md) → D-070..D-077 (8 decisions; placeholders matched pre-allocation, no renumbering)
+
+**Tasks flipped:** T19, T20, T21, T22 ✅ (T23 component tests still in flight with Apone)
+
+**History entries:** Vasquez R4 + Scribe R12 (this entry)
+
+**Decision ledger:** D-001 through D-077 (77 total, contiguous)
+
+**Phase 2 progress:** 22/53 tasks (42%)
+
+**Round 4 status:** Mid-merge — T23 close-out pending Apone landing
+
+**Inbox check:** Verified directly via `Get-ChildItem` (per R10 lesson).
+
+---
+
 ## 2026-05-19 (Phase 2 Round 11) — R3 Final Close-Out (Apone T18) — `[your-sha-pending]`
 
 **Inbox merged:** 1 file (apone-phase2-t18-component-tests.md) → D-062..D-069 (renumbered from Apone's placeholders D-061..D-068 because D-061 was claimed by coordinator backfill in commit 5c23575)

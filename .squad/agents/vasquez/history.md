@@ -45,7 +45,37 @@ Accessibility: WCAG 2.2 AA target, zero axe-core violations to merge. Browser ma
 
 **Testing deferred:** Component tests deferred to Apone's Round 3+ E2E sweep per "1-2 tests per surface" rule. All `pnpm run check` / `pnpm run lint` / `pnpm run test` ✅.
 
-### 2026-05-19 (Phase 2 Round 0) — T02, T03, T04, T05: Foundation + Client Gen + MSAL Config
+## Phase 2 Round 4 — Device CRUD (T19-T22) — `83f1c8e`
+
+**Tasks:** T19 (detail page) + T20 (create page) + T21 (edit page) + T22 (delete modal)
+
+**Delivered:**
+- New routes: `/devices/[id]`, `/devices/new`, `/devices/[id]/edit`
+- New components: `DeviceForm.svelte` (182 — shared create/edit), `DeleteDeviceModal.svelte` (150 — type-name confirm + reason + roll-your-own focus trap), `ToastContainer.svelte` (90)
+- New infra: `src/lib/stores/toast.ts` (80), `src/lib/schemas/device.ts` (62 — Zod mirroring FluentValidation)
+- Toast system mounted in `(authenticated)/+layout.svelte`
+- API client extensions: `devices.getById/create/update/delete` (hand-rolled per D-060)
+
+**Behaviors:**
+- D-070: USD hard-coded as default currency (no settings endpoint yet)
+- D-071: Roll-your-own focus trap (~20 lines, no library)
+- D-072: Shared DeviceForm with mode prop (create + edit)
+- D-073: Toast notifications (4s success / 8s error, ARIA live polite)
+- D-074: Flat category dropdown (tree select deferred to Phase 3)
+- D-075: Zod schemas mirror FluentValidation exactly
+- D-076: Absolute timestamps in audit trail
+- D-077: Inline breadcrumbs
+- Retired-device guard: only `notes` editable when status=Retired (visible badge)
+- Type-to-confirm modal: backdrop does NOT close (only Cancel or Escape)
+- Role-aware buttons: Edit (Admin+Member), Delete (Admin only)
+
+**Checks:** `pnpm run check` ✅ 0 errors (12 intentional Svelte 5 runes warnings on initialData), `pnpm run lint` ✅ 0 errors, `pnpm run test` ✅ 44/44 (T18 tests still green).
+
+**Decisions added:** D-070 through D-077 (8).
+
+**Component tests deferred to Apone T23.**
+
+
 
 **Shipped:**
 - **T02 (Generate TypeScript API client):** `openapi-typescript` types-only + hand-written fetch wrapper (`client.ts`). Generated types in `src/TechInventory.Web/src/lib/api/generated/` gitignored; `pnpm run generate:client` regenerates from `openapi.yaml`. Auth token injection hook marked for T05 wiring (D-046).

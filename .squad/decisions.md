@@ -1561,6 +1561,183 @@ Generate the committed repo-root `openapi.yaml` from the API's runtime Swagger d
 
 ---
 
+### D-070: Household Default Currency — Hard-Coded USD Placeholder
+
+**Date:** 2026-05-18 (Phase 2 Round 4, Vasquez)
+**Status:** Implemented
+**Related:** T20, `specs/002-frontend-mvp/spec.md` J6
+
+**Decision:** Hard-code `USD` as default currency with inline `TODO D-070` comment in `DeviceForm.svelte`. No `/api/v1/settings/household` endpoint exists yet.
+
+**Rationale:**
+- Backend settings endpoint not in scope for Phase 2 (no spec coverage).
+- Hard-coding USD is pragmatic for MVP (single US household).
+- Inline TODO ensures follow-up in Phase 3 (Settings Management).
+- Alternative (fetching from /settings) would block T20 delivery.
+
+**Impact:** Users must manually change currency if needed. Phase 3 will add Settings API + household defaults.
+
+---
+
+### D-071: Delete Modal Focus Trap — Roll-Your-Own Implementation
+
+**Date:** 2026-05-18 (Phase 2 Round 4, Vasquez)
+**Status:** Implemented
+**Related:** T22, Constitution §6.1 (no third-party scripts)
+
+**Decision:** Implement focus trap inline in `DeleteDeviceModal.svelte` using `$effect` + `querySelectorAll` + `keydown` listener. No external library.
+
+**Rationale:**
+- Constitution §6.1: "No third-party analytics or scripts without ADR".
+- Simple modal with 3-4 focusable elements doesn't justify library overhead.
+- Inline implementation: ~20 lines, zero dependencies.
+- Focus trapping logic: Tab cycles first→last, Shift+Tab cycles last→first.
+
+**Alternatives Considered:**
+- `focus-trap` library (12KB gzipped) — rejected per Constitution.
+- `svelte-focus-trap` (unmaintained, Svelte 3 only) — rejected.
+
+---
+
+### D-072: Device Form — Shared Component for Create + Edit
+
+**Date:** 2026-05-18 (Phase 2 Round 4, Vasquez)
+**Status:** Implemented
+**Related:** T20, T21, Constitution §4.3 (Components < 200 lines)
+
+**Decision:** Extract shared `DeviceForm.svelte` component accepting `mode: 'create' | 'edit'`, `initialData`, `disabledFields`.
+
+**Rationale:**
+- DRY: Single source of truth for field layouts, validation, Zod schemas.
+- Edit-specific logic (retired-device disabled fields) via `disabledFields` prop.
+- Create vs Edit differ only in: (1) initial values, (2) submit action, (3) disabled field set.
+- Component stays under 200 lines (~180 lines with form fields + validation logic).
+
+**Retired Device Guard (T21):**
+Edit page computes `disabledFields` from device status:
+```ts
+const isRetired = $derived(device?.status === 'Retired');
+const disabledFields = $derived(
+  isRetired ? ['name', 'serialNumber', 'brandId', 'categoryId', 'ownerId', 'locationId', 'networkId', 'purchaseDate', 'purchasePrice', 'currencyCode'] : []
+);
+```
+
+Only `notes` editable for retired devices (per T21 spec).
+
+---
+
+### D-073: Toast Notification System — Module-Level Store + Container Component
+
+**Date:** 2026-05-18 (Phase 2 Round 4, Vasquez)
+**Status:** Implemented
+**Related:** T19-T22, Constitution §4.2 (Four UI states)
+
+**Decision:** Implement toast system as:
+1. Module-level Svelte store (`src/lib/stores/toast.ts`) — `showToast()`, `dismissToast()`, `clearToasts()`.
+2. Container component (`src/lib/components/ToastContainer.svelte`) — renders toasts in fixed top-right, ARIA live region.
+3. Mount container once in `(authenticated)/+layout.svelte`.
+
+**Rationale:**
+- No TanStack Query library (Phase 2 uses custom `useDevices` hook per D-046).
+- Simple store-based system: 80 lines total, zero dependencies.
+- Auto-dismiss after timeout (4s success, 8s error).
+- ARIA live="polite" for screen readers (Constitution §3 accessibility requirement).
+
+**Design:**
+- Fixed top-right position (z-index 50, above modal backdrop 40).
+- Fly-in transition (Svelte `fly={{ y: -20 }}`).
+- Color-coded by type (success=green, error=red, info=teal).
+- Manual dismiss button + auto-dismiss.
+
+---
+
+### D-074: Category Field — Flat Dropdown (Tree Select Deferred)
+
+**Date:** 2026-05-18 (Phase 2 Round 4, Vasquez)
+**Status:** Implemented
+**Related:** T20, `specs/002-frontend-mvp/spec.md` J6
+
+**Decision:** Implement flat dropdown for Phase 2. Defer tree select to Phase 3 (Reference Data Management).
+
+**Rationale:**
+- Phase 2 scope: device CRUD only (reference data CRUD is Phase 3+).
+- No existing tree-select component in codebase.
+- Flat dropdown: 2 lines (`<select>` + `{#each categories}`), zero risk.
+- Tree select: 100+ lines custom component or library dependency.
+
+**MVP Workaround:** Display category names with indent prefixes in referenceData store transformation (if needed). Phase 3 will add hierarchical category UI.
+
+---
+
+### D-075: Zod Schema Field Constraints — Mirrored from FluentValidation
+
+**Date:** 2026-05-18 (Phase 2 Round 4, Vasquez)
+**Status:** Implemented
+**Related:** T20, T21, Constitution §4.3 (Client validation mirroring server)
+
+**Decision:** Zod schema constraints match backend `CreateDeviceCommand` validator exactly:
+- `name`: required, max 200
+- `serialNumber`: optional, max 100
+- `brandId`, `categoryId`: required UUID
+- `ownerId`, `locationId`, `networkId`: optional UUID
+- `purchaseDate`: optional ISO 8601 date (`YYYY-MM-DD`)
+- `purchasePrice`: optional, ≥ 0
+- `currencyCode`: optional, 3-char ISO code
+- `notes`: optional, max 2000
+
+**Verification Method:** Cross-referenced `src/TechInventory.Application/Devices/Commands/CreateDeviceCommand*.cs` validator rules.
+
+**Inline Validation:** Trigger on `blur` (not `change` — too noisy per D-058 300ms debounce guidance).
+
+---
+
+### D-076: Device Detail Audit Trail — Created/Modified Timestamps
+
+**Date:** 2026-05-18 (Phase 2 Round 4, Vasquez)
+**Status:** Implemented
+**Related:** T19, `specs/002-frontend-mvp/spec.md` J5
+
+**Decision:** Display timestamps in detail page footer as:
+- "Created: {date} {time} by {user}" (absolute format via `toLocaleString`)
+- "Last Modified: {date} {time} by {user}"
+- Tooltip with full UTC timestamp via `<time datetime>` attribute
+
+**Format:** `en-US` locale, `{ year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }`
+
+**Example:** "Created: May 18, 2026, 03:45 PM by brian.denicola@family.local"
+
+No relative time ("3 hours ago") for Phase 2 — absolute timestamps prioritize auditability.
+
+---
+
+### D-077: Breadcrumbs — Svelte Native (No Router Library)
+
+**Date:** 2026-05-18 (Phase 2 Round 4, Vasquez)
+**Status:** Implemented
+**Related:** T19, `specs/002-frontend-mvp/spec.md` J5
+
+**Decision:** Implement breadcrumbs inline in route components (no breadcrumb library). Use SvelteKit `$page` store for current route awareness.
+
+**Rationale:**
+- Simple structure: 3-4 levels max across entire app.
+- Inline implementation: ~20 lines per route, zero dependencies.
+- No need for auto-generated breadcrumbs (routes are explicit).
+
+**Markup:**
+```svelte
+<nav aria-label="Breadcrumb">
+  <ol>
+    <li><a href="/">Home</a></li>
+    <li><a href="/devices">Devices</a></li>
+    <li aria-current="page">{device.name}</li>
+  </ol>
+</nav>
+```
+
+**Styling:** Design tokens (`text-neutral-600`, hover states) + chevron SVG separators.
+
+---
+
 ## Governance
 
 - All meaningful changes require team consensus

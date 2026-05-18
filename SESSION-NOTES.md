@@ -4,6 +4,14 @@ Append-only log. Newest entries at the top.
 
 ---
 
+## 2026-05-18 — Hicks Round 7 import/export close-out + OpenAPI export
+- Added the Phase 1 import/export backend verticals in `src\TechInventory.Application\Imports`, `src\TechInventory.Application\Exports`, `src\TechInventory.Api\Controllers\ImportsController.cs`, `src\TechInventory.Api\Controllers\ExportsController.cs`, and `src\TechInventory.Api\OpenApi\OpenApiDocumentExporter.cs`; preview/commit now share `DeviceImportProcessingService`, export uses a dedicated `IDeviceExportService`, and repo-root `openapi.yaml` is generated from the running API shape instead of hand-editing
+- Expanded auditing for bulk import by changing `IAuditContext` / `AuditContext` / `AuditBehavior` to carry multiple entries, extracted shared `DeviceValidationRules`, registered CsvHelper-backed import processing in DI, added import file-size handling + 413 mapping, and seeded a default `Primary Household` (`USD`) at startup when the database is empty so device creation/import works in a fresh environment
+- Smoke test on `http://localhost:8080` passed: `POST /api/v1/imports/preview` returned valid + invalid rows plus `lookupsToCreate`; `POST /api/v1/imports/commit` returned `201 Created` with a persisted batch; `GET /api/v1/imports` listed the new batch; `GET /api/v1/exports/devices?format=json` returned exported devices; `GET /api/v1/exports/devices?format=csv` returned device rows; `GET /openapi/v1.json` returned runtime OpenAPI JSON
+- Verification from repo root on Windows passed: `dotnet format --verify-no-changes`, `dotnet build -c Release`, `dotnet test -c Release`, and `dotnet run --project src\TechInventory.Api\TechInventory.Api.csproj -c Release --no-build -- export-openapi`; final backend test summary is **370 total / 369 succeeded / 1 skipped / 0 failed**
+
+---
+
 ## 2026-05-18 — Hicks Round 6 controllers, ProblemDetails, and dev auth bypass
 - Replaced the stub `src\TechInventory.Api\Controllers\DevicesController.cs` and added concrete `BrandsController`, `CategoriesController`, `OwnersController`, `LocationsController`, `NetworksController`, `TagsController`, and `AuditEventsController`; all routes now sit under `/api/v1/...`, are `[Authorize]`, and dispatch through MediatR with no business logic in controllers
 - Added `src\TechInventory.Api\Common\ControllerResultExtensions.cs` plus `ExceptionHandling\ResultFailureException.cs` / `ApiExceptionHandler.cs` so controller success paths stay terse while `Result.Failure` and unhandled exceptions become RFC 7807 ProblemDetails; validation now returns an `errors` dictionary, 404/409 map cleanly, and 500s stay generic outside Development

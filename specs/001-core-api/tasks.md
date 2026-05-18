@@ -2,7 +2,7 @@
 
 **Spec**: `specs/001-core-api/spec.md`
 **Plan**: `specs/001-core-api/plan.md`
-**Status**: In Progress — Hicks completed T01-T10 domain core
+**Status**: In Progress — Hicks completed T29/T30/T31/T39/T42/T48 backend close-out; T45/T46/T47 remain open
 
 ---
 
@@ -60,14 +60,14 @@
 
 | ID | Task | Owner | Outcome | Acceptance Check | Ref |
 |----|------|-------|---------|-----------------|-----|
-| T29 | Implement PreviewImport command | Hicks | Parses CSV, maps columns, validates rows, returns preview result. | Unit test with sample CSV; invalid rows flagged | Plan §5 |
-| T30 | Implement CommitImport command | Hicks | Persists valid rows, creates lookup entities, writes ImportBatch. | Integration test: devices created, batch recorded | Plan §5 |
+| T29 | ✅ Implement PreviewImport command | Hicks | Added `PreviewImportCommand` + `DeviceImportProcessingService` to parse CSV uploads, infer/accept column mapping, validate rows with shared device rules, resolve existing lookups, and return deduped `lookupsToCreate` plus invalid-row details. | Verified by repo-root `dotnet format --verify-no-changes`, `dotnet build -c Release`, `dotnet test -c Release`, and smoke `POST /api/v1/imports/preview` on `http://localhost:8080`. | Plan §5 |
+| T30 | ✅ Implement CommitImport command | Hicks | Added `CommitImportCommand` to re-parse/re-validate the upload, create missing Brand/Category/Owner/Location records, persist valid devices plus immutable `ImportBatch`, and emit one audit entry per imported device. | Verified by repo-root `dotnet format --verify-no-changes`, `dotnet build -c Release`, `dotnet test -c Release`, and smoke `POST /api/v1/imports/commit` returning `201 Created` with recorded batch. | Plan §5 |
 
 ### Export
 
 | ID | Task | Owner | Outcome | Acceptance Check | Ref |
 |----|------|-------|---------|-----------------|-----|
-| T31 | Implement ExportDevices query | Hicks | Returns filtered devices as CSV or JSON stream. | Integration test: CSV parses cleanly | Plan §4.1 |
+| T31 | ✅ Implement ExportDevices query | Hicks | Added `ExportDevicesQuery` + `IDeviceExportService` projection path so filtered devices export as JSON or CSV without extending repository contracts beyond approved async shapes. | Verified by repo-root `dotnet format --verify-no-changes`, `dotnet build -c Release`, `dotnet test -c Release`, and smoke `GET /api/v1/exports/devices?format=csv|json` on `http://localhost:8080`. | Plan §4.1 |
 
 ### API Controllers
 
@@ -80,10 +80,10 @@
 | T36 | ✅ LocationsController | Hicks | CRUD endpoints for locations. | Integration tests cover full lifecycle. | Plan §4.1 |
 | T37 | ✅ NetworksController | Hicks | CRUD endpoints for networks. | Integration tests cover full lifecycle. | Plan §4.1 |
 | T38 | ✅ TagsController | Hicks | CRUD endpoints for tags. | Integration tests cover full lifecycle. | Plan §4.1 |
-| T39 | ImportsController | Hicks | Preview + Commit endpoints. | Integration test with file upload | Plan §4.1 |
+| T39 | ✅ ImportsController | Hicks | Added `/api/v1/imports` preview/commit/list/detail endpoints with multipart file handling, optional JSON mapping input, request/file-size enforcement, and standard ProblemDetails failures. | Verified by repo-root `dotnet format --verify-no-changes`, `dotnet build -c Release`, `dotnet test -c Release`, and smoke preview/commit/list requests against `http://localhost:8080`. | Plan §4.1 |
 | T40 | ✅ AuditEventsController | Hicks | List endpoint with filters, read-only surface. Route: GET `/api/v1/audit-events` (paged list). | Integration tests verify list filtering and 200 responses. | Plan §4.1 |
 | T41 | ✅ ProblemDetails middleware | Hicks | Global handler maps exceptions/Result.Failure to RFC 7807. Validation failures return `ValidationProblemDetails` with `errors` dict; NotFound→404, Conflict→409, others→400, unhandled→500. | Integration tests verify all error paths return correct ProblemDetails shape. | Plan §4.2 |
-| T42 | ExportController (or devices sub-route) | Hicks | Export endpoint returns CSV/JSON. | Integration test | Plan §4.1 |
+| T42 | ✅ ExportController (or devices sub-route) | Hicks | Added `ExportsController` at `/api/v1/exports/devices`, with CSV attachment and JSON array outputs backed by async response writing and export row-count logging. | Verified by repo-root `dotnet format --verify-no-changes`, `dotnet build -c Release`, `dotnet test -c Release`, and smoke export responses from `http://localhost:8080`. | Plan §4.1 |
 
 ### Testing & Quality
 
@@ -99,7 +99,7 @@
 
 | ID | Task | Owner | Outcome | Acceptance Check | Ref |
 |----|------|-------|---------|-----------------|-----|
-| T48 | Commit OpenAPI spec | Hicks | `openapi.yaml` generated and committed. | Valid per OpenAPI 3.1 schema | Spec §4.3 |
+| T48 | ✅ Commit OpenAPI spec | Hicks | Added CLI/runtime OpenAPI export wiring in `Program.cs`, `OpenApiDocumentExporter`, Taskfile `openapi:export`, and refreshed repo-root `openapi.yaml`. | Verified by repo-root `dotnet format --verify-no-changes`, `dotnet build -c Release`, `dotnet test -c Release`, `dotnet run --project src\TechInventory.Api\TechInventory.Api.csproj -c Release --no-build -- export-openapi`, and smoke `GET /openapi/v1.json`. | Spec §4.3 |
 
 ---
 

@@ -117,12 +117,43 @@ public class IntegrationTestFactory<TMarker> : WebApplicationFactory<Program>
 
     private static void DeleteIfExists(string path)
     {
-        if (!File.Exists(path))
+        try
         {
-            return;
-        }
+            if (!File.Exists(path))
+            {
+                return;
+            }
 
-        File.Delete(path);
+            const int maxAttempts = 5;
+            for (var attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                try
+                {
+                    File.Delete(path);
+                    return;
+                }
+                catch (IOException) when (attempt < maxAttempts)
+                {
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+                    Thread.Sleep(100);
+                }
+                catch (IOException)
+                {
+                    return;
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    return;
+                }
+            }
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
     }
 
     private static string SanitizeFileName(string value)

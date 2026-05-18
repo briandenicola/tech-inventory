@@ -1,0 +1,12 @@
+#!/usr/bin/env sh
+set -eu
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "Node.js is required to run the Tech Inventory pre-commit hook." >&2
+  exit 1
+fi
+
+node ./scripts/check-security.mjs --staged

@@ -37,6 +37,7 @@ test-results/
 build/
 playwright-report/
 test-results/
+.tools/
 
 # SQLite databases
 *.db

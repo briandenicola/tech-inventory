@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
@@ -29,6 +31,21 @@ jobs:
 
       - name: Enable pnpm via corepack
         run: corepack enable
+
+      - name: Install pinned gitleaks
+        run: bash ./scripts/install-gitleaks.sh
+
+      - name: Run auth token and secret scan
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch --no-tags origin "${{ github.base_ref }}" --depth=1
+            node ./scripts/check-security.mjs --diff-range "FETCH_HEAD...HEAD"
+          elif [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
+            node ./scripts/check-security.mjs --diff-range "${{ github.sha }}^!"
+          else
+            node ./scripts/check-security.mjs --diff-range "${{ github.event.before }}..${{ github.sha }}"
+          fi
 
       - name: Cache NuGet packages
         uses: actions/cache@v4

@@ -1,0 +1,4 @@
+title = "Tech Inventory gitleaks configuration"
+
+[extend]
+useDefault = true

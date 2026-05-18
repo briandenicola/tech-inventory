@@ -4,6 +4,15 @@ Append-only log. Newest entries at the top.
 
 ---
 
+## 2026-05-18 — Hicks Round 6 controllers, ProblemDetails, and dev auth bypass
+- Replaced the stub `src\TechInventory.Api\Controllers\DevicesController.cs` and added concrete `BrandsController`, `CategoriesController`, `OwnersController`, `LocationsController`, `NetworksController`, `TagsController`, and `AuditEventsController`; all routes now sit under `/api/v1/...`, are `[Authorize]`, and dispatch through MediatR with no business logic in controllers
+- Added `src\TechInventory.Api\Common\ControllerResultExtensions.cs` plus `ExceptionHandling\ResultFailureException.cs` / `ApiExceptionHandler.cs` so controller success paths stay terse while `Result.Failure` and unhandled exceptions become RFC 7807 ProblemDetails; validation now returns an `errors` dictionary, 404/409 map cleanly, and 500s stay generic outside Development
+- Added Development auth bypass via `Auth:DevBypass` in `appsettings.Development.json`, `DevBypassAuthenticationHandler`, `PlaceholderJwtAuthenticationHandler`, and `HttpContextCurrentUserService`; startup logs the required warning, audit rows now stamp the synthetic `oid`, and OpenAPI moved to `/openapi/v1.json` while Swagger UI remains at `/swagger`
+- Smoke test on `http://localhost:8080` passed: `GET /openapi/v1.json` 200 JSON, `GET /api/v1/devices` returned `{"items":[],"totalCount":0,"page":1,"pageSize":25}`, `POST /api/v1/brands` with `{"name":"TestBrand2"}` returned 201 Created, `POST /api/v1/brands` with empty name returned 400 Validation ProblemDetails, `GET /api/v1/brands/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa` returned 404 ProblemDetails, and `GET /api/v1/audit-events` showed the created brand audit event with actor `11111111-1111-1111-1111-111111111111`
+- Verification: `dotnet format --verify-no-changes` ✅, `dotnet build src\TechInventory.Api\TechInventory.Api.csproj -c Release` ✅, repo-root `dotnet build -c Release` and `dotnet test -c Release` currently fail because Apone's in-flight `tests\TechInventory.IntegrationTests\Controllers\DevAuthBypassTests.cs(94,40)` does not compile in this shared workspace; `dotnet test -c Release` still ran 240 passing tests before that compile stop
+
+---
+
 ## 2026-05-18 — Apone Round 5 domain recovery + T20-T28 handler tests
 - Added targeted Domain coverage recovery in `tests\TechInventory.UnitTests\Domain\` for `AuditEvent` default-timestamp rejection, `ImportBatch` EF/private-constructor + UTC convenience-constructor behavior, and `Currency.ToString()`; removed a dead duplicate child-depth guard from `src\TechInventory.Domain\Entities\Category.cs`
 - Converted all T20–T28 handler scaffolds under `tests\TechInventory.UnitTests\Application\` into executable xUnit + FluentAssertions + NSubstitute tests once Hicks's handlers landed, including CRUD/query suites for Devices, Brands, Categories, Owners, Locations, Networks, Tags, device-tag add/remove, and ClaimDeviceOwnership

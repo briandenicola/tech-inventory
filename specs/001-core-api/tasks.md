@@ -73,16 +73,16 @@
 
 | ID | Task | Owner | Outcome | Acceptance Check | Ref |
 |----|------|-------|---------|-----------------|-----|
-| T32 | DevicesController | Hicks | All device endpoints wired to MediatR. Thin controller, no business logic. | Integration test: full CRUD via HTTP | Plan §4.1 |
-| T33 | BrandsController | Hicks | CRUD endpoints for brands. | Integration test | Plan §4.1 |
-| T34 | CategoriesController | Hicks | CRUD endpoints; GET returns tree. | Integration test | Plan §4.1 |
-| T35 | OwnersController | Hicks | CRUD endpoints. | Integration test | Plan §4.1 |
-| T36 | LocationsController | Hicks | CRUD endpoints. | Integration test | Plan §4.1 |
-| T37 | NetworksController | Hicks | CRUD endpoints. | Integration test | Plan §4.1 |
-| T38 | TagsController | Hicks | CRUD endpoints. | Integration test | Plan §4.1 |
+| T32 | ✅ DevicesController | Hicks | All device endpoints wired to MediatR. Thin controller, no business logic. | Integration test: full CRUD via HTTP | Plan §4.1 |
+| T33 | ✅ BrandsController | Hicks | CRUD endpoints for brands. | Integration test | Plan §4.1 |
+| T34 | ✅ CategoriesController | Hicks | CRUD endpoints; GET returns tree. | Integration test | Plan §4.1 |
+| T35 | ✅ OwnersController | Hicks | CRUD endpoints. | Integration test | Plan §4.1 |
+| T36 | ✅ LocationsController | Hicks | CRUD endpoints. | Integration test | Plan §4.1 |
+| T37 | ✅ NetworksController | Hicks | CRUD endpoints. | Integration test | Plan §4.1 |
+| T38 | ✅ TagsController | Hicks | CRUD endpoints. | Integration test | Plan §4.1 |
 | T39 | ImportsController | Hicks | Preview + Commit endpoints. | Integration test with file upload | Plan §4.1 |
-| T40 | AuditEventsController | Hicks | List endpoint with filters. | Integration test | Plan §4.1 |
-| T41 | ProblemDetails middleware | Hicks | Global handler maps exceptions/Result.Failure to RFC 7807. | Integration test: invalid request → ProblemDetails JSON | Plan §4.2 |
+| T40 | ✅ AuditEventsController | Hicks | List endpoint with filters. | Integration test | Plan §4.1 |
+| T41 | ✅ ProblemDetails middleware | Hicks | Global handler maps exceptions/Result.Failure to RFC 7807. | Integration test: invalid request → ProblemDetails JSON | Plan §4.2 |
 | T42 | ExportController (or devices sub-route) | Hicks | Export endpoint returns CSV/JSON. | Integration test | Plan §4.1 |
 
 ### Testing & Quality

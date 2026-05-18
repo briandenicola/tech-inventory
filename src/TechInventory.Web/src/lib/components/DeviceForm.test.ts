@@ -61,7 +61,7 @@ describe('DeviceForm', () => {
 		referenceDataStore.set(refData);
 	});
 
-	const mockOnSubmit = vi.fn(async () => {});
+	const mockOnSubmit = vi.fn<(data: import('$lib/schemas/device').DeviceCreateInput) => Promise<void>>(async () => {});
 	const mockOnCancel = vi.fn();
 
 	const defaultProps = {
@@ -242,7 +242,7 @@ describe('DeviceForm', () => {
 
 		it('calls onSubmit with parsed data on valid submission', async () => {
 			const user = userEvent.setup();
-			const onSubmit = vi.fn(async () => {});
+			const onSubmit = vi.fn<(data: import('$lib/schemas/device').DeviceCreateInput) => Promise<void>>(async () => {});
 
 			render(DeviceForm, {
 				props: {
@@ -281,7 +281,7 @@ describe('DeviceForm', () => {
 
 		it('disables submit button while submitting', async () => {
 			const user = userEvent.setup();
-			const onSubmit = vi.fn(
+			const onSubmit = vi.fn<(data: import('$lib/schemas/device').DeviceCreateInput) => Promise<void>>(
 				async () => new Promise((resolve) => setTimeout(resolve, 100))
 			);
 

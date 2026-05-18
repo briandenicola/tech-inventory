@@ -204,7 +204,7 @@ describe('DeleteDeviceModal', () => {
 
 		it('disables submit button while submitting', async () => {
 			const user = userEvent.setup();
-			const onConfirm = vi.fn(
+			const onConfirm = vi.fn<(reason: string) => Promise<void>>(
 				async () => new Promise((resolve) => setTimeout(resolve, 100))
 			);
 
@@ -272,7 +272,7 @@ describe('DeleteDeviceModal', () => {
 		it('does not call onCancel on Escape when submitting', async () => {
 			const user = userEvent.setup();
 			const onCancel = vi.fn();
-			const onConfirm = vi.fn(
+			const onConfirm = vi.fn<(reason: string) => Promise<void>>(
 				async () => new Promise((resolve) => setTimeout(resolve, 200))
 			);
 
@@ -348,7 +348,7 @@ describe('DeleteDeviceModal', () => {
 
 		it('has no axe violations while submitting', async () => {
 			const user = userEvent.setup();
-			const onConfirm = vi.fn(
+			const onConfirm = vi.fn<(reason: string) => Promise<void>>(
 				async () => new Promise((resolve) => setTimeout(resolve, 200))
 			);
 

@@ -10,28 +10,28 @@
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import DeleteDeviceModal from '$lib/components/DeleteDeviceModal.svelte';
+	import ClaimOwnershipModal from '$lib/components/ClaimOwnershipModal.svelte';
+	import ReleaseOwnershipModal from '$lib/components/ReleaseOwnershipModal.svelte';
 	import type { DeviceResponse } from '$lib/queries/devices';
 
 	/**
 	 * T19: Device detail page — all fields, resolved references, breadcrumbs, role-aware Edit/Delete buttons
+	 * T24: Claim Ownership button + modal (visible if device unowned or owned by another)
+	 * T25: Release Ownership button + modal (visible if current user IS owner)
 	 * 
 	 * States: loading → success/error/notFound
 	 * Breadcrumbs: Home > Devices > {Device Name}
 	 * Edit button: visible to Admin + Member
 	 * Delete button: visible to Admin only
+	 * Claim button: visible when device.ownerId !== currentUser.id
+	 * Release button: visible when device.ownerId === currentUser.id
 	 * 
-	 * Related: specs/002-frontend-mvp/spec.md J5
+	 * Related: specs/002-frontend-mvp/spec.md J5, J9
 	 */
 
 	const deviceId = $derived($page.params.id);
 	const currentUser = $derived($authStore.currentUser);
 	const refData = $derived($referenceDataStore);
-
-	// Role checks
-	const canEdit = $derived(
-		currentUser?.role === 'Admin' || currentUser?.role === 'Member'
-	);
-	const canDelete = $derived(currentUser?.role === 'Admin');
 
 	// Device state
 	let device = $state<DeviceResponse | null>(null);
@@ -39,8 +39,26 @@
 	let error = $state<string | null>(null);
 	let notFound = $state(false);
 
-	// Delete modal state
+	// Modal state
 	let showDeleteModal = $state(false);
+	let showClaimModal = $state(false);
+	let showReleaseModal = $state(false);
+
+	// Role checks
+	const canEdit = $derived(
+		currentUser?.role === 'Admin' || currentUser?.role === 'Member'
+	);
+	const canDelete = $derived(currentUser?.role === 'Admin');
+
+	// Ownership checks (T24, T25)
+	// Claim: visible when device unowned OR owned by another user
+	const canClaim = $derived(
+		device && currentUser && device.ownerId !== currentUser.id
+	);
+	// Release: visible when current user IS the owner
+	const canRelease = $derived(
+		device && currentUser && device.ownerId === currentUser.id
+	);
 
 	// Fetch device
 	async function fetchDevice() {
@@ -153,6 +171,56 @@
 			showDeleteModal = false;
 		}
 	}
+
+	// Handle claim ownership (T24)
+	async function handleClaimOwnership() {
+		if (!device || !currentUser) return;
+
+		try {
+			await devices.updateOwner(device.id, currentUser.id);
+			invalidateDevicesCache();
+			// Refetch device detail to show updated owner
+			await fetchDevice();
+			showToast({
+				type: 'success',
+				message: t('devices.claim.toast.success').replace('{name}', device.name ?? 'Device')
+			});
+		} catch (err) {
+			console.error('[device-detail] Claim ownership failed:', err);
+			const errorMsg =
+				err instanceof Error && 'detail' in err
+					? (err as unknown as { detail: string }).detail
+					: 'Failed to claim ownership';
+			showToast({ type: 'error', message: errorMsg });
+		} finally {
+			showClaimModal = false;
+		}
+	}
+
+	// Handle release ownership (T25)
+	async function handleReleaseOwnership() {
+		if (!device) return;
+
+		try {
+			await devices.updateOwner(device.id, null);
+			invalidateDevicesCache();
+			// Refetch device detail to show updated owner (now null)
+			await fetchDevice();
+			showToast({
+				type: 'success',
+				message: t('devices.release.toast.success').replace('{name}', device.name ?? 'Device')
+			});
+		} catch (err) {
+			console.error('[device-detail] Release ownership failed:', err);
+			const errorMsg =
+				err instanceof Error && 'detail' in err
+					? (err as unknown as { detail: string }).detail
+					: 'Failed to release ownership';
+			showToast({ type: 'error', message: errorMsg });
+		} finally {
+			showReleaseModal = false;
+		}
+	}
 </script>
 
 <!-- Breadcrumbs -->
@@ -201,6 +269,54 @@
 	<!-- Action buttons (role-aware) -->
 	{#if device && !isLoading}
 		<div class="flex gap-3">
+			{#if canClaim}
+				<button
+					type="button"
+					onclick={() => (showClaimModal = true)}
+					class="inline-flex items-center gap-2 rounded-lg border border-primary-600 bg-white px-4 py-2 text-sm font-medium text-primary-600 transition-colors hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-primary-500 dark:bg-neutral-900 dark:text-primary-400 dark:hover:bg-neutral-800"
+				>
+					<svg
+						class="h-4 w-4"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						aria-hidden="true"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+						/>
+					</svg>
+					{t('devices.detail.claimButton')}
+				</button>
+			{/if}
+
+			{#if canRelease}
+				<button
+					type="button"
+					onclick={() => (showReleaseModal = true)}
+					class="inline-flex items-center gap-2 rounded-lg border border-warning-600 bg-white px-4 py-2 text-sm font-medium text-warning-600 transition-colors hover:bg-warning-50 focus:outline-none focus:ring-2 focus:ring-warning-500 focus:ring-offset-2 dark:border-warning-500 dark:bg-neutral-900 dark:text-warning-400 dark:hover:bg-neutral-800"
+				>
+					<svg
+						class="h-4 w-4"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						aria-hidden="true"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
+						/>
+					</svg>
+					{t('devices.detail.releaseButton')}
+				</button>
+			{/if}
+
 			{#if canEdit}
 				<a
 					href="/devices/{device.id}/edit"
@@ -431,5 +547,24 @@
 		deviceName={device.name ?? 'Device'}
 		onConfirm={handleDelete}
 		onCancel={() => (showDeleteModal = false)}
+	/>
+{/if}
+
+<!-- Claim ownership modal (T24) -->
+{#if showClaimModal && device}
+	<ClaimOwnershipModal
+		deviceName={device.name ?? 'Device'}
+		currentOwnerName={ownerName !== '—' ? ownerName : null}
+		onConfirm={handleClaimOwnership}
+		onCancel={() => (showClaimModal = false)}
+	/>
+{/if}
+
+<!-- Release ownership modal (T25) -->
+{#if showReleaseModal && device}
+	<ReleaseOwnershipModal
+		deviceName={device.name ?? 'Device'}
+		onConfirm={handleReleaseOwnership}
+		onCancel={() => (showReleaseModal = false)}
 	/>
 {/if}

@@ -205,6 +205,12 @@ export const devices = {
 		apiFetch<void>(`/api/v1/devices/${encodeURIComponent(id)}`, {
 			method: 'DELETE',
 			body: JSON.stringify({ reason })
+		}),
+
+	updateOwner: async (id: string, ownerId: string | null) =>
+		apiFetch<void>(`/api/v1/devices/${encodeURIComponent(id)}/owner`, {
+			method: 'PATCH',
+			body: JSON.stringify({ ownerId })
 		})
 };
 

@@ -122,6 +122,29 @@
 			"claimButton": "Claim Ownership",
 			"releaseButton": "Release Ownership"
 		},
+		"claim": {
+			"button": "Claim Ownership",
+			"modal": {
+				"title": "Claim Ownership",
+				"body": "This device is currently owned by {owner}. Claim it for yourself?",
+				"bodyUnowned": "This device is currently unowned. Claim it for yourself?",
+				"confirm": "Claim"
+			},
+			"toast": {
+				"success": "Ownership claimed for {name}"
+			}
+		},
+		"release": {
+			"button": "Release Ownership",
+			"modal": {
+				"title": "Release Ownership",
+				"body": "Release ownership of this device? It will become unowned.",
+				"confirm": "Release"
+			},
+			"toast": {
+				"success": "Ownership released for {name}"
+			}
+		},
 		"create": {
 			"title": "Add Device",
 			"subtitle": "Enter device information"

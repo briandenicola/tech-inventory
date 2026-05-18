@@ -1,9 +1,9 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
-// @ts-expect-error - vitest/config type conflict with multiple vite versions in pnpm
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+	// @ts-expect-error Vite version conflict
 	plugins: [tailwindcss(), sveltekit()],
 	test: {
 		environment: 'jsdom',

@@ -298,6 +298,36 @@ SvelteKit uses **Tailwind CSS v4.3.0** with `@tailwindcss/vite` plugin.
 
 ---
 
+### D-016: Reference Entity Contract Test Pattern
+
+**By:** Apone (QA)  
+**Date:** 2026-05-18  
+**Status:** Implemented (80 xUnit cases green, 97.6% Domain coverage)  
+**Related:** Phase 1 T06–T10 (Category, Owner, Location, Network, Tag, DeviceTag)
+
+**Pattern:** One contract-test file per reference aggregate, organized in consistent shape:
+
+1. Constructor invariants / guard clauses
+2. Normalized or derived fields (for uniqueness/display helpers)
+3. Explicit state transitions and mutators (`Rename`, `Reparent`, `SetRole`, `SetType`, `UpdateDescription`, `UpdateColor`)
+4. Soft-active lifecycle toggles (`Deactivate` / `Reactivate`)
+
+**Why:** Keeps Domain suite spec-driven and predictable. Makes gaps obvious: if Hicks adds a new aggregate mutator, it needs an explicit state-transition test, not just constructor coverage.
+
+**Implementation:**
+- `tests/TechInventory.UnitTests/Domain/CategoryTests.cs` (root/child depth validation)
+- `tests/TechInventory.UnitTests/Domain/OwnerTests.cs` (role, Entra identity hooks)
+- `tests/TechInventory.UnitTests/Domain/LocationTests.cs` (normalized naming, soft-delete)
+- `tests/TechInventory.UnitTests/Domain/NetworkTests.cs` (normalized naming, soft-delete)
+- `tests/TechInventory.UnitTests/Domain/TagTests.cs` (normalized naming, soft-delete)
+- `tests/TechInventory.UnitTests/Domain/DeviceTagTests.cs` (composite key, soft-active, reactivation)
+
+**Follow-ons:**
+- When repository interfaces land (T15), mirror this with Application-layer NSubstitute tests from consumer side
+- When `AuditEvent` lands (T11), add append-only contract file: assert immutable public surface + create-only repository semantics
+
+---
+
 ## Governance
 
 - All meaningful changes require team consensus

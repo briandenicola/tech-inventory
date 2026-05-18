@@ -28,6 +28,8 @@ Phase 1 lands in `specs/001-core-api/`. Pattern references: **R1** for MediatR h
 
 **2026-05-18 (Phase 1 Round 1):** Domain layer T01–T05 complete and tested. `EntityId` ULID primitives, `Currency` ISO 4217 value object, `Household`/`Device`/`Brand` aggregates with currency inheritance and retired-device edit guards all implemented. 13 Domain unit tests green (85% coverage). Currency decision finalized (D-008): per-device with household default. Pre-commit hook deployed for token-storage enforcement (Hudson). Vasquez's ESLint gate live. Apone's Domain contract tests executable. `dotnet build -c Release` ✅, `dotnet test -c Release` ✅, `dotnet format --verify-no-changes` ✅. Phase 2: Repository layer + Application command/query handlers.
 
+**2026-05-18 (Phase 1 Round 2):** Domain layer T06–T10 complete and tested. `Category` (hierarchical depth validation), `Owner` (Entra identity hooks, role mapping), `Location`/`Network`/`Tag` (soft-delete semantics), `DeviceTag` (composite key, reactivation logic) all landed. 80 xUnit cases covering reference entities + Brand/Device supplemental. Domain line coverage: 97.6% (well above 85% floor). Verify pipeline green (`dotnet build`, `dotnet test`, `dotnet format` all ✅). Vasquez's vite.config fix unblocked frontend. Apone locked contract test pattern (D-016); blockers flagged: T11 (AuditEvent), T15 (Repository interfaces). Next phase: Application handlers + Infrastructure EF Core wiring.
+
 
 ## Learnings
 

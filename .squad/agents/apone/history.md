@@ -54,6 +54,8 @@ Playwright layout: tests in `tests/e2e/`, Page Object Model in `tests/e2e/pages/
 
 **2026-05-18 (Phase 1 Round 1):** Domain + integration tests complete. 13 xUnit tests in `tests/TechInventory.UnitTests/Domain/` covering Currency VO, Household defaults, Device inheritance/override, retired-device edit guards. `/health` integration test unskipped and passing. Playwright token-storage E2E (`tests/e2e/security/token-storage.spec.ts`) verifies no token-like keys in `localStorage` across 6 browser projects (Chromium, WebKit, Firefox × desktop + mobile). Decisions D-014 (Currency contract tests as executable spec) and D-015 (Playwright token-storage inspection pattern) document test patterns. 85% Domain layer coverage maintained. Token-storage four-gate enforcement (D-010) coordinated with Vasquez (ESLint), Hudson (pre-commit hook), and Bishop (code review checklist).
 
+**2026-05-18 (Phase 1 Round 2):** Reference entity contract tests (T06–T10) complete and verified. 80 xUnit cases covering `Category`, `Owner`, `Location`, `Network`, `Tag`, `DeviceTag` plus supplemental Brand/Device state transitions. Domain line coverage: 97.6% (well above 85% floor). Decision D-016 (Reference Entity Contract Test Pattern) locked the spec-driven pattern for future aggregates. Blockers identified for next phase: T11 (AuditEvent append-only contract), T15 (Repository interface consumer tests via NSubstitute). Verify pipeline fully green: `dotnet test -c Release` ✅, coverage floor maintained.
+
 
 ## Learnings
 
@@ -140,4 +142,19 @@ Playwright layout: tests in `tests/e2e/`, Page Object Model in `tests/e2e/pages/
 **Skipped vs ready-to-run:**
 - Ready now: 13 Domain unit tests, 1 `/health` integration test, and 1 Playwright token-storage spec across the 6-browser matrix
 - Skipped awaiting Hicks for this slice: none — Hicks landed `Currency`, `Household`, `Device`, and `/health` while the tests were being authored
+
+### 2026-05-18: T06-T10 reference-entity contract coverage
+
+**Reference entity test shape:**
+- For `Category`, `Owner`, `Location`, `Network`, `Tag`, and `DeviceTag`, the unit-test pattern is: constructor guard clauses first, then normalized/derived fields, then explicit state transitions (`Rename`, `Reparent`, `SetRole`, `SetType`, `UpdateDescription`, `UpdateColor`, deactivate/reactivate)
+- Composite-link entities like `DeviceTag` should get pair-integrity tests (both IDs required, stored unchanged) plus lifecycle toggle checks when soft-active flags exist
+- Reference entities that expose uniqueness helpers (`NormalizedName`, `NormalizedDisplayName`) should have those helpers asserted directly so repository uniqueness rules inherit a locked domain contract
+
+**Repository-interface pattern (when T15 lands):**
+- Consumer-side repository tests should use `NSubstitute` around the handler/service under test, assert the exact awaited repository call shape, and verify no extra writes happen outside the command/query contract
+- Keep repository-interface tests at the Application layer only; Domain tests should stay on invariants and state transitions because uniqueness and persistence behavior belong above the aggregate
+
+**AuditEvent append-only assertion approach (when T11 lands):**
+- Assert immutability from the outside: constructor sets payloads/action/timestamp once, then tests verify there are no public mutator methods or writable public setters for audit fields
+- Pair that with later consumer/repository tests that only allow add/create semantics; any update/delete contract should be absent or explicitly throw so append-only is executable, not just documented
 

@@ -1,5 +1,64 @@
 # Session Log — Tech Inventory Squad
 
+## Phase 1 Round 5 Outcomes (2026-05-18)
+
+### Hicks 🔧 — Commit `1180cf6` "feat(handlers): T20-T28 device + reference entity CRUD handlers"
+
+**Tasks Completed:** T20, T21, T22, T23, T24, T25, T26, T27, T28
+
+- **T20–T28**: Full Application handler suite for Device, Brand, Category, Owner, Location, Network, Tag CRUD operations
+  - `CreateDeviceCommand`, `UpdateDeviceCommand`, `DeleteDeviceCommand` with soft-delete (retired → disposed)
+  - `GetDeviceByIdQuery`, `ListDevicesQuery` with pagination, filtering (brand/category/owner/location/network/status/tag), and sorting
+  - Brand/Category/Owner/Location/Network CRUD handlers (Create/Update/Delete/Get/List)
+  - Category handlers with recursive tree mapping; list paginates root nodes while preserving descendants
+  - Owner delete blocks while any active device references the owner (preserves active-owner invariant)
+  - `AddTagToDeviceCommand`, `RemoveTagFromDeviceCommand`, `ClaimDeviceOwnershipCommand` with join-entity audit metadata
+  - New common type: `PagedResponse<T>` in `src/TechInventory.Application/Common/`
+  - BEFORE-snapshot audit capture pattern crystallized across all mutations
+
+**Files Modified:** 98 files touched
+
+**Verification:** All checks green:
+- `dotnet format --verify-no-changes` ✅
+- `dotnet build -c Release` ✅
+- `dotnet test -c Release` (182 succeeded, 78 skipped) ✅
+
+---
+
+### Apone 🧪 — Commit `6685cc6` "test: T20-T28 handler scaffolding + domain coverage recovery"
+
+**Tasks Completed:** T43, T44 (handler contract tests + coverage recovery)
+
+**Outcomes:**
+- +115 tests added (151 baseline → 266 total)
+- 102 skip-when-waiting handler scaffolds converted to executable xUnit/NSubstitute tests
+- Handler-contract assumptions locked: active-reference validation, duplicate-name conflict detection, BEFORE-snapshot capture, owner delete-blocking
+- Domain coverage regression from R4 fully recovered
+
+**Coverage Snapshot (Post-Round-5):**
+| Layer | Coverage |
+|-------|----------|
+| Domain | **100.00%** |
+| Application | **85.89%** |
+| Infrastructure | **88.98%** |
+
+**Test Results:**
+- Backend: **266 passed / 0 skipped**
+- All checks green: `dotnet format --verify-no-changes` ✅, `dotnet build -c Release` ✅, `dotnet test -c Release` ✅
+
+---
+
+### Squad Orchestration — Scribe 📝
+
+- **Decisions processed:** Inbox empty; no new D-### entries
+- **Agent history updated:** Hicks (T20–T28 summary), Apone (coverage recovery), Scribe (R5 work)
+- **Session log:** This entry (Phase 1 Round 5 outcomes)
+- **Tasks.md:** Verified T20–T28 already marked ✅ (no changes needed)
+
+**Phase 1 Progress:** 28/48 tasks done (58%)
+
+---
+
 ## Phase 1 Round 4 Outcomes (2026-05-18)
 
 ### Hicks 🔧 — Commit `81f478d` "feat: add repositories and pipeline behaviors"

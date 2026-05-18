@@ -12,19 +12,15 @@
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="FluentAssertions" Version="7.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.8" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-    <PackageReference Include="Testcontainers" Version="4.6.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
   </ItemGroup>
 
-  <!-- Project references will be added once Hicks's source projects exist -->
-  <!-- <ItemGroup> -->
-  <!--   <ProjectReference Include="..\..\src\TechInventory.Api\TechInventory.Api.csproj" /> -->
-  <!--   <ProjectReference Include="..\..\src\TechInventory.Infrastructure\TechInventory.Infrastructure.csproj" /> -->
-  <!--   <ProjectReference Include="..\..\src\TechInventory.Application\TechInventory.Application.csproj" /> -->
-  <!--   <ProjectReference Include="..\..\src\TechInventory.Domain\TechInventory.Domain.csproj" /> -->
-  <!-- </ItemGroup> -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\TechInventory.Api\TechInventory.Api.csproj" />
+  </ItemGroup>
 
   <ItemGroup>
     <Using Include="Xunit" />

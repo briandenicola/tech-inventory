@@ -1,22 +1,22 @@
+using System.Net;
+using FluentAssertions;
+using Microsoft.AspNetCore.Mvc.Testing;
+
 namespace TechInventory.IntegrationTests;
 
-/// <summary>
-/// Integration smoke test that will verify GET /health returns 200 OK once Hicks's API is wired.
-/// Uses WebApplicationFactory to boot the API in-proc.
-/// </summary>
-public class ApiSmokeTests
+public sealed class ApiSmokeTests(IntegrationTestFactory<ApiSmokeTests> factory)
+    : IClassFixture<IntegrationTestFactory<ApiSmokeTests>>
 {
-    [Fact(Skip = "Awaiting Hicks's /health endpoint wiring in TechInventory.Api")]
+    [Fact]
     public async Task HealthEndpoint_Returns200Ok()
     {
-        // Arrange
-        // TODO: var factory = new WebApplicationFactory<Program>();
-        // var client = factory.CreateClient();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            BaseAddress = new Uri("https://localhost")
+        });
 
-        // Act
-        // var response = await client.GetAsync("/health");
+        var response = await client.GetAsync("/health");
 
-        // Assert
-        // response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 }

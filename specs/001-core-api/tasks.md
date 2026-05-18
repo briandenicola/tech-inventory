@@ -130,5 +130,7 @@ T32..T42 → T48 (OpenAPI commit)
 - If T01 is done by Hicks in the parallel scaffolding sprint, T02+ can begin immediately.
 - Currency strategy (open question #1) must be decided before T04 finalizes Device entity. See `decisions/inbox/ripley-currency-strategy.md`.
 - 2026-05-18: Apone landed Domain tests for `Currency` + `Device`/`Household` currency behavior, turned on the `/health` smoke test, and added Playwright token-storage enforcement.
+- 2026-05-18: Apone expanded T43 coverage across `Brand`, `Category`, `Owner`, `Location`, `Network`, `Tag`, `DeviceTag`, guard clauses, and audit primitives; `tests/TechInventory.UnitTests` now passes 93 tests with 97.6% Domain line coverage.
 - 2026-05-18: Frontend token-storage lint gate landed under Decision D-002 in `src/TechInventory.Web/`; remaining enforcement gates are outside this task list.
 - 2026-05-18: Hudson added the pre-commit + CI mirror for Decision D-002 via `.githooks/pre-commit`, `task hooks:install`, `.gitleaks.toml`, and `scripts/check-security.mjs`; full T47 remains open until the broader verify pipeline is green.
+- 2026-05-18: Hudson prepped the integration-test path before T13/T14 land. `tests/TechInventory.IntegrationTests/IntegrationTestFactory.cs` now provisions a fresh SQLite file per test class, `task test:integration` is the backend entry point, and `task test:e2e` owns hermetic compose bring-up/tear-down around Playwright.

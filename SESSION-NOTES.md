@@ -4,10 +4,17 @@ Append-only log. Newest entries at the top.
 
 ---
 
+## 2026-05-18 — Hudson SQLite integration harness + hermetic E2E contract
+- Added `IntegrationTestFactory<TMarker>` under `tests/TechInventory.IntegrationTests/` so each test class gets its own SQLite file, future EF Core migrations auto-apply when present, and cleanup removes the database plus WAL/SHM sidecars
+- Repointed the existing `/health` smoke test to the new factory and verified `task test:integration` passes end-to-end against the new harness
+- Added `task test:integration` and `task test:e2e`; `task test:e2e` now owns compose bring-up, readiness wait on `/health/ready`, Playwright execution against `http://localhost:3000`, and teardown via `scripts/run-e2e.ps1` / `scripts/run-e2e.sh`
+- Split `scripts/verify.ps1` / `scripts/verify.sh` into unit → integration → vulnerability/frontend checks → hermetic Playwright order
+- Next: Hicks lands `AppDbContext` + first migration against `ConnectionStrings:Default`; Apone expands factory-backed integration coverage once migrations exist
+
 ## 2026-05-18 — Hicks Phase 1 domain reference entities T06-T10
 - Added `Category`, `Owner`, `Location`, `Network`, `Tag`, and `DeviceTag` under `src/TechInventory.Domain/Entities/` with trimmed-name guards, archive/reactivate methods, and normalized-name helpers for later repository uniqueness checks
 - Category now keeps `ParentId` plus validated `Depth` (1-3) so the max-depth invariant is enforced in Domain; `Owner` carries `OwnerRole` and optional `EntraObjectId`; `DeviceTag` uses `IsActive` instead of hard deletes
-- Replaced Apone's placeholder skips with executable domain tests for T06-T10; unit suite is now 32 passing tests with zero skips
+- Replaced Apone's placeholder skips with executable domain tests for T06-T10; `tests/TechInventory.UnitTests` now runs 93 passing tests with zero skips, and Domain line coverage is 97.6%
 - Verified `dotnet format --verify-no-changes`, `dotnet build -c Release`, `dotnet test -c Release`, targeted unit/integration runs, and `./scripts/verify.ps1`
 - Next: Hicks can take T11-T17 (AuditEvent, ImportBatch, AppDbContext/configs, repositories, audit stamping)
 

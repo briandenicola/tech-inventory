@@ -42,6 +42,17 @@ tasks:
       - cmd: cd src/TechInventory.Web && pnpm run lint
         platforms: [linux, darwin]
 
+  hooks:install:
+    desc: Install repo-managed git hooks and pinned gitleaks binary
+    cmds:
+      - cmd: powershell -NoProfile -ExecutionPolicy Bypass -Command "& '.\scripts\install-gitleaks.ps1'"
+        platforms: [windows]
+      - cmd: bash ./scripts/install-gitleaks.sh
+        platforms: [linux, darwin]
+      - git config core.hooksPath .githooks
+      - cmd: chmod +x .githooks/pre-commit
+        platforms: [linux, darwin]
+
   up:
     desc: Start the full dev stack (API + Web + DB)
     cmds:
@@ -52,21 +63,46 @@ tasks:
     cmds:
       - docker compose down -v
 
-  test:
-    desc: Run all tests against the running stack (requires `task up` first)
+  test:unit:
+    desc: Run backend unit tests
     cmds:
-      - echo "Running .NET tests..."
-      - dotnet test -c Release
-      - cmd: echo "Running frontend unit tests..."
+      - dotnet test tests/TechInventory.UnitTests/TechInventory.UnitTests.csproj -c Release
+
+  test:integration:
+    desc: Run backend integration tests against isolated SQLite files
+    cmds:
+      - dotnet test tests/TechInventory.IntegrationTests/TechInventory.IntegrationTests.csproj -c Release
+
+  test:e2e:run:
+    internal: true
+    cmds:
+      - cmd: powershell -NoProfile -ExecutionPolicy Bypass -Command "& { $maxAttempts = 60; for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) { try { $response = Invoke-WebRequest -Uri 'http://localhost:8080/health/ready' -UseBasicParsing -TimeoutSec 5; if ($response.StatusCode -eq 200) { exit 0 } } catch { } Start-Sleep -Seconds 2 }; throw 'API readiness check failed at http://localhost:8080/health/ready.' }"
+        platforms: [windows]
+      - cmd: bash -c 'for attempt in $(seq 1 60); do curl --fail --silent http://localhost:8080/health/ready >/dev/null && exit 0; sleep 2; done; echo "API readiness check failed at http://localhost:8080/health/ready." >&2; exit 1'
+        platforms: [linux, darwin]
+      - cmd: cd tests\e2e && npm ci && set "BASE_URL=http://localhost:3000" && npx playwright test
+        platforms: [windows]
+      - cmd: cd tests/e2e && npm ci && BASE_URL=http://localhost:3000 npx playwright test
+        platforms: [linux, darwin]
+
+  test:e2e:
+    desc: Bring up the compose stack, run Playwright, and tear it down
+    cmds:
+      - cmd: powershell -NoProfile -ExecutionPolicy Bypass -Command "& '.\scripts\run-e2e.ps1'"
+        platforms: [windows]
+      - cmd: bash ./scripts/run-e2e.sh
+        platforms: [linux, darwin]
+
+  test:
+    desc: Run all mandatory tests against the running stack (requires `task up` first)
+    cmds:
+      - task: test:unit
+      - task: test:integration
       - cmd: cd src\TechInventory.Web && pnpm run test
         platforms: [windows]
       - cmd: cd src/TechInventory.Web && pnpm run test
         platforms: [linux, darwin]
-      - echo "Running E2E tests (requires running stack)..."
-      - npx playwright test
-    preconditions:
-      - msg: "Stack must be running. Run 'task up' first."
-        sh: docker compose ps | grep -q "techinv-api" || exit 1
+      - task: test:e2e:run
 
   verify:
     desc: Run the full verification pipeline (format, build, test, security scan)

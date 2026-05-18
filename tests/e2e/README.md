@@ -4,9 +4,11 @@
 
 ## Prerequisites
 
-1. **Full stack running**: `task up` (API + Web + DB) from repo root
-2. **Node.js** installed (v18+ recommended)
-3. **Playwright browsers** installed (see below)
+1. **Node.js** installed (v18+ recommended)
+2. **Playwright browsers** installed (see below)
+3. For manual runs, either:
+   - start the full stack with `task up`, then run `task test` or `npx playwright test`, or
+   - use the one-shot `task test:e2e` command to bring the stack up, wait for `/health/ready`, run Playwright, and tear it back down
 
 ## Setup
 
@@ -14,7 +16,7 @@
 cd tests/e2e
 
 # Install dependencies
-node "C:\Utils\node-v24.14.0\node_modules\npm\bin\npm-cli.js" install
+npm ci
 
 # Install Playwright browsers (first time only)
 npx playwright install --with-deps
@@ -23,7 +25,12 @@ npx playwright install --with-deps
 ## Running Tests
 
 ```bash
-# Run all tests (headless, all browsers)
+# Run the hermetic compose-backed contract end-to-end
+cd ../..
+task test:e2e
+
+# Or, with the stack already running, execute Playwright directly
+cd tests/e2e
 npx playwright test
 
 # Run single test file
@@ -45,6 +52,7 @@ npx playwright test journeys/03-create-device.spec.ts --debug
 ## Test Organization
 
 - **`journeys/`** — The 13 critical user journeys (PRD §7.5.4). All must pass before v1.
+- **`security/`** — Focused security assertions (for example, token-storage enforcement).
 - **`pages/`** — Page Object Model; shared UI affordances extracted here.
 - **`fixtures/`** — Test utilities: auth, network isolation, axe-core.
 

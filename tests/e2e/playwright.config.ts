@@ -7,10 +7,11 @@ import { defineConfig, devices } from '@playwright/test';
  * Viewport matrix: mobile (375×667) and desktop (1280×800) per critical flow.
  * Network policy: all tests fail on non-localhost outbound calls (enforced via page.route).
  * 
- * DO NOT auto-start servers from here — developers run `task up` first (matches `task test` contract).
+ * DO NOT auto-start servers from here — use `task up` + `task test` or the one-shot `task test:e2e` contract.
  */
 export default defineConfig({
-  testDir: './journeys',
+  testDir: '.',
+  testMatch: ['journeys/**/*.spec.ts', 'security/**/*.spec.ts'],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -21,7 +22,7 @@ export default defineConfig({
   ],
 
   use: {
-    baseURL: process.env.BASE_URL || 'http://localhost:5173',
+    baseURL: process.env.BASE_URL || 'http://localhost:3000',
     trace: 'retain-on-failure',
     video: 'retain-on-failure',
     screenshot: 'only-on-failure',
@@ -72,10 +73,10 @@ export default defineConfig({
     },
   ],
 
-  // DO NOT uncomment webServer — developers must `task up` before running tests
+  // DO NOT uncomment webServer — use `task up` / `task test` or `task test:e2e`
   // webServer: {
   //   command: 'task up',
-  //   url: 'http://localhost:5173',
+  //   url: 'http://localhost:3000',
   //   reuseExistingServer: !process.env.CI,
   // },
 });

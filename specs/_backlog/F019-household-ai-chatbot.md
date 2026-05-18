@@ -190,7 +190,7 @@ locally:
 - **Q9**: How long do we keep chat history per user? 30 days? Per-user
   retention setting?
 - **Q10**: What happens when a tool call returns 0 results? Model should
-  say "no matches" — but we need to make sure it doesn't fall back to
+  say "no matches" — but we need to task sure it doesn't fall back to
   hallucinated guesses to "be helpful."
 - **Q11**: Streaming protocol — SSE or WebSocket? SSE is simpler and works
   with our HTTP-only stack; preferred unless we have specific bidirectional

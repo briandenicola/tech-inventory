@@ -24,7 +24,7 @@ If you're about to write a test, start with [Choosing the Right Test Type](#-cho
 - [Contract Tests](#-contract-tests)
 - [Test Data & Fixtures](#-test-data--fixtures)
 - [Authentication in Tests](#-authentication-in-tests)
-- [The `make test` Contract](#-the-make-test-contract)
+- [The `task test` Contract](#-the-task-test-contract)
 - [Debugging Failing Tests](#-debugging-failing-tests)
 - [Flaky Test Policy](#-flaky-test-policy)
 - [Writing a New Critical Journey](#-writing-a-new-critical-journey)
@@ -52,7 +52,7 @@ We do **not** test for:
 
 - ✅ Every change has tests at the appropriate level
 - ✅ Playwright is the only E2E framework
-- ✅ Tests run locally with one command (`make test`)
+- ✅ Tests run locally with one command (`task test`)
 - ✅ CI runs the exact same commands a developer runs
 - ✅ Flaky tests are bugs — fix or delete within a working day
 - ✅ Tests own their data — no shared fixtures across files
@@ -67,7 +67,7 @@ We do **not** test for:
 ### First-time setup
 
 ```bash
-# Prereqs: Docker, .NET 10 SDK, Node 22+, GNU Make
+# Prereqs: Docker, .NET 10 SDK, Node 22+, GNU task
 git clone <repo> && cd <repo>
 
 # Install JS deps and Playwright browsers

@@ -534,7 +534,7 @@ A task is **done** when:
 - [ ] PR merged with signed commits
 - [ ] Constitution compliance self-verified in PR
 - [ ] Playwright tests added or updated for any UI-facing change
-- [ ] `make test` runs green locally on the change branch
+- [ ] `task test` runs green locally on the change branch
 - [ ] No new flaky tests (E2E run twice locally without failure)
 
 ---

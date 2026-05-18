@@ -40,7 +40,7 @@ Over two decades of accumulating technology in a SharePoint List has:
 - ✅ Provide a fast, modern web UI + installable PWA
 - ✅ Authenticate family members via Microsoft Entra ID
 - ✅ Run entirely self-hosted on home infrastructure
-- ✅ Make all functionality available via versioned REST API
+- ✅ task all functionality available via versioned REST API
 - ✅ Preserve full history — nothing is hard-deleted
 - ✅ Export all data and images
 - ✅ Observaibility 
@@ -283,13 +283,13 @@ before any v1 release:
 Additional journeys are added to this list as features ship. Removing a
 journey from this list requires an ADR.
 
-### 7.5.5 The `make test` Contract
+### 7.5.5 The `task test` Contract
 A developer must be able to run the following from a clean checkout:
 
 ```bash
-make up        # bring up the full local stack (API, web, db)
-make test      # run all mandatory tests against the running stack
-make down      # tear down
+task up        # bring up the full local stack (API, web, db)
+task test      # run all mandatory tests against the running stack
+task down      # tear down
 ```
 
 ---

@@ -9,7 +9,7 @@
 - **T32–T38**: Resource controllers for Devices, Brands, Categories (with `/categories/tree` hierarchy route), Owners, Locations, Networks, Tags
 - **T40**: AuditEventsController (read-only list with filters)
 - **T41**: Global ProblemDetails middleware (`IExceptionHandler`) + Result→HTTP mapping via `ControllerResultExtensions`
-- Development-only auth bypass: `Auth:DevBypass=true` in `appsettings.Development.json` produces synthetic `dev-admin` principal (Admin role, fixed ULID `11111111-1111-1111-1111-111111111111`); startup throws if enabled outside Dev and logs warning
+- Development-only auth bypass: `Auth:DevBypass=true` in `appsettings.Development.json` produces synthetic `dev-admin` principal with Admin role; startup throws if enabled outside Dev and logs warning
 - Controllers marked `[Authorize]` by default; thin routing (no business logic)
 - OpenAPI 3.1 served at `/openapi/v1.json`; Swagger UI at `/swagger`
 - Smoke tests on `http://localhost:8080`:
@@ -39,7 +39,7 @@
 - 79 executable controller integration tests covering full CRUD, error paths, auth bypass, and ProblemDetails shaping
 - Route contract locked by tests: `/api/v1/{resource}` CRUD, `/api/v1/categories/tree`, `/api/v1/devices/{id}/tags`, `PATCH /api/v1/devices/{id}/owner` → 204 No Content
 - **Bug fixed** (exposed by tests): Category soft-delete cascade now correctly archives intermediate nodes
-- Test environment stable auth: subject `11111111-1111-1111-1111-111111111111`, Admin role
+- Test environment stable auth subject (fixed GUID), Admin role
 
 **Coverage Snapshot (Post-Round-6):**
 | Layer | Coverage |

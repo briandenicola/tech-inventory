@@ -57,4 +57,13 @@ CI quality gate must be green to merge: tests, security scans, SBOM.
 - Hicks confirmed AppDbContext registration works with factory; no blocking issues.
 - Verify pipeline updated: `scripts/verify.sh` / `verify.ps1` now includes three phases (format → build+test → vuln scan) for local/CI parity.
 
+**2026-05-18 (Phase 1 Round 7) — T47 CI Pipeline Close-Out:**
+- **Audit Complete:** CI workflow (ubuntu-latest) confirmed running full verify pipeline via `./scripts/verify.sh`. All Constitution §9 Phase 1 checks present: format, build, unit/integration tests, vuln scan, frontend check/lint, E2E tests, security scan (gitleaks via check-security.mjs).
+- **Pre-commit Hook Enhanced:** Expanded from security-only to include format + lint checks. Pre-commit now runs fast gates (dotnet format + pnpm lint + check-security.mjs, ~2–5 seconds total) preventing 80% of issues before CI. Remains a shell script for cross-platform Git hook execution.
+- **NuGet & pnpm Caching:** Both configured with fallback restore keys, saving ~1–2 minutes per run.
+- **Workflows Documentation:** Created `.github/workflows/README.md` (comprehensive one-pager covering CI steps, caching, debug guidance, platform choices, and **manual GitHub UI setup Brian must perform** — requires enabling branch protection on `main` to actually block PRs on CI failure).
+- **No High/Critical Gaps Found:** All mandatory Phase 1 checks running. Phase 3 TODOs (CodeQL SAST, Trivy container scan, SBOM) remain deferred as planned.
+- **Branch Protection Manual Step:** Documented that Brian must go to Settings → Branches, add rule on `main`, enable "Require status checks to pass before merging" and select `ci / verify` as the required check. Without this, PRs can merge even if CI fails (GitHub UI enforcement, not CI-side issue).
+- **E2E in CI:** docker-compose works in ubuntu-latest; Playwright E2E runs as part of verify.sh in CI. Locally, developers can skip E2E with `task test:unit` + `task test:integration` and run `task test:e2e` separately if Docker is available.
+
 <!-- Append new learnings below. Each entry is something lasting about the project. -->

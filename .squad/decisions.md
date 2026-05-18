@@ -1821,6 +1821,18 @@ Then test with regex matching key pattern: `screen.getByRole('button', { name: /
 
 ---
 
+### D-083, D-084, D-085: RESERVED — Intentionally Unused
+
+**Date:** 2026-05-19 (Phase 2 R4 close-out, coordinator note)
+**Status:** Reserved (no decision content)
+**Related:** D-078..D-082 (Apone T23 decision drops), commit `ff96a60`
+
+**Note:** Coordinator pre-allocated decision IDs **D-078..D-085** (8 slots) for Apone's T23 inbox at spawn time. Apone delivered **5 decisions** (D-078..D-082), leaving D-083..D-085 unused. To preserve already-committed cross-references (D-086, D-087 were merged together in `ff96a60`), these three IDs are intentionally skipped rather than renumbered. **Do not reuse.** Future decisions continue from D-088.
+
+This is a one-time coordinator hygiene note. Future spawns will allocate tighter ID ranges and/or backfill after delivery to prevent gaps.
+
+---
+
 ### D-086: Ownership Modal Pattern — No Shared Component Extraction
 
 **Date:** 2026-05-18 (Phase 2 Round 5, Vasquez)  

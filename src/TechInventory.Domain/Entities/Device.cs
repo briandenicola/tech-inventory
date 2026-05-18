@@ -125,7 +125,7 @@ public sealed class Device(
 
     public void ChangeStatus(DeviceStatus status, DateOnly? retiredDate = null, string? disposalMethod = null, string? modifiedBy = null)
     {
-        if (Status == DeviceStatus.Retired && status != DeviceStatus.Retired)
+        if (Status == DeviceStatus.Retired && status is not DeviceStatus.Retired and not DeviceStatus.Disposed)
         {
             throw new InvalidOperationException("Retired devices are read-only except for notes and disposal method.");
         }

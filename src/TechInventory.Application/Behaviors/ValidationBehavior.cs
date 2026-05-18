@@ -48,7 +48,7 @@ public sealed class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidat
             return await next().ConfigureAwait(false);
         }
 
-        var error = new Error("Validation", "One or more validation failures occurred.", validationErrors);
+        var error = Error.Validation(validationErrors);
         return ResultFactory.CreateFailure<TResponse>(error);
     }
 }

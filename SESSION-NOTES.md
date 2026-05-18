@@ -4,6 +4,15 @@ Append-only log. Newest entries at the top.
 
 ---
 
+## 2026-05-18 — Hicks T20-T28 application handlers, paging responses, and ownership/tag flows
+- Added concrete Application command/query packages under `src/TechInventory.Application\Devices`, `Brands`, `Categories`, `Owners`, `Locations`, `Networks`, and `Tags`; every handler now returns `Result`/`Result<T>`, every request has a FluentValidation validator, and list queries standardize on the new `PagedResponse<T>` DTO
+- Device work shipped `CreateDeviceCommand`, `UpdateDeviceCommand`, `DeleteDeviceCommand`, `GetDeviceByIdQuery`, `ListDevicesQuery`, `AddTagToDeviceCommand`, `RemoveTagFromDeviceCommand`, and `ClaimDeviceOwnershipCommand`; creates resolve the single household for default currency, update/delete/ownership/tag-removal stash BEFORE payloads in `IAuditContext`, and delete now supports retired → disposed transitions
+- Category handlers established the tree contract for Round 5: list paginates root nodes while preserving descendants, update rejects cycles and rebalances descendant depths, and delete cascades archive state through the subtree. Owner delete now blocks when any device still references the owner so the active-owner invariant remains intact
+- Verified from repo root on Windows with `dotnet format --verify-no-changes`, `dotnet build -c Release`, and `dotnet test -c Release`; current workspace summary was **182 succeeded / 78 skipped** because Apone's in-flight scaffolding tests are present locally alongside the committed suite
+- Next: Apone can finish consumer-side handler tests against the concrete request/response types; Hicks can pick up T29+ import/export handlers or controller surface after coordination
+
+---
+
 ## 2026-05-18 — Hicks T16-T19 repositories, audit stamping, and MediatR behaviors
 - Added `AddApplication()` / `AddInfrastructure()` wiring so the API now registers concrete repositories, `AuditSaveChangesInterceptor`, `ICurrentUserService`, `IUnitOfWork`, scoped `IAuditContext`, and MediatR pipeline behaviors in the intended order (Validation first, Audit last)
 - Implemented `Repository<TEntity, TKey>` plus all concrete Infrastructure repositories under `src/TechInventory.Infrastructure/Persistence/Repositories/`; exact-ID reads stay unit-of-work aware, list queries hide inactive reference rows by default, `IAuditEventRepository.AppendAsync` remains save-free, and Device list defaults exclude disposed rows unless explicitly filtered back in

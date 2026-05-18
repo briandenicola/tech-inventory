@@ -142,7 +142,7 @@ public sealed class DeviceRepository(AppDbContext dbContext) : Repository<Device
 
         if (deviceTag is null)
         {
-            return Result.Failure(new Error("NotFound", $"Device tag '{deviceId}:{tagId}' was not found."));
+            return Result.Failure(Error.NotFound($"Device tag '{deviceId}:{tagId}' was not found."));
         }
 
         deviceTag.Deactivate();
@@ -156,13 +156,13 @@ public sealed class DeviceRepository(AppDbContext dbContext) : Repository<Device
         var deviceExists = await DbContext.Devices.AnyAsync(device => device.Id == deviceTag.DeviceId, cancellationToken).ConfigureAwait(false);
         if (!deviceExists)
         {
-            return Result<DeviceTag>.Failure(new Error("NotFound", $"Device '{deviceTag.DeviceId}' was not found."));
+            return Result<DeviceTag>.Failure(Error.NotFound($"Device '{deviceTag.DeviceId}' was not found."));
         }
 
         var tagExists = await DbContext.Tags.AnyAsync(tag => tag.Id == deviceTag.TagId, cancellationToken).ConfigureAwait(false);
         if (!tagExists)
         {
-            return Result<DeviceTag>.Failure(new Error("NotFound", $"Tag '{deviceTag.TagId}' was not found."));
+            return Result<DeviceTag>.Failure(Error.NotFound($"Tag '{deviceTag.TagId}' was not found."));
         }
 
         var existing = DbContext.DeviceTags.Local

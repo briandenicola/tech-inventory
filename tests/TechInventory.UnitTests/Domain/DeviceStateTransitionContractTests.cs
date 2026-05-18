@@ -106,6 +106,27 @@ public class DeviceStateTransitionContractTests
     }
 
     [Fact]
+    public void Device_CanTransitionFromRetiredToDisposed()
+    {
+        var device = new Device(
+            Guid.NewGuid(),
+            "Camera",
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Currency.From("USD"),
+            status: DeviceStatus.Retired,
+            retiredDate: new DateOnly(2025, 1, 1));
+
+        device.ChangeStatus(DeviceStatus.Disposed, disposalMethod: "Recycled", modifiedBy: "apone");
+
+        device.Status.Should().Be(DeviceStatus.Disposed);
+        device.DisposalMethod.Should().Be("Recycled");
+        device.ModifiedBy.Should().Be("apone");
+    }
+
+    [Fact]
     public void Device_UpdateDisposalMethod_RejectsActiveDevices()
     {
         var device = CreateActiveDevice();

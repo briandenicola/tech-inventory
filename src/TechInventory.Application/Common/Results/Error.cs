@@ -23,6 +23,13 @@ public sealed record Error
 
     public IReadOnlyDictionary<string, string[]> ValidationErrors { get; }
 
+    public static Error Conflict(string message) => new("Conflict", message);
+
+    public static Error NotFound(string message) => new("NotFound", message);
+
+    public static Error Validation(IReadOnlyDictionary<string, string[]> validationErrors, string message = "One or more validation failures occurred.")
+        => new("Validation", message, validationErrors);
+
     private static IReadOnlyDictionary<string, string[]> NormalizeValidationErrors(IReadOnlyDictionary<string, string[]>? validationErrors)
     {
         var normalized = validationErrors is null

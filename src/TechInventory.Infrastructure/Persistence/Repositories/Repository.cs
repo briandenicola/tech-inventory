@@ -132,7 +132,7 @@ public abstract class Repository<TEntity, TKey>(AppDbContext dbContext)
 
     protected Error CreateNotFoundError(object lookupValue)
     {
-        return new Error("NotFound", $"{EntityName} '{lookupValue}' was not found.");
+        return Error.NotFound($"{EntityName} '{lookupValue}' was not found.");
     }
 
     private bool IsNotDeleted(TEntity entity)

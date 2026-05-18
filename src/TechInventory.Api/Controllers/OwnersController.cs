@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TechInventory.Api.Common;
+using TechInventory.Application.Abstractions.Services;
 using TechInventory.Application.Common.Paging;
 using TechInventory.Application.Owners;
 using TechInventory.Application.Owners.Commands;
@@ -13,7 +14,7 @@ namespace TechInventory.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/v1/owners")]
-public sealed class OwnersController(ISender sender) : ControllerBase
+public sealed class OwnersController(ISender sender, ICurrentUserService currentUserService) : ControllerBase
 {
     [HttpGet]
     [ProducesResponseType(typeof(PagedResponse<OwnerResponse>), StatusCodes.Status200OK)]
@@ -30,6 +31,26 @@ public sealed class OwnersController(ISender sender) : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<OwnerResponse>> GetOwnerById(Guid id, CancellationToken cancellationToken)
         => this.OkResult(await sender.Send(new GetOwnerByIdQuery(id), cancellationToken));
+
+    [HttpGet("me")]
+    [ProducesResponseType(typeof(OwnerResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<OwnerResponse>> GetCurrentOwner(CancellationToken cancellationToken)
+    {
+        var oidString = currentUserService.GetCurrentUserId();
+        if (string.IsNullOrEmpty(oidString) || oidString == "system")
+        {
+            return Unauthorized();
+        }
+
+        if (!Guid.TryParse(oidString, out var entraObjectId))
+        {
+            return Unauthorized();
+        }
+
+        return this.OkResult(await sender.Send(new GetOwnerByEntraObjectIdQuery(entraObjectId), cancellationToken));
+    }
 
     [HttpPost]
     [ProducesResponseType(typeof(OwnerResponse), StatusCodes.Status201Created)]

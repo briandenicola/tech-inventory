@@ -163,4 +163,23 @@ public sealed class OwnersControllerTests(IntegrationTestFactory<OwnersControlle
         var problem = await ReadProblemDetailsAsync(response);
         problem.Status.Should().Be((int)HttpStatusCode.NotFound);
     }
+
+    [Fact]
+    public async Task GetCurrentOwner_WithDevBypass_ReturnsCurrentUser()
+    {
+        await ResetDatabaseAsync();
+        var devEntraObjectId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var owner = new Owner(devEntraObjectId, "dev-admin", OwnerRole.Admin, devEntraObjectId);
+        await SeedAsync(entities: [owner]);
+        using var client = CreateClient();
+
+        var response = await client.GetAsync("/api/v1/owners/me");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var payload = await ReadJsonAsync<OwnerResponse>(response);
+        payload.Should().NotBeNull();
+        payload.EntraObjectId.Should().Be(devEntraObjectId);
+        payload.DisplayName.Should().Be("dev-admin");
+        payload.Role.Should().Be(OwnerRole.Admin.ToString());
+    }
 }

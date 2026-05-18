@@ -2,7 +2,7 @@
 
 **Spec**: `specs/001-core-api/spec.md`
 **Plan**: `specs/001-core-api/plan.md`
-**Status**: Not Started
+**Status**: In Progress — Hicks completed T01-T10 domain core
 
 ---
 
@@ -12,21 +12,21 @@
 
 | ID | Task | Owner | Outcome | Acceptance Check | Ref |
 |----|------|-------|---------|-----------------|-----|
-| T01 | Create solution + projects | Hicks | `TechInventory.sln` with Domain, Application, Infrastructure, Api projects; test projects under `tests/`. All build green. | `dotnet build -c Release` passes with zero warnings | Plan §3 |
-| T02 | Add shared kernel: Result<T>, Error, base Entity | Hicks | `Result<T>` record, `Entity` base class (Id, CreatedAt, ModifiedAt), guard clauses in Domain. | Unit tests for Result success/failure paths | Plan §2.2 |
-| T03 | Wire Program.cs: DI, MediatR, FluentValidation, Swagger, health checks | Hicks | Minimal `Program.cs` with all service registrations. `/health` and `/swagger` respond. | `curl /health` → 200; `/swagger` returns JSON | Plan §4.4 |
+| T01 | ✅ Add domain primitives | Hicks | `Entity`, `AggregateRoot`, `ValueObject`, and shared guard clauses now live in `TechInventory.Domain`; audit metadata hooks are ready for later persistence wiring. | Verified by `dotnet build -c Release` with zero warnings. | Plan §1.1 |
+| T02 | ✅ Add domain enums | Hicks | Added `DeviceStatus`, `LocationType`, `AuditAction`, `ImportStatus`, and `OwnerRole` enums under `TechInventory.Domain/Enums/`. | Verified by `dotnet build -c Release` with zero warnings. | Plan §1.2 |
+| T03 | ✅ Add Household entity | Hicks | `Household.cs` owns household identity plus `DefaultCurrency` via the `Currency` value object. | Verified by `dotnet build -c Release`; `Device.Create(...)` can now inherit the household default currency. | Decision: currency directive |
 
 ### Domain Entities
 
 | ID | Task | Owner | Outcome | Acceptance Check | Ref |
 |----|------|-------|---------|-----------------|-----|
-| T04 | Add Device entity + DeviceStatus enum | Hicks | `Device.cs` with all fields from Plan §1.1, invariants enforced in constructor/methods. | Unit tests for invariants (e.g., retired device restrictions) | Plan §1.1 |
-| T05 | Add Brand entity | Hicks | `Brand.cs` with Name uniqueness invariant. | Unit test: empty name throws | Plan §1.1 |
-| T06 | Add Category entity (hierarchical) | Hicks | `Category.cs` with ParentId, max-depth-3 invariant. | Unit test: depth > 3 rejected | Plan §1.1 |
-| T07 | Add Owner entity + OwnerRole enum | Hicks | `Owner.cs` with DisplayName required. | Unit test: null DisplayName throws | Plan §1.1 |
-| T08 | Add Location entity + LocationType enum | Hicks | `Location.cs` with Type enum. | Unit test for construction | Plan §1.1 |
-| T09 | Add Network entity | Hicks | `Network.cs` with Name uniqueness. | Unit test | Plan §1.1 |
-| T10 | Add Tag + DeviceTag entities | Hicks | `Tag.cs`, `DeviceTag.cs` (composite key). | Unit test | Plan §1.1 |
+| T04 | ✅ Add Device entity + Currency value object | Hicks | `Device.cs` now carries the full Plan §1.1 field set, uses validated ISO 4217 `Currency`, defaults device currency from `Household.DefaultCurrency` at creation, and blocks general edits once retired. | Verified by `dotnet build -c Release`; Apone can cover currency defaulting and retired-device invariants in T43. | Plan §1.1 + currency directive |
+| T05 | ✅ Add Brand entity | Hicks | `Brand.cs` now enforces required name, keeps an uppercase normalization helper for later uniqueness enforcement, and supports archive/reactivate updates. | Verified by `dotnet build -c Release`; Apone can cover empty-name and invalid-website cases in T43. | Plan §1.1 |
+| T06 | ✅ Add Category entity (hierarchical) | Hicks | `Category.cs` now tracks `ParentId` plus validated `Depth`, enforces the max-depth-3 hierarchy rule in Domain, and supports archive/reactivate updates. | Verified by unit tests rejecting depth > 3 and accepting a valid child category. | Plan §1.1 |
+| T07 | ✅ Add Owner entity + OwnerRole enum | Hicks | `Owner.cs` now requires `DisplayName`, carries `OwnerRole` plus optional `EntraObjectId`, and uses `IsActive` soft-delete semantics. | Verified by unit tests for null display name rejection, role/object-id capture, and active-by-default construction. | Plan §1.1 |
+| T08 | ✅ Add Location entity + LocationType enum | Hicks | `Location.cs` now enforces required name, persists `LocationType`, and supports archive/reactivate updates. | Verified by unit tests for empty-name rejection, type persistence, and active-by-default construction. | Plan §1.1 |
+| T09 | ✅ Add Network entity | Hicks | `Network.cs` now requires a name, carries optional description, and exposes `NormalizedName` for later uniqueness enforcement. | Verified by unit tests for empty-name rejection, optional description, and active-by-default construction. | Plan §1.1 |
+| T10 | ✅ Add Tag + DeviceTag entities | Hicks | `Tag.cs` and `DeviceTag.cs` now model tag metadata plus device-tag composite identity, using activation state instead of hard deletes. | Verified by unit tests for empty-name rejection, default-GUID rejection, and device/tag pairing. | Plan §1.1 |
 | T11 | Add AuditEvent entity | Hicks | `AuditEvent.cs` — immutable after creation (no setters for mutation). | Unit test: can construct, fields readonly | Plan §1.1 |
 | T12 | Add ImportBatch entity | Hicks | `ImportBatch.cs` with status enum. | Unit test | Plan §1.1 |
 
@@ -129,3 +129,6 @@ T32..T42 → T48 (OpenAPI commit)
 - Hudson owns CI wiring (T47).
 - If T01 is done by Hicks in the parallel scaffolding sprint, T02+ can begin immediately.
 - Currency strategy (open question #1) must be decided before T04 finalizes Device entity. See `decisions/inbox/ripley-currency-strategy.md`.
+- 2026-05-18: Apone landed Domain tests for `Currency` + `Device`/`Household` currency behavior, turned on the `/health` smoke test, and added Playwright token-storage enforcement.
+- 2026-05-18: Frontend token-storage lint gate landed under Decision D-002 in `src/TechInventory.Web/`; remaining enforcement gates are outside this task list.
+- 2026-05-18: Hudson added the pre-commit + CI mirror for Decision D-002 via `.githooks/pre-commit`, `task hooks:install`, `.gitleaks.toml`, and `scripts/check-security.mjs`; full T47 remains open until the broader verify pipeline is green.

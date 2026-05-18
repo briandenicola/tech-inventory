@@ -82,3 +82,11 @@ Phase 1 lands in `specs/001-core-api/`. Pattern references: **R1** for MediatR h
 - `Household` owns `DefaultCurrency`. `Device.Create(...)` takes a `Household` and falls back to `household.DefaultCurrency` when a per-device currency is not supplied; after creation, `Device.Currency` is independent and can diverge through `UpdateDetails(...)`.
 - `Device.UpdateDetails(...)` throws when `Status == Retired`; only `UpdateNotes(...)` and `UpdateDisposalMethod(...)` remain legal for retired/disposed records. `UpdateDisposalMethod(...)` itself throws unless status is `Retired` or `Disposed`.
 - Apone test targets: currency normalization (`usd` → `USD`), invalid code/length rejection, device creation inheriting household currency, explicit device currency override, retired-device general edits throwing, and retired/disposed-only disposal-method rules.
+
+### 2026-05-18: Domain reference entities and tagging foundations (Phase 1 T06-T10)
+
+- `Category` stores both `ParentId` and `Depth`; roots must be depth 1, children must be depth 2 or 3, and anything above 3 is rejected in Domain without waiting for repository checks.
+- `Owner` uses `OwnerRole`, optional `Guid? EntraObjectId`, and `IsActive` archive semantics so Application/Auth work can attach Entra identities without reshaping the aggregate.
+- `Location`, `Network`, and `Tag` follow the `Brand` pattern: required trimmed names, uppercase normalization helpers for later uniqueness enforcement, and `Deactivate()` / `Reactivate()` soft-delete flow.
+- `DeviceTag` keeps composite identity as `DeviceId` + `TagId` and uses `IsActive` instead of hard delete; future repository logic should reactivate an existing pair instead of inserting duplicates.
+- Apone test targets next: category root/child depth edge cases, owner Entra identity linking, network normalized-name uniqueness checks, and device-tag reactivation semantics.

@@ -77,4 +77,20 @@ Agent Scribe initialized and ready for work.
 - Short decision summaries (1 paragraph) scale better than long docs. Link to inbox file path for full rationale if needed.
 - Mark partial tasks (like T08) explicitly so coordinator can spawn follow-up rounds.
 
+## 2026-05-19 (Phase 2 Round 11) — R3 Final Close-Out (Apone T18) — `[your-sha-pending]`
+
+**Inbox merged:** 1 file (apone-phase2-t18-component-tests.md) → D-062..D-069 (renumbered from Apone's placeholders D-061..D-068 because D-061 was claimed by coordinator backfill in commit 5c23575)
+
+**Tasks flipped:** T18 ✅ (with 4 documented E2E deferrals)
+
+**History entries:** Apone R3 + Scribe R11
+
+**Decision ledger:** D-001 through D-069 (69 total, contiguous)
+
+**Phase 2 progress:** 18/53 tasks (34%)
+
+**Round 3 status:** ✅ Fully closed (T14-T18 all done)
+
+**Notes:** R10 missed both inbox files; coordinator manually merged in commit 5c23575. Lesson logged for future Scribe runs: always run `Get-ChildItem` directly on inbox dir, don't trust glob output alone.
+
 ### 2026-05-18 (Phase 1 Round 7)

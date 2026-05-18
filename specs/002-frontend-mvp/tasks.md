@@ -51,7 +51,7 @@
 | ✅ T15 | Devices list page (`/devices`) | Vasquez | Render paginated table: columns (Name, Brand, Category, Owner, Status, Purchase Date). Empty state if no devices. Loading skeleton. Pagination controls (prev/next, page size selector). | List renders; empty state; loading skeleton; pagination works; <200 lines component. | T14 | Spec §5, J4 |
 | ✅ T16 | Filters sidebar (search + facets) | Vasquez | Sidebar: search input (name/serial free-text), brand dropdown, category dropdown, owner dropdown, location dropdown, network dropdown, status multi-select, purchase year range. URL-backed via `$page.url.searchParams`. | Filters apply; URL updates; reload preserves filters; dropdowns populated from reference data. | T14, T15 | Spec §5, J4 |
 | ✅ T17 | Sort controls (column headers) | Vasquez | Sortable column headers: Name, Purchase Date, Created At. Click toggles asc/desc. URL-backed sort state. | Sort works; URL reflects sort; reload preserves sort; icon indicates direction. | T15 | Spec §5, J4 |
-| T18 | Device list component tests | Apone | Vitest + Testing Library: test loading state, empty state, error state, success state (with mock data), pagination, filters, sort. | 8+ component tests green; axe-core zero violations per state. | T15, T16, T17 | Spec §6.2 |
+| ✅ T18 | Device list component tests | Apone | Vitest + Testing Library: test loading state, empty state, error state, success state (with mock data), pagination, filters, sort. | 8+ component tests green; axe-core zero violations per state. *Deferrals: 4 E2E-deferred (mobile cards/drawer/focus trap, DeviceFilters complexity).* | T15, T16, T17 | Spec §6.2 |
 
 ---
 
@@ -152,7 +152,7 @@
 - **Round 0 (Foundation)**: 6 tasks (T01-T05, T05a) — [Brian] + [P] parallel
 - **Round 1 (Backend Auth)**: 3 tasks (T06-T08) — Bishop
 - **Round 2 (Login + Shell)**: ✅ 5 tasks (T09-T13) — Vasquez + Bishop
-- **Round 3 (Devices List)**: 5 tasks (T14-T18) — Vasquez + Apone
+- **Round 3 (Devices List)**: 5/5 ✅ (T14-T18 complete; T18 with 4 documented E2E deferrals) — Vasquez + Apone
 - **Round 4 (Device CRUD)**: 5 tasks (T19-T23) — Vasquez + Apone
 - **Round 5 (Ownership)**: 3 tasks (T24-T26) — Vasquez + Apone
 - **Round 6 (Reference Entities)**: 7 tasks (T27-T33) — Vasquez + Apone

@@ -217,3 +217,32 @@ Playwright layout: tests in `tests/e2e/`, Page Object Model in `tests/e2e/pages/
 - Seed one active row and one soft-deleted row into the same per-class SQLite database, then assert the default list path returns only the active ID while the `includeInactive`/explicit-status path returns both IDs.
 - Use IDs, not counts, for the assertion so the test stays stable even as the fixture accumulates unrelated rows across multiple facts.
 
+## Phase 2 Round 3 — T18 Devices List Component Tests — `a0fd686`
+
+**Task:** T18 — Vitest + Testing Library + axe-core tests for Vasquez's R3 components.
+
+**Delivered:**
+- 5 test files (LoadingSkeleton, EmptyState, ErrorState, PaginationControls, DeviceTable)
+- 44 tests passing / 0 failed / 0 skipped
+- `src/lib/test-utils/factories.ts` (data factories with `resetFactories()`)
+- `src/lib/test-utils/vitest-axe.d.ts` (TS defs for `toHaveNoViolations`)
+- Infra: `resolve.conditions: ['browser']` in vite.config.ts (D-062, renumbered), vitest-axe matcher registration (D-063, renumbered)
+- Added dependency: `@testing-library/user-event@14.6.1`
+
+**Coverage verified:**
+- D-038 column order (Name, Brand, Category, Owner, Status, Purchase Date)
+- D-054 2-state sort cycle (asc ↔ desc via aria-sort)
+- D-058 300ms debounce (fake timers)
+- Constitution §3.4 axe-core zero violations on every component
+- Constitution §3.5 test isolation (factories reset in beforeEach)
+
+**Decisions added:** D-062 through D-069 (8 — vite browser-conditions, axe matcher reg, runes hook-test limitation, factory pattern, mobile-cards E2E deferral, drawer E2E deferral, select value binding jsdom issue, coverage target ~70%).
+
+**Deferrals (documented):**
+1. `DeviceFilters` component tests — complexity (mobile drawer + onMount + ref-data store mocking); will be covered by E2E in Round 10.
+2. `useDevices()` hook tests — Svelte 5 runes can't run outside component context; indirectly exercised via component tests.
+3. Mobile cards rendering — jsdom doesn't simulate media queries reliably.
+4. Mobile drawer + focus trap — jsdom doesn't accurately simulate Tab navigation.
+
+**Checks:** `pnpm run check` ✅, `pnpm run lint` ✅, `pnpm run test` ✅ (44/44).
+

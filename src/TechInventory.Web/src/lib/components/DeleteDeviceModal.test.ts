@@ -52,8 +52,8 @@ describe('DeleteDeviceModal', () => {
 		it('has cancel and delete buttons', () => {
 			render(DeleteDeviceModal, { props: defaultProps });
 
-			expect(screen.getByRole('button', { name: /common.cancel/i })).toBeInTheDocument();
-			expect(screen.getByRole('button', { name: /devices.delete.confirm/i })).toBeInTheDocument();
+			expect(screen.getByRole('button', { name: /common.actions.cancel/i })).toBeInTheDocument();
+			expect(screen.getByRole('button', { name: /common.actions.delete/i })).toBeInTheDocument();
 		});
 	});
 
@@ -61,7 +61,7 @@ describe('DeleteDeviceModal', () => {
 		it('delete button disabled when confirmation name is empty', () => {
 			render(DeleteDeviceModal, { props: defaultProps });
 
-			const deleteButton = screen.getByRole('button', { name: /devices.delete.confirm/i });
+			const deleteButton = screen.getByRole('button', { name: /common.actions.delete/i });
 			expect(deleteButton).toBeDisabled();
 		});
 
@@ -75,7 +75,7 @@ describe('DeleteDeviceModal', () => {
 			const reasonTextarea = screen.getByLabelText(/devices.delete.reasonLabel/i);
 			await user.type(reasonTextarea, 'A valid reason with at least 10 chars');
 
-			const deleteButton = screen.getByRole('button', { name: /devices.delete.confirm/i });
+			const deleteButton = screen.getByRole('button', { name: /common.actions.delete/i });
 			expect(deleteButton).toBeDisabled();
 		});
 
@@ -89,7 +89,7 @@ describe('DeleteDeviceModal', () => {
 			const reasonTextarea = screen.getByLabelText(/devices.delete.reasonLabel/i);
 			await user.type(reasonTextarea, 'A valid reason with at least 10 chars');
 
-			const deleteButton = screen.getByRole('button', { name: /devices.delete.confirm/i });
+			const deleteButton = screen.getByRole('button', { name: /common.actions.delete/i });
 			await waitFor(() => {
 				expect(deleteButton).not.toBeDisabled();
 			});
@@ -105,7 +105,7 @@ describe('DeleteDeviceModal', () => {
 			const reasonTextarea = screen.getByLabelText(/devices.delete.reasonLabel/i);
 			await user.type(reasonTextarea, 'Valid reason here');
 
-			const deleteButton = screen.getByRole('button', { name: /devices.delete.confirm/i });
+			const deleteButton = screen.getByRole('button', { name: /common.actions.delete/i });
 			await waitFor(() => {
 				expect(deleteButton).not.toBeDisabled();
 			});
@@ -121,7 +121,7 @@ describe('DeleteDeviceModal', () => {
 			await user.type(confirmInput, 'iPhone 15 Pro');
 
 			// Reason is empty
-			const deleteButton = screen.getByRole('button', { name: /devices.delete.confirm/i });
+			const deleteButton = screen.getByRole('button', { name: /common.actions.delete/i });
 			expect(deleteButton).toBeDisabled();
 		});
 
@@ -135,7 +135,7 @@ describe('DeleteDeviceModal', () => {
 			const reasonTextarea = screen.getByLabelText(/devices.delete.reasonLabel/i);
 			await user.type(reasonTextarea, 'Short');
 
-			const deleteButton = screen.getByRole('button', { name: /devices.delete.confirm/i });
+			const deleteButton = screen.getByRole('button', { name: /common.actions.delete/i });
 			expect(deleteButton).toBeDisabled();
 		});
 
@@ -149,7 +149,7 @@ describe('DeleteDeviceModal', () => {
 			const reasonTextarea = screen.getByLabelText(/devices.delete.reasonLabel/i);
 			await user.type(reasonTextarea, '1234567890');
 
-			const deleteButton = screen.getByRole('button', { name: /devices.delete.confirm/i });
+			const deleteButton = screen.getByRole('button', { name: /common.actions.delete/i });
 			await waitFor(() => {
 				expect(deleteButton).not.toBeDisabled();
 			});
@@ -165,7 +165,7 @@ describe('DeleteDeviceModal', () => {
 			const reasonTextarea = screen.getByLabelText(/devices.delete.reasonLabel/i);
 			await user.type(reasonTextarea, 'This device is no longer in use and will be recycled.');
 
-			const deleteButton = screen.getByRole('button', { name: /devices.delete.confirm/i });
+			const deleteButton = screen.getByRole('button', { name: /common.actions.delete/i });
 			await waitFor(() => {
 				expect(deleteButton).not.toBeDisabled();
 			});
@@ -175,6 +175,7 @@ describe('DeleteDeviceModal', () => {
 	describe('submit behavior', () => {
 		it('calls onConfirm with reason on valid submission', async () => {
 			const user = userEvent.setup();
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			const onConfirm = vi.fn(async (reason: string) => {});
 
 			render(DeleteDeviceModal, {
@@ -191,7 +192,7 @@ describe('DeleteDeviceModal', () => {
 			const reason = 'Device is broken and will be recycled';
 			await user.type(reasonTextarea, reason);
 
-			const deleteButton = screen.getByRole('button', { name: /devices.delete.confirm/i });
+			const deleteButton = screen.getByRole('button', { name: /common.actions.delete/i });
 			await waitFor(() => expect(deleteButton).not.toBeDisabled());
 
 			await user.click(deleteButton);
@@ -221,7 +222,7 @@ describe('DeleteDeviceModal', () => {
 			const reasonTextarea = screen.getByLabelText(/devices.delete.reasonLabel/i);
 			await user.type(reasonTextarea, 'Valid reason here');
 
-			const deleteButton = screen.getByRole('button', { name: /devices.delete.confirm/i });
+			const deleteButton = screen.getByRole('button', { name: /common.actions.delete/i });
 			await waitFor(() => expect(deleteButton).not.toBeDisabled());
 
 			await user.click(deleteButton);
@@ -243,7 +244,7 @@ describe('DeleteDeviceModal', () => {
 				}
 			});
 
-			const cancelButton = screen.getByRole('button', { name: /common.cancel/i });
+			const cancelButton = screen.getByRole('button', { name: /common.actions.cancel/i });
 			await user.click(cancelButton);
 
 			expect(onCancel).toHaveBeenCalledTimes(1);
@@ -291,7 +292,7 @@ describe('DeleteDeviceModal', () => {
 			const reasonTextarea = screen.getByLabelText(/devices.delete.reasonLabel/i);
 			await user.type(reasonTextarea, 'Valid reason here');
 
-			const deleteButton = screen.getByRole('button', { name: /devices.delete.confirm/i });
+			const deleteButton = screen.getByRole('button', { name: /common.actions.delete/i });
 			await waitFor(() => expect(deleteButton).not.toBeDisabled());
 
 			await user.click(deleteButton);
@@ -314,8 +315,8 @@ describe('DeleteDeviceModal', () => {
 			// Modal should have focusable elements
 			const confirmInput = screen.getByLabelText(/devices.delete.confirmPrompt/i);
 			const reasonTextarea = screen.getByLabelText(/devices.delete.reasonLabel/i);
-			const cancelButton = screen.getByRole('button', { name: /common.cancel/i });
-			const deleteButton = screen.getByRole('button', { name: /devices.delete.confirm/i });
+			const cancelButton = screen.getByRole('button', { name: /common.actions.cancel/i });
+			const deleteButton = screen.getByRole('button', { name: /common.actions.delete/i });
 
 			expect(confirmInput).toBeInTheDocument();
 			expect(reasonTextarea).toBeInTheDocument();
@@ -365,7 +366,7 @@ describe('DeleteDeviceModal', () => {
 			const reasonTextarea = screen.getByLabelText(/devices.delete.reasonLabel/i);
 			await user.type(reasonTextarea, 'Valid reason here');
 
-			const deleteButton = screen.getByRole('button', { name: /devices.delete.confirm/i });
+			const deleteButton = screen.getByRole('button', { name: /common.actions.delete/i });
 			await waitFor(() => expect(deleteButton).not.toBeDisabled());
 
 			await user.click(deleteButton);
@@ -375,3 +376,4 @@ describe('DeleteDeviceModal', () => {
 		});
 	});
 });
+

@@ -5,12 +5,18 @@
  * Constitution §3.4: axe-core zero violations
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/svelte';
 import { axe } from 'vitest-axe';
 import userEvent from '@testing-library/user-event';
 import ToastContainer from './ToastContainer.svelte';
 import { showToast, clearToasts } from '$lib/stores/toast';
+
+// Mock Svelte transitions to no-op for jsdom (transitions don't complete properly in test environment)
+vi.mock('svelte/transition', () => ({
+	fly: () => ({}),
+	fade: () => ({})
+}));
 
 describe('ToastContainer', () => {
 	beforeEach(() => {

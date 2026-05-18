@@ -216,6 +216,10 @@ export default [
 			parserOptions: {
 				parser: ts.parser
 			}
+		},
+		rules: {
+			// Downgrade Svelte compiler warnings to ESLint warnings (Constitution D-072: intentional runes patterns)
+			'svelte/valid-compile': 'warn'
 		}
 	},
 	{

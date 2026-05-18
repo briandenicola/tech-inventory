@@ -40,7 +40,13 @@ public sealed record ImportDevicePreview(
     string Status,
     string? Notes,
     DateOnly? RetiredDate,
-    string? DisposalMethod);
+    string? DisposalMethod,
+    string? Purpose,
+    string? OperatingSystem,
+    string? IpAddress,
+    string? MacAddress,
+    string? ProductUrl,
+    string? Version);
 
 public sealed record ImportRowError(
     int RowNumber,

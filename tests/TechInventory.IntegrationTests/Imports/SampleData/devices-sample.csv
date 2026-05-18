@@ -1,0 +1,11 @@
+DeviceName,Location,Purpose,Retired,DeviceType,IP Address,License Key,MAC Address,Operating System,PurchasedDate,Version,Networking,Notes,Vendor,Model,Url
+Test Router 1,Office,sold to neighbor,True,Router,192.168.1.1,,AA:BB:CC:DD:EE:F1,RouterOS, 7/4/2023 ,v7.2,Eero,Retired device,Eero,Pro 6,https://eero.com/shop/eero-pro-6
+Sample Laptop,Bedroom,given to John,True,Laptop,,,00-11-22-33-44-55,Windows 11,1/15/2022,22H2,WiFi,Donated to friend,Dell,XPS 13,
+Backup Server,Basement,backup spare,True,Server,10.0.0.5,,aabbccddeeff,Ubuntu 22.04,3/20/2021,22.04,Wired,Cold storage,Generic,Server,
+Smart Display,Kitchen,,False,Smart Display,192.168.1.50,,11:22:33:44:55:66,Android 12,11/25/2023,12,Home WiFi,Kitchen assistant,Amazon,Echo Show 15,https://amazon.com/echo-show
+Test Switch,Office,,False,Switch,,,,Proprietary,2/1/2020,1.0,N/A,8-port gigabit,Netgear,GS308,
+IoT Sensor,Living Room,,False,Sensor,192.168.1.100,IGNORE-ME,AA-BB-CC-DD-EE-F2,Custom,9/10/2023,2.1,z-wave,Temperature monitor,Custom,Sensor,https://example.com/sensor
+Eero Mesh 1,Hallway,,False,Router,192.168.1.2,,AABBCCDDEEF3,RouterOS,5/5/2023,v7.1,Eero,Mesh node,Eero,Beacon,
+Eero Mesh 2,Garage,,False,Router,192.168.1.3,,AA-BB-CC-DD-EE-F4,RouterOS,5/5/2023,v7.1,Eero,Second mesh node,Eero,Beacon,
+Bad MAC Device,Office,,False,Laptop,,,INVALID-MAC,Windows 10,1/1/2021,21H1,WiFi,Should fail validation,Dell,Inspiron,
+Whitespace Date,Bedroom,,False,Tablet,,,,Android,7/15/2024,13.5,Bluetooth,Lenient date test,Samsung,Galaxy Tab,

@@ -92,10 +92,14 @@ internal sealed class DeviceImportProcessingService(
             var fieldValues = BuildFieldValues(rawValues, headerMappings);
             var rowErrors = new List<ImportFieldError>();
 
-            var status = ParseStatus(fieldValues, rowErrors);
+            var purpose = Normalize(fieldValues, ImportFieldNames.Purpose);
             var purchaseDate = ParseDate(fieldValues, ImportFieldNames.PurchaseDate, rowErrors);
             var retiredDate = ParseDate(fieldValues, ImportFieldNames.RetiredDate, rowErrors);
+            var status = ParseSharePointStatus(fieldValues, purpose, ref retiredDate, purchaseDate, rowErrors, out var disposalMethod);
             var purchasePrice = ParseDecimal(fieldValues, ImportFieldNames.PurchasePrice, rowErrors);
+            var network = NormalizeNetworking(fieldValues);
+            var macAddress = NormalizeMacAddress(Normalize(fieldValues, ImportFieldNames.MacAddress), rowErrors);
+            var productUrl = NormalizeProductUrl(Normalize(fieldValues, ImportFieldNames.ProductUrl), rowErrors);
 
             var candidate = new ImportDeviceCandidate(
                 Normalize(fieldValues, ImportFieldNames.Name) ?? string.Empty,
@@ -103,7 +107,7 @@ internal sealed class DeviceImportProcessingService(
                 Normalize(fieldValues, ImportFieldNames.Category) ?? string.Empty,
                 Normalize(fieldValues, ImportFieldNames.Owner) ?? string.Empty,
                 Normalize(fieldValues, ImportFieldNames.Location) ?? string.Empty,
-                Normalize(fieldValues, ImportFieldNames.Network),
+                network,
                 Normalize(fieldValues, ImportFieldNames.Model),
                 Normalize(fieldValues, ImportFieldNames.SerialNumber),
                 purchaseDate,
@@ -112,7 +116,13 @@ internal sealed class DeviceImportProcessingService(
                 status,
                 Normalize(fieldValues, ImportFieldNames.Notes),
                 retiredDate,
-                Normalize(fieldValues, ImportFieldNames.DisposalMethod));
+                disposalMethod,
+                purpose,
+                Normalize(fieldValues, ImportFieldNames.OperatingSystem),
+                Normalize(fieldValues, ImportFieldNames.IpAddress),
+                macAddress,
+                productUrl,
+                Normalize(fieldValues, ImportFieldNames.Version));
 
             var validationResult = CandidateValidator.Validate(candidate);
             rowErrors.AddRange(validationResult.Errors.Select(error => new ImportFieldError(error.PropertyName, error.ErrorMessage)));
@@ -169,7 +179,7 @@ internal sealed class DeviceImportProcessingService(
                     network => network.Id,
                     rowErrors,
                     rowMissingLookups,
-                    allowCreate: false);
+                    allowCreate: true);
 
                 if (rowErrors.Count == 0)
                 {
@@ -192,7 +202,13 @@ internal sealed class DeviceImportProcessingService(
                             candidate.Status.ToString(),
                             candidate.Notes,
                             candidate.RetiredDate,
-                            candidate.DisposalMethod),
+                            candidate.DisposalMethod,
+                            candidate.Purpose,
+                            candidate.OperatingSystem,
+                            candidate.IpAddress,
+                            candidate.MacAddress,
+                            candidate.ProductUrl,
+                            candidate.Version),
                         brandId,
                         categoryId,
                         ownerId,
@@ -305,6 +321,84 @@ internal sealed class DeviceImportProcessingService(
         => values.TryGetValue(fieldName, out var value) && !string.IsNullOrWhiteSpace(value)
             ? value.Trim()
             : null;
+
+    private static DeviceStatus ParseSharePointStatus(
+        IReadOnlyDictionary<string, string?> values,
+        string? purpose,
+        ref DateOnly? retiredDate,
+        DateOnly? purchaseDate,
+        ICollection<ImportFieldError> errors,
+        out string? disposalMethod)
+    {
+        disposalMethod = null;
+        var rawRetired = Normalize(values, ImportFieldNames.Status);
+        if (string.IsNullOrWhiteSpace(rawRetired))
+        {
+            return DeviceStatus.Active;
+        }
+
+        if (!bool.TryParse(rawRetired, out var isRetired))
+        {
+            errors.Add(new ImportFieldError(ImportFieldNames.Status, $"Retired '{rawRetired}' must be True or False."));
+            return DeviceStatus.Active;
+        }
+
+        if (!isRetired)
+        {
+            return DeviceStatus.Active;
+        }
+
+        if (!string.IsNullOrWhiteSpace(purpose) &&
+            System.Text.RegularExpressions.Regex.IsMatch(purpose, @"\b(sold|given|donated|gifted|disposed|trashed)\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+        {
+            disposalMethod = purpose;
+            return DeviceStatus.Disposed;
+        }
+
+        retiredDate ??= purchaseDate;
+        return DeviceStatus.Retired;
+    }
+
+    private static string? NormalizeNetworking(IReadOnlyDictionary<string, string?> values)
+    {
+        var rawNetwork = Normalize(values, ImportFieldNames.Network);
+        return string.Equals(rawNetwork, "N/A", StringComparison.OrdinalIgnoreCase)
+            ? null
+            : rawNetwork;
+    }
+
+    private static string? NormalizeMacAddress(string? macAddress, ICollection<ImportFieldError> errors)
+    {
+        if (string.IsNullOrWhiteSpace(macAddress))
+        {
+            return null;
+        }
+
+        var cleaned = macAddress.Replace(":", "").Replace("-", "").Replace(".", "").Replace(" ", "").ToUpperInvariant();
+        if (!System.Text.RegularExpressions.Regex.IsMatch(cleaned, @"^[0-9A-F]{12}$"))
+        {
+            errors.Add(new ImportFieldError(ImportFieldNames.MacAddress, $"MAC Address '{macAddress}' is not valid (expected 12 hex digits)."));
+            return null;
+        }
+
+        return $"{cleaned[0]}{cleaned[1]}:{cleaned[2]}{cleaned[3]}:{cleaned[4]}{cleaned[5]}:{cleaned[6]}{cleaned[7]}:{cleaned[8]}{cleaned[9]}:{cleaned[10]}{cleaned[11]}";
+    }
+
+    private static string? NormalizeProductUrl(string? url, ICollection<ImportFieldError> errors)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return null;
+        }
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var parsedUri) || (parsedUri.Scheme != "http" && parsedUri.Scheme != "https"))
+        {
+            errors.Add(new ImportFieldError(ImportFieldNames.ProductUrl, $"URL '{url}' is not a valid absolute HTTP/HTTPS URL."));
+            return null;
+        }
+
+        return url;
+    }
 
     private static DeviceStatus ParseStatus(IReadOnlyDictionary<string, string?> values, ICollection<ImportFieldError> errors)
     {
@@ -451,7 +545,13 @@ internal sealed class DeviceImportProcessingService(
         DeviceStatus Status,
         string? Notes,
         DateOnly? RetiredDate,
-        string? DisposalMethod);
+        string? DisposalMethod,
+        string? Purpose,
+        string? OperatingSystem,
+        string? IpAddress,
+        string? MacAddress,
+        string? ProductUrl,
+        string? Version);
 
     private sealed class ImportDeviceCandidateValidator : AbstractValidator<ImportDeviceCandidate>
     {
@@ -468,6 +568,15 @@ internal sealed class DeviceImportProcessingService(
                 row => row.DisposalMethod,
                 row => row.RetiredDate,
                 row => row.Status);
+
+            DeviceValidationRules.ApplyExtendedFieldRules(
+                this,
+                row => row.Purpose,
+                row => row.OperatingSystem,
+                row => row.IpAddress,
+                row => row.MacAddress,
+                row => row.ProductUrl,
+                row => row.Version);
 
             RuleFor(row => row.Brand)
                 .NotEmpty()

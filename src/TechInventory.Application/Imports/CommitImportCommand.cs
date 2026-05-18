@@ -22,6 +22,7 @@ public sealed class CommitImportCommandHandler(
     ICategoryRepository categoryRepository,
     IOwnerRepository ownerRepository,
     ILocationRepository locationRepository,
+    INetworkRepository networkRepository,
     IDeviceRepository deviceRepository,
     IImportBatchRepository importBatchRepository,
     IHouseholdRepository householdRepository,
@@ -42,6 +43,7 @@ public sealed class CommitImportCommandHandler(
         var createdCategories = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
         var createdOwners = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
         var createdLocations = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
+        var createdNetworks = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var missingLookup in preview.LookupsToCreate)
         {
@@ -95,6 +97,18 @@ public sealed class CommitImportCommandHandler(
                         createdLocations[missingLookup.Name] = location.Id;
                         break;
                     }
+                case nameof(Network):
+                    {
+                        var network = new Network(Guid.NewGuid(), missingLookup.Name);
+                        var addNetworkResult = await networkRepository.AddAsync(network, cancellationToken).ConfigureAwait(false);
+                        if (addNetworkResult.IsFailure)
+                        {
+                            return Result<CommitImportResult>.Failure(addNetworkResult.Error!);
+                        }
+
+                        createdNetworks[missingLookup.Name] = network.Id;
+                        break;
+                    }
             }
         }
 
@@ -108,20 +122,26 @@ public sealed class CommitImportCommandHandler(
                     Guid.NewGuid(),
                     householdResult.Value!,
                     row.Device.Name,
-                    row.BrandId ?? createdBrands[row.Device.Brand],
+                    row.BrandId ?? (string.IsNullOrWhiteSpace(row.Device.Brand) ? null : createdBrands.GetValueOrDefault(row.Device.Brand)),
                     row.CategoryId ?? createdCategories[row.Device.Category],
                     row.OwnerId ?? createdOwners[row.Device.Owner],
                     row.LocationId ?? createdLocations[row.Device.Location],
                     row.Device.Model,
                     row.Device.SerialNumber,
-                    row.NetworkId,
+                    row.NetworkId ?? (string.IsNullOrWhiteSpace(row.Device.Network) ? null : createdNetworks.GetValueOrDefault(row.Device.Network)),
                     row.Device.PurchaseDate,
                     row.Device.PurchasePrice,
                     string.IsNullOrWhiteSpace(row.Device.CurrencyCode) ? null : Currency.From(row.Device.CurrencyCode),
                     Enum.Parse<DeviceStatus>(row.Device.Status, ignoreCase: true),
                     row.Device.Notes,
                     row.Device.RetiredDate,
-                    row.Device.DisposalMethod);
+                    row.Device.DisposalMethod,
+                    row.Device.Purpose,
+                    row.Device.OperatingSystem,
+                    row.Device.IpAddress,
+                    row.Device.MacAddress,
+                    row.Device.ProductUrl,
+                    row.Device.Version);
 
                 var addDeviceResult = await deviceRepository.AddAsync(device, cancellationToken).ConfigureAwait(false);
                 if (addDeviceResult.IsFailure)

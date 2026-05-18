@@ -41,6 +41,13 @@
       "created_at": "2026-05-18T13:00:29Z",
       "legacy_named": false,
       "status": "active"
+    },
+    "drake": {
+      "persistent_name": "Drake",
+      "universe": "Alien",
+      "created_at": "2026-05-18T19:02:00Z",
+      "legacy_named": false,
+      "status": "active"
     }
   }
 }

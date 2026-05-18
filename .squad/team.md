@@ -18,6 +18,7 @@
 | Hudson | DevOps / Platform | `.squad/agents/hudson/charter.md` | ⚙️ Active |
 | Bishop | Security / Auth | `.squad/agents/bishop/charter.md` | 🔒 Active |
 | Apone | Tester / QA | `.squad/agents/apone/charter.md` | 🧪 Active |
+| Drake | Designer / Visual Engineer | `.squad/agents/drake/charter.md` | 🎨 Active |
 | Scribe | Session Logger | `.squad/agents/scribe/charter.md` | 📋 Silent |
 | Ralph | Work Monitor | `.squad/agents/ralph/charter.md` | 🔄 Monitor |
 

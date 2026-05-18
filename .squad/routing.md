@@ -12,6 +12,7 @@ How to decide who handles what.
 | Docker / Compose / Taskfile / GHA / observability / backups | Hudson | "Set up `task up`", healthchecks, prod compose, CI workflow, backup drill |
 | Entra ID / OIDC / authz policies / audit / threat model / secret handling | Bishop | "Design the role policies", "review token storage", threat model updates, vuln triage |
 | Tests at any level — unit, integration, contract, Playwright E2E, axe-core, Lighthouse | Apone | "Write Playwright for journey #3", "find why this test is flaky", coverage gaps, perf budgets |
+| Icons, favicons, PWA icon sets, logos, brand palette, SVG illustrations, raster pipelines | Drake | "Design the app icon", "make a maskable variant", "extend the color palette", "build the README hero" |
 | Code review (domain-specific) | Owning agent | Each owner reviews PRs in their domain; Ripley arbitrates cross-cutting |
 | Scope & priorities, what to build next | Ripley | Trade-offs, sequencing, feature decomposition |
 | Session logging, decisions merging, history archive, git commit | Scribe | Automatic — never needs routing |

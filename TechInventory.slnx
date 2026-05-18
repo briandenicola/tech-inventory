@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/TechInventory.Api/TechInventory.Api.csproj" />
+    <Project Path="src/TechInventory.Application/TechInventory.Application.csproj" />
+    <Project Path="src/TechInventory.Domain/TechInventory.Domain.csproj" />
+    <Project Path="src/TechInventory.Infrastructure/TechInventory.Infrastructure.csproj" />
+  </Folder>
+</Solution>

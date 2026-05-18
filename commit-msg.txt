@@ -1,0 +1,23 @@
+chore: phase 0 scaffold — team hired, all foundations laid
+
+Casts the squad (Ripley/Hicks/Vasquez/Hudson/Bishop/Apone + Scribe + Ralph)
+and fans out parallel scaffolding of the entire foundation:
+
+- specs/001-core-api/{spec,plan,tasks}.md — Phase 1 scope, 48 tasks, R1/R2
+  pattern citations, constitution constraints quoted (Ripley)
+- .NET 10 solution: Domain/Application/Infrastructure/Api with MediatR,
+  FluentValidation, EF Core SQLite, Serilog, OpenTelemetry, ProblemDetails,
+  Swashbuckle, healthchecks (Hicks)
+- SvelteKit PWA at src/TechInventory.Web with Tailwind v4, Vitest, axe-core,
+  MSAL.js dep, design tokens, i18n, PWA manifest (Vasquez)
+- Taskfile (10 cmds), dev docker-compose, multi-stage non-root Dockerfiles,
+  scripts/verify.sh, GH Actions CI workflow (Hudson)
+- STRIDE threat model (7 surfaces), Entra External ID auth design,
+  security baseline (token storage, Serilog policy, audit log contract)
+  (Bishop)
+- xUnit unit + integration test projects, Playwright E2E with all 13
+  critical journeys stubbed across 3 browsers × 2 viewports (Apone)
+
+Refs constitution §0-§7, PRD §5, §6, §7.5, §13.
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>

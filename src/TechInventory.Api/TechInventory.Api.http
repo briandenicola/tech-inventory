@@ -1,0 +1,6 @@
+@TechInventory.Api_HostAddress = http://localhost:5147
+
+GET {{TechInventory.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

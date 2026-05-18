@@ -1,0 +1,10 @@
+{
+	"app": {
+		"title": "Tech Inventory",
+		"tagline": "Your household, catalogued.",
+		"nav": {
+			"home": "Home",
+			"skipToContent": "Skip to content"
+		}
+	}
+}

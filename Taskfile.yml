@@ -1,0 +1,99 @@
+version: '3'
+
+# Tech Inventory — Local Development Automation
+# Requires: Docker, Task (https://taskfile.dev)
+# TODO: Task must be installed locally. Install via: `choco install go-task` (Windows) or `brew install go-task/tap/go-task` (macOS/Linux)
+#
+# Core commands:
+#   task up      — Bring up the full dev stack (API, Web, DB)
+#   task test    — Run all tests against the running stack
+#   task down    — Tear down the stack
+#   task verify  — Run the constitution-blessed verification pipeline
+
+silent: false
+method: timestamp
+
+tasks:
+  restore:
+    desc: Restore .NET and pnpm dependencies
+    cmds:
+      - dotnet restore
+      - cmd: cd src\TechInventory.Web && pnpm install
+        platforms: [windows]
+      - cmd: cd src/TechInventory.Web && pnpm install
+        platforms: [linux, darwin]
+
+  build:
+    desc: Build backend and frontend
+    deps: [restore]
+    cmds:
+      - dotnet build -c Release --no-restore
+      - cmd: cd src\TechInventory.Web && pnpm run build
+        platforms: [windows]
+      - cmd: cd src/TechInventory.Web && pnpm run build
+        platforms: [linux, darwin]
+
+  lint:
+    desc: Lint backend and frontend
+    cmds:
+      - dotnet format --verify-no-changes
+      - cmd: cd src\TechInventory.Web && pnpm run lint
+        platforms: [windows]
+      - cmd: cd src/TechInventory.Web && pnpm run lint
+        platforms: [linux, darwin]
+
+  up:
+    desc: Start the full dev stack (API + Web + DB)
+    cmds:
+      - docker compose up -d --build
+
+  down:
+    desc: Stop and remove all containers, networks, and volumes
+    cmds:
+      - docker compose down -v
+
+  test:
+    desc: Run all tests against the running stack (requires `task up` first)
+    cmds:
+      - echo "Running .NET tests..."
+      - dotnet test -c Release
+      - cmd: echo "Running frontend unit tests..."
+      - cmd: cd src\TechInventory.Web && pnpm run test
+        platforms: [windows]
+      - cmd: cd src/TechInventory.Web && pnpm run test
+        platforms: [linux, darwin]
+      - echo "Running E2E tests (requires running stack)..."
+      - npx playwright test
+    preconditions:
+      - msg: "Stack must be running. Run 'task up' first."
+        sh: docker compose ps | grep -q "techinv-api" || exit 1
+
+  verify:
+    desc: Run the full verification pipeline (format, build, test, security scan)
+    cmds:
+      - cmd: .\scripts\verify.ps1
+        platforms: [windows]
+      - cmd: ./scripts/verify.sh
+        platforms: [linux, darwin]
+
+  logs:
+    desc: Tail logs from all running containers
+    cmds:
+      - docker compose logs -f
+
+  ps:
+    desc: Show running containers
+    cmds:
+      - docker compose ps
+
+  clean:
+    desc: Remove build artifacts and volumes
+    cmds:
+      - dotnet clean
+      - cmd: if exist src\TechInventory.Web\build rd /s /q src\TechInventory.Web\build
+        platforms: [windows]
+      - cmd: if exist src\TechInventory.Web\.svelte-kit rd /s /q src\TechInventory.Web\.svelte-kit
+        platforms: [windows]
+      - cmd: rm -rf src/TechInventory.Web/build src/TechInventory.Web/.svelte-kit
+        platforms: [linux, darwin]
+      - docker compose down -v

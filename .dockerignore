@@ -1,0 +1,58 @@
+# Tech Inventory — Docker build context exclusions
+
+# .NET build artifacts
+bin/
+obj/
+*.user
+*.suo
+.vs/
+TestResults/
+coverage/
+
+# Node / SvelteKit
+node_modules/
+.svelte-kit/
+build/
+dist/
+.pnpm-store/
+playwright-report/
+test-results/
+
+# Secrets and environment
+.env
+.env.*
+!.env.example
+secrets/
+*.pfx
+*.key
+
+# Source control
+.git/
+.gitignore
+.gitattributes
+
+# IDE and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Squad and documentation
+.squad/
+docs/
+specs/
+.specify/
+SESSION-NOTES.md
+.copilot-state.md
+
+# Logs and temp files
+*.log
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Compose and scripts
+docker-compose*.yml
+Taskfile.yml
+scripts/

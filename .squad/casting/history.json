@@ -1,0 +1,23 @@
+{
+  "universe_usage_history": [
+    {
+      "universe": "Alien",
+      "assignment_id": "ASN-2026-05-18-001",
+      "used_at": "2026-05-18T13:00:29Z"
+    }
+  ],
+  "assignment_cast_snapshots": {
+    "ASN-2026-05-18-001": {
+      "created_at": "2026-05-18T13:00:29Z",
+      "universe": "Alien",
+      "agents": [
+        { "id": "ripley",  "name": "Ripley",  "role": "Lead" },
+        { "id": "hicks",   "name": "Hicks",   "role": "Backend Dev" },
+        { "id": "vasquez", "name": "Vasquez", "role": "Frontend Dev" },
+        { "id": "hudson",  "name": "Hudson",  "role": "DevOps" },
+        { "id": "bishop",  "name": "Bishop",  "role": "Security/Auth" },
+        { "id": "apone",   "name": "Apone",   "role": "Tester/QA" }
+      ]
+    }
+  }
+}

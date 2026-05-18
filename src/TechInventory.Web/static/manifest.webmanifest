@@ -1,0 +1,10 @@
+{
+	"name": "Tech Inventory",
+	"short_name": "TechInv",
+	"description": "Your household, catalogued.",
+	"start_url": "/",
+	"display": "standalone",
+	"background_color": "#ffffff",
+	"theme_color": "#0071e3",
+	"icons": []
+}

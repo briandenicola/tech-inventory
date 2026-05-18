@@ -6,13 +6,16 @@ How to decide who handles what.
 
 | Work Type | Route To | Examples |
 |-----------|----------|----------|
-| {domain 1} | {Name} | {example tasks} |
-| {domain 2} | {Name} | {example tasks} |
-| {domain 3} | {Name} | {example tasks} |
-| Code review | {Name} | Review PRs, check quality, suggest improvements |
-| Testing | {Name} | Write tests, find edge cases, verify fixes |
-| Scope & priorities | {Name} | What to build next, trade-offs, decisions |
-| Session logging | Scribe | Automatic — never needs routing |
+| Architecture, ADRs, scope, cross-cutting code review | Ripley | "Should we use X?", new spec/plan, layer boundary disputes, reviewer-rejection routing |
+| Backend / API / Domain / EF Core / MediatR | Hicks | "Add a Devices endpoint", "write the import handler", domain model changes, migrations |
+| Frontend / SvelteKit / PWA / TS client / Tailwind | Vasquez | "Build the device list view", "wire MSAL on the client", design tokens, i18n, offline cache |
+| Docker / Compose / Taskfile / GHA / observability / backups | Hudson | "Set up `task up`", healthchecks, prod compose, CI workflow, backup drill |
+| Entra ID / OIDC / authz policies / audit / threat model / secret handling | Bishop | "Design the role policies", "review token storage", threat model updates, vuln triage |
+| Tests at any level — unit, integration, contract, Playwright E2E, axe-core, Lighthouse | Apone | "Write Playwright for journey #3", "find why this test is flaky", coverage gaps, perf budgets |
+| Code review (domain-specific) | Owning agent | Each owner reviews PRs in their domain; Ripley arbitrates cross-cutting |
+| Scope & priorities, what to build next | Ripley | Trade-offs, sequencing, feature decomposition |
+| Session logging, decisions merging, history archive, git commit | Scribe | Automatic — never needs routing |
+| Work-queue scanning, GitHub triage loop, PR/CI watch | Ralph | "Ralph, go", "what's on the board?", merge-when-green |
 
 ## Issue Routing
 

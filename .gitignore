@@ -32,6 +32,17 @@ Thumbs.db
 *.log
 coverage/
 TestResults/
+playwright-report/
+test-results/
+build/
+playwright-report/
+test-results/
+
+# SQLite databases
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
 # Squad: ignore runtime state (logs, inbox, sessions)
 .squad/orchestration-log/
 .squad/log/

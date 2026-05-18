@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using TechInventory.Application.Abstractions.Services;
@@ -216,7 +217,9 @@ public sealed class AuthIntegrationTests(IntegrationTestFactory<AuthIntegrationT
     {
         try
         {
-            using var _ = new ProductionDevBypassFactory();
+            using var factory = new ProductionDevBypassFactory();
+            // Trigger host creation which runs Program.cs
+            using var _ = factory.CreateClient();
             Assert.Fail("Expected InvalidOperationException but no exception was thrown");
         }
         catch (InvalidOperationException ex)
@@ -227,13 +230,16 @@ public sealed class AuthIntegrationTests(IntegrationTestFactory<AuthIntegrationT
 
     private sealed class NoAuthFactory : IntegrationTestFactory<NoAuthFactory>
     {
+        protected override string Environment => "Testing";
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             base.ConfigureWebHost(builder);
 
-            builder.ConfigureAppConfiguration((_, configurationBuilder) =>
+            // Add a SECOND ConfigureAppConfiguration to ensure these settings override everything
+            builder.ConfigureAppConfiguration((ctx, config) =>
             {
-                configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>
+                config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     ["Auth:DevBypass"] = "false",
                     ["Auth:Entra:Authority"] = "https://login.microsoftonline.com/test-tenant/v2.0",
@@ -252,13 +258,15 @@ public sealed class AuthIntegrationTests(IntegrationTestFactory<AuthIntegrationT
         public string Issuer => "https://login.microsoftonline.com/test-tenant-id/v2.0";
         public string Audience => "api://test-client-id";
 
+        protected override string Environment => "Testing";
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             base.ConfigureWebHost(builder);
 
-            builder.ConfigureAppConfiguration((_, configurationBuilder) =>
+            builder.ConfigureAppConfiguration((ctx, config) =>
             {
-                configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>
+                config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     ["Auth:DevBypass"] = "false",
                     ["Auth:Entra:Authority"] = Issuer,
@@ -273,6 +281,7 @@ public sealed class AuthIntegrationTests(IntegrationTestFactory<AuthIntegrationT
             {
                 services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
                 {
+                    options.Authority = null!;
                     options.TokenValidationParameters = new TokenValidationParameters
                     {
                         ValidateIssuer = true,
@@ -287,6 +296,7 @@ public sealed class AuthIntegrationTests(IntegrationTestFactory<AuthIntegrationT
 
                     options.Configuration = null!;
                     options.MetadataAddress = null!;
+                    options.RequireHttpsMetadata = false;
                 });
             });
         }
@@ -316,19 +326,19 @@ public sealed class AuthIntegrationTests(IntegrationTestFactory<AuthIntegrationT
 
     private sealed class ProductionDevBypassFactory : IntegrationTestFactory<ProductionDevBypassFactory>
     {
+        protected override string Environment => "Production";
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
-            builder.UseEnvironment("Production");
+            base.ConfigureWebHost(builder);
 
-            builder.ConfigureAppConfiguration((_, configurationBuilder) =>
+            builder.ConfigureAppConfiguration((ctx, config) =>
             {
-                configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>
+                config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     ["Auth:DevBypass"] = "true"
                 }!);
             });
-
-            base.ConfigureWebHost(builder);
         }
     }
 }

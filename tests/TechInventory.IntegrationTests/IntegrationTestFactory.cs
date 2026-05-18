@@ -27,9 +27,12 @@ public class IntegrationTestFactory<TMarker> : WebApplicationFactory<Program>
 
     public string ConnectionString => $"Data Source={_databasePath}";
 
+    // Allow derived classes to override the environment
+    protected virtual string Environment => "Development";
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseEnvironment("Development");
+        builder.UseEnvironment(Environment);
         builder.ConfigureAppConfiguration((_, configurationBuilder) =>
         {
             configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>

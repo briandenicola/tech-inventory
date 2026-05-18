@@ -98,18 +98,20 @@ async function apiFetch<TResponse>(
 	options: RequestInit = {}
 ): Promise<TResponse> {
 	const url = `${clientConfig.baseUrl}${path}`;
-	const headers: HeadersInit = {
+	const headers: Record<string, string> = {
 		'Content-Type': 'application/json',
-		...options.headers
+		...(options.headers as Record<string, string> | undefined)
 	};
 
-	// TODO (T05): Wire MSAL.js token injection here
-	// if (clientConfig.getAuthToken) {
-	//   const token = await clientConfig.getAuthToken();
-	//   if (token) {
-	//     headers['Authorization'] = `Bearer ${token}`;
-	//   }
-	// }
+	// T05: Inject auth header (Bearer token) from MSAL.js before every API call
+	if (clientConfig.getAuthToken) {
+		const token = await clientConfig.getAuthToken();
+		if (token) {
+			headers['Authorization'] = `Bearer ${token}`;
+		}
+		// If no token (user not signed in), proceed without auth header
+		// Round 2 route guard (T12) will redirect unauthenticated users before protected API calls
+	}
 
 	const response = await fetch(url, {
 		...options,
@@ -350,7 +352,10 @@ export const exports = {
 		const url = `/api/v1/exports/devices${buildQueryString(params)}`;
 		const response = await fetch(`${clientConfig.baseUrl}${url}`, {
 			headers: {
-				// TODO (T05): Add auth header here when wiring MSAL
+				// T05: Inject auth header for export endpoint (blob download)
+				...(clientConfig.getAuthToken
+					? { Authorization: `Bearer ${await clientConfig.getAuthToken()}` }
+					: {})
 			}
 		});
 

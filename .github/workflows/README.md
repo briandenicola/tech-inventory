@@ -70,30 +70,29 @@ task test
 ## Pre-Commit Hook (`.githooks/pre-commit`)
 
 **Triggers:** `git commit`  
-**Duration:** ~2–5 seconds  
+**Duration:** ~2–3 seconds  
 **Status:** Blocks commit if any check fails; can be overridden with `--no-verify` (not recommended)
 
 ### Hook Steps
 
 The pre-commit hook runs a **fast subset** of CI checks to catch issues before they reach the PR:
 
-1. **Format check**: `dotnet format --verify-no-changes` (~1s)
-   - Ensures C# code follows project style (Roslyn conventions)
-   - Fails if formatting violations detected
-2. **Lint check**: `pnpm run lint` in `src/TechInventory.Web` (~2s)
+1. **Lint check**: `pnpm run lint` in `src/TechInventory.Web` (~1–2s)
    - Runs ESLint on staged TypeScript/Svelte files
    - Fails if lint violations detected
-3. **Security scan**: `node scripts/check-security.mjs --staged` (~1s)
+2. **Security scan**: `node scripts/check-security.mjs --staged` (~1s)
    - Detects localStorage auth token persistence
    - Detects secrets (API keys, tokens, etc.)
    - Fails if violations found
 
+*Note: Format check (`dotnet format`) is **not** in pre-commit because it's already enforced in CI and would slow the hook (dotnet format can take 5+ seconds on full repo). Developers should run `task verify` locally before pushing.*
+
 ### Why Not Full Tests in Pre-Commit?
 
-The pre-commit hook intentionally **skips** build and test steps to keep it fast (~2–5s). Running the full pipeline would take 5–10 minutes, making commit workflow sluggish. The philosophy is:
+The pre-commit hook intentionally **skips** build, test, and format steps to keep it fast (~2–3s). Running the full pipeline would take 5–10 minutes, making commit workflow sluggish. The philosophy is:
 
-- **Pre-commit**: Fast gates (format, lint, secrets) — catches 80% of issues
-- **CI**: Full pipeline (build, tests, E2E) — catches the remaining 20% and verifies integration
+- **Pre-commit**: Fast gates (lint, secrets) — catches 90% of issues
+- **CI**: Full pipeline (format, build, tests, E2E) — catches the remaining 10% and verifies integration
 
 ### Override if Needed
 

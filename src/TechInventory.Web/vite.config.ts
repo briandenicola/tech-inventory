@@ -5,6 +5,9 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
 	// @ts-expect-error Vite version conflict
 	plugins: [tailwindcss(), sveltekit()],
+	resolve: {
+		conditions: ['browser']
+	},
 	test: {
 		environment: 'jsdom',
 		globals: true,

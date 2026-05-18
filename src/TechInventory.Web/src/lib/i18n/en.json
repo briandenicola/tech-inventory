@@ -106,7 +106,11 @@
 		"imports": "Import",
 		"exports": "Export",
 		"settings": "Settings",
-		"admin": "Admin"
+		"admin": "Admin",
+		"adminBrands": "Brands",
+		"adminLocations": "Locations",
+		"adminNetworks": "Networks",
+		"adminTags": "Tags"
 	},
 	"devices": {
 		"list": {
@@ -286,11 +290,30 @@
 		"edit": {
 			"title": "Edit Brand"
 		},
+		"deactivate": {
+			"title": "Deactivate Brand",
+			"confirmPrompt": "Are you sure you want to deactivate this brand?",
+			"success": "Brand deactivated successfully"
+		},
 		"columns": {
 			"name": "Name",
 			"website": "Website",
 			"notes": "Notes",
 			"status": "Status"
+		},
+		"fields": {
+			"name": "Brand Name",
+			"namePlaceholder": "Enter brand name",
+			"website": "Website (optional)",
+			"websitePlaceholder": "https://example.com",
+			"notes": "Notes (optional)",
+			"notesPlaceholder": "Additional information about this brand"
+		},
+		"validation": {
+			"nameRequired": "Brand name is required",
+			"nameMaxLength": "Brand name must be 100 characters or less",
+			"websiteInvalid": "Please enter a valid URL",
+			"notesMaxLength": "Notes must be 500 characters or less"
 		}
 	},
 	"manufacturers": {
@@ -382,7 +405,8 @@
 		"list": {
 			"title": "Locations",
 			"addButton": "Add Location",
-			"emptyState": "No locations yet."
+			"emptyState": "No locations yet.",
+			"showInactive": "Show Inactive"
 		},
 		"detail": {
 			"title": "Location Details"
@@ -393,22 +417,41 @@
 		"edit": {
 			"title": "Edit Location"
 		},
+		"deactivate": {
+			"title": "Deactivate Location",
+			"confirmPrompt": "Are you sure you want to deactivate this location?",
+			"success": "Location deactivated successfully"
+		},
 		"columns": {
 			"name": "Name",
 			"type": "Type",
 			"description": "Description"
 		},
+		"fields": {
+			"name": "Location Name",
+			"namePlaceholder": "Enter location name",
+			"type": "Location Type",
+			"notes": "Notes (optional)",
+			"notesPlaceholder": "Additional information about this location"
+		},
 		"types": {
 			"home": "Home",
 			"storage": "Storage",
 			"external": "External"
+		},
+		"validation": {
+			"nameRequired": "Location name is required",
+			"nameMaxLength": "Location name must be 100 characters or less",
+			"typeRequired": "Location type is required",
+			"notesMaxLength": "Notes must be 500 characters or less"
 		}
 	},
 	"networks": {
 		"list": {
 			"title": "Networks",
 			"addButton": "Add Network",
-			"emptyState": "No networks yet."
+			"emptyState": "No networks yet.",
+			"showInactive": "Show Inactive"
 		},
 		"detail": {
 			"title": "Network Details"
@@ -419,16 +462,33 @@
 		"edit": {
 			"title": "Edit Network"
 		},
+		"deactivate": {
+			"title": "Deactivate Network",
+			"confirmPrompt": "Are you sure you want to deactivate this network?",
+			"success": "Network deactivated successfully"
+		},
 		"columns": {
 			"name": "Name",
 			"description": "Description"
+		},
+		"fields": {
+			"name": "Network Name",
+			"namePlaceholder": "Enter network name",
+			"description": "Description (optional)",
+			"descriptionPlaceholder": "Additional information about this network"
+		},
+		"validation": {
+			"nameRequired": "Network name is required",
+			"nameMaxLength": "Network name must be 100 characters or less",
+			"descriptionMaxLength": "Description must be 500 characters or less"
 		}
 	},
 	"tags": {
 		"list": {
 			"title": "Tags",
 			"addButton": "Add Tag",
-			"emptyState": "No tags yet."
+			"emptyState": "No tags yet.",
+			"showInactive": "Show Inactive"
 		},
 		"detail": {
 			"title": "Tag Details"
@@ -439,9 +499,25 @@
 		"edit": {
 			"title": "Edit Tag"
 		},
+		"deactivate": {
+			"title": "Deactivate Tag",
+			"confirmPrompt": "Are you sure you want to deactivate this tag?",
+			"success": "Tag deactivated successfully"
+		},
 		"columns": {
 			"name": "Name",
 			"color": "Color"
+		},
+		"fields": {
+			"name": "Tag Name",
+			"namePlaceholder": "Enter tag name",
+			"color": "Color"
+		},
+		"validation": {
+			"nameRequired": "Tag name is required",
+			"nameMaxLength": "Tag name must be 50 characters or less",
+			"colorRequired": "Color is required",
+			"colorInvalid": "Please select a valid color"
 		}
 	},
 	"errors": {

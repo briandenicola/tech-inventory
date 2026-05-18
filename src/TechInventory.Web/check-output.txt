@@ -1,0 +1,206 @@
+$ svelte-kit sync && svelte-check --tsconfig ./tsconfig.json
+Loading svelte-check in workspace: c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web
+Getting Svelte diagnostics...
+
+c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web\[32msrc\lib\components\DeviceForm.svelte[39m:38:9
+[33mWarn[39m: This reference only captures the initial value of `initialData`. Did you mean to reference it inside a derived instead?
+https://svelte.dev/e/state_referenced_locally (svelte)
+[36m	let formData = $state<Record<string, unknown>>({
+		name: [35minitialData[36m.name ?? '',
+		serialNumber: initialData.serialNumber ?? '',[39m
+
+c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web\[32msrc\lib\components\DeviceForm.svelte[39m:39:17
+[33mWarn[39m: This reference only captures the initial value of `initialData`. Did you mean to reference it inside a derived instead?
+https://svelte.dev/e/state_referenced_locally (svelte)
+[36m		name: initialData.name ?? '',
+		serialNumber: [35minitialData[36m.serialNumber ?? '',
+		brandId: initialData.brandId ?? '',[39m
+
+c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web\[32msrc\lib\components\DeviceForm.svelte[39m:40:12
+[33mWarn[39m: This reference only captures the initial value of `initialData`. Did you mean to reference it inside a derived instead?
+https://svelte.dev/e/state_referenced_locally (svelte)
+[36m		serialNumber: initialData.serialNumber ?? '',
+		brandId: [35minitialData[36m.brandId ?? '',
+		categoryId: initialData.categoryId ?? '',[39m
+
+c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web\[32msrc\lib\components\DeviceForm.svelte[39m:41:15
+[33mWarn[39m: This reference only captures the initial value of `initialData`. Did you mean to reference it inside a derived instead?
+https://svelte.dev/e/state_referenced_locally (svelte)
+[36m		brandId: initialData.brandId ?? '',
+		categoryId: [35minitialData[36m.categoryId ?? '',
+		ownerId: initialData.ownerId ?? '',[39m
+
+c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web\[32msrc\lib\components\DeviceForm.svelte[39m:42:12
+[33mWarn[39m: This reference only captures the initial value of `initialData`. Did you mean to reference it inside a derived instead?
+https://svelte.dev/e/state_referenced_locally (svelte)
+[36m		categoryId: initialData.categoryId ?? '',
+		ownerId: [35minitialData[36m.ownerId ?? '',
+		locationId: initialData.locationId ?? '',[39m
+
+c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web\[32msrc\lib\components\DeviceForm.svelte[39m:43:15
+[33mWarn[39m: This reference only captures the initial value of `initialData`. Did you mean to reference it inside a derived instead?
+https://svelte.dev/e/state_referenced_locally (svelte)
+[36m		ownerId: initialData.ownerId ?? '',
+		locationId: [35minitialData[36m.locationId ?? '',
+		networkId: initialData.networkId ?? '',[39m
+
+c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web\[32msrc\lib\components\DeviceForm.svelte[39m:44:14
+[33mWarn[39m: This reference only captures the initial value of `initialData`. Did you mean to reference it inside a derived instead?
+https://svelte.dev/e/state_referenced_locally (svelte)
+[36m		locationId: initialData.locationId ?? '',
+		networkId: [35minitialData[36m.networkId ?? '',
+		purchaseDate: initialData.purchaseDate ?? '',[39m
+
+c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web\[32msrc\lib\components\DeviceForm.svelte[39m:45:17
+[33mWarn[39m: This reference only captures the initial value of `initialData`. Did you mean to reference it inside a derived instead?
+https://svelte.dev/e/state_referenced_locally (svelte)
+[36m		networkId: initialData.networkId ?? '',
+		purchaseDate: [35minitialData[36m.purchaseDate ?? '',
+		purchasePrice: initialData.purchasePrice ?? null,[39m
+
+c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web\[32msrc\lib\components\DeviceForm.svelte[39m:46:18
+[33mWarn[39m: This reference only captures the initial value of `initialData`. Did you mean to reference it inside a derived instead?
+https://svelte.dev/e/state_referenced_locally (svelte)
+[36m		purchaseDate: initialData.purchaseDate ?? '',
+		purchasePrice: [35minitialData[36m.purchasePrice ?? null,
+		currencyCode: initialData.currencyCode ?? 'USD', // TODO D-070: Household default currency[39m
+
+c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web\[32msrc\lib\components\DeviceForm.svelte[39m:47:17
+[33mWarn[39m: This reference only captures the initial value of `initialData`. Did you mean to reference it inside a derived instead?
+https://svelte.dev/e/state_referenced_locally (svelte)
+[36m		purchasePrice: initialData.purchasePrice ?? null,
+		currencyCode: [35minitialData[36m.currencyCode ?? 'USD', // TODO D-070: Household default currency
+		notes: initialData.notes ?? ''[39m
+
+c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web\[32msrc\lib\components\DeviceForm.svelte[39m:48:10
+[33mWarn[39m: This reference only captures the initial value of `initialData`. Did you mean to reference it inside a derived instead?
+https://svelte.dev/e/state_referenced_locally (svelte)
+[36m		currencyCode: initialData.currencyCode ?? 'USD', // TODO D-070: Household default currency
+		notes: [35minitialData[36m.notes ?? ''
+	});[39m
+
+c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web\[32msrc\lib\schemas\location.ts[39m:16:10
+[31mError[39m: No overload matches this call.
+  Overload 1 of 2, '(values: readonly ["Home", "Storage", "External"], params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; } | undefined): ZodEnum<...>', gave the following error.
+    Object literal may only specify known properties, and 'errorMap' does not exist in type '{ error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; }'.
+  Overload 2 of 2, '(entries: Readonly<Record<string, EnumValue>>, params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; } | undefined): ZodEnum<...>', gave the following error.
+    Argument of type 'string[]' is not assignable to parameter of type 'Readonly<Record<string, EnumValue>>'.
+      Index signature for type 'string' is missing in type 'string[]'. 
+[36m	name: z.string().trim().min(1, 'Location name is required').max(100, 'Location name must be 100 characters or less'),
+	type: z.[35menum[36m(['Home', 'Storage', 'External'], { errorMap: () => ({ message: 'Location type is required' }) }),
+	notes: z.string().trim().max(500, 'Notes must be 500 characters or less').optional().or(z.literal(''))[39m
+
+c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web\[32msrc\routes\(authenticated)\admin\brands\+page.svelte[39m:6:9
+[31mError[39m: Module '"c:/Users/brian.denicolafamily/Code/tech-inventory/src/TechInventory.Web/src/lib/api/client"' has no default export. (ts)
+[36m	import { authStore } from '$lib/stores/auth';
+	import [35mapi[36m from '$lib/api/client';
+	import { brandSchema, type BrandFormData } from '$lib/schemas/brand';[39m
+
+c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web\[32msrc\routes\(authenticated)\admin\brands\+page.svelte[39m:8:11
+[31mError[39m: Module '"$lib/stores/toast"' has no exported member 'addToast'. (ts)
+[36m	import { brandSchema, type BrandFormData } from '$lib/schemas/brand';
+	import { [35maddToast[36m } from '$lib/stores/toast';
+	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';[39m
+
+c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web\[32msrc\routes\(authenticated)\admin\brands\+page.svelte[39m:121:17
+[31mError[39m: Property 'errors' does not exist on type 'ZodError<{ name: string; website?: string | undefined; notes?: string | undefined; }>'. (ts)
+[36m		if (!result.success) {
+			result.error.[35merrors[36m.forEach((err) => {
+				if (err.path[0]) formErrors[err.path[0] as string] = err.message;[39m
+
+c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web\[32msrc\routes\(authenticated)\admin\brands\+page.svelte[39m:121:33
+[31mError[39m: Parameter 'err' implicitly has an 'any' type. (ts)
+[36m		if (!result.success) {
+			result.error.errors.forEach(([35merr[36m) => {
+				if (err.path[0]) formErrors[err.path[0] as string] = err.message;[39m
+
+c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web\[32msrc\routes\(authenticated)\admin\locations\+page.svelte[39m:6:9
+[31mError[39m: Module '"c:/Users/brian.denicolafamily/Code/tech-inventory/src/TechInventory.Web/src/lib/api/client"' has no default export. (ts)
+[36m	import { authStore } from '$lib/stores/auth';
+	import [35mapi[36m from '$lib/api/client';
+	import { locationSchema, type LocationFormData } from '$lib/schemas/location';[39m
+
+c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web\[32msrc\routes\(authenticated)\admin\locations\+page.svelte[39m:8:11
+[31mError[39m: Module '"$lib/stores/toast"' has no exported member 'addToast'. (ts)
+[36m	import { locationSchema, type LocationFormData } from '$lib/schemas/location';
+	import { [35maddToast[36m } from '$lib/stores/toast';
+	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';[39m
+
+c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web\[32msrc\routes\(authenticated)\admin\locations\+page.svelte[39m:102:17
+[31mError[39m: Property 'errors' does not exist on type 'ZodError<{ name: string; type: "Home" | "Storage" | "External"; notes?: string | undefined; }>'. (ts)
+[36m		if (!result.success) {
+			result.error.[35merrors[36m.forEach((err) => {
+				if (err.path[0]) formErrors[err.path[0] as string] = err.message;[39m
+
+c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web\[32msrc\routes\(authenticated)\admin\locations\+page.svelte[39m:102:33
+[31mError[39m: Parameter 'err' implicitly has an 'any' type. (ts)
+[36m		if (!result.success) {
+			result.error.errors.forEach(([35merr[36m) => {
+				if (err.path[0]) formErrors[err.path[0] as string] = err.message;[39m
+
+c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web\[32msrc\routes\(authenticated)\admin\networks\+page.svelte[39m:6:9
+[31mError[39m: Module '"c:/Users/brian.denicolafamily/Code/tech-inventory/src/TechInventory.Web/src/lib/api/client"' has no default export. (ts)
+[36m	import { authStore } from '$lib/stores/auth';
+	import [35mapi[36m from '$lib/api/client';
+	import { networkSchema, type NetworkFormData } from '$lib/schemas/network';[39m
+
+c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web\[32msrc\routes\(authenticated)\admin\networks\+page.svelte[39m:8:11
+[31mError[39m: Module '"$lib/stores/toast"' has no exported member 'addToast'. (ts)
+[36m	import { networkSchema, type NetworkFormData } from '$lib/schemas/network';
+	import { [35maddToast[36m } from '$lib/stores/toast';
+	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';[39m
+
+c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web\[32msrc\routes\(authenticated)\admin\networks\+page.svelte[39m:101:17
+[31mError[39m: Property 'errors' does not exist on type 'ZodError<{ name: string; description?: string | undefined; }>'. (ts)
+[36m		if (!result.success) {
+			result.error.[35merrors[36m.forEach((err) => {
+				if (err.path[0]) formErrors[err.path[0] as string] = err.message;[39m
+
+c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web\[32msrc\routes\(authenticated)\admin\networks\+page.svelte[39m:101:33
+[31mError[39m: Parameter 'err' implicitly has an 'any' type. (ts)
+[36m		if (!result.success) {
+			result.error.errors.forEach(([35merr[36m) => {
+				if (err.path[0]) formErrors[err.path[0] as string] = err.message;[39m
+
+c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web\[32msrc\routes\(authenticated)\admin\tags\+page.svelte[39m:304:6
+[33mWarn[39m: A form label must be associated with a control
+https://svelte.dev/e/a11y_label_has_associated_control (svelte)
+[36m				<div class="mb-6">
+					[35m<label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+						{t('tags.fields.color')}
+					</label>[36m
+					<div class="grid grid-cols-8 gap-2">[39m
+
+c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web\[32msrc\routes\(authenticated)\admin\tags\+page.svelte[39m:6:9
+[31mError[39m: Module '"c:/Users/brian.denicolafamily/Code/tech-inventory/src/TechInventory.Web/src/lib/api/client"' has no default export. (ts)
+[36m	import { authStore } from '$lib/stores/auth';
+	import [35mapi[36m from '$lib/api/client';
+	import { tagSchema, type TagFormData, TAG_PRESET_COLORS } from '$lib/schemas/tag';[39m
+
+c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web\[32msrc\routes\(authenticated)\admin\tags\+page.svelte[39m:8:11
+[31mError[39m: Module '"$lib/stores/toast"' has no exported member 'addToast'. (ts)
+[36m	import { tagSchema, type TagFormData, TAG_PRESET_COLORS } from '$lib/schemas/tag';
+	import { [35maddToast[36m } from '$lib/stores/toast';
+	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';[39m
+
+c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web\[32msrc\routes\(authenticated)\admin\tags\+page.svelte[39m:102:17
+[31mError[39m: Property 'errors' does not exist on type 'ZodError<{ name: string; color: string; }>'. (ts)
+[36m		if (!result.success) {
+			result.error.[35merrors[36m.forEach((err) => {
+				if (err.path[0]) formErrors[err.path[0] as string] = err.message;[39m
+
+c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web\[32msrc\routes\(authenticated)\admin\tags\+page.svelte[39m:102:33
+[31mError[39m: Parameter 'err' implicitly has an 'any' type. (ts)
+[36m		if (!result.success) {
+			result.error.errors.forEach(([35merr[36m) => {
+				if (err.path[0]) formErrors[err.path[0] as string] = err.message;[39m
+
+c:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Web\[32msrc\routes\(authenticated)\devices\+page.svelte[39m:55:27
+[33mWarn[39m: This reference only captures the initial value of `urlFilters`. Did you mean to reference it inside a closure instead?
+https://svelte.dev/e/state_referenced_locally (svelte)
+[36m	// eslint-disable-next-line svelte/valid-compile
+	const query = useDevices([35murlFilters[36m);[39m
+
+====================================
+[31msvelte-check found 17 errors and 13 warnings in 7 files
+[39m[ELIFECYCLE] Command failed with exit code 1.

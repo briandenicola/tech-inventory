@@ -1,0 +1,104 @@
+2026-05-18 16:52:41.300 -05:00 [INF] Acquiring an exclusive lock for migration application. See https://aka.ms/efcore-docs-migrations-lock for more information if this takes too long.
+2026-05-18 16:52:41.364 -05:00 [INF] Executed DbCommand (27ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT COUNT(*) FROM "sqlite_master" WHERE "name" = '__EFMigrationsLock' AND "type" = 'table';
+2026-05-18 16:52:41.371 -05:00 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+INSERT OR IGNORE INTO "__EFMigrationsLock"("Id", "Timestamp") VALUES(1, '2026-05-18 21:52:41.3689657+00:00');
+SELECT changes();
+2026-05-18 16:52:41.419 -05:00 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
+    "MigrationId" TEXT NOT NULL CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY,
+    "ProductVersion" TEXT NOT NULL
+);
+2026-05-18 16:52:41.429 -05:00 [INF] Executed DbCommand (0ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT COUNT(*) FROM "sqlite_master" WHERE "name" = '__EFMigrationsHistory' AND "type" = 'table';
+2026-05-18 16:52:41.432 -05:00 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+2026-05-18 16:52:41.441 -05:00 [INF] Applying migration '20260518215139_AddDeviceExtendedFieldsAndOptionalBrand'.
+2026-05-18 16:52:41.462 -05:00 [WRN] The migration operation 'PRAGMA foreign_keys = 0;
+' from migration 'AddDeviceExtendedFieldsAndOptionalBrand' cannot be executed in a transaction. If the app is terminated or an unrecoverable error occurs while this operation is being executed then the migration will be left in a partially applied state and would need to be reverted manually before it can be applied again. Create a separate migration that contains just this operation.
+2026-05-18 16:52:41.463 -05:00 [INF] Executed DbCommand (0ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+ALTER TABLE "Devices" ADD "IpAddress" TEXT NULL;
+2026-05-18 16:52:41.463 -05:00 [INF] Executed DbCommand (0ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+ALTER TABLE "Devices" ADD "MacAddress" TEXT NULL;
+2026-05-18 16:52:41.463 -05:00 [INF] Executed DbCommand (0ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+ALTER TABLE "Devices" ADD "OperatingSystem" TEXT NULL;
+2026-05-18 16:52:41.464 -05:00 [INF] Executed DbCommand (0ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+ALTER TABLE "Devices" ADD "ProductUrl" TEXT NULL;
+2026-05-18 16:52:41.464 -05:00 [INF] Executed DbCommand (0ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+ALTER TABLE "Devices" ADD "Purpose" TEXT NULL;
+2026-05-18 16:52:41.464 -05:00 [INF] Executed DbCommand (0ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+ALTER TABLE "Devices" ADD "Version" TEXT NULL;
+2026-05-18 16:52:41.464 -05:00 [INF] Executed DbCommand (0ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE "ef_temp_Devices" (
+    "Id" TEXT NOT NULL CONSTRAINT "PK_Devices" PRIMARY KEY,
+    "BrandId" TEXT NULL,
+    "CategoryId" TEXT NOT NULL,
+    "CreatedAt" TEXT NOT NULL,
+    "CreatedBy" TEXT NULL,
+    "Currency" TEXT NOT NULL,
+    "DisposalMethod" TEXT NULL,
+    "IpAddress" TEXT NULL,
+    "LocationId" TEXT NOT NULL,
+    "MacAddress" TEXT NULL,
+    "Model" TEXT NULL,
+    "ModifiedAt" TEXT NOT NULL,
+    "ModifiedBy" TEXT NULL,
+    "Name" TEXT NOT NULL,
+    "NetworkId" TEXT NULL,
+    "Notes" TEXT NULL,
+    "OperatingSystem" TEXT NULL,
+    "OwnerId" TEXT NOT NULL,
+    "ProductUrl" TEXT NULL,
+    "PurchaseDate" TEXT NULL,
+    "PurchasePrice" TEXT NULL,
+    "Purpose" TEXT NULL,
+    "RetiredDate" TEXT NULL,
+    "SerialNumber" TEXT NULL,
+    "Status" INTEGER NOT NULL,
+    "Version" TEXT NULL,
+    CONSTRAINT "FK_Devices_Brands_BrandId" FOREIGN KEY ("BrandId") REFERENCES "Brands" ("Id") ON DELETE RESTRICT,
+    CONSTRAINT "FK_Devices_Categories_CategoryId" FOREIGN KEY ("CategoryId") REFERENCES "Categories" ("Id") ON DELETE RESTRICT,
+    CONSTRAINT "FK_Devices_Locations_LocationId" FOREIGN KEY ("LocationId") REFERENCES "Locations" ("Id") ON DELETE RESTRICT,
+    CONSTRAINT "FK_Devices_Networks_NetworkId" FOREIGN KEY ("NetworkId") REFERENCES "Networks" ("Id") ON DELETE RESTRICT,
+    CONSTRAINT "FK_Devices_Owners_OwnerId" FOREIGN KEY ("OwnerId") REFERENCES "Owners" ("Id") ON DELETE RESTRICT
+);
+2026-05-18 16:52:41.465 -05:00 [INF] Executed DbCommand (0ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "ef_temp_Devices" ("Id", "BrandId", "CategoryId", "CreatedAt", "CreatedBy", "Currency", "DisposalMethod", "IpAddress", "LocationId", "MacAddress", "Model", "ModifiedAt", "ModifiedBy", "Name", "NetworkId", "Notes", "OperatingSystem", "OwnerId", "ProductUrl", "PurchaseDate", "PurchasePrice", "Purpose", "RetiredDate", "SerialNumber", "Status", "Version")
+SELECT "Id", "BrandId", "CategoryId", "CreatedAt", "CreatedBy", "Currency", "DisposalMethod", "IpAddress", "LocationId", "MacAddress", "Model", "ModifiedAt", "ModifiedBy", "Name", "NetworkId", "Notes", "OperatingSystem", "OwnerId", "ProductUrl", "PurchaseDate", "PurchasePrice", "Purpose", "RetiredDate", "SerialNumber", "Status", "Version"
+FROM "Devices";
+2026-05-18 16:52:41.466 -05:00 [INF] Executed DbCommand (0ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+PRAGMA foreign_keys = 0;
+2026-05-18 16:52:41.466 -05:00 [INF] Executed DbCommand (0ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+DROP TABLE "Devices";
+2026-05-18 16:52:41.467 -05:00 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+ALTER TABLE "ef_temp_Devices" RENAME TO "Devices";
+2026-05-18 16:52:41.468 -05:00 [INF] Executed DbCommand (0ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+PRAGMA foreign_keys = 1;
+2026-05-18 16:52:41.468 -05:00 [INF] Executed DbCommand (0ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX "IX_Devices_BrandId" ON "Devices" ("BrandId");
+2026-05-18 16:52:41.468 -05:00 [INF] Executed DbCommand (0ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX "IX_Devices_CategoryId" ON "Devices" ("CategoryId");
+2026-05-18 16:52:41.468 -05:00 [INF] Executed DbCommand (0ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX "IX_Devices_LocationId" ON "Devices" ("LocationId");
+2026-05-18 16:52:41.469 -05:00 [INF] Executed DbCommand (0ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX "IX_Devices_NetworkId" ON "Devices" ("NetworkId");
+2026-05-18 16:52:41.469 -05:00 [INF] Executed DbCommand (0ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE INDEX "IX_Devices_OwnerId" ON "Devices" ("OwnerId");
+2026-05-18 16:52:41.470 -05:00 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+VALUES ('20260518215139_AddDeviceExtendedFieldsAndOptionalBrand', '10.0.8');
+2026-05-18 16:52:41.472 -05:00 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+DELETE FROM "__EFMigrationsLock";
+2026-05-18 16:52:41.631 -05:00 [INF] Executed DbCommand (0ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT EXISTS (
+    SELECT 1
+    FROM "Households" AS "h")
+2026-05-18 16:52:41.636 -05:00 [WRN] ⚠️ Auth:DevBypass=true — all requests authenticated as 'dev-admin'. NEVER enable outside Development.
+2026-05-18 16:52:41.636 -05:00 [INF] Starting Tech Inventory API
+2026-05-18 16:52:41.648 -05:00 [INF] User profile is available. Using 'C:\Users\brian.denicolafamily\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2026-05-18 16:52:41.708 -05:00 [INF] Now listening on: http://localhost:8080
+2026-05-18 16:52:41.708 -05:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-05-18 16:52:41.708 -05:00 [INF] Hosting environment: Development
+2026-05-18 16:52:41.708 -05:00 [INF] Content root path: C:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Api

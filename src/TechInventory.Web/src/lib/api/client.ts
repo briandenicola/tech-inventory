@@ -368,6 +368,36 @@ export const networks = {
 		)
 };
 
+// Tags
+export const tags = {
+	list: async (
+		params?: paths['/api/v1/tags']['get']['parameters']['query']
+	) => apiFetch<GetResponse<paths['/api/v1/tags']>>(`/api/v1/tags${buildQueryString(params)}`),
+
+	get: async (id: string) =>
+		apiFetch<GetResponse<paths['/api/v1/tags/{id}']>>(`/api/v1/tags/${encodeURIComponent(id)}`),
+
+	create: async (body: PostRequestBody<paths['/api/v1/tags']>) =>
+		apiFetch<PostResponse<paths['/api/v1/tags']>>(`/api/v1/tags`, {
+			method: 'POST',
+			body: JSON.stringify(body)
+		}),
+
+	update: async (id: string, body: PutRequestBody<paths['/api/v1/tags/{id}']>) =>
+		apiFetch<PutResponse<paths['/api/v1/tags/{id}']>>(`/api/v1/tags/${encodeURIComponent(id)}`, {
+			method: 'PUT',
+			body: JSON.stringify(body)
+		}),
+
+	deactivate: async (id: string) =>
+		apiFetch<void>(
+			`/api/v1/tags/${encodeURIComponent(id)}/deactivate`,
+			{
+				method: 'PATCH'
+			}
+		)
+};
+
 // Imports
 export const imports = {
 	preview: async (formData: FormData) =>

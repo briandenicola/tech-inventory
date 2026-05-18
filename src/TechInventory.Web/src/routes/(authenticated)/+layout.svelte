@@ -86,14 +86,24 @@
 				</a>
 
 				{#if isAdmin}
-					<a
-						href="/admin"
-						class="text-sm font-medium text-neutral-700 hover:text-primary-600 dark:text-neutral-300 dark:hover:text-primary-400"
-						class:text-primary-600={$page.url.pathname.startsWith('/admin')}
-						class:dark:text-primary-400={$page.url.pathname.startsWith('/admin')}
-					>
-						{t('navigation.admin')}
-					</a>
+					<!-- Admin Dropdown (Desktop) -->
+					<div class="relative">
+						<button
+							type="button"
+							class="text-sm font-medium text-neutral-700 hover:text-primary-600 dark:text-neutral-300 dark:hover:text-primary-400"
+							class:text-primary-600={$page.url.pathname.startsWith('/admin')}
+							class:dark:text-primary-400={$page.url.pathname.startsWith('/admin')}
+							onclick={() => {
+								if ($page.url.pathname.startsWith('/admin')) {
+									goto('/devices');
+								} else {
+									goto('/admin/brands');
+								}
+							}}
+						>
+							{t('navigation.admin')}
+						</button>
+					</div>
 				{/if}
 			</nav>
 
@@ -183,12 +193,36 @@
 					</a>
 
 					{#if isAdmin}
-						<a
-							href="/admin"
-							class="block rounded-lg px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
-						>
-							{t('navigation.admin')}
-						</a>
+						<!-- Admin Section (Mobile) -->
+						<div class="space-y-1">
+							<div class="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+								{t('navigation.admin')}
+							</div>
+							<a
+								href="/admin/brands"
+								class="block rounded-lg px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+							>
+								{t('navigation.adminBrands')}
+							</a>
+							<a
+								href="/admin/locations"
+								class="block rounded-lg px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+							>
+								{t('navigation.adminLocations')}
+							</a>
+							<a
+								href="/admin/networks"
+								class="block rounded-lg px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+							>
+								{t('navigation.adminNetworks')}
+							</a>
+							<a
+								href="/admin/tags"
+								class="block rounded-lg px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+							>
+								{t('navigation.adminTags')}
+							</a>
+						</div>
 					{/if}
 
 					<!-- Mobile: User Info + Sign Out -->

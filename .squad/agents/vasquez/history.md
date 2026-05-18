@@ -34,7 +34,22 @@ Accessibility: WCAG 2.2 AA target, zero axe-core violations to merge. Browser ma
 
 ## Learnings
 
-<!-- Append new learnings below. Each entry is something lasting about the project. -->
+### 2026-05-19 (Phase 2 Round 0) — T02, T03, T04, T05: Foundation + Client Gen + MSAL Config
+
+**Shipped:**
+- **T02 (Generate TypeScript API client):** `openapi-typescript` types-only + hand-written fetch wrapper (`client.ts`). Generated types in `src/TechInventory.Web/src/lib/api/generated/` gitignored; `pnpm run generate:client` regenerates from `openapi.yaml`. Auth token injection hook marked for T05 wiring (D-046).
+- **T03 (Expand design tokens):** ~100 CSS custom properties in `src/lib/tokens.css` (color scales, spacing, typography, radii, shadows, z-index, motion). Tailwind v4 CSS-only configuration via `@theme` layer; no `tailwind.config.ts`. ESLint `no-arbitrary-values` enforces token usage (D-049).
+- **T04 (Expand i18n catalog):** ~200 keys in `src/lib/i18n/en.json` covering auth, device CRUD, reference entities, import/export, common UI. Kept minimal hand-rolled loader (28 lines, zero deps) from Phase 1; English-only v1 (multi-locale deferred) (D-047).
+- **T05 (Configure MSAL.js):** MSAL v3.28.0 configured for Workforce Entra OIDC + PKCE. Authority, scopes, redirect URI (dynamic `window.location.origin`), cache location (`sessionStorage` per D-002), bootstrap in `+layout.svelte` `onMount`. Token acquisition: silent + redirect fallback. Inline Tenant/Client ID constants per D-039 (public, not secrets). API integration hook ready for T05a completion (D-050).
+
+**Key Decisions:**
+- D-046: `openapi-typescript` (types only) vs. full generators — slim bundle, full control on auth injection.
+- D-047: Hand-rolled minimal loader vs. `svelte-i18n` — simpler, zero-cost for English-only v1.
+- D-048: Generated types gitignored — `openapi.yaml` is single source of truth; no PR noise.
+- D-049: Design tokens in CSS-only `tokens.css`, no JS config — Tailwind v4 pattern; Constitution §6.5.5.
+- D-050: MSAL.js v3 full config — Workforce Entra (D-001), sessionStorage (D-002), public IDs (D-039).
+
+**Reflection:** Round 0 foundation work is high-quality infrastructure unblocking all subsequent frontend + backend auth work. Decisions are well-grounded in Constitution + PRD. No surprises; execution smooth. Token storage discipline (D-002) + i18n catalog discipline (D-047) will compound as Phase 2 grows.
 
 ### 2026-05-18: Initial Scaffold
 

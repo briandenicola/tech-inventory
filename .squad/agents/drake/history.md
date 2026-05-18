@@ -45,15 +45,14 @@
 - ✅ All 7 PNGs rendered at correct dimensions
 
 **Documentation:**
-- Decision doc at `.squad/decisions/inbox/drake-phase2-t05a-icon-system.md` (pending Scribe merge as D-040)
+- Decision doc at `.squad/decisions.md` as D-051 (Scribe merge)
 - Brian's manual step: Upload `icon-240.png` to Entra → Branding & properties
 
 **Reflection:**
-- First real Squad work. Concept was pre-approved, so this was pure execution.
-- House-with-grid metaphor reads well at all sizes (tested by viewing 16×16 render — still recognizable).
-- `sharp` was the right call — deterministic output, no system tooling burden.
-- Vasquez's token expansion (T03) gave me exactly what I needed (`--color-primary-500`). No new palette additions required.
+- T05a is complete and unblocks PWA installability (D-036). Icon system is future-proof (no AI-generated gimmicks, no raster art to update every device generation).
+- Vasquez's token expansion (T03, commit `1a5301c`) gave me exactly what I needed (`--color-primary-500`). No new palette additions required.
 - Stayed in my lane (`static/icons/`, `manifest.webmanifest`, `app.html` head) — zero conflicts with Vasquez/Bishop's parallel work on MSAL (T05) and backend auth (T06-T08).
+- Commit `0ecae82`: T05a complete, all validation green, ready for merge.
 
 **Future work (out of scope):**
 - True multi-res ICO (16/32/48 frames) if browsers complain about PNG-as-ICO

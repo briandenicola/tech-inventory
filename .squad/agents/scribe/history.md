@@ -21,4 +21,34 @@ Agent Scribe initialized and ready for work.
 
 ## Learnings
 
-Initial setup complete.
+### 2026-05-19 (Phase 2 Round 8) — Merge Phase 2 R0/R1 Decisions (D-035–D-051)
+
+**What I shipped:**
+- Merged 5 inbox files (17 total decisions):
+  - **D-035–D-039:** Coordinator Phase 2 design decisions (5): Theme, PWA, mobile breakpoint, CSV export, Entra ID provisioning.
+  - **D-040–D-045:** Bishop Round 1 Entra JWT validation decisions (6): Dual audience, role mapping, clock skew, dev bypass guard, test JWT strategy, `ICurrentUserService` scope.
+  - **D-046–D-049:** Vasquez Round 0 Foundation decisions (4): Client generation, i18n loader, gitignored types, design tokens.
+  - **D-050:** Vasquez T05 MSAL.js config decision (1).
+  - **D-051:** Drake T05a icon system decision (1).
+- Marked tasks complete in `specs/002-frontend-mvp/tasks.md`: T02, T03, T04, T05, T05a, T06, T07 (✅ prefix). T08 left incomplete (partial per Bishop; test infrastructure issue awaits Apone fix).
+- Updated agent histories:
+  - Vasquez: T02–T05 Round 0 summary (client gen, tokens, i18n, MSAL).
+  - Drake: T05a Round 0 summary (icon system).
+  - Bishop: T06–T07 + T08-partial Round 1 summary (JWT bearer, HttpContextCurrentUserService, test infrastructure issue noted).
+  - Scribe (this entry): Round 8 merge summary.
+- Deleted merged inbox files (5 files removed from `.squad/decisions/inbox/`).
+
+**Key reflections:**
+- **Decisions.md format:** Lean one-paragraph summaries citing inbox file paths; kept all decision/rationale/implication sentences verbatim per rules.
+- **Numbering:** Authoritative sequence (D-035–D-045 fixed) + arrival order (D-046–D-051 in mtime sequence) worked cleanly. No inbox file collisions; Vasquez/Drake self-allocated correctly.
+- **Task marking:** Round 0 (T02–T05a) + Round 1 (T06–T07) all marked ✅. T08 flagged as partial (production JWT validation correct; test harness awaits fix).
+- **Commit strategy:** Single commit references all 17 decisions + 7 completed tasks + Vasquez/Drake/Bishop commits (1a5301c, 80a3907, 0ecae82, 023331e cited).
+- **No Apone T08 fix file present:** Per instructions, skipped Apone history entry. If Apone's fix arrives next round, Scribe will merge then + add her entry retroactively.
+
+**Learnings for future rounds:**
+- Inbox file naming convention is working: `{agent}-{phase}-{round|task}-{descriptor}.md` makes ordering obvious.
+- Pre-allocation of decision numbers (Bishop D-040–D-045) eliminates number collisions — encourage this pattern.
+- Short decision summaries (1 paragraph) scale better than long docs. Link to inbox file path for full rationale if needed.
+- Mark partial tasks (like T08) explicitly so coordinator can spawn follow-up rounds.
+
+### 2026-05-18 (Phase 1 Round 7)

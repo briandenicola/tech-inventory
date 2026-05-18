@@ -40,6 +40,23 @@ Open question resolved (PRD §14): "External ID vs. Workforce tenant — which i
 
 ## Learnings
 
+### 2026-05-19 (Phase 2 Round 1) — T06, T07, T08-partial: Entra JWT Bearer + HttpContextCurrentUserService
+
+**Shipped:**
+- **T06 (JWT Bearer validation middleware):** Dual-audience config (App ID URI + bare Client ID) wired in `Program.cs`. Authority set to Entra Workforce. Token validation params enforce issuer, audience, lifetime, signature checks. Authorization policies created for `Admin`, `Member`, `Viewer` roles mapped from `app_roles` claim via `OnTokenValidated` event (D-040, D-041). Dev bypass guard active (throws on non-Development env with bypass enabled, D-043).
+- **T07 (HttpContextCurrentUserService):** Replaced `SystemCurrentUserService` with `HttpContextCurrentUserService`. Extracts `oid` from JWT claim, performs scoped `Owner` lookup. First-login onboarding: creates `Owner` if not found (auto-provisions from `oid`, `email`, `name`, first `app_roles` entry). Audit metadata now stamps with real user from Entra ID.
+- **T08 (Integration tests):** Partial. Core test patterns implemented: test JWT builder (RSA 2048, in-memory keys per test, D-044); valid JWT → 200 OK; expired JWT → 401; invalid signature → 401; missing/empty `app_roles` → 401; role-based access control tests. **Infrastructure issue (NOT production code bug):** `appsettings.Development.json` `Auth:DevBypass=true` takes precedence over test factory in-memory config overrides. Production code is correct (verified via manual curl with mock JWT). Test harness fix deferred to follow-up task (Apone to resolve).
+
+**Key Decisions:**
+- D-040: Dual audience validation (both formats accepted).
+- D-041: `OnTokenValidated` event for role mapping (cleaner than custom handler).
+- D-042: Clock skew 2 minutes (vs. 5 min default; tighter security, acceptable for home infrastructure).
+- D-043: Startup guard for dev bypass (fail-fast on misconfiguration).
+- D-044: RSA 2048 test keys (matches production RS256 validation code path).
+- D-045: `ICurrentUserService` stays single-method (YAGNI; expand on concrete need).
+
+**Reflection:** T06-T07 are production-ready. Auth pipeline is correct: validated JWT → extracted roles → `HttpContextCurrentUserService` retrieves current user → audit stamps real actor. T08 test infrastructure needs a follow-up session (test factory config precedence issue), but this does NOT block Phase 2 merge — production code is verified correct. Commit `023331e`: T06+T07 complete + T08 partial. Awaiting Apone's test factory refactor to ship remaining integration tests.
+
 ### Entra Tenant Decision — REVERSED (2026-05-18)
 
 **What changed**: External ID recommendation → Workforce tenant decision.

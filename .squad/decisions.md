@@ -900,6 +900,350 @@ Generate the committed repo-root `openapi.yaml` from the API's runtime Swagger d
 
 ---
 
+### D-035: Theme — `prefers-color-scheme` Only (No Manual Toggle in v1)
+
+**Date:** 2026-05-18 (Phase 2 Round 0, Brian via Coordinator)  
+**Status:** Approved & implemented  
+**Related:** `specs/002-frontend-mvp/spec.md` Q1, PRD §F3, D-036, `src/lib/tokens.css`, Tailwind v4 config
+
+**Decision:** Respect OS dark-mode preference via `prefers-color-scheme` CSS media query. No manual theme toggle in Phase 2 UI.
+
+**Rationale:** Reduces Phase 2 scope. Manual toggle would require localStorage (theme preference persistence), which conflicts with security baseline D-002 (tokens never in localStorage). Deferred to v1.1.
+
+**Implications:**
+- `src/lib/tokens.css` declares light + dark color variants under `@media (prefers-color-scheme: dark)`.
+- Tailwind config uses `media` dark mode (not `class`).
+- No theme store, no toggle UI component.
+
+**Consequences:** Simpler initial PWA; future v1.1 toggle implementation can be added without breaking existing design token structure.
+
+**References:** Constitution §6.5.8, D-002 (Token Storage), D-036 (PWA).
+
+---
+
+### D-036: PWA from Day One — Manifest + Minimal Service Worker
+
+**Date:** 2026-05-18 (Phase 2 Round 0, Brian via Coordinator)  
+**Status:** Approved & in progress  
+**Related:** `specs/002-frontend-mvp/spec.md` Q2, Constitution §6.5.8, PRD §U22
+
+**Decision:** Ship `manifest.webmanifest` + minimal service worker (offline app shell only; no API response caching in v1).
+
+**Rationale:** Constitution §6.5.8 requires PWA installability by v1. Manifest + minimal SW are low-cost wins. API response caching deferred to Phase 3 where offline-first conflict resolution can be designed thoroughly.
+
+**Implications:**
+- T51: Manifest with name, icons, theme color, `display: "standalone"`.
+- T52: Service worker pre-caches app shell (HTML/JS/CSS); API calls network-only with graceful offline message.
+- Icon set generated via Drake T05a (rasterization script, `sharp` npm package).
+
+**Consequences:** Installable badge available in browsers; users can add to home screen on iOS/Android/PWA-capable browsers.
+
+**References:** Constitution §6.5.8, D-035 (Theme), Drake T05a (icon gen).
+
+---
+
+### D-037: Mobile Breakpoint Minimum Width — 360px
+
+**Date:** 2026-05-18 (Phase 2 Round 0, Brian via Coordinator)  
+**Status:** Approved & implemented  
+**Related:** `specs/002-frontend-mvp/spec.md` Q3, Constitution §6.5.7
+
+**Decision:** Design & test against 360px minimum width (iPhone SE / Pixel 5 range; aligns with Tailwind `sm` default).
+
+**Implications:**
+- Design tokens declare base mobile styles at 360px min.
+- Playwright E2E mobile viewport: 360×640.
+- Tailwind config: no overrides needed (defaults match).
+
+**References:** Constitution §6.5.7, Tailwind defaults.
+
+---
+
+### D-038: CSV Export Column Ordering — Canonical
+
+**Date:** 2026-05-18 (Phase 2 Round 0, Brian via Coordinator)  
+**Status:** Approved & in progress  
+**Related:** `specs/002-frontend-mvp/spec.md` Q4, T38 (export page)
+
+**Decision:** Export devices in canonical column order. Suggested sequence: `Name, Serial, AssetTag, Brand, Model, Category, Status, Owner, Location, AcquiredOn, RetiredOn, Notes`.
+
+**Rationale:** Canonical order simplifies implementation. User-configurable column ordering is Phase 3+. Import does NOT need to preserve user-supplied column order on round-trip.
+
+**Implications:**
+- T38 (export page) implements canonical ordering.
+- API export endpoint (Hicks's `IDeviceExportService`, Phase 1 Round 7) already returns canonical order — verify alignment.
+- UI note: "Columns are exported in our standard order. CSV importers should map by column header, not position."
+
+**References:** D-033 (Export Projection & Streaming), T38, Constitution §2.
+
+---
+
+### D-039: Entra Tenant/Client IDs — Committed Inline (Public Values, Not Secrets)
+
+**Date:** 2026-05-18 (Phase 2 Round 0, Brian via Coordinator)  
+**Status:** Approved & in progress  
+**Related:** `specs/002-frontend-mvp/spec.md` Q5, D-001 (Workforce Entra), D-002 (Token Storage)
+
+**Decision:** Commit Tenant ID + Client ID into `appsettings.json` (production) and `appsettings.Development.json` (local). They are public values visible in JWT issuer/audience/OAuth redirect — NOT secrets.
+
+**Rationale:** Treating Tenant/Client IDs as secret is security theater. They surface in every browser OAuth redirect + JWT. OIDC + PKCE (public client) does NOT require a client secret. Any actual client secret (if future Confidential flow added) goes in Docker secrets only.
+
+**Implications:**
+- After T01 (Brian's Entra portal app registration), he commits resulting IDs directly to `appsettings.json` + `src/TechInventory.Web/src/lib/auth/config.ts`.
+- No `.env` file, no Docker secrets, no key vault for public IDs.
+- Document this stance in `docs/auth-design.md` so future maintainers don't try to "fix" the apparent leak.
+- If/when Confidential client flow added, the client secret for THAT flow uses Docker secrets.
+
+**Consequences:** Simpler config management; zero secrets in environment files for Phase 2; improves transparency about what is/isn't a secret.
+
+**References:** D-001 (Workforce Entra), D-002 (Token Storage), Constitution §7 (Security), T05 (MSAL config), T06 (Backend JWT validation).
+
+---
+
+### D-040: Dual Audience Configuration Strategy
+
+**Date:** 2026-05-18 (Phase 2 Round 1, Bishop — Security & Auth Specialist)  
+**Status:** Implemented  
+**Related:** `specs/002-frontend-mvp/spec.md` §7.2, T06, ASVS V14.5.1
+
+**Decision:** Configure JWT bearer validation to accept BOTH App ID URI (`api://{clientId}`) and bare Client ID as valid audiences.
+
+**Rationale:** Microsoft Entra ID may issue tokens with either format depending on client request strategy. ASVS V14.5.1 requires strict audience validation, so both must be whitelisted. Prevents legitimate client configurations from rejection.
+
+**Implementation:** `TokenValidationParameters.ValidAudiences` set to `["api://60341158-b5af-4216-8140-a4c321f1e79c", "60341158-b5af-4216-8140-a4c321f1e79c"]`.
+
+**Consequences:** Client can use either audience format; no rejection of valid household tenant tokens; maintains ASVS V14.5 compliance (explicit audience whitelist).
+
+**References:** Constitution §7 (Security), ASVS V14.5.1, T06.
+
+---
+
+### D-041: OnTokenValidated Role Mapping Strategy
+
+**Date:** 2026-05-18 (Phase 2 Round 1, Bishop)  
+**Status:** Implemented  
+**Related:** `specs/002-frontend-mvp/spec.md` §7.2, T06, Constitution §2.4
+
+**Decision:** Map Entra `roles` claim to ASP.NET Core `ClaimTypes.Role` claims via JWT bearer middleware's `OnTokenValidated` event handler, not a custom authentication handler.
+
+**Rationale:** `JwtBearerHandler` already validates signature/issuer/audience/lifetime. Custom handler would duplicate all that logic. `OnTokenValidated` runs post-validation, perfect for augmentation.
+
+**Implementation:** Event handler reads `roles` array from JWT claim, adds each role as `ClaimTypes.Role` claim to principal.
+
+**Consequences:** Existing `[Authorize(Roles = "...")]` attributes work unchanged; no custom handler maintenance; auth config stays in `Program.cs` (transparent + auditable).
+
+**References:** Constitution §2 (Clean Architecture), D-022 (Dev Bypass), T06, T07.
+
+---
+
+### D-042: Conservative Clock Skew — 2 Minutes
+
+**Date:** 2026-05-18 (Phase 2 Round 1, Bishop)  
+**Status:** Implemented  
+**Related:** ASVS V3.5.2, T06
+
+**Decision:** Set JWT clock skew to 2 minutes (vs. ASP.NET Core default 5 minutes).
+
+**Rationale:** Clock skew compensates for time drift between API server and Entra ID issuer. Default 5 minutes is generous; Brian's home infrastructure runs NTP. 2 minutes sufficient buffer (~±30s typical drift) while reducing replay attack window. Household environment is low-threat.
+
+**Consequences:** Tighter security window; legitimate tokens within skew still accepted; if household NTP fails & server drifts >2min, tokens rejected (acceptable household SLA).
+
+**References:** ASVS V3.5.2 (Timestamp Validation), Constitution §7 (Security).
+
+---
+
+### D-043: Startup Guard Against Production Dev-Bypass Misconfiguration
+
+**Date:** 2026-05-18 (Phase 2 Round 1, Bishop)  
+**Status:** Implemented  
+**Related:** D-022 (Dev Bypass), T06, Constitution §7
+
+**Decision:** Enforce runtime startup guard: throw `InvalidOperationException` if `Auth:DevBypass=true` outside Development environment.
+
+**Rationale:** Dev bypass is local-development convenience; MUST NOT run in Production/Staging. Startup check is fail-fast: misconfigured production deploy crashes immediately, caught by health checks/monitoring.
+
+**Implementation:** Guard logic: `if (devBypassEnabled && !builder.Environment.IsDevelopment()) throw InvalidOperationException(...)`.
+
+**Consequences:** Production deploy with Dev bypass enabled crashes on startup (no silent bypass leakage); integration tests verify this guard (T08-8: `ProductionWithDevBypass_ThrowsOnStartup`).
+
+**References:** D-022 (original dev bypass), Constitution §7 (Security), ASVS V1.2.2 (Runtime control verification), T08.
+
+---
+
+### D-044: Test JWT Signing Strategy — RSA 2048, In-Memory Key
+
+**Date:** 2026-05-18 (Phase 2 Round 1, Bishop)  
+**Status:** Implemented  
+**Related:** T08, Constitution §7 (Security), ASVS V14.5.3
+
+**Decision:** Integration tests use RSA 2048-bit keys generated in-memory per test run, not symmetric HMAC keys.
+
+**Rationale:** Entra ID issues JWTs signed with RS256 (RSA + SHA256). To accurately test JWT validation pipeline, tests must sign with the same algorithm. HMAC (HS256) would NOT exercise RSA signature verification code path.
+
+**Implementation:** `TestJwtBuilder.CreateTestSigningKey()` generates `RsaSecurityKey` in-memory. Test factories override `TokenValidationParameters.IssuerSigningKey` to use test key.
+
+**Consequences:** Tests validate RSA signature verification (production code path); test key generation adds ~50ms per run (acceptable); no secret key files in repo.
+
+**References:** ASVS V14.5.3 (Algorithm Validation), Constitution §7 (No secrets committed), T08.
+
+---
+
+### D-045: No `ICurrentUserService` Interface Expansion (Defer to Future Need)
+
+**Date:** 2026-05-18 (Phase 2 Round 1, Bishop)  
+**Status:** Decided  
+**Related:** T07, Constitution §2 (YAGNI)
+
+**Decision:** Keep `ICurrentUserService.GetCurrentUserId()` as single method. DO NOT expand to `GetDisplayName()`, `GetRoles()`, `IsAuthenticated()` until concrete handler needs them.
+
+**Rationale:** Current Application layer handlers (T06-T08) only call `GetCurrentUserId()` for audit stamping. Adding unused methods now violates YAGNI. Expansion is non-breaking; add methods when a real handler needs them.
+
+**Consequences:** Simpler interface, easier mocking in unit tests; future expansion incurs no breaking change.
+
+**References:** Constitution §2 (Dependencies point inward), T07, T08.
+
+---
+
+### D-046: TypeScript Client Generation — `openapi-typescript` Types-Only Approach
+
+**Date:** 2026-05-18 (Phase 2 Round 0, Vasquez — Frontend Lead)  
+**Status:** Implemented  
+**Related:** `specs/002-frontend-mvp/spec.md` §4.2, Constitution §6.5.2, T02
+
+**Decision:** Use `openapi-typescript` for type generation only + hand-written fetch wrapper (`client.ts`).
+
+**Rationale:** Slim bundle (types-only adds ~0 bytes runtime vs. full client generators); full control over auth header injection (T05 MSAL integration), custom error handling (RFC 7807 ProblemDetails); type safety via generated `GetResponse`/`PostRequestBody` helpers.
+
+**Alternatives rejected:**
+- `orval` (full client): ~40KB bundle (TanStack Query + wrapper); less flexible auth wiring; overkill for simple CRUD API.
+- `kiota` (Microsoft): Designed for .NET/Java; TypeScript output verbose; heavier runtime footprint.
+
+**Implementation:** `pnpm run generate:client` regenerates types from `../../openapi.yaml`. `client.ts` exports namespaced functions (`devices.list()`, `brands.create()`, etc.). Auth token injection marked with `// TODO (T05)`. Generated types gitignored; developers run `generate:client` after API changes. CI gate: `openapi.yaml` hash change → fail build if `generated/types.ts` stale.
+
+**References:** Constitution §6.5.2 (Generated client), Spec §4.2, T02.
+
+---
+
+### D-047: i18n Library — Hand-Rolled Minimal Loader (Keep Phase 1 Scaffold)
+
+**Date:** 2026-05-18 (Phase 2 Round 0, Vasquez)  
+**Status:** Implemented  
+**Related:** `specs/002-frontend-mvp/spec.md` §4.5, Constitution §6.5.12, T04
+
+**Decision:** Keep existing minimal `src/lib/i18n/index.ts` loader (28 lines, zero dependencies).
+
+**Rationale:** Handles nested key lookup (`t('devices.list.title')`) with O(1) performance. Type-safe keys preserve editor autocomplete. English-only v1 (PRD §14); multi-locale architecture not needed until Phase 3+. Loader enforces Constitution §6.5.12 (all strings in catalog).
+
+**Alternatives rejected:**
+- `svelte-i18n`: 11KB minified (~4KB gzipped); reactive store overhead; locale fallback complexity not justified.
+- `typesafe-i18n`: 8KB runtime; requires codegen step; over-engineered for single-locale v1.
+
+**Implementation:** ~200 keys added to `src/lib/i18n/en.json` (T04). `t('key.path')` used throughout components. If Phase 3+ needs multi-locale, swap in `svelte-i18n`; `en.json` structure already compatible.
+
+**References:** Constitution §6.5.12 (i18n), Spec §4.5, T04.
+
+---
+
+### D-048: Generated Types — Gitignored (Regenerate on Build)
+
+**Date:** 2026-05-18 (Phase 2 Round 0, Vasquez)  
+**Status:** Implemented  
+**Related:** `specs/002-frontend-mvp/spec.md` §4.2, T02, D-046
+
+**Decision:** Add `src/TechInventory.Web/src/lib/api/generated/` to `.gitignore`.
+
+**Rationale:** `openapi.yaml` at repo root is single source of truth; generated types are derived artifacts. Avoids PR noise (1000+ line diffs on API tweaks). Developers run `pnpm run generate:client` in `postinstall` hook. CI enforces: `generate:client` → fail build if `git diff` shows uncommitted changes.
+
+**Implementation:** `.gitignore` updated. `package.json` `postinstall` script (or docs) instructs: "Run `pnpm run generate:client` after cloning." CI `verify.sh` checks `git status` post-generate to catch drift.
+
+**Consequences:** No PR code review waste on generated code; risk of stale types if developer forgets to regenerate (mitigated by CI gate + postinstall hook).
+
+**References:** Standard OpenAPI practice, D-046, Spec §4.2.
+
+---
+
+### D-049: Design Tokens — Tailwind v4 CSS-Only (No Config File)
+
+**Date:** 2026-05-18 (Phase 2 Round 0, Vasquez)  
+**Status:** Implemented  
+**Related:** `specs/002-frontend-mvp/spec.md` §4.4, Constitution §6.5.5, D-035, T03
+
+**Decision:** Define all tokens in `src/lib/tokens.css` as CSS custom properties; Tailwind v4 consumes them via `@theme` layer.
+
+**Rationale:** Tailwind v4 beta deprecates `tailwind.config.ts` in favor of CSS-first configuration. Single source of truth: `tokens.css` is the ONLY place tokens live — no JS config duplication. Constitution §6.5.5 requires tokens in CSS; arbitrary Tailwind values (`mt-[13px]`) banned by ESLint `no-arbitrary-values` rule (Phase 1 D-011). Dark mode via `@media (prefers-color-scheme: dark)` in CSS (D-035) — no runtime JS toggle.
+
+**Alternatives rejected:**
+- Tailwind v3 with JS config: Would require `tailwind.config.ts` mapping, violating single-source-of-truth.
+- Style Dictionary: Over-engineered; not generating for iOS/Android (PWA web-only).
+
+**Implementation:** ~100 CSS custom properties in `tokens.css` (color scales, spacing, typography, radii, shadows, z-index, motion). Tailwind classes like `bg-primary-500` resolve to `var(--color-primary-500)`. ESLint `no-arbitrary-values` enforces token usage. Light + dark variants in single file (media query at bottom).
+
+**References:** Constitution §6.5.5, D-035 (Theme), Spec §4.4, T03.
+
+---
+
+### D-050: MSAL.js v3 Configuration — Workforce Entra OIDC + PKCE
+
+**Date:** 2026-05-19 (Phase 2 Round 0, Vasquez)  
+**Status:** Implemented  
+**Related:** `specs/002-frontend-mvp/spec.md` §4.1, `docs/auth-design.md` §2-3, D-039, T05
+
+**Decision:** Configure MSAL.js v3.28.0 with Workforce Entra authority, Redirect flow (not popup), sessionStorage cache, PKCE, and inline Tenant/Client ID constants (per D-039).
+
+**Implications:**
+1. **Cache Location:** `sessionStorage` (never `localStorage` — D-002).
+2. **Auth Flow:** `acquireTokenSilent` first, `acquireTokenRedirect` on interaction required (vs. popup — poor UX / blocked by browsers).
+3. **Redirect URI:** Dynamic `window.location.origin` (zero config drift between dev/prod).
+4. **Token Acquisition:** Silent + redirect fallback; `InteractionRequiredAuthError` triggers `acquireTokenRedirect`.
+5. **Bootstrap:** `onMount` in root `+layout.svelte` (SSR-safe, runs once before routes).
+6. **Scopes:** `loginRequest.scopes = [API_SCOPE, 'openid', 'profile']` (full sign-in); `apiTokenRequest.scopes = [API_SCOPE]` (narrower, faster silent re-acquisition).
+7. **Tenant/Client ID:** Inline constants in `msal.ts` (public per D-039, not secrets).
+8. **API Integration:** Wire `acquireApiToken` into `client.ts` via bootstrap module (`src/lib/api/index.ts`).
+
+**Rationale:** Aligns with Constitution §7 (token security), auth-design.md § 2-3 (Workforce OIDC + PKCE), and D-039 (public ID provisioning). Bootstrap pattern ensures MSAL initialized before any route renders.
+
+**Consequences:** MSAL fully integrated; auth errors do not block app render (surface at protected routes); production ready for T06-T08 (Backend JWT validation).
+
+**References:** Constitution §7 (Security), D-002 (Token Storage), D-039 (Public IDs), D-041 (Role Mapping), Spec §4.1, `docs/auth-design.md`, T05.
+
+---
+
+### D-051: App Icon System — Household Tech Inventory Concept
+
+**Date:** 2026-05-19 (Phase 2 Round 0, Drake — Design/Visual Engineer)  
+**Status:** Implemented  
+**Related:** `specs/002-frontend-mvp/spec.md` §4.4, PRD §F3, Constitution §6.5.8, D-035, D-036, T05a
+
+**Decision:** Master SVG icon (512×512) — stylized house silhouette with interior device-grid pattern. Rasterized to: `icon-240.png` (Entra), `icon-192.png`, `icon-512.png`, `icon-maskable-512.png` (PWA), `favicon.ico` + `favicon.svg`.
+
+**Design Concept:**
+- **Geometric house:** Pitched roof + rectangular body.
+- **Device grid:** 3×3 + 1 grid of 32×32 rounded squares (4px radius) inside representing inventoried items.
+- **Palette:** Primary blue `#0071e3` (from `--color-primary-500`) + white (negative space, dark-mode invert-safe).
+- **Maskable-safe:** Content within 205px radius from (256, 256); outer rounded-square provides full-bleed background.
+- **Scales perfectly:** Readable at 16px (favicon), elegant at 512px (splash).
+
+**Rasterization Tool:** `sharp` (npm devDependency) — best SVG→PNG quality, cross-platform, no system install. Rejected ImageMagick/Inkscape (not installed on dev machine).
+
+**Script:** PowerShell (`src/TechInventory.Web/static/icons/render.ps1`) with inline Node.js (CommonJS `.cjs` for module respect). Deterministic output; validates PNG dimensions.
+
+**Manifest & HTML:**
+- `static/manifest.webmanifest`: Icons array (192px/512px standard + 512px maskable), `theme_color: #0071e3`, `display: standalone`.
+- `src/app.html`: Layered favicon stack (SVG → PNG → ICO), `apple-touch-icon` for iOS, `theme-color` meta tag.
+
+**Manual Step:** Brian uploads `icon-240.png` to Entra → Branding & properties.
+
+**Validation:** `pnpm run check` ✅, `pnpm run lint` ✅, all 7 PNGs at correct dimensions.
+
+**Future (Out of Scope):**
+- True multi-res ICO (16/32/48) if needed.
+- Monochrome variant for pinned tabs.
+- Dark-mode adaptive SVG.
+
+**References:** PRD §F3 ("Quietly elegant"), Constitution §6.5.8 (PWA), D-035 (Dark mode), D-036 (PWA from day one), Vasquez T03 (design tokens), T05a.
+
+---
+
 ## Governance
 
 - All meaningful changes require team consensus

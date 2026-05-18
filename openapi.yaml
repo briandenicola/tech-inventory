@@ -3009,6 +3009,24 @@ components:
         disposalMethod:
           type: string
           nullable: true
+        purpose:
+          type: string
+          nullable: true
+        operatingSystem:
+          type: string
+          nullable: true
+        ipAddress:
+          type: string
+          nullable: true
+        macAddress:
+          type: string
+          nullable: true
+        productUrl:
+          type: string
+          nullable: true
+        version:
+          type: string
+          nullable: true
       additionalProperties: false
     ImportFieldError:
       type: object

@@ -169,3 +169,32 @@ Accessibility: WCAG 2.2 AA target, zero axe-core violations to merge. Browser ma
 **Checks:** `pnpm run check` 0 errors, `pnpm run lint` 0 errors, `pnpm run test` (concurrent Apone cleanup recovered suite to green).
 
 **Charter nit:** Vasquez touched `DeleteDeviceModal.test.ts` (test file) to fix a stray lint error during pre-commit gating — Apone's territory. Noted for future discipline.
+
+## Phase 2 Round 6a — Reference Entity Admins (T27, T30, T31, T32) — `711c754`
+
+**Tasks:** T27 Brands, T30 Locations, T31 Networks, T32 Tags admin pages.
+
+**Pre-flight blocker (resolved):** First attempt halted on "tags endpoints missing." Coordinator investigated: Tag entity + TagsController + openapi.yaml + schema types ALL existed; only the hand-rolled `client.ts` (per D-060) was missing the `tags` export group. Mechanical fix (D-088).
+
+**Delivered:**
+- `src/lib/api/client.ts` — added `tags` export group (~30 lines, mirrors `brands` pattern)
+- 4 admin route pages (`/admin/{brands,locations,networks,tags}`) — totalling ~1,514 lines
+- `src/lib/components/admin/DeactivateConfirmModal.svelte` (114 lines) — lighter than DeleteDeviceModal (deactivation is reversible)
+- `src/routes/(authenticated)/admin/+page.svelte` — landing hub with 4 cards (D-092)
+- 4 Zod schemas (`brand.ts`, `location.ts`, `network.ts`, `tag.ts`)
+- i18n: extended `en.json` with `admin.*` keys (84 insertions)
+- Nav: Admin section added to `(authenticated)/+layout.svelte` (desktop + mobile, Admin-role-gated)
+
+**UX choices:**
+- Tag color: 8-color preset palette (D-089)
+- Deactivate confirm: simple Yes/Cancel (no type-to-confirm; reversible) (D-090)
+- Form pattern: inline modal (D-091) — chosen over separate routes for 2-4 field forms
+- Pagination: pageSize 25 (D-094, consistent with devices list T15)
+- Auth gate: dual-layer — client redirect + backend enforce (D-093)
+
+**Quality:** `pnpm run check` 0 errors / 13 warnings; `pnpm run lint` 0 errors / 24 warnings; `pnpm run test` 149 passed / 2 skipped (baseline maintained — Apone covers via T33).
+
+**Charter touch:** Touched `client.ts` to add `tags` group (frontend territory; resolved false blocker from first attempt). Captured as D-088.
+
+**Decisions added:** D-088..D-094 (7 total).
+

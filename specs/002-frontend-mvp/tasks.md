@@ -80,14 +80,16 @@
 
 ### Round 6: Reference Entity Management UIs (Vasquez + Hicks)
 
+**Progress:** 4/7 ✅ (T27, T30, T31, T32 — Brands/Locations/Networks/Tags admin pages complete; T28/T29 deferred to R6b; T33 component tests queued for Apone)
+
 | ID | Task | Owner | Description | Definition of Done | Dependencies | Ref |
 |----|------|-------|-------------|-------------------|--------------|-----|
-| T27 | Brands admin UI (`/admin/brands`) | Vasquez | Paginated list + "Add Brand" button → modal/page. Form: name, website, notes. Edit: inline or modal. Delete: soft-delete (deactivate). Toggle "Show Inactive". | Brands CRUD works; inactive toggle works; toast on success; axe-core zero violations. | T02 | Spec §5, J12 |
+| ✅ T27 | Brands admin UI (`/admin/brands`) | Vasquez | Paginated list + "Add Brand" button → modal/page. Form: name, website, notes. Edit: inline or modal. Delete: soft-delete (deactivate). Toggle "Show Inactive". | Brands CRUD works; inactive toggle works; toast on success; axe-core zero violations. | T02 | Spec §5, J12 |
 | T28 | Categories admin UI (`/admin/categories`) | Vasquez | Tree view with expand/collapse. Add (root or child — parent selector). Edit (name, parent, icon). Delete (cascades deactivation to subtree). | Categories CRUD works; tree renders; cascade delete works; axe-core zero violations. | T02 | Spec §5, J12 |
 | T29 | Owners admin UI (`/admin/owners`) | Vasquez | List with role badge. Add: name, email, role, Entra object ID (optional). Edit: role change. Deactivate (blocks if devices still reference). | Owners CRUD works; role badge visible; active-owner delete block works; axe-core zero violations. | T02 | Spec §5, J12 |
-| T30 | Locations admin UI (`/admin/locations`) | Vasquez | List. Add/edit: name, type (Home/Storage/External). Deactivate. | Locations CRUD works; type dropdown works; axe-core zero violations. | T02 | Spec §5, J12 |
-| T31 | Networks admin UI (`/admin/networks`) | Vasquez | List. Add/edit: name, description. Deactivate. | Networks CRUD works; axe-core zero violations. | T02 | Spec §5, J12 |
-| T32 | Tags admin UI (`/admin/tags`) | Vasquez | List. Add/edit: name, color (color picker or preset). Deactivate. | Tags CRUD works; color picker/preset works; axe-core zero violations. | T02 | Spec §5, J12 |
+| ✅ T30 | Locations admin UI (`/admin/locations`) | Vasquez | List. Add/edit: name, type (Home/Storage/External). Deactivate. | Locations CRUD works; type dropdown works; axe-core zero violations. | T02 | Spec §5, J12 |
+| ✅ T31 | Networks admin UI (`/admin/networks`) | Vasquez | List. Add/edit: name, description. Deactivate. | Networks CRUD works; axe-core zero violations. | T02 | Spec §5, J12 |
+| ✅ T32 | Tags admin UI (`/admin/tags`) | Vasquez | List. Add/edit: name, color (color picker or preset). Deactivate. | Tags CRUD works; color picker/preset works; axe-core zero violations. | T02 | Spec §5, J12 |
 | T33 | Reference entity component tests | Apone | Vitest tests: brands/categories/owners/locations/networks/tags CRUD forms, validation, inactive toggle, delete guards. | 12+ component tests green (2 per entity); axe-core zero violations. | T27-T32 | Spec §6.2 |
 
 ---

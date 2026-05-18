@@ -121,3 +121,58 @@ Phase 1 lands in `specs/001-core-api/`. Pattern references: **R1** for MediatR h
 - `AuditSaveChangesInterceptor` is wired through `AppDbContext.OnConfiguring(...)` and uses `ICurrentUserService` (currently `SystemCurrentUserService`) to stamp UTC `CreatedAt` / `ModifiedAt` and `CreatedBy` / `ModifiedBy` on every tracked `Entity` / `AggregateRoot` add or update.
 - MediatR pipeline ordering is now `ValidationBehavior` first, `AuditBehavior` last. Validation returns `Result.Failure(new Error("Validation", ...))` with `Error.ValidationErrors` keyed by property name instead of throwing; audit only runs when the inner handler returns success.
 - `IAuditable` lives in `src/TechInventory.Application/Auditing/IAuditable.cs` as a pure marker interface, while handlers communicate audit metadata through scoped `IAuditContext`. BEFORE/AFTER payload strategy: handlers set entity/action/before-state into `IAuditContext`; `AuditBehavior` serializes `BeforePayload` from that context and falls back to the request object for `AfterPayload` (so creates serialize JSON `null` for BEFORE and the command payload for AFTER).
+
+## Mid-Phase 2 — CSV Schema Reconciliation (Brian's real 551-device inventory) — `46f6042` + `8fe885f` + `6cf0bc3`
+
+**Context:** Brian dropped `data/Devices.csv` (gitignored; 551 rows, SharePoint export). Coordinator paused Phase 2 RxX to reconcile the schema, then resumed parallel work.
+
+### Phase A — Domain Schema + Migration — `46f6042`
+
+**Schema changes (driven by Brian's 3 decisions):**
+- `BrandId: Guid → Guid?` (37% of real devices have no vendor) — D-095
+- Added 6 fields: `Purpose` (500), `OperatingSystem` (100), `IpAddress` (45 IPv6-safe), `MacAddress` (17, regex-validated, uppercase-normalized), `ProductUrl` (500, URI-validated), `Version` (50) — D-096
+- License Key column DROPPED entirely (2% population + security burden) — D-097
+
+**Migration:** `20260518215139_AddDeviceExtendedFieldsAndOptionalBrand` — additive, reversible, SQLite-compatible.
+
+**Files modified:** 20 (1,314 +, 52 -). Included: Device.cs primary constructor, DeviceConfiguration EF mapping, CreateDeviceCommand + UpdateDeviceCommand validators, request/response DTOs, DeviceExportRow (Brand→nullable), `openapi.yaml` regen, Guard helpers for MAC/URL.
+
+**Quality:** Build ✅, format ✅, 374 backend tests passing / 6 skipped / 0 failed.
+
+### Phase B — CSV Import Mapper — `8fe885f`
+
+**Approach:** Integrated into existing `DeviceImportProcessingService` (NOT a separate mapper class) — D-108. Reused existing CsvHelper + reference lookup catalog + ImportBatch infrastructure.
+
+**Delivered:**
+- 11 column aliases (Vendor→Brand, DeviceType→Category, Retired→Status, PurchasedDate→PurchaseDate, Networking→Network, DeviceName→Name, Url→ProductUrl) in `ImportFieldNames.cs`
+- 4 SharePoint-specific helpers in `DeviceImportProcessingService.cs`: `ParseSharePointStatus` (Retired+Purpose regex 3-way mapping), `NormalizeNetworking` (N/A → null), `NormalizeMacAddress` (strip delimiters, output `XX:XX:XX:XX:XX:XX`), `NormalizeProductUrl` (HTTP/HTTPS absolute URIs)
+- `CommitImportCommand.cs`: injected `INetworkRepository`, added Network auto-create case, extended `Device.Create` with 6 new params
+- `ImportContracts.cs`: `ImportDevicePreview` extended with 6 fields
+- 10-row synthetic sample fixture at `tests/TechInventory.IntegrationTests/Imports/SampleData/devices-sample.csv` covering all status branches + idempotency + malformed MAC + N/A networking + lenient date
+
+**Status mapping (D-103):**
+- `Retired=False` → Active
+- `Retired=True` + Purpose `~/sold|given|donated|gifted|disposed|trashed/i` → Disposed (Purpose → DisposalMethod)
+- `Retired=True` otherwise → Retired (RetiredDate fallback to PurchaseDate per D-100)
+
+**Other key decisions:** D-098 (Networking auto-creates Network entities for v1 ergonomics, user can rename later), D-101 (reference data auto-create with idempotent name-match + batch cache), D-102 (synthetic fixture pattern; real CSV gitignored), D-104 (Network auto-create enabled), D-105 (N/A exact match), D-106 (MAC always colon-format), D-107 (HTTP/HTTPS only).
+
+**Anomaly at handoff:** Phase B left 8 integration tests RED — root cause analysis showed the deeper issues (not just signature mismatch as coordinator initially diagnosed):
+1. Import validator still required Brand (`.NotEmpty()`) despite entity nullable
+2. `ParseSharePointStatus` called for ALL imports; rejected generic enum format used by existing tests
+3. New SharePoint sample CSV missing `Owner` column
+
+### Phase B-cleanup — Test Recovery + OpenAPI Drift — `6cf0bc3`
+
+**Fixes:**
+- Import validator: removed `.NotEmpty()` on Brand (D-109)
+- Status parser: dual-format chain — try `Enum.TryParse<DeviceStatus>` first, fall back to `bool.TryParse` (D-110)
+- SharePoint sample CSV: added `Owner` column with value `"Family"` (D-111)
+- Regenerated `openapi.yaml` via `dotnet run -c Release -- export-openapi` (`ImportDevicePreview` now includes 6 new fields)
+
+**Quality gates GREEN:** 240 unit + 137 integration / 6 skipped / 0 failed; build ✅, format ✅.
+
+**Frontend handoff (D-112):** `schemas.ts` flagged stale — Vasquez owns regeneration (separate round).
+
+**Decisions added:** D-095..D-112 (18 total across all three commits).
+

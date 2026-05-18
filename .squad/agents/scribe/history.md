@@ -123,3 +123,26 @@ Agent Scribe initialized and ready for work.
 **Rounds closed:** Round 4 fully (5/5); Round 5 partial (2/3 — T26 pending)
 
 **Inbox check:** Verified via `Get-ChildItem` (per R10 lesson). Both expected files present.
+
+---
+
+## Phase 2 Round 14 — Mega-Merge Close-Out — `[your-sha]`
+
+**Inbox merged:** 4 files → 25 decisions
+- Vasquez R6a-reference-admins (7 decisions D-088..D-094)
+- Hicks CSV reconciliation Phase A (8 decisions D-095..D-102)
+- Hicks CSV mapper Phase B (6 decisions D-103..D-108)
+- Hicks CSV mapper cleanup (4 decisions D-109..D-112)
+
+**Tasks flipped:** T27, T30, T31, T32 ✅ (T28, T29, T33 still queued)
+
+**History entries:** Vasquez R6a, Hicks 3-commit CSV reconciliation arc, Scribe R14
+
+**Decision ledger:** D-001 → D-112 (with D-083..D-085 reserved per existing note); 109 active + 3 reserved = 112 total IDs
+
+**Phase 2 progress:** 28/53 (53%) — Round 6 partial (4/7)
+
+**Concurrent task awareness:** `vasquez-schema-regen` agent running in parallel; expected to drop a 5th inbox file `vasquez-schema-regen.md` with D-113..D-115. NOT included in this round; left in inbox for next Scribe round.
+
+**Inbox check:** Verified via `Get-ChildItem` (per R10 lesson).
+

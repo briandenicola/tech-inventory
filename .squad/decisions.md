@@ -1890,6 +1890,466 @@ Extraction is **premature** at 3 instances. If Round 6+ adds Retire/Transfer/Ass
 
 ---
 
+### D-088: Missing `tags` Export in Hand-Rolled `client.ts`
+
+**Date:** 2025-01-18  
+**Status:** Implemented (commit `711c754`)  
+**Related:** D-060 (hand-rolled client.ts pattern), T32 (Tags admin UI)
+
+**Decision:** Added `tags` export group to `src/lib/api/client.ts` (lines 371-401, ~31 lines) following the exact pattern of `brands` export group. All methods: `list`, `get`, `create`, `update`, `deactivate`. Uses `encodeURIComponent` for ID param, matches helper types (`GetResponse`, `PostRequestBody`, `PutRequestBody`, `PostResponse`, `PutResponse`).
+
+**Rationale:**
+- Backend TagsController, OpenAPI spec, and generated types all existed — only hand-rolled client.ts was missing the export.
+- This is frontend territory (per D-060, Vasquez owns hand-rolled client groups).
+- Pattern-match ensures consistency with existing reference entity client groups.
+
+**Impact:** None — fills a gap blocking T32 (Tags admin UI).
+
+---
+
+### D-089: Tag Color Picker — Preset vs Full Spectrum
+
+**Date:** 2025-01-18  
+**Status:** Implemented (commit `711c754`)  
+**Related:** T32 (Tags admin UI)
+
+**Decision:** Preset palette with 8 hex colors in `src/lib/schemas/tag.ts`: `TAG_PRESET_COLORS` array containing `#EF4444` (red), `#F59E0B` (amber), `#10B981` (emerald), `#06B6D4` (cyan), `#3B82F6` (blue), `#8B5CF6` (violet), `#EC4899` (pink), `#6B7280` (gray). Grid of 8 clickable color swatches with border highlight on selected. Tag preview chip below picker shows live preview.
+
+**Rationale:**
+- Single-household use case — 8 colors more than sufficient (PRD §2.1 "typical: 10-50 devices").
+- Prevents color chaos; no external dependency.
+- All 500-600 range for good contrast in light/dark modes.
+- Tag chip preview provides immediate feedback.
+
+**Rejected alternatives:**
+- Full spectrum (overkill, inconsistent branding, OS-dependent UX).
+- Third-party library (unnecessary weight).
+
+---
+
+### D-090: Deactivate Confirm UX — Simple Yes/Cancel vs Type-to-Confirm
+
+**Date:** 2025-01-18  
+**Status:** Implemented (commit `711c754`)  
+**Related:** D-022 (DeleteDeviceModal destructive pattern), T27-T32 (admin pages)
+
+**Decision:** Lightweight confirmation modal (`DeactivateConfirmModal.svelte`, 114 lines) with:
+- Title: `{entityType}s.deactivate.title` (e.g., "Deactivate Brand")
+- Confirm prompt in i18n
+- Entity name display (read-only)
+- Two buttons: Cancel (gray) + Confirm (warning-600, orange)
+- Escape key to cancel; auto-focus on first button
+- **No type-to-confirm. No reason field.**
+
+**Rationale:**
+- Deactivation is soft + reversible (users can toggle "Show Inactive" to reactivate).
+- Type-to-confirm is friction for non-destructive operations.
+- Entity name shown as visual confirmation (prevents wrong-entity mistakes).
+- Warning color (orange) signals caution without delete-level severity (red).
+
+---
+
+### D-091: Admin CRUD UX — Inline Modal vs Separate Routes
+
+**Date:** 2025-01-18  
+**Status:** Implemented (commit `711c754`)  
+**Related:** D-022 (device routes), T27-T32 (admin pages)
+
+**Decision:** Inline modal for all 4 admin pages (Brands, Locations, Networks, Tags). Add/Edit forms as modals overlaying list page; `/admin/brands` (etc.) handles create + edit state via `$state`.
+
+**Rationale:**
+- Simpler forms (2-4 fields each vs devices' 15+).
+- Admin task flow: batch-create/edit reference data. Modal → Save → Auto-close → Add next is faster than route changes.
+- List context preserved in background (easier to see duplicates, check naming conventions).
+- No URL deep-linking benefit for reference data CRUD.
+- Mobile acceptable (forms short enough for modal UX).
+
+**Consistency note:** **Differs** from devices CRUD (separate routes per D-022). Intentional — devices have complex multi-step forms justifying full-page UX. Admin reference data is lightweight CRUD, better suited to modals.
+
+---
+
+### D-092: Admin Landing Page — Nav Hub vs Immediate Redirect
+
+**Date:** 2025-01-18  
+**Status:** Implemented (commit `711c754`)  
+**Related:** T27-T32 (admin pages)
+
+**Decision:** Landing page (`/admin/+page.svelte`, 68 lines) with 4 clickable cards:
+- **Brands** 🏷️ — "Manage device brands and manufacturers"
+- **Locations** 📍 — "Manage storage and deployment locations"
+- **Networks** 🌐 — "Manage network segments and VLANs"
+- **Tags** 🏳️ — "Manage categorization tags"
+
+Grid layout (2 cols on sm+, 1 col mobile). Cards have hover states (border-primary, shadow-md).
+
+**Rationale:**
+- Discoverability: Admins see all admin capabilities at once.
+- Context switching: Hub better than nav-only.
+- Extensibility: R6b adds Categories + Owners; landing page scales to 6 cards.
+- Mobile UX: Cards stack vertically (easier than multi-level dropdown nav).
+
+**Navigation:**
+- Desktop: Clicking "Admin" nav link toggles to `/admin/brands`.
+- Mobile: "Admin" expands to 4 sub-links.
+
+---
+
+### D-093: Admin Role Gate — Client-Side Check Placement
+
+**Date:** 2025-01-18  
+**Status:** Implemented (commit `711c754`)  
+**Related:** D-010 (MSAL.js config), T06 (JWT validation)
+
+**Decision:** Dual-layer role check:
+1. **Client-side guard:** `$effect(() => { if (!isAdmin && currentUser !== null) goto('/devices'); })` at top of each admin page + admin landing page.
+2. **Backend enforcement:** All admin endpoints have `[Authorize(Roles = "Admin")]`.
+
+**Rationale:**
+- Belt-and-suspenders: Client check prevents nav confusion (non-admins don't see admin UI flashes). Backend check enforces security (client checks are not security boundaries).
+- Conditional nav visibility: `{#if isAdmin}` in layout nav already hides admin links (D-093a).
+- Wait for `currentUser !== null`: Avoids race condition during auth load.
+
+**Not a security measure:** Client-side checks are UX only. Backend is security boundary.
+
+---
+
+### D-094: Admin List Pagination — Page Size 25
+
+**Date:** 2025-01-18  
+**Status:** Implemented (commit `711c754`)  
+**Related:** D-068 (devices list pagination), T15 (devices list)
+
+**Decision:** Default page size **25** for all 4 admin lists (Brands, Locations, Networks, Tags). Matches devices list (T15 baseline).
+
+**Rationale:**
+- Consistency: Users trained on devices list (pageSize 25) expect same behavior across app.
+- Household scale: PRD §2.1 "typical: 10-50 devices" → reference data likely < 25 items per entity.
+- Mobile readability: 25 rows fits typical mobile viewport without excessive scroll.
+
+**Override available:** Pagination controls allow per-page size change.
+
+---
+
+### D-095: Make BrandId Nullable
+
+**Date:** 2025-05-18  
+**Status:** Implemented (commit `46f6042`)  
+**Related:** CSV schema reconciliation, T32 (Tags admin UI)
+
+**Decision:** Changed `Guid BrandId` → `Guid? BrandId` in Device entity, commands, validators, DTOs. Updated repository export to handle null brand lookups. EF migration makes FK nullable.
+
+**Rationale:** 37% of real devices (homemade, generic, no-name appliances) have no Vendor value in Brian's CSV. Forcing a "Unknown" brand would be semantic pollution. Nullable `Guid?` with `Guard.AgainstOptionalDefault` allows legitimate brand-less devices.
+
+**Alternatives rejected:**
+- Creating synthetic "Unknown" brand → defeats referential integrity semantics.
+- Blocking import → unacceptable UX for real household data.
+
+---
+
+### D-096: Add 6 New Device Fields
+
+**Date:** 2025-05-18  
+**Status:** Implemented (commit `46f6042`)  
+**Related:** D-095, CSV schema reconciliation
+
+**Decision:** Added 6 nullable fields to Device entity (migration `20260518215139_AddDeviceExtendedFieldsAndOptionalBrand`):
+- `Purpose` (500 chars, 94% population) — e.g., "Master TV", "Given to Parents"
+- `OperatingSystem` (100 chars, 47% population) — e.g., "Windows 11", "iOS 17.4"
+- `IpAddress` (45 chars IPv6-safe, 22% population)
+- `MacAddress` (17 chars format `XX:XX:XX:XX:XX:XX`, 11% population)
+- `ProductUrl` (500 chars URI-validated, 6% population)
+- `Version` (50 chars, ~100% population) — firmware/software version
+
+**Validation approach:**
+- `Purpose`, `OperatingSystem`, `Version`: length-only
+- `IpAddress`: length 45 (IPv6); no regex
+- `MacAddress`: strict regex `^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$`, normalized uppercase
+- `ProductUrl`: `Uri.TryCreate(..., UriKind.Absolute, ...)`
+
+**Schema impact:** All nullable, all additive. No breaking changes to API contracts.
+
+---
+
+### D-097: License Key Field Excluded
+
+**Date:** 2025-05-18  
+**Status:** Decision (not implemented, excluded by design)  
+**Related:** D-096, SECURITY.md
+
+**Decision:** SharePoint CSV has "License Key" column with 2% population (10 of 551 rows). **Not added to Device entity.** Column ignored during CSV import.
+
+**Rationale:** Security burden (credential storage, encryption-at-rest, audit logging) outweighs utility for <2% coverage. Per SECURITY.md, plain-text storage unacceptable.
+
+**Alternatives rejected:**
+- Encrypted license key storage → over-engineering.
+
+---
+
+### D-098: Networking Column Becomes Network Entities (v1 Ergonomics)
+
+**Date:** 2025-05-18  
+**Status:** Implemented (commit `46f6042`)  
+**Related:** D-101 (reference auto-create), CSV schema reconciliation
+
+**Decision:** Auto-create Network entities for ALL Networking values during import, including transport types (`Bluetooth`, `z-wave`, `Zigbee`, `sonos-net`). Ontological purity (networks vs. protocols) sacrificed for v1 ergonomics.
+
+**Rationale:**
+- 37 distinct Networking values in Brian's CSV; pre-creating them manually unacceptable UX.
+- User can rename/merge via R6a admin UI post-import.
+- Alternative (hard-coded protocol enum) blocks unknown future transports.
+
+---
+
+### D-099: Status Mapping via Retired + Purpose Regex
+
+**Date:** 2025-05-18  
+**Status:** Implemented (commit `46f6042`)  
+**Related:** D-100 (RetiredDate heuristic), CSV import logic
+
+**Decision:** Retired column (True/False) combined with free-text Purpose field drives DeviceStatus mapping:
+- `Retired == "False"` → `DeviceStatus.Active`
+- `Retired == "True"` + Purpose matches `/sold|given|donated|gifted|disposed|trashed/i` → `DeviceStatus.Disposed` (DisposalMethod = Purpose value, truncated to 500)
+- `Retired == "True"` otherwise → `DeviceStatus.Retired`
+
+**Rationale:** "Given to Parents", "Sold To Alex Smart", "Donated to Goodwill" are semantically disposal events, not generic retirement. Regex extracts intent from free text. Case-insensitive to handle varied phrasing.
+
+**Implementation:** `ParseSharePointStatus` helper in `DeviceImportProcessingService.cs`.
+
+---
+
+### D-100: RetiredDate Heuristic
+
+**Date:** 2025-05-18  
+**Status:** Implemented (commit `46f6042`)  
+**Related:** D-099 (status mapping), CSV import logic
+
+**Decision:** When `Retired == "True"`: Set `RetiredDate = PurchaseDate` if no better signal exists.
+
+**Rationale:**
+- Better than NULL (enables device lifespan calculations).
+- Conservative assumption (device likely retired closer to purchase than present for very old devices).
+- User can manually correct via UI if they remember actual retirement date.
+
+**Limitations:** Acknowledged inaccuracy; alternative (NULL) loses analytical value.
+
+---
+
+### D-101: Reference Data Auto-Create on Import (Idempotent Name-Match)
+
+**Date:** 2025-05-18  
+**Status:** Implemented (commit `46f6042`)  
+**Related:** D-098 (Network auto-create), CSV import logic
+
+**Decision:** CSV references Brands/Categories/Locations/Networks/Owners by name (strings), not IDs. Import resolves or creates:
+- **Find by name (case-insensitive):** `StringComparer.OrdinalIgnoreCase`
+- **Create if missing:** Auto-create inactive=false entity
+- **Batch-local cache:** Single resolution per import batch (avoid N round-trips for shared references)
+
+**Idempotency:** Re-importing same file produces no duplicate reference entities (name-match deduplication).
+
+**Application:**
+- `DeviceName` (Device.Name) → never auto-created (Device is top-level)
+- `Vendor` (Brand.Name) → auto-create if missing; nullable if blank
+- `DeviceType` (Category.Name) → auto-create if missing
+- `Owner` (Owner.DisplayName) → auto-create if missing
+- `Location` (Location.Name) → auto-create if missing
+- `Networking` (Network.Name) → auto-create if missing; NULL if "N/A" (D-105)
+
+**Contrast with Phase 1:** Phase 1 set `allowCreate: false` for Networks. Phase 2 CSV mapper allows `allowCreate: true` for all reference entities to match SharePoint export ergonomics.
+
+---
+
+### D-102: Synthetic Sample Fixture Pattern
+
+**Date:** 2025-05-18  
+**Status:** Implemented (commit `46f6042`)  
+**Related:** D-101 (reference auto-create), test infrastructure
+
+**Decision:** `data/Devices.csv` (551 rows, real household PII) is gitignored. Integration tests use committed synthetic fixture at `tests/.../SampleData/devices-sample.csv` (10 rows). Covers:
+- All status mappings (Active, Retired, Disposed via regex)
+- All Networking variants (N/A→null, valid values→Network entities)
+- Blank Vendor (nullable Brand) + populated Vendor (auto-create Brand)
+- All 6 new fields populated in ≥2 rows
+- Edge case: whitespace-only Purpose (maps to null after trim)
+
+**Naming convention:** Real-world plausible but clearly fabricated (e.g., DeviceName="Living Room Roku Express", Location="Demo Living Room").
+
+---
+
+### D-103: SharePoint Status Mapping via Boolean + Regex
+
+**Date:** 2025-05-18  
+**Status:** Implemented (commit `8fe885f`)  
+**Related:** D-099 (status mapping), CSV mapper Phase B
+
+**Decision:** Retired column (True/False) combined with Purpose field regex drives DeviceStatus mapping. Single parse function `ParseSharePointStatus` in `DeviceImportProcessingService` handles all 3 branches.
+
+**Rationale:** Brian's CSV has `Retired=True/False` instead of Status enum. Regex allows flexible user phrasing ("sold to neighbor", "given to John", etc.).
+
+---
+
+### D-104: Network Auto-Creation Enabled (Reversal of Phase 1 Decision)
+
+**Date:** 2025-05-18  
+**Status:** Implemented (commit `8fe885f`)  
+**Related:** D-098 (network entities), D-101 (reference auto-create)
+
+**Decision:** Network entities auto-create on import, same as Brand/Category/Location/Owner.
+
+**Rationale:**
+- Brian's Networking column has 37 distinct values including transport types.
+- Pre-creating 37 networks before import user-hostile.
+- Idempotent cache (Dictionary keyed by normalized name) prevents duplicates within same batch.
+- User can rename/merge via R6a admin UI post-import.
+
+**Phase 1 Context:** Original design set `allowCreate: false` for Networks due to ambiguity concerns. Brian's real CSV proved those concerns unfounded.
+
+---
+
+### D-105: "N/A" Networking → Null Association
+
+**Date:** 2025-05-18  
+**Status:** Implemented (commit `8fe885f`)  
+**Related:** D-104 (network auto-create), D-098 (network entities)
+
+**Decision:** Exact-string "N/A" (case-insensitive) in Networking column results in null NetworkId. Any other value creates/references a Network entity.
+
+**Rationale:**
+- Brian uses "N/A" to explicitly mark devices with no network (e.g., offline switches).
+- Alternative interpretations ("Not Applicable", "None", blank) NOT treated as N/A.
+- Simplest unambiguous rule; no regex/fuzzy matching overhead.
+
+**Implementation:** `NormalizeNetworking` helper in `DeviceImportProcessingService.cs`.
+
+---
+
+### D-106: MAC Address Normalization to Colon-Separated Format
+
+**Date:** 2025-05-18  
+**Status:** Implemented (commit `8fe885f`)  
+**Related:** D-096 (MacAddress field), CSV mapper Phase B
+
+**Decision:** All MAC addresses normalized to `XX:XX:XX:XX:XX:XX` (uppercase, colon-separated) regardless of input format (mixed delimiters: `AA:BB:CC:DD:EE:FF`, `00-11-22-33-44-55`, `aabbccddeeff`).
+
+**Rationale:**
+- Domain validator expects colon format.
+- Normalization strips delimiters, validates 12 hex digits, re-formats with colons.
+- Consistent storage format simplifies queries/reporting.
+
+**Implementation:** `NormalizeMacAddress` helper in `DeviceImportProcessingService.cs` lines ~356-371.
+
+---
+
+### D-107: URL Validation as Absolute HTTP/HTTPS Only
+
+**Date:** 2025-05-18  
+**Status:** Implemented (commit `8fe885f`)  
+**Related:** D-096 (ProductUrl field), CSV mapper Phase B
+
+**Decision:** ProductUrl column validated as absolute URI with http/https scheme. File URLs, relative URLs, non-HTTP protocols rejected.
+
+**Rationale:**
+- Brian's URL column points to manufacturer product pages (all web URLs).
+- `Uri.TryCreate(..., UriKind.Absolute, ...)` + scheme check catches malformed/dangerous inputs.
+- Prevents `file://`, `javascript:`, `data:` injection vectors.
+- Blank/null URLs allowed (6% populated per analysis).
+
+**Implementation:** `NormalizeProductUrl` helper in `DeviceImportProcessingService.cs` lines ~373-388.
+
+---
+
+### D-108: Mapper Integrated into Existing DeviceImportProcessingService
+
+**Date:** 2025-05-18  
+**Status:** Implemented (commit `8fe885f`)  
+**Related:** D-103..D-107 (mapping rules), CSV mapper Phase B
+
+**Decision:** Phase B mapper logic added directly to existing `DeviceImportProcessingService` via helper methods, not as separate mapper class.
+
+**Rationale:**
+- Existing service already owns CSV parsing + lookup catalog.
+- 6 new fields (Purpose, OS, IP, MAC, ProductUrl, Version) pass through candidate → preview → commit pipeline with **zero architectural changes**.
+- SharePoint-specific logic isolated to 4 helpers: `ParseSharePointStatus`, `NormalizeNetworking`, `NormalizeMacAddress`, `NormalizeProductUrl`.
+- Avoids duplication of field-reading + validation infrastructure.
+
+**Modified files:**
+- `ImportFieldNames.cs`: Added 11 aliases (Vendor→Brand, DeviceType→Category, etc.)
+- `DeviceImportProcessingService.cs`: Extended candidate/preview records + 4 helpers (~120 new lines)
+- `CommitImportCommand.cs`: Extended Device.Create call with 6 new parameters + Network auto-creation
+- `ImportContracts.cs`: Extended ImportDevicePreview record signature
+
+---
+
+### D-109: Brand Field Made Optional in Import Validator
+
+**Date:** 2025-05-18  
+**Status:** Implemented (commit `6cf0bc3`)  
+**Related:** D-095 (nullable BrandId), CSV cleanup Phase
+
+**Decision:** Removed `.NotEmpty()` constraint from Brand validator in `DeviceImportProcessingService.cs` line ~581-582.
+
+**Rationale:**
+- Device entity now allows null BrandId (D-095).
+- Commit logic already handles null Brand.
+- Validator was the only blocking layer.
+
+**Impact:** Import CSVs can now omit Brand column or leave it empty. Devices without a brand are valid.
+
+---
+
+### D-110: Dual-Format Status Parsing for SharePoint + Generic CSVs
+
+**Date:** 2025-05-18  
+**Status:** Implemented (commit `6cf0bc3`)  
+**Related:** D-099 (status mapping), D-103 (SharePoint format), CSV cleanup Phase
+
+**Decision:** Extended `ParseSharePointStatus` to support **both** formats via fallback chain:
+1. Try `Enum.TryParse<DeviceStatus>` (generic format)
+2. If fails, try `bool.TryParse` (SharePoint format)
+3. If both fail, return clear error message
+
+**Rationale:**
+- Method implied SharePoint-only but was called globally.
+- Existing import tests use generic enum format and need to pass.
+- Auto-detection via parse fallback avoids format sniffing logic.
+
+**Implementation:** Lines 325-373 of `DeviceImportProcessingService.cs` — enum parse precedes boolean parse.
+
+**Impact:** Both CSV formats now supported. No breaking changes.
+
+---
+
+### D-111: SharePoint CSV Owner Column Added
+
+**Date:** 2025-05-18  
+**Status:** Implemented (commit `6cf0bc3`)  
+**Related:** D-101 (reference auto-create), D-102 (sample fixture), CSV cleanup Phase
+
+**Decision:** Added `Owner` column to `devices-sample.csv` with value `"Family"` for all rows.
+
+**Rationale:**
+- Owner required by validator; no Owner column prevented sample CSV parsing.
+- SharePoint tests seed reference data and expect auto-creation of missing lookups.
+- Value `"Family"` semantically correct for single-household app.
+
+**Impact:** SharePoint tests now parse successfully with auto-created "Family" owner.
+
+---
+
+### D-112: Frontend schemas.ts Flagged for Vasquez
+
+**Date:** 2025-05-18  
+**Status:** Decision (not implemented — frontend responsibility)  
+**Related:** D-096 (6 new Device fields), CSV mapper Phase cleanup
+
+**Decision:** `openapi.yaml` regenerated with extended `ImportDevicePreview` schema (6 new fields). Frontend TypeScript schemas (`src/TechInventory.Web/src/lib/api/schemas.ts`) are generated from this spec but are **out of scope** for backend cleanup. **No action taken** — flagged for Vasquez.
+
+**Action Required:** Vasquez must regenerate `schemas.ts` from updated `openapi.yaml` (command TBD).
+
+**Impact:** Frontend may have stale types until Vasquez regenerates. Backend tests all pass with updated spec.
+
+---
+
 ## Governance
 
 - All meaningful changes require team consensus

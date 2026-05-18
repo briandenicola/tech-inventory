@@ -337,9 +337,24 @@ internal sealed class DeviceImportProcessingService(
             return DeviceStatus.Active;
         }
 
+        // Try to parse as enum (generic format: "Active", "Retired", "Disposed")
+        if (Enum.TryParse<DeviceStatus>(rawRetired, ignoreCase: true, out var parsedStatus))
+        {
+            if (parsedStatus == DeviceStatus.Disposed && !string.IsNullOrWhiteSpace(purpose))
+            {
+                disposalMethod = purpose;
+            }
+            if (parsedStatus is DeviceStatus.Retired or DeviceStatus.Disposed)
+            {
+                retiredDate ??= purchaseDate;
+            }
+            return parsedStatus;
+        }
+
+        // Try to parse as boolean (SharePoint format: "True", "False")
         if (!bool.TryParse(rawRetired, out var isRetired))
         {
-            errors.Add(new ImportFieldError(ImportFieldNames.Status, $"Retired '{rawRetired}' must be True or False."));
+            errors.Add(new ImportFieldError(ImportFieldNames.Status, $"Status '{rawRetired}' must be Active, Retired, Disposed, True, or False."));
             return DeviceStatus.Active;
         }
 
@@ -579,7 +594,6 @@ internal sealed class DeviceImportProcessingService(
                 row => row.Version);
 
             RuleFor(row => row.Brand)
-                .NotEmpty()
                 .MaximumLength(200);
 
             RuleFor(row => row.Category)

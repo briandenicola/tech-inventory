@@ -6,8 +6,15 @@
  */
 
 import type { DeviceResponse } from '$lib/queries/devices';
+import type { ReferenceEntity } from '$lib/stores/referenceData';
+import type { DeviceCreateInput } from '$lib/schemas/device';
 
 let deviceIdCounter = 0;
+let brandIdCounter = 0;
+let categoryIdCounter = 0;
+let ownerIdCounter = 0;
+let locationIdCounter = 0;
+let networkIdCounter = 0;
 
 /**
  * Create a DeviceResponse fixture for tests
@@ -19,11 +26,11 @@ export function createDeviceResponse(overrides?: Partial<DeviceResponse>): Devic
 		name: `Test Device ${id}`,
 		model: `Model ${id}`,
 		serialNumber: `SN${id.toString().padStart(8, '0')}`,
-		brandId: 'brand-00000000-0000-0000-0000-000000000000',
-		categoryId: 'category-0000-0000-0000-000000000000',
-		ownerId: 'owner-000000-0000-0000-0000-000000000000',
-		locationId: 'location-00-0000-0000-0000-000000000000',
-		networkId: 'network-000-0000-0000-0000-000000000000',
+		brandId: 'brand-00000000-4000-8000-000000000000',
+		categoryId: 'category-4000-8000-000000000000',
+		ownerId: 'owner-000000-4000-8000-000000000000',
+		locationId: 'location-00-4000-8000-000000000000',
+		networkId: 'network-000-4000-8000-000000000000',
 		purchaseDate: '2024-01-15',
 		purchasePrice: 499.99,
 		currencyCode: 'USD',
@@ -47,8 +54,95 @@ export function createDeviceList(count: number): DeviceResponse[] {
 }
 
 /**
+ * Create a Brand reference entity for tests
+ */
+export function createBrand(overrides?: Partial<ReferenceEntity>): ReferenceEntity {
+	const id = brandIdCounter++;
+	return {
+		id: `brand-${id.toString().padStart(8, '0')}-0000-0000-000000000000`,
+		name: `Brand ${id}`,
+		...overrides
+	};
+}
+
+/**
+ * Create a Category reference entity for tests
+ */
+export function createCategory(overrides?: Partial<ReferenceEntity>): ReferenceEntity {
+	const id = categoryIdCounter++;
+	return {
+		id: `category-${id.toString().padStart(6, '0')}-0000-0000-000000000000`,
+		name: `Category ${id}`,
+		...overrides
+	};
+}
+
+/**
+ * Create an Owner reference entity for tests
+ */
+export function createOwner(overrides?: Partial<ReferenceEntity>): ReferenceEntity {
+	const id = ownerIdCounter++;
+	return {
+		id: `owner-${id.toString().padStart(8, '0')}-0000-0000-000000000000`,
+		name: `Owner ${id}`,
+		...overrides
+	};
+}
+
+/**
+ * Create a Location reference entity for tests
+ */
+export function createLocation(overrides?: Partial<ReferenceEntity>): ReferenceEntity {
+	const id = locationIdCounter++;
+	return {
+		id: `location-${id.toString().padStart(6, '0')}-0000-0000-000000000000`,
+		name: `Location ${id}`,
+		...overrides
+	};
+}
+
+/**
+ * Create a Network reference entity for tests
+ */
+export function createNetwork(overrides?: Partial<ReferenceEntity>): ReferenceEntity {
+	const id = networkIdCounter++;
+	return {
+		id: `network-${id.toString().padStart(7, '0')}-0000-0000-000000000000`,
+		name: `Network ${id}`,
+		...overrides
+	};
+}
+
+/**
+ * Create a DeviceCreateInput payload for tests
+ */
+export function createDeviceCreateInput(
+	overrides?: Partial<DeviceCreateInput>
+): DeviceCreateInput {
+	return {
+		name: 'Test Device',
+		serialNumber: 'SN12345',
+		brandId: 'brand-00000000-4000-8000-000000000000',
+		categoryId: 'category-4000-8000-000000000000',
+		ownerId: '',
+		locationId: '',
+		networkId: '',
+		purchaseDate: '',
+		purchasePrice: null,
+		currencyCode: 'USD',
+		notes: '',
+		...overrides
+	};
+}
+
+/**
  * Reset factory counters (call in beforeEach if needed)
  */
 export function resetFactories() {
 	deviceIdCounter = 0;
+	brandIdCounter = 0;
+	categoryIdCounter = 0;
+	ownerIdCounter = 0;
+	locationIdCounter = 0;
+	networkIdCounter = 0;
 }

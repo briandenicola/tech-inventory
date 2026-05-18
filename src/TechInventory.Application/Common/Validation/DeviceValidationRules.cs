@@ -6,6 +6,8 @@ namespace TechInventory.Application.Common.Validation;
 
 internal static class DeviceValidationRules
 {
+    private static readonly System.Text.RegularExpressions.Regex MacAddressRegex = new(@"^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
     public static void ApplySharedDeviceRules<T>(
         AbstractValidator<T> validator,
         Expression<Func<T, string>> nameExpression,
@@ -55,18 +57,22 @@ internal static class DeviceValidationRules
             .WithMessage("DisposalMethod can only be set when Status is Retired or Disposed.");
     }
 
+    public static void ApplyOptionalBrandRule<T>(AbstractValidator<T> validator, Expression<Func<T, Guid?>> brandIdExpression)
+    {
+        ArgumentNullException.ThrowIfNull(validator);
+
+        validator.RuleFor(brandIdExpression)
+            .Must(ValidationRules.BeValidOptionalGuid)
+            .WithMessage("BrandId must be a non-empty GUID when provided.");
+    }
+
     public static void ApplyRequiredReferenceRules<T>(
         AbstractValidator<T> validator,
-        Expression<Func<T, Guid>> brandIdExpression,
         Expression<Func<T, Guid>> categoryIdExpression,
         Expression<Func<T, Guid>> ownerIdExpression,
         Expression<Func<T, Guid>> locationIdExpression)
     {
         ArgumentNullException.ThrowIfNull(validator);
-
-        validator.RuleFor(brandIdExpression)
-            .NotEmpty()
-            .WithMessage("BrandId is required.");
 
         validator.RuleFor(categoryIdExpression)
             .NotEmpty()
@@ -88,5 +94,39 @@ internal static class DeviceValidationRules
         validator.RuleFor(networkIdExpression)
             .Must(ValidationRules.BeValidOptionalGuid)
             .WithMessage("NetworkId must be a non-empty GUID when provided.");
+    }
+
+    public static void ApplyExtendedFieldRules<T>(
+        AbstractValidator<T> validator,
+        Expression<Func<T, string?>> purposeExpression,
+        Expression<Func<T, string?>> operatingSystemExpression,
+        Expression<Func<T, string?>> ipAddressExpression,
+        Expression<Func<T, string?>> macAddressExpression,
+        Expression<Func<T, string?>> productUrlExpression,
+        Expression<Func<T, string?>> versionExpression)
+    {
+        ArgumentNullException.ThrowIfNull(validator);
+
+        validator.RuleFor(purposeExpression)
+            .MaximumLength(500);
+
+        validator.RuleFor(operatingSystemExpression)
+            .MaximumLength(100);
+
+        validator.RuleFor(ipAddressExpression)
+            .MaximumLength(45);
+
+        validator.RuleFor(macAddressExpression)
+            .MaximumLength(17)
+            .Must(mac => string.IsNullOrWhiteSpace(mac) || MacAddressRegex.IsMatch(mac))
+            .WithMessage("MacAddress must be in format XX:XX:XX:XX:XX:XX.");
+
+        validator.RuleFor(productUrlExpression)
+            .MaximumLength(500)
+            .Must(url => string.IsNullOrWhiteSpace(url) || Uri.TryCreate(url, UriKind.Absolute, out _))
+            .WithMessage("ProductUrl must be a valid absolute URI.");
+
+        validator.RuleFor(versionExpression)
+            .MaximumLength(50);
     }
 }

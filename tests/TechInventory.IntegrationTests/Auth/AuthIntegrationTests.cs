@@ -283,7 +283,7 @@ public sealed class AuthIntegrationTests(IntegrationTestFactory<AuthIntegrationT
                 // Use PostConfigure to run AFTER all other JwtBearerOptions configuration
                 // CRITICAL: Use the correct scheme name from Program.cs
                 const string techInventoryAuthScheme = "TechInventoryAuth";
-                
+
                 services.PostConfigure<JwtBearerOptions>(techInventoryAuthScheme, options =>
                 {
                     // Completely nuke OIDC discovery
@@ -291,7 +291,7 @@ public sealed class AuthIntegrationTests(IntegrationTestFactory<AuthIntegrationT
                     options.MetadataAddress = null!;
                     options.ConfigurationManager = null!;
                     options.RequireHttpsMetadata = false;
-                    
+
                     // Set a backchannel handler that throws if JWKS discovery is attempted
                     options.BackchannelHttpHandler = new System.Net.Http.HttpClientHandler();
                     options.Backchannel = new System.Net.Http.HttpClient(new ThrowingHttpMessageHandler())

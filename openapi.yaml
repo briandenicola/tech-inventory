@@ -2626,6 +2626,7 @@ components:
         brandId:
           type: string
           format: uuid
+          nullable: true
         categoryId:
           type: string
           format: uuid
@@ -2666,6 +2667,24 @@ components:
           format: date
           nullable: true
         disposalMethod:
+          type: string
+          nullable: true
+        purpose:
+          type: string
+          nullable: true
+        operatingSystem:
+          type: string
+          nullable: true
+        ipAddress:
+          type: string
+          nullable: true
+        macAddress:
+          type: string
+          nullable: true
+        productUrl:
+          type: string
+          nullable: true
+        version:
           type: string
           nullable: true
       additionalProperties: false
@@ -2740,6 +2759,7 @@ components:
         brandId:
           type: string
           format: uuid
+          nullable: true
         categoryId:
           type: string
           format: uuid
@@ -2775,6 +2795,24 @@ components:
           format: date
           nullable: true
         disposalMethod:
+          type: string
+          nullable: true
+        purpose:
+          type: string
+          nullable: true
+        operatingSystem:
+          type: string
+          nullable: true
+        ipAddress:
+          type: string
+          nullable: true
+        macAddress:
+          type: string
+          nullable: true
+        productUrl:
+          type: string
+          nullable: true
+        version:
           type: string
           nullable: true
         createdAt:
@@ -3320,6 +3358,7 @@ components:
         brandId:
           type: string
           format: uuid
+          nullable: true
         categoryId:
           type: string
           format: uuid
@@ -3360,6 +3399,24 @@ components:
           format: date
           nullable: true
         disposalMethod:
+          type: string
+          nullable: true
+        purpose:
+          type: string
+          nullable: true
+        operatingSystem:
+          type: string
+          nullable: true
+        ipAddress:
+          type: string
+          nullable: true
+        macAddress:
+          type: string
+          nullable: true
+        productUrl:
+          type: string
+          nullable: true
+        version:
           type: string
           nullable: true
       additionalProperties: false

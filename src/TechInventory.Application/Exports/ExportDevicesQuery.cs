@@ -17,7 +17,7 @@ public enum ExportFormat
 public sealed record DeviceExportRow(
     Guid Id,
     string Name,
-    string Brand,
+    string? Brand,
     string Category,
     string Owner,
     string Location,

@@ -11,7 +11,7 @@ namespace TechInventory.Application.Devices.Commands;
 
 public sealed record CreateDeviceCommand(
     string Name,
-    Guid BrandId,
+    Guid? BrandId,
     Guid CategoryId,
     Guid OwnerId,
     Guid LocationId,
@@ -24,7 +24,13 @@ public sealed record CreateDeviceCommand(
     DeviceStatus Status = DeviceStatus.Active,
     string? Notes = null,
     DateOnly? RetiredDate = null,
-    string? DisposalMethod = null) : IRequest<Result<DeviceResponse>>, IAuditable;
+    string? DisposalMethod = null,
+    string? Purpose = null,
+    string? OperatingSystem = null,
+    string? IpAddress = null,
+    string? MacAddress = null,
+    string? ProductUrl = null,
+    string? Version = null) : IRequest<Result<DeviceResponse>>, IAuditable;
 
 public sealed class CreateDeviceCommandHandler(
     IDeviceRepository deviceRepository,
@@ -70,7 +76,13 @@ public sealed class CreateDeviceCommandHandler(
                 request.Status,
                 request.Notes,
                 request.RetiredDate,
-                request.DisposalMethod);
+                request.DisposalMethod,
+                request.Purpose,
+                request.OperatingSystem,
+                request.IpAddress,
+                request.MacAddress,
+                request.ProductUrl,
+                request.Version);
 
             var addResult = await deviceRepository.AddAsync(device, cancellationToken).ConfigureAwait(false);
             if (addResult.IsFailure)
@@ -101,15 +113,18 @@ public sealed class CreateDeviceCommandHandler(
 
     private async Task<Error?> ValidateActiveReferencesAsync(CreateDeviceCommand request, CancellationToken cancellationToken)
     {
-        var brandResult = await brandRepository.GetByIdAsync(request.BrandId, cancellationToken).ConfigureAwait(false);
-        if (brandResult.IsFailure)
+        if (request.BrandId.HasValue)
         {
-            return brandResult.Error;
-        }
+            var brandResult = await brandRepository.GetByIdAsync(request.BrandId.Value, cancellationToken).ConfigureAwait(false);
+            if (brandResult.IsFailure)
+            {
+                return brandResult.Error;
+            }
 
-        if (!brandResult.Value!.IsActive)
-        {
-            return Error.Conflict($"Brand '{request.BrandId}' is inactive.");
+            if (!brandResult.Value!.IsActive)
+            {
+                return Error.Conflict($"Brand '{request.BrandId.Value}' is inactive.");
+            }
         }
 
         var categoryResult = await categoryRepository.GetByIdAsync(request.CategoryId, cancellationToken).ConfigureAwait(false);

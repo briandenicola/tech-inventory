@@ -39,6 +39,24 @@ public sealed class DeviceConfiguration : IEntityTypeConfiguration<Device>
         builder.Property(entity => entity.DisposalMethod)
             .HasMaxLength(500);
 
+        builder.Property(entity => entity.Purpose)
+            .HasMaxLength(500);
+
+        builder.Property(entity => entity.OperatingSystem)
+            .HasMaxLength(100);
+
+        builder.Property(entity => entity.IpAddress)
+            .HasMaxLength(45);
+
+        builder.Property(entity => entity.MacAddress)
+            .HasMaxLength(17);
+
+        builder.Property(entity => entity.ProductUrl)
+            .HasMaxLength(500);
+
+        builder.Property(entity => entity.Version)
+            .HasMaxLength(50);
+
         builder.Property(entity => entity.CreatedAt)
             .IsRequired();
 

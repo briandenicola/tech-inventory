@@ -6,7 +6,7 @@ namespace TechInventory.Application.Owners.Queries;
 
 public sealed record GetOwnerByEntraObjectIdQuery(Guid EntraObjectId) : IRequest<Result<OwnerResponse>>;
 
-public sealed class GetOwnerByEntraObjectIdQueryHandler(IOwnerRepository ownerRepository) 
+public sealed class GetOwnerByEntraObjectIdQueryHandler(IOwnerRepository ownerRepository)
     : IRequestHandler<GetOwnerByEntraObjectIdQuery, Result<OwnerResponse>>
 {
     public async Task<Result<OwnerResponse>> Handle(GetOwnerByEntraObjectIdQuery request, CancellationToken cancellationToken)

@@ -12,7 +12,7 @@ namespace TechInventory.Application.Devices.Commands;
 public sealed record UpdateDeviceCommand(
     Guid Id,
     string Name,
-    Guid BrandId,
+    Guid? BrandId,
     Guid CategoryId,
     Guid OwnerId,
     Guid LocationId,
@@ -25,7 +25,13 @@ public sealed record UpdateDeviceCommand(
     DeviceStatus Status = DeviceStatus.Active,
     string? Notes = null,
     DateOnly? RetiredDate = null,
-    string? DisposalMethod = null) : IRequest<Result<DeviceResponse>>, IAuditable;
+    string? DisposalMethod = null,
+    string? Purpose = null,
+    string? OperatingSystem = null,
+    string? IpAddress = null,
+    string? MacAddress = null,
+    string? ProductUrl = null,
+    string? Version = null) : IRequest<Result<DeviceResponse>>, IAuditable;
 
 public sealed class UpdateDeviceCommandHandler(
     IDeviceRepository deviceRepository,
@@ -81,15 +87,18 @@ public sealed class UpdateDeviceCommandHandler(
 
     private async Task<Error?> ValidateActiveReferencesAsync(UpdateDeviceCommand request, CancellationToken cancellationToken)
     {
-        var brandResult = await brandRepository.GetByIdAsync(request.BrandId, cancellationToken).ConfigureAwait(false);
-        if (brandResult.IsFailure)
+        if (request.BrandId.HasValue)
         {
-            return brandResult.Error;
-        }
+            var brandResult = await brandRepository.GetByIdAsync(request.BrandId.Value, cancellationToken).ConfigureAwait(false);
+            if (brandResult.IsFailure)
+            {
+                return brandResult.Error;
+            }
 
-        if (!brandResult.Value!.IsActive)
-        {
-            return Error.Conflict($"Brand '{request.BrandId}' is inactive.");
+            if (!brandResult.Value!.IsActive)
+            {
+                return Error.Conflict($"Brand '{request.BrandId.Value}' is inactive.");
+            }
         }
 
         var categoryResult = await categoryRepository.GetByIdAsync(request.CategoryId, cancellationToken).ConfigureAwait(false);
@@ -173,7 +182,14 @@ public sealed class UpdateDeviceCommandHandler(
             request.SerialNumber,
             request.NetworkId,
             request.PurchaseDate,
-            request.PurchasePrice);
+            request.PurchasePrice,
+            null,
+            request.Purpose,
+            request.OperatingSystem,
+            request.IpAddress,
+            request.MacAddress,
+            request.ProductUrl,
+            request.Version);
 
         if (request.Status != device.Status || request.RetiredDate != device.RetiredDate || NormalizeOptional(request.DisposalMethod) != device.DisposalMethod)
         {

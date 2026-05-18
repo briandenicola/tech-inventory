@@ -26,13 +26,23 @@ public sealed class UpdateDeviceCommandValidator : AbstractValidator<UpdateDevic
             .Must(ValidationRules.BeValidCurrencyCode)
             .WithMessage("CurrencyCode must be a valid ISO 4217 code.");
 
+        DeviceValidationRules.ApplyOptionalBrandRule(this, command => command.BrandId);
+
         DeviceValidationRules.ApplyRequiredReferenceRules(
             this,
-            command => command.BrandId,
             command => command.CategoryId,
             command => command.OwnerId,
             command => command.LocationId);
 
         DeviceValidationRules.ApplyOptionalNetworkRule(this, command => command.NetworkId);
+
+        DeviceValidationRules.ApplyExtendedFieldRules(
+            this,
+            command => command.Purpose,
+            command => command.OperatingSystem,
+            command => command.IpAddress,
+            command => command.MacAddress,
+            command => command.ProductUrl,
+            command => command.Version);
     }
 }

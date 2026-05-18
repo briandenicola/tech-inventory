@@ -50,7 +50,12 @@ public sealed class DeviceRepository(AppDbContext dbContext) : Repository<Device
                 criteria.SortDescending)
             .ToArray();
 
-        var brands = await DbContext.Brands.AsNoTracking().ToDictionaryAsync(brand => brand.Id, brand => brand.Name).ConfigureAwait(false);
+        var brandIds = devices.Select(device => device.BrandId).Where(id => id.HasValue).Select(id => id!.Value).Distinct().ToArray();
+        var brands = await DbContext.Set<Brand>()
+            .AsNoTracking()
+            .Where(brand => brandIds.Contains(brand.Id))
+            .ToDictionaryAsync(brand => brand.Id, brand => brand.Name)
+            .ConfigureAwait(false);
         var categories = await DbContext.Categories.AsNoTracking().ToDictionaryAsync(category => category.Id, category => category.Name).ConfigureAwait(false);
         var owners = await DbContext.Owners.AsNoTracking().ToDictionaryAsync(owner => owner.Id, owner => owner.DisplayName).ConfigureAwait(false);
         var locations = await DbContext.Locations.AsNoTracking().ToDictionaryAsync(location => location.Id, location => location.Name).ConfigureAwait(false);
@@ -61,7 +66,7 @@ public sealed class DeviceRepository(AppDbContext dbContext) : Repository<Device
             yield return new DeviceExportRow(
                 device.Id,
                 device.Name,
-                brands[device.BrandId],
+                device.BrandId.HasValue && brands.TryGetValue(device.BrandId.Value, out var brandName) ? brandName : null,
                 categories[device.CategoryId],
                 owners[device.OwnerId],
                 locations[device.LocationId],

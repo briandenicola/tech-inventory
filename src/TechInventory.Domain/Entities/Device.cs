@@ -7,7 +7,7 @@ namespace TechInventory.Domain.Entities;
 public sealed class Device(
     Guid id,
     string name,
-    Guid brandId,
+    Guid? brandId,
     Guid categoryId,
     Guid ownerId,
     Guid locationId,
@@ -20,7 +20,13 @@ public sealed class Device(
     DeviceStatus status = DeviceStatus.Active,
     string? notes = null,
     DateOnly? retiredDate = null,
-    string? disposalMethod = null) : AggregateRoot(id)
+    string? disposalMethod = null,
+    string? purpose = null,
+    string? operatingSystem = null,
+    string? ipAddress = null,
+    string? macAddress = null,
+    string? productUrl = null,
+    string? version = null) : AggregateRoot(id)
 {
     public string Name { get; private set; } = Guard.AgainstNullOrWhiteSpace(name, nameof(name), 200);
 
@@ -28,7 +34,7 @@ public sealed class Device(
 
     public string? SerialNumber { get; private set; } = Guard.AgainstMaxLength(serialNumber, nameof(serialNumber), 200);
 
-    public Guid BrandId { get; private set; } = Guard.AgainstDefault(brandId, nameof(brandId));
+    public Guid? BrandId { get; private set; } = Guard.AgainstOptionalDefault(brandId, nameof(brandId));
 
     public Guid CategoryId { get; private set; } = Guard.AgainstDefault(categoryId, nameof(categoryId));
 
@@ -52,11 +58,23 @@ public sealed class Device(
 
     public string? DisposalMethod { get; private set; } = ValidateDisposalMethod(status, disposalMethod);
 
+    public string? Purpose { get; private set; } = Guard.AgainstMaxLength(purpose, nameof(purpose), 500);
+
+    public string? OperatingSystem { get; private set; } = Guard.AgainstMaxLength(operatingSystem, nameof(operatingSystem), 100);
+
+    public string? IpAddress { get; private set; } = Guard.AgainstMaxLength(ipAddress, nameof(ipAddress), 45);
+
+    public string? MacAddress { get; private set; } = ValidateMacAddress(macAddress);
+
+    public string? ProductUrl { get; private set; } = ValidateProductUrl(productUrl);
+
+    public string? Version { get; private set; } = Guard.AgainstMaxLength(version, nameof(version), 50);
+
     public static Device Create(
         Guid id,
         Household household,
         string name,
-        Guid brandId,
+        Guid? brandId,
         Guid categoryId,
         Guid ownerId,
         Guid locationId,
@@ -69,7 +87,13 @@ public sealed class Device(
         DeviceStatus status = DeviceStatus.Active,
         string? notes = null,
         DateOnly? retiredDate = null,
-        string? disposalMethod = null)
+        string? disposalMethod = null,
+        string? purpose = null,
+        string? operatingSystem = null,
+        string? ipAddress = null,
+        string? macAddress = null,
+        string? productUrl = null,
+        string? version = null)
     {
         ArgumentNullException.ThrowIfNull(household);
 
@@ -89,12 +113,18 @@ public sealed class Device(
             status,
             notes,
             retiredDate,
-            disposalMethod);
+            disposalMethod,
+            purpose,
+            operatingSystem,
+            ipAddress,
+            macAddress,
+            productUrl,
+            version);
     }
 
     public void UpdateDetails(
         string name,
-        Guid brandId,
+        Guid? brandId,
         Guid categoryId,
         Guid ownerId,
         Guid locationId,
@@ -104,12 +134,18 @@ public sealed class Device(
         Guid? networkId = null,
         DateOnly? purchaseDate = null,
         decimal? purchasePrice = null,
-        string? modifiedBy = null)
+        string? modifiedBy = null,
+        string? purpose = null,
+        string? operatingSystem = null,
+        string? ipAddress = null,
+        string? macAddress = null,
+        string? productUrl = null,
+        string? version = null)
     {
         EnsureEditable();
 
         Name = Guard.AgainstNullOrWhiteSpace(name, nameof(name), 200);
-        BrandId = Guard.AgainstDefault(brandId, nameof(brandId));
+        BrandId = Guard.AgainstOptionalDefault(brandId, nameof(brandId));
         CategoryId = Guard.AgainstDefault(categoryId, nameof(categoryId));
         OwnerId = Guard.AgainstDefault(ownerId, nameof(ownerId));
         LocationId = Guard.AgainstDefault(locationId, nameof(locationId));
@@ -119,6 +155,12 @@ public sealed class Device(
         NetworkId = Guard.AgainstOptionalDefault(networkId, nameof(networkId));
         PurchaseDate = purchaseDate;
         PurchasePrice = Guard.AgainstNegative(purchasePrice, nameof(purchasePrice));
+        Purpose = Guard.AgainstMaxLength(purpose, nameof(purpose), 500);
+        OperatingSystem = Guard.AgainstMaxLength(operatingSystem, nameof(operatingSystem), 100);
+        IpAddress = Guard.AgainstMaxLength(ipAddress, nameof(ipAddress), 45);
+        MacAddress = ValidateMacAddress(macAddress);
+        ProductUrl = ValidateProductUrl(productUrl);
+        Version = Guard.AgainstMaxLength(version, nameof(version), 50);
 
         Touch(modifiedBy);
     }
@@ -182,6 +224,38 @@ public sealed class Device(
         if (normalized is not null && status is not DeviceStatus.Retired and not DeviceStatus.Disposed)
         {
             throw new ArgumentException("DisposalMethod can only be set when the device is retired or disposed.", nameof(disposalMethod));
+        }
+
+        return normalized;
+    }
+
+    private static string? ValidateMacAddress(string? macAddress)
+    {
+        var normalized = Guard.AgainstMaxLength(macAddress, nameof(macAddress), 17);
+        if (normalized is null)
+        {
+            return null;
+        }
+
+        if (!System.Text.RegularExpressions.Regex.IsMatch(normalized, @"^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$"))
+        {
+            throw new ArgumentException("MacAddress must be in format XX:XX:XX:XX:XX:XX.", nameof(macAddress));
+        }
+
+        return normalized.ToUpperInvariant();
+    }
+
+    private static string? ValidateProductUrl(string? productUrl)
+    {
+        var normalized = Guard.AgainstMaxLength(productUrl, nameof(productUrl), 500);
+        if (normalized is null)
+        {
+            return null;
+        }
+
+        if (!Uri.TryCreate(normalized, UriKind.Absolute, out _))
+        {
+            throw new ArgumentException("ProductUrl must be a valid absolute URI.", nameof(productUrl));
         }
 
         return normalized;

@@ -140,7 +140,7 @@ public sealed class DevicesController(ISender sender) : ControllerBase
 
     public sealed record CreateDeviceRequest(
         string Name,
-        Guid BrandId,
+        Guid? BrandId,
         Guid CategoryId,
         Guid OwnerId,
         Guid LocationId,
@@ -153,7 +153,13 @@ public sealed class DevicesController(ISender sender) : ControllerBase
         DeviceStatus Status = DeviceStatus.Active,
         string? Notes = null,
         DateOnly? RetiredDate = null,
-        string? DisposalMethod = null)
+        string? DisposalMethod = null,
+        string? Purpose = null,
+        string? OperatingSystem = null,
+        string? IpAddress = null,
+        string? MacAddress = null,
+        string? ProductUrl = null,
+        string? Version = null)
     {
         public CreateDeviceCommand ToCommand()
             => new(
@@ -171,12 +177,18 @@ public sealed class DevicesController(ISender sender) : ControllerBase
                 Status,
                 Notes,
                 RetiredDate,
-                DisposalMethod);
+                DisposalMethod,
+                Purpose,
+                OperatingSystem,
+                IpAddress,
+                MacAddress,
+                ProductUrl,
+                Version);
     }
 
     public sealed record UpdateDeviceRequest(
         string Name,
-        Guid BrandId,
+        Guid? BrandId,
         Guid CategoryId,
         Guid OwnerId,
         Guid LocationId,
@@ -189,7 +201,13 @@ public sealed class DevicesController(ISender sender) : ControllerBase
         DeviceStatus Status = DeviceStatus.Active,
         string? Notes = null,
         DateOnly? RetiredDate = null,
-        string? DisposalMethod = null)
+        string? DisposalMethod = null,
+        string? Purpose = null,
+        string? OperatingSystem = null,
+        string? IpAddress = null,
+        string? MacAddress = null,
+        string? ProductUrl = null,
+        string? Version = null)
     {
         public UpdateDeviceCommand ToCommand(Guid id)
             => new(
@@ -208,7 +226,13 @@ public sealed class DevicesController(ISender sender) : ControllerBase
                 Status,
                 Notes,
                 RetiredDate,
-                DisposalMethod);
+                DisposalMethod,
+                Purpose,
+                OperatingSystem,
+                IpAddress,
+                MacAddress,
+                ProductUrl,
+                Version);
     }
 
     public sealed record DeleteDeviceRequest(string? DisposalMethod = null, DateOnly? RetiredDate = null)

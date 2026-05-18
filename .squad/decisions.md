@@ -671,6 +671,235 @@ All failure paths go through the exception handler (D-026). Controllers cannot r
 
 ---
 
+### D-028: Pre-Commit Hook Scope — Lint + Security Only
+
+**Date:** 2026-05-18 (Phase 1 Round 7, T47)  
+**Decided by:** Hudson (DevOps via Copilot)  
+**Status:** Approved  
+**Related:** Constitution §9 Quality Gate, .github/workflows/README.md, .githooks/pre-commit
+
+**Decision:**
+
+The pre-commit hook runs a **fast subset** of CI checks (lint + secrets scan), NOT the full test suite or format check.
+
+```bash
+# Pre-commit hook sequence (~2–3 seconds):
+1. pnpm run lint (in src/TechInventory.Web)
+2. node scripts/check-security.mjs --staged (auth tokens + gitleaks)
+```
+
+**Rationale:**
+
+- **Pre-commit is local feedback**, CI is the gate. Developers need sub-second iteration loops.
+- Running the full verify pipeline (format + build + unit/integration tests + E2E) in pre-commit = 5–10 minutes, killing developer workflow velocity.
+- **Format check is excluded** (not lint): `dotnet format --verify-no-changes` on the full repo takes 5+ seconds on first run and provides only style feedback. Format is already enforced in CI; pre-commit focus should be on **breaking issues** (lint violations, secrets).
+- Lint is fast (~1s) and catches real logic errors (e.g., unused vars, unsafe patterns).
+- Secrets scan is fast (~1s) and catches catastrophic issues (leaked keys).
+- Tests are hermetic and benefit from CI's consistent environment; running them locally then again in CI is redundant.
+- E2E requires Docker Compose; not all dev machines have Docker (e.g., Brian's primary machine).
+
+**Implications:**
+
+- Developers get immediate feedback on style/lint/secrets at commit time (prevents thrashing).
+- Flaky or integration bugs still slip through to CI, which is correct (CI environment is the source of truth).
+- Branch protection rule on `main` in GitHub UI ensures CI gates are enforced before merge.
+
+**Enforcement:**
+
+- `.githooks/pre-commit` configured to run lint + secrets check.
+- `task hooks:install` wires the hook on fresh clone.
+- Developers can override with `git commit --no-verify` only in emergencies; always run `task verify` before pushing.
+
+---
+
+### D-029: CI Runner OS — ubuntu-latest
+
+**Date:** 2026-05-18 (Phase 1 Round 7, T47)  
+**Decided by:** Hudson (DevOps via Copilot)  
+**Status:** Approved  
+**Related:** .github/workflows/ci.yml, Constitution §9
+
+**Decision:**
+
+CI uses **`ubuntu-latest`** GitHub-hosted runner for all workflows. No Windows or macOS runners in Phase 1.
+
+**Rationale:**
+
+- **Cost**: ubuntu-latest is cheapest GitHub-hosted option (free tier includes substantial ubuntu minutes).
+- **Docker**: ubuntu-latest has Docker + Docker Compose pre-installed, required for E2E (Playwright) and future container build/scan steps.
+- **.NET 10 Support**: Fully supported on Linux (Alpine, Ubuntu). Production will run on Linux anyway (Ubuntu Server on Brian's home hardware).
+- **Node 22 Support**: Excellent Linux support; no platform-specific Node issues for SvelteKit.
+- **Simplicity**: Single-platform CI is simpler than maintaining separate Windows/macOS jobs. No matrix sprawl.
+- **Local Parity**: `Taskfile.yml` has platform-aware branches for Windows/macOS/Linux. Developers on any OS can run `task verify` locally. CI enforces the Linux execution environment (which is prod-equivalent).
+
+**Trade-Offs:**
+
+- **Not Covered:**
+  - Windows-specific .NET issues (unlikely; .NET 10 is mature on Windows, and we avoid platform-specific APIs).
+  - macOS GitHub Actions licensing (not relevant unless we target macOS explicitly).
+
+**Future Decisions:**
+
+- **Phase 2/3**: If issues arise on Brian's Windows dev machine, may add optional Windows runner to CI (on schedule, not blocking).
+- **Phase 3 Container Push**: Windows containers can be built on ubuntu-latest and published to GHCR (multi-arch images via buildx).
+
+---
+
+### D-030: Import Preview/Commit — Stateless Re-Parse Strategy
+
+**Date:** 2026-05-18 (Phase 1 Round 7, T29/T30)  
+**Proposed by:** Hicks (Backend via Copilot)  
+**Status:** Implemented & ratified  
+**Related:** `src\TechInventory.Application\Imports\PreviewImportCommand.cs`, `src\TechInventory.Application\Imports\CommitImportCommand.cs`, Plan §5
+
+**Decision:**
+
+Use a **stateless preview/commit flow**: preview parses and validates the uploaded CSV, while commit re-parses and re-validates the submitted file instead of depending on a stored preview token.
+
+**Rationale:**
+
+- Keeps Phase 1 import flow simple: no temporary preview persistence, token lifecycle, or cache invalidation.
+- Guarantees commit runs against the exact validation rules and current lookup state at execution time.
+- Matches the single-household/home-infra scope where import volume is modest and duplicate parsing cost is acceptable.
+
+**Implementation:**
+
+- `PreviewImportCommand` returns valid rows, invalid rows, and missing lookups to create.
+- `CommitImportCommand` reuses `DeviceImportProcessingService` to parse and validate the uploaded file again before persisting changes.
+- Missing reference entities (Brand/Category/Owner/Location) are created inside commit, then valid devices and the immutable `ImportBatch` are written in the same request flow.
+
+**Trade-Offs:**
+
+- Commit does duplicate CSV parsing work after preview.
+- Preview results are advisory; a row can still fail at commit time if data or lookups changed between requests.
+
+---
+
+### D-031: CsvHelper for Import Parsing
+
+**Date:** 2026-05-18 (Phase 1 Round 7, T29/T30/T39)  
+**Proposed by:** Hicks (Backend via Copilot)  
+**Status:** Implemented & ratified  
+**Related:** `src\TechInventory.Application\Imports\DeviceImportProcessingService.cs`, Constitution §2, Plan §5
+
+**Decision:**
+
+Use **CsvHelper** for backend CSV import parsing instead of a hand-rolled parser.
+
+**Rationale:**
+
+- Handles quoted fields, header rows, and culture-aware numeric parsing without custom parser maintenance.
+- Supports the required Phase 1 import configuration directly: header record on, missing-field tolerance, bad-data tolerance, and normalized header matching.
+- Keeps import logic focused on mapping, validation, and lookup resolution rather than low-level CSV edge cases.
+
+**Implementation:**
+
+- Package: `CsvHelper` 33.1.0 in `src\TechInventory.Application\TechInventory.Application.csproj`
+- Parser config in `DeviceImportProcessingService`:
+  - `HasHeaderRecord = true`
+  - `MissingFieldFound = null`
+  - `BadDataFound = null`
+  - Trimmed, case-insensitive header normalization
+- Parsed rows feed shared `DeviceValidationRules` before preview/commit responses are shaped.
+
+**Trade-Offs:**
+
+- Adds one Application-layer dependency.
+- Ties import behavior to CsvHelper conventions, so future parser changes should preserve current header normalization rules.
+
+---
+
+### D-032: Import Upload Size Cap — Configuration-Driven
+
+**Date:** 2026-05-18 (Phase 1 Round 7, T39)  
+**Proposed by:** Hicks (Backend via Copilot)  
+**Status:** Implemented & ratified  
+**Related:** `src\TechInventory.Api\Controllers\ImportsController.cs`, `src\TechInventory.Api\appsettings.json`, `src\TechInventory.Api\ExceptionHandling\ApiExceptionHandler.cs`
+
+**Decision:**
+
+Enforce a backend import upload cap via configuration: `Imports:MaxFileSizeBytes`.
+
+**Rationale:**
+
+- Prevents oversized multipart uploads from consuming memory or tying up the API process on a home-hosted deployment.
+- Keeps the limit adjustable per environment without code changes.
+- Produces a deterministic API contract for oversized files through RFC 7807 `413 Payload Too Large` responses.
+
+**Implementation:**
+
+- Default cap configured in `appsettings.json`.
+- `ImportsController` checks request file length and rejects missing/empty/oversized uploads early.
+- `ApiExceptionHandler` maps `PayloadTooLarge` failures to HTTP 413 ProblemDetails.
+
+**Trade-Offs:**
+
+- Large-but-valid CSV files require configuration changes instead of just working automatically.
+- Size enforcement happens at the API boundary, so clients still need UX messaging for file-size failures.
+
+---
+
+### D-033: Export Projection & Buffered Async Streaming
+
+**Date:** 2026-05-18 (Phase 1 Round 7, T31/T42)  
+**Proposed by:** Hicks (Backend via Copilot)  
+**Status:** Implemented & ratified  
+**Related:** `src\TechInventory.Api\Controllers\ExportsController.cs`, `src\TechInventory.Infrastructure\Persistence\Repositories\DeviceRepository.cs`
+
+**Decision:**
+
+Export devices through a dedicated `IDeviceExportService` projection path, and write CSV responses using buffered async chunks rather than synchronous writes to the HTTP response body.
+
+**Rationale:**
+
+- Repository contract tests prohibit exposing unsupported async shapes like `IAsyncEnumerable` on core repository interfaces; a dedicated export service keeps the normal repository contract clean.
+- Kestrel disallows synchronous response-body operations by default; buffering CSV text and sending it with `WriteAsync` avoids runtime failures.
+- Export needs denormalized rows (Brand/Category/Owner/Location/Network names), which is better handled as a read-optimized projection path than as aggregate loading.
+
+**Implementation:**
+
+- `ExportDevicesQuery` depends on `IDeviceExportService`.
+- `DeviceRepository` implements the export projection with filter application and SQLite-safe ordering.
+- `ExportsController` returns JSON arrays or CSV attachments and logs exported row count.
+
+**Trade-Offs:**
+
+- Adds a second read path for devices beyond the main repository/list query surface.
+- CSV output is buffered per chunk rather than true raw stream writes, trading a small amount of memory for compatibility.
+
+---
+
+### D-034: Runtime-Generated OpenAPI Commit Workflow
+
+**Date:** 2026-05-18 (Phase 1 Round 7, T48)  
+**Proposed by:** Hicks (Backend via Copilot)  
+**Status:** Implemented & ratified  
+**Related:** `src\TechInventory.Api\Program.cs`, `src\TechInventory.Api\OpenApi\OpenApiDocumentExporter.cs`, `Taskfile.yml`, `openapi.yaml`, Spec §4.3
+
+**Decision:**
+
+Generate the committed repo-root `openapi.yaml` from the API's runtime Swagger document using an explicit backend command (`export-openapi`) instead of maintaining the spec manually.
+
+**Rationale:**
+
+- Reduces drift between committed contract and actual controller/DTO surface.
+- Keeps the OpenAPI file reproducible for future sessions and CI checks.
+- Avoids a parallel handwritten spec maintenance track while the API is still evolving rapidly in Phase 1.
+
+**Implementation:**
+
+- `Program.cs` recognizes an `export-openapi` command path.
+- `OpenApiDocumentExporter` materializes the runtime document and writes repo-root `openapi.yaml`.
+- `Taskfile.yml` exposes `task openapi:export` as the developer-friendly entry point.
+- Verified alongside runtime `GET /openapi/v1.json` smoke checks.
+
+**Trade-Offs:**
+
+- Spec regeneration now depends on a buildable API project.
+- Generated YAML formatting follows the runtime serializer rather than hand-curated style.
+
+---
+
 ## Governance
 
 - All meaningful changes require team consensus

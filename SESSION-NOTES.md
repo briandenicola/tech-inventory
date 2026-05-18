@@ -4,6 +4,12 @@ Append-only log. Newest entries at the top.
 
 ---
 
+## 2026-05-18 — Round 7 Phase 1 Close-Out (Scribe)
+
+Phase 1 complete: 48/48 tasks shipped. Merged 7 decision inbox files (Hudson's 2 collisions renumbered as D-028/D-029; Hicks's 5 import/export decisions as D-030–D-034) into `.squad/decisions.md`. Updated agent histories for Hicks (T29-T31, T39, T42, T48 import/export + OpenAPI), Apone (T45-T46 integration/contract suites), Hudson (T47 CI verify chain), and Scribe (close-out). Added "Phase 1 complete" banner to `specs/001-core-api/tasks.md` and marked T29, T30, T31, T39, T42, T45, T46, T47, T48 as ✅ (all remaining tasks done). Appended Phase 1 complete round to `.squad/session-log.md` with summary statistics (48/48, 369 tests, coverage 100%/91.58%/94.33%/91.63%), commit table (7 SHAs), deliverables summary, known gaps, and Phase 2 next steps. Updated `.copilot-state.md` to note Phase 1 complete and that dev auth bypass is active for local API access. Deleted all 7 inbox decision files. Staged only `.squad/`, `specs/001-core-api/tasks.md`, `.copilot-state.md`, `SESSION-NOTES.md` — no backend/frontend changes. Commit message references all 7 SHAs and Phase 1 closure.
+
+---
+
 ## 2026-05-18 — Hicks Round 7 import/export close-out + OpenAPI export
 - Added the Phase 1 import/export backend verticals in `src\TechInventory.Application\Imports`, `src\TechInventory.Application\Exports`, `src\TechInventory.Api\Controllers\ImportsController.cs`, `src\TechInventory.Api\Controllers\ExportsController.cs`, and `src\TechInventory.Api\OpenApi\OpenApiDocumentExporter.cs`; preview/commit now share `DeviceImportProcessingService`, export uses a dedicated `IDeviceExportService`, and repo-root `openapi.yaml` is generated from the running API shape instead of hand-editing
 - Expanded auditing for bulk import by changing `IAuditContext` / `AuditContext` / `AuditBehavior` to carry multiple entries, extracted shared `DeviceValidationRules`, registered CsvHelper-backed import processing in DI, added import file-size handling + 413 mapping, and seeded a default `Primary Household` (`USD`) at startup when the database is empty so device creation/import works in a fresh environment

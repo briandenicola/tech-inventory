@@ -57,15 +57,14 @@ CI quality gate must be green to merge: tests, security scans, SBOM.
 - Hicks confirmed AppDbContext registration works with factory; no blocking issues.
 - Verify pipeline updated: `scripts/verify.sh` / `verify.ps1` now includes three phases (format → build+test → vuln scan) for local/CI parity.
 
-**2026-05-18 (Phase 1 Round 7) — T47 CI Pipeline Close-Out:**
-- **Audit Complete:** CI workflow (ubuntu-latest) confirmed running full verify pipeline via `./scripts/verify.sh`. All Constitution §9 Phase 1 checks present: format, build, unit/integration tests, vuln scan, frontend check/lint, E2E tests, security scan (gitleaks via check-security.mjs).
-- **Pre-commit Hook Refined:** Streamlined to lint + security only (removed format check due to performance). Pre-commit now runs fast gates (pnpm lint + check-security.mjs, ~2–3 seconds total) catching lint violations and secrets while format is left to CI. Format enforcement deferred to CI pipeline where it's already present and part of the full verify chain. Shell script remains cross-platform Git-compatible.
-- **NuGet & pnpm Caching:** Both configured with fallback restore keys, saving ~1–2 minutes per run.
-- **Workflows Documentation:** Created `.github/workflows/README.md` (comprehensive one-pager covering CI steps, caching, debug guidance, platform choices, and **manual GitHub UI setup Brian must perform** — requires enabling branch protection on `main` to actually block PRs on CI failure).
-- **No High/Critical Gaps Found:** All mandatory Phase 1 checks running. Phase 3 TODOs (CodeQL SAST, Trivy container scan, SBOM) remain deferred as planned.
-- **Branch Protection Manual Step:** Documented that Brian must go to Settings → Branches, add rule on `main`, enable "Require status checks to pass before merging" and select `ci / verify` as the required check. Without this, PRs can merge even if CI fails (GitHub UI enforcement, not CI-side issue).
-- **E2E in CI:** docker-compose works in ubuntu-latest; Playwright E2E runs as part of verify.sh in CI. Locally, developers can skip E2E with `task test:unit` + `task test:integration` and run `task test:e2e` separately if Docker is available.
-- **Decision D-024 (Pre-Commit Scope):** Approved — lint + secrets only, format deferred to CI for speed and decoupling.
-- **Decision D-025 (CI Runner OS):** Approved — ubuntu-latest only; cost-effective, Docker built-in, Linux parity with production.
+**2026-05-18 (Phase 1 Round 7) — T47 CI Pipeline Complete:**
+- **Full Verify Audit:** CI workflow (ubuntu-latest) confirmed running complete verify pipeline: format → build → unit/integration tests → vuln scan → frontend check/lint → E2E tests. All Constitution §9 Phase 1 checks present and green.
+- **Pre-commit Hook Refined:** Streamlined to lint + security only (~2-3s: pnpm lint + check-security.mjs). Format check deferred to CI (performance + decoupling).
+- **NuGet & pnpm Caching:** Configured with fallback restore keys (~1-2 min savings per run).
+- **CI Documentation:** `.github/workflows/README.md` created as one-pager with steps, caching strategy, debug guidance, platform rationale, and manual GitHub UI branch-protection setup instructions.
+- **Branch Protection Manual:** Documented that Brian must set Settings → Branches → `main` rule to require `ci / verify` check (GitHub UI enforcement outside CI).
+- **E2E in CI:** docker-compose + Playwright run on ubuntu-latest. Locally, developers can run `task test:unit` + `task test:integration` or `task test:e2e` separately.
+- **Decisions D-028/D-029:** Pre-commit scope (lint+security, ~2-3s) and CI runner OS (ubuntu-latest) ratified.
+- **Commits:** `e20a1bb` (T47 full verify on PR), `402eceb` (T47 Hudson audit findings), `ca85041` (T47 pre-commit refinement), `65e1184` (T47 CI setup checklist).
 
 <!-- Append new learnings below. Each entry is something lasting about the project. -->

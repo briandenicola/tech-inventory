@@ -119,6 +119,25 @@ public class AuditEventTests
     }
 
     [Fact]
+    public void AuditEvent_RejectsTheDefaultTimestamp()
+    {
+        var auditEventType = ContractReflectionAssertions.RequireDomainType("TechInventory.Domain.Entities.AuditEvent", "awaiting Hicks T11");
+        var constructor = ContractReflectionAssertions.RequirePrimaryConstructor(auditEventType);
+
+        Action act = () => ContractReflectionAssertions.CreateInstance(
+            constructor,
+            ContractReflectionAssertions.AuditSamples,
+            ("action", AuditAction.Created),
+            ("timestamp", default(DateTimeOffset)),
+            ("beforePayload", "null"),
+            ("afterPayload", ContractReflectionAssertions.AuditSamples.AfterJson));
+
+        act.Should().Throw<Exception>()
+            .Where(exception => ContractReflectionAssertions.Unwrap(exception) is ArgumentOutOfRangeException,
+                "audit events must reject missing timestamps.");
+    }
+
+    [Fact]
     public void AuditEvent_UpdatedEventsRequireBeforeAndAfterPayloads()
     {
         var auditEventType = ContractReflectionAssertions.RequireDomainType("TechInventory.Domain.Entities.AuditEvent", "awaiting Hicks T11");

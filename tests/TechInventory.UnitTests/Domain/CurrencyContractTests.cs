@@ -38,4 +38,12 @@ public class CurrencyContractTests
 
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
+
+    [Fact]
+    public void Currency_ToString_ReturnsTheNormalizedCode()
+    {
+        var currency = Currency.From("usd");
+
+        currency.ToString().Should().Be("USD");
+    }
 }

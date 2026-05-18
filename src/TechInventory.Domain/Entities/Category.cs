@@ -70,11 +70,6 @@ public sealed class Category(Guid id, string name, Guid? parentId = null, int de
             throw new ArgumentOutOfRangeException(nameof(depth), "Category depth must be between 1 and 3.");
         }
 
-        if (parentId is not null && depth < 2)
-        {
-            throw new ArgumentOutOfRangeException(nameof(depth), "Child categories must have a depth of 2 or 3.");
-        }
-
         return depth;
     }
 }

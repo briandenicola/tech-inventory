@@ -89,8 +89,8 @@
 
 | ID | Task | Owner | Outcome | Acceptance Check | Ref |
 |----|------|-------|---------|-----------------|-----|
-| T43 | Unit test suite: Domain layer | Apone | All entity invariants, value objects tested. | Coverage ≥ 85% on Domain | Spec §4.2 |
-| T44 | Unit test suite: Application layer | Apone | All handlers, validators, behaviors tested. | Coverage ≥ 85% on Application | Spec §4.2 |
+| T43 | ✅ Unit test suite: Domain layer | Apone | Domain invariants/value objects fully covered, including audit/import append-only edges; merged coverage now 100.00%. | Verified by fresh unit+integration Cobertura merge with Domain ≥ 85%. | Spec §4.2 |
+| T44 | ✅ Unit test suite: Application layer | Apone | Handlers, validators, and behaviors for T18–T28 are covered with NSubstitute consumer tests and validation-path assertions. | Verified by fresh unit+integration Cobertura merge with Application ≥ 85%. | Spec §4.2 |
 | T45 | Integration test suite | Apone | Full API surface tested via WebApplicationFactory + real SQLite. | All endpoints exercised; happy + error paths | Spec §4.2 |
 | T46 | Contract tests (OpenAPI validation) | Apone | Schemathesis or equivalent validates spec ↔ live API. | Zero drift between committed spec and runtime | Spec §4.3 |
 | T47 | CI pipeline: build + test + format + vuln scan | Hudson | GitHub Actions workflow runs all checks. | PR blocked if any check fails | Constitution §7 |

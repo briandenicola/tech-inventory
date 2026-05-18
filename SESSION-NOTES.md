@@ -4,6 +4,15 @@ Append-only log. Newest entries at the top.
 
 ---
 
+## 2026-05-18 — Apone Round 5 domain recovery + T20-T28 handler tests
+- Added targeted Domain coverage recovery in `tests\TechInventory.UnitTests\Domain\` for `AuditEvent` default-timestamp rejection, `ImportBatch` EF/private-constructor + UTC convenience-constructor behavior, and `Currency.ToString()`; removed a dead duplicate child-depth guard from `src\TechInventory.Domain\Entities\Category.cs`
+- Converted all T20–T28 handler scaffolds under `tests\TechInventory.UnitTests\Application\` into executable xUnit + FluentAssertions + NSubstitute tests once Hicks's handlers landed, including CRUD/query suites for Devices, Brands, Categories, Owners, Locations, Networks, Tags, device-tag add/remove, and ClaimDeviceOwnership
+- Verified backend commands on Windows: `dotnet format --verify-no-changes`, `dotnet build -c Release`, `dotnet test -c Release`, and fresh XPlat Cobertura runs for unit + integration projects; merged coverage snapshot is Domain 100.00%, Application 85.89%, Infrastructure 88.98%
+- `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify.ps1` now reaches frontend linting cleanly but cannot finish in this environment because `docker` is unavailable for `scripts\run-e2e.ps1`; backend verify steps and frontend install/check/lint all succeeded before that environment failure
+- Final backend test summary: **266 passed, 0 skipped** (test delta vs pre-Round-5 baseline: +115)
+
+---
+
 ## 2026-05-18 — Hicks T20-T28 application handlers, paging responses, and ownership/tag flows
 - Added concrete Application command/query packages under `src/TechInventory.Application\Devices`, `Brands`, `Categories`, `Owners`, `Locations`, `Networks`, and `Tags`; every handler now returns `Result`/`Result<T>`, every request has a FluentValidation validator, and list queries standardize on the new `PagedResponse<T>` DTO
 - Device work shipped `CreateDeviceCommand`, `UpdateDeviceCommand`, `DeleteDeviceCommand`, `GetDeviceByIdQuery`, `ListDevicesQuery`, `AddTagToDeviceCommand`, `RemoveTagFromDeviceCommand`, and `ClaimDeviceOwnershipCommand`; creates resolve the single household for default currency, update/delete/ownership/tag-removal stash BEFORE payloads in `IAuditContext`, and delete now supports retired → disposed transitions

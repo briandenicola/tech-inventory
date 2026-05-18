@@ -1,3 +1,4 @@
+using System.Reflection;
 using FluentAssertions;
 using TechInventory.Domain.Entities;
 using TechInventory.Domain.Enums;
@@ -47,6 +48,41 @@ public class ImportBatchContractTests
         batch.HasErrors.Should().BeTrue();
         batch.CreatedAt.Should().Be(createdAt);
         batch.ErrorLog.Should().Be("[{\"row\":9}]");
+    }
+
+    [Fact]
+    public void ImportBatch_RejectsTheDefaultCreatedAt()
+    {
+        var act = () => new ImportBatch(Guid.NewGuid(), "devices.csv", 1, 1, 0, ImportStatus.Completed, createdAt: default);
+
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public void ImportBatch_PrivateConstructor_ProvidesEfSafeDefaults()
+    {
+        var constructor = typeof(ImportBatch).GetConstructor(
+            BindingFlags.Instance | BindingFlags.NonPublic,
+            binder: null,
+            Type.EmptyTypes,
+            modifiers: null);
+
+        var batch = constructor!.Invoke(null).Should().BeOfType<ImportBatch>().Subject;
+
+        batch.Id.Should().Be(Guid.Empty);
+        batch.FileName.Should().BeNull();
+    }
+
+    [Fact]
+    public void ImportBatch_ConvenienceConstructor_UsesTheCurrentUtcTimestamp()
+    {
+        var before = DateTimeOffset.UtcNow;
+        var batch = new ImportBatch(Guid.NewGuid(), "devices.csv", 1, 1, 0, ImportStatus.Completed);
+        var after = DateTimeOffset.UtcNow;
+
+        batch.CreatedAt.Offset.Should().Be(TimeSpan.Zero);
+        batch.CreatedAt.Should().BeOnOrAfter(before);
+        batch.CreatedAt.Should().BeOnOrBefore(after);
     }
 
     [Fact]

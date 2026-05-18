@@ -26,6 +26,7 @@ public class LocationContractTests
         var location = new Location(Guid.NewGuid(), "Hall Closet", LocationType.Storage);
 
         location.Type.Should().Be(LocationType.Storage);
+        location.NormalizedName.Should().Be("HALL CLOSET");
     }
 
     [Fact]
@@ -34,5 +35,32 @@ public class LocationContractTests
         var location = new Location(Guid.NewGuid(), "Hall Closet", LocationType.Storage);
 
         location.IsActive.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Location_RenameAndSetType_UpdateStateAndAuditMetadata()
+    {
+        var location = new Location(Guid.NewGuid(), "Hall Closet", LocationType.Storage);
+
+        location.Rename("  Kitchen Shelf  ", modifiedBy: "apone");
+        location.SetType(LocationType.Home, modifiedBy: "ripley");
+
+        location.Name.Should().Be("Kitchen Shelf");
+        location.Type.Should().Be(LocationType.Home);
+        location.ModifiedBy.Should().Be("ripley");
+    }
+
+    [Fact]
+    public void Location_DeactivateAndReactivate_ToggleTheActiveFlag()
+    {
+        var location = new Location(Guid.NewGuid(), "Hall Closet", LocationType.Storage);
+
+        location.Deactivate("apone");
+        location.IsActive.Should().BeFalse();
+        location.ModifiedBy.Should().Be("apone");
+
+        location.Reactivate("ripley");
+        location.IsActive.Should().BeTrue();
+        location.ModifiedBy.Should().Be("ripley");
     }
 }

@@ -1244,6 +1244,211 @@ Generate the committed repo-root `openapi.yaml` from the API's runtime Swagger d
 
 ---
 
+### D-052: Devices Query Cache — Simple In-Memory Map by Filter Key
+
+**Date:** 2026-05-19 (Phase 2 Round 3, Vasquez)
+**Status:** Implemented
+**Related:** `specs/002-frontend-mvp/spec.md` §4.5, T14
+
+**Decision:** `useDevices()` caches results in a module-level `Map<string, PaginatedResponse>` keyed by deterministic JSON-serialized filters. Cache invalidation via exported `invalidateDevicesCache()` (called by R4 CRUD mutations).
+
+**Rationale:**
+- TanStack Query-style cache without the 50KB+ external dependency.
+- Sufficient for v1 (ephemeral session state; no cross-tab sync).
+- Svelte 5 runes (`$state` + `$derived` + `$effect`) auto-refetch when filters change.
+
+**Alternatives rejected:**
+- SvelteKit `load` functions: overkill for client-side filtering UX.
+- TanStack Query: too much weight for features we don't yet need (background refetch, stale-while-revalidate).
+
+**Future considerations:** Round 8+ (offline PWA) may need persistent cache (IndexedDB); current Map is extensible.
+
+**References:** Constitution §6.5.3, T14.
+
+---
+
+### D-053: Reference Data Store — Module-Level, Fetch Once on Mount
+
+**Date:** 2026-05-19 (Phase 2 Round 3, Vasquez)
+**Status:** Implemented
+**Related:** T16
+
+**Decision:** Brands/Categories/Owners/Locations/Networks are fetched once via `fetchReferenceData()` on `DeviceFilters` mount and stored in module-level `referenceDataStore`. No refetch on filter changes. Cleared on logout via `clearReferenceData()`.
+
+**Rationale:**
+- Reference entities rarely change within a session.
+- Avoids 5 parallel API calls per filter interaction.
+- Pattern scales to future filters (tags, models).
+
+**Implementation:** `Promise.all()` parallel fetch; defensive nullish filtering on API responses.
+
+**Alternatives rejected:**
+- `+page.server.ts` load: filters need to be client-reactive.
+- Per-component fetches: N calls per interaction.
+
+**References:** Constitution §6.5.3, T16.
+
+---
+
+### D-054: Sort Cycle — 2-State (asc ↔ desc)
+
+**Date:** 2026-05-19 (Phase 2 Round 3, Vasquez)
+**Status:** Implemented
+**Related:** T17
+
+**Decision:** Clicking a sortable column header toggles between ascending and descending only — no "unsorted" tri-state. Default sort (`createdAt desc`) is always implicitly applied.
+
+**Rationale:**
+- Matches familiar "click to reverse" UX (Excel, Sheets).
+- Spec T17 allows 2- or 3-state; 2-state chosen for v1 simplicity.
+- "Unsorted" is conceptually ambiguous (often means "sorted by primary key").
+
+**Implementation:** URL-backed (`?sort=name&sortDir=asc`); `aria-sort="ascending|descending|none"` on `<th>`; arrow icons for visual indicator.
+
+**References:** T17.
+
+---
+
+### D-055: Status Filter — Single Enum in v1 (UI Already Multi-Select-Ready)
+
+**Date:** 2026-05-19 (Phase 2 Round 3, Vasquez)
+**Status:** Implemented (forward-compatible)
+**Related:** T16
+
+**Decision:** Phase 1 API `/api/v1/devices?Status=...` accepts a single `DeviceStatus` enum. Frontend renders multi-select checkboxes but sends only the first selected status. Multi-status backend support deferred to Round 4.
+
+**Rationale:**
+- Phase 1 backend signature is single-enum.
+- Multi-select UI is forward-compatible: switching to `filters.status.join(',')` is a one-line change when backend supports arrays.
+- Acceptable for household inventory v1.
+
+**Future work:** Round 4 may add backend `Status[]` support.
+
+**References:** T16, Phase 1 devices contract.
+
+---
+
+### D-056: Mobile Filter Drawer — CSS Transform + Backdrop
+
+**Date:** 2026-05-19 (Phase 2 Round 3, Vasquez)
+**Status:** Implemented (focus-trap deferred to Apone T18)
+**Related:** T16, D-037
+
+**Decision:** Filters sidebar uses `position: fixed` + `transform: translateX(-100%)` for mobile drawer with `bg-neutral-900/50` backdrop. Desktop: `sticky` sidebar, always visible. CSS-only animation (no JS lib).
+
+**Accessibility:**
+- Mobile filter button has `aria-expanded={filtersOpen}`.
+- Drawer has `aria-label`; backdrop has `role="presentation"`.
+- Focus trap + escape-to-close wiring deferred to Apone T18 verification.
+
+**Alternatives rejected:**
+- Dialog/modal: overkill for non-blocking filters.
+- Bottom sheet: Android pattern; doesn't match Apple-inspired direction.
+
+**References:** PRD §F3, D-037 (360px breakpoint), T16.
+
+---
+
+### D-057: URL-Backed Filter State — replaceState + keepFocus + noScroll
+
+**Date:** 2026-05-19 (Phase 2 Round 3, Vasquez)
+**Status:** Implemented
+**Related:** T15, T16, T17
+
+**Decision:** Every filter, sort, and pagination change updates URL via `goto(url, { replaceState: true, keepFocus: true, noScroll: true })`. Page reload preserves state; back/forward stays clean.
+
+**Implementation:**
+- Filter changes reset `page=1`; sort state preserved across filter changes.
+- URL shape: `?page=2&pageSize=50&search=iPhone&brandId=...&sort=name&sortDir=desc`.
+
+**Rationale:**
+- `replaceState`: filter toggles shouldn't pollute browser history.
+- `keepFocus`: dropdown clicks don't steal focus.
+- `noScroll`: filter changes don't scroll-to-top (sticky sidebar / overlay drawer).
+
+**References:** T15, T16, T17.
+
+---
+
+### D-058: Debounced Search — 300ms Timeout
+
+**Date:** 2026-05-19 (Phase 2 Round 3, Vasquez)
+**Status:** Implemented
+**Related:** T16
+
+**Decision:** Search input debounced 300ms before applying filter. Svelte `oninput` + `setTimeout` pattern (no `lodash.debounce` dependency). Timeout cleared on unmount.
+
+**Rationale:**
+- 300ms: instant-feeling but batches rapid typing (no API hammer).
+- 500ms+ feels sluggish; 0ms = 1 call per keystroke.
+
+**References:** T16.
+
+---
+
+### D-059: Loading Skeleton — 7 Rows Default
+
+**Date:** 2026-05-19 (Phase 2 Round 3, Vasquez)
+**Status:** Implemented
+**Related:** T15
+
+**Decision:** `LoadingSkeleton` defaults to 7 shimmer rows (typical page-fold on 1280×800). Uses `bg-neutral-200` / `bg-neutral-800` tokens and Tailwind `animate-pulse`.
+
+**Rationale:** Immediate visual feedback; fills viewport on most desktops; CSS-only animation (no JS).
+
+**References:** T15.
+
+---
+
+### D-060: TypeScript API Client — Continue Hand-Rolled Wrapper (No Codegen)
+
+**Date:** 2026-05-19 (Phase 2 Round 3, Vasquez)
+**Status:** Implemented
+**Related:** D-046, T14, T16
+
+**Decision:** Continue hand-rolled `src/lib/api/client.ts` wrapper instead of regenerating via `openapi-typescript-codegen` or `kiota`. Added `networks` endpoints manually in this round.
+
+**Rationale:**
+- `openapi-typescript` (types-only) is already in use; hand-rolled wrapper retains full control over:
+  - MSAL auth header injection.
+  - ProblemDetails → `ApiError` mapping.
+  - Casing translation (PascalCase ↔ camelCase).
+- Full codegen would add ~20KB+ of unused endpoint surface (tags, imports, exports).
+- T14 spec allows hand-rolled if justified — this is justified for v1.
+
+**Future work:** Re-evaluate full codegen at Phase 3+ if endpoint count exceeds ~10.
+
+**References:** D-046 (openapi-typescript types-only), T14, T16.
+
+---
+
+### D-061: Integration Test Environment Override — virtual `Environment` Property
+
+**Date:** 2026-05-18 (Phase 2 Round 1, Apone — retroactive)
+**Status:** Implemented (commit `fb9ba14`)
+**Related:** D-040..D-045 (Bishop JWT decisions), `docs/known-issues.md`, T08
+
+**Decision:** `IntegrationTestFactory<TMarker>` exposes a `protected virtual string Environment => "Development";` property. Derived test factories override it (`"Testing"` for `NoAuthFactory`/`JwtAuthFactory`, `"Production"` for `ProductionDevBypassFactory`) to prevent `appsettings.Development.json` from loading and overriding in-memory test configuration.
+
+**Root cause addressed:** ASP.NET Core configuration precedence — `appsettings.Development.json` (with `Auth:DevBypass=true`) was loaded before in-memory test configuration could disable it, defeating attempts to exercise the production JWT path.
+
+**Rationale:**
+- Cleaner than clearing configuration sources (would break Serilog config).
+- More maintainable than environment-variable hacks.
+- Allows future `appsettings.Testing.json` if needed.
+- No changes required to production code.
+
+**Outcome:** 6/11 auth integration tests pass. 5 JWT happy-path tests still fail because `JwtBearer`'s `ConfigurationManager<OpenIdConnectConfiguration>` re-instantiates after `PostConfigure<JwtBearerOptions>` callbacks and overwrites the in-memory RSA signing key. Per-user (Brian) chose Path B: skip the 5 tests with `[Fact(Skip = "T08 happy-path deferred...")]` and track in `docs/known-issues.md`. Canonical fix (custom `AuthenticationHandler<AuthenticationSchemeOptions>` for tests) deferred to a focused future session.
+
+**Files:**
+- `tests/TechInventory.IntegrationTests/IntegrationTestFactory.cs` (added virtual property)
+- `tests/TechInventory.IntegrationTests/Auth/AuthIntegrationTests.cs` (overrides in inner factories; 5 happy-path tests marked `Skip`)
+- `docs/known-issues.md` (deferral tracker)
+
+**References:** D-040..D-045 (Bishop JWT wiring), `docs/known-issues.md#auth-jwt-happy-path-tests`, T08, commit `fb9ba14`, commit `0e1ccc6`.
+
+---
+
 ## Governance
 
 - All meaningful changes require team consensus

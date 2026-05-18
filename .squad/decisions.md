@@ -412,6 +412,76 @@ SvelteKit uses **Tailwind CSS v4.3.0** with `@tailwindcss/vite` plugin.
 
 ---
 
+### D-020: Audit Context & Repository Balance Strategy
+
+**By:** Hicks (Backend / Domain)  
+**Date:** 2026-05-18  
+**Status:** Decided & implemented (T16–T19)  
+**Related:** `src/TechInventory.Infrastructure/Persistence/Repositories/`, `src/TechInventory.Application/Behaviors/`, `src/TechInventory.Application/Auditing/IAuditContext.cs`, `specs/001-core-api/plan.md` §2.3, §3.1, §3.2
+
+**Decision — Three-part strategy:**
+
+1. **Generic repository base + specific read methods**
+   - Keep shared add/get/update plumbing in `Repository<TEntity, TKey>` base.
+   - Keep list/filter/paging/name-lookup logic in concrete repositories (`BrandRepository`, `DeviceRepository`, etc.).
+   - Exact-ID lookups remain unit-of-work aware and can return inactive rows; list/default read paths filter inactive/soft-deleted rows unless the interface explicitly asks for `includeInactive`.
+
+2. **Validation failure shape**
+   - `ValidationBehavior<TRequest, TResponse>` returns `Result.Failure(new Error("Validation", "One or more validation failures occurred.", validationErrors))`.
+   - `validationErrors` is a property-name → string[] dictionary on `Error`, ready for later ProblemDetails mapping without throwing exceptions.
+
+3. **Audit payload capture strategy**
+   - `IAuditable` stays a marker interface only (at `src/TechInventory.Application/Auditing/IAuditable.cs`).
+   - Handlers populate scoped `IAuditContext` with entity type/id/action and optional BEFORE payload.
+   - `AuditBehavior` serializes `BeforePayload` from that context and uses the request object as the default AFTER payload. Create operations therefore store JSON `null` for BEFORE and the command payload for AFTER unless a handler overrides AFTER explicitly.
+   - Pipeline order: `ValidationBehavior` first, `AuditBehavior` last, so invalid requests short-circuit cleanly and never append audit rows.
+
+**Rationale:**
+- The generic base removes repetitive EF Core add/get/update plumbing without forcing every repository into a lowest-common-denominator query surface.
+- `IAuditContext` keeps BEFORE-state capture with the handler that already knows the aggregate/query flow, avoiding a second database read inside the pipeline.
+- The error dictionary gives the API layer a direct bridge to RFC 7807 validation details later, while staying inside the existing `Result` model today.
+
+**Implementation:**
+- 10 concrete repositories in `src/TechInventory.Infrastructure/Persistence/Repositories/` (`BrandRepository`, `CategoryRepository`, `DeviceRepository`, `HouseholdRepository`, `OwnerRepository`, `LocationRepository`, `NetworkRepository`, `TagRepository`, `AuditEventRepository`, `ImportBatchRepository`)
+- `AuditSaveChangesInterceptor` wired through `AppDbContext.OnConfiguring()` stamps UTC `CreatedAt`/`ModifiedAt` and `CreatedBy`/`ModifiedBy`
+- `ValidationBehavior` + `AuditBehavior` pipeline behaviors in `src/TechInventory.Application/Behaviors/` with test coverage
+- All changes verified: `dotnet format --verify-no-changes` ✅, `dotnet build -c Release` ✅, `dotnet test -c Release` ✅
+
+**Consequences:**
+- Handlers must manage their own BEFORE snapshots if audit trails require transaction semantics beyond AFTER only
+- Reference-entity list methods default to `includeInactive: false` but keep exact-ID paths open for reactivation flows
+- Validation failures integrate cleanly with ProblemDetails; exceptions no longer propagate from validators
+
+---
+
+### D-021: MediatR Behavior Pipeline Order Verification Pattern
+
+**By:** Apone (QA)  
+**Date:** 2026-05-18  
+**Status:** Decided & implemented  
+**Related:** `tests/TechInventory.UnitTests/Application/Behaviors/`, `specs/001-core-api/plan.md` §2.3
+
+**Pattern:** Verify MediatR behavior ordering by composing the real `ValidationBehavior<TRequest, TResponse>` around the real `AuditBehavior<TRequest, TResponse>` in a unit-speed integration test.
+
+**Test shape:**
+- Use an `IAuditable` request type.
+- Inject a failing `IValidator<TRequest>` via NSubstitute.
+- Inject `IAuditEventRepository`, `IUnitOfWork`, and `ICurrentUserService` substitutes into `AuditBehavior`.
+- Execute `ValidationBehavior.Handle(...)` with the `AuditBehavior.Handle(...)` delegate as `next`.
+- Assert the response is `Result.Failure("Validation")` and that `AppendAsync` / `SaveChangesAsync` were never called.
+
+**Why keep it:**
+- Proves the contract that matters: validation must short-circuit before audit side effects fire.
+- Cheaper and less brittle than waiting for controller/handler scaffolding.
+- Reusable pattern for future pipeline-order checks when more behaviors land.
+
+**Verification:**
+- Tests in `tests/TechInventory.UnitTests/Application/Behaviors/` confirm validation-before-audit ordering.
+- Repo-root `dotnet test -c Release` now exercises both backend test projects (151 tests green).
+- Coverage tracked alongside D-020: Domain 81.40%, Application 40.53%, Infrastructure 88.98%.
+
+---
+
 ## Governance
 
 - All meaningful changes require team consensus

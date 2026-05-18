@@ -56,6 +56,8 @@ Playwright layout: tests in `tests/e2e/`, Page Object Model in `tests/e2e/pages/
 
 **2026-05-18 (Phase 1 Round 2):** Reference entity contract tests (T06–T10) complete and verified. 80 xUnit cases covering `Category`, `Owner`, `Location`, `Network`, `Tag`, `DeviceTag` plus supplemental Brand/Device state transitions. Domain line coverage: 97.6% (well above 85% floor). Decision D-016 (Reference Entity Contract Test Pattern) locked the spec-driven pattern for future aggregates. Blockers identified for next phase: T11 (AuditEvent append-only contract), T15 (Repository interface consumer tests via NSubstitute). Verify pipeline fully green: `dotnet test -c Release` ✅, coverage floor maintained.
 
+**2026-05-18 (Phase 1 Round 4):** Behavior + repository coverage complete (T18–T19, +30 tests, 151 total green). `ValidationBehavior` + `AuditBehavior` pipeline ordering verified via integration test (D-021): validation first (short-circuits cleanly, never fires audit), audit last (appends only after success). 58 new behavior + repository integration tests in `tests/TechInventory.IntegrationTests/Repositories/` and `tests/TechInventory.UnitTests/Application/Behaviors/`. SQLite-backed concrete repository tests via `IntegrationTestFactory<TMarker>` confirm soft-delete filtering, inactive-row handling, unit-of-work awareness. Coverage snapshot: Domain 81.40%, Application 40.53%, Infrastructure 88.98%. **Regression note:** Domain coverage dipped from 96.45% pre-Round-4 to 81.40% post; likely Hicks's `AuditEvent`/`DbContext` additions not yet covered by test suite — flagged for explicit Round 5 audit. All checks green: `dotnet test -c Release` ✅, format ✅, build ✅.
+
 
 ## Learnings
 
@@ -176,4 +178,22 @@ Playwright layout: tests in `tests/e2e/`, Page Object Model in `tests/e2e/pages/
 - Reflection pattern (D-019) now team-wide template for Domain/Application contracts; 19 tests green proving immutability and async signatures.
 - Hicks confirmed AppDbContext append-only guards work; no public mutator surface escapes.
 - Hudson confirmed integration factory plays nicely with migration discovery; concrete repositories T16 will inherit SQLite isolation automatically.
+
+### 2026-05-18: T16-T19 repository + behavior follow-through
+
+**IntegrationTestFactory usage pattern:**
+- Use `IntegrationTestFactory<TMarker>.ConnectionString` as the hermetic SQLite source, then create a fresh `AppDbContext` per test with the real `AuditSaveChangesInterceptor`; keep repository assertions in their own scope and let the factory own DB-file isolation per test class.
+- On Windows, SQLite cleanup is noisy under `WebApplicationFactory`; make the factory delete path best-effort with short retries so green repository tests do not fail on lingering file locks during fixture disposal.
+
+**Behavior-test NSubstitute pattern:**
+- For `ValidationBehavior`, substitute `IValidator<TRequest>` directly and return `ValidationResult` instances with explicit `ValidationFailure` payloads so aggregation and handler short-circuiting stay executable.
+- For `AuditBehavior`, substitute `IAuditEventRepository`, `IUnitOfWork`, and `ICurrentUserService`, then assert append/save side effects from the outside by matching the persisted `AuditEvent` fields rather than poking internals.
+
+**Behavior-ordering integration test approach:**
+- Compose the real `ValidationBehavior` around the real `AuditBehavior` with an `IAuditable` request and a failing validator; if validation returns a failure `Result`, both `AppendAsync` and `SaveChangesAsync` must stay untouched.
+- This gives a fast integration-style proof of "Validation first, Audit last" without needing controller or handler scaffolding.
+
+**Soft-delete filter assertion pattern:**
+- Seed one active row and one soft-deleted row into the same per-class SQLite database, then assert the default list path returns only the active ID while the `includeInactive`/explicit-status path returns both IDs.
+- Use IDs, not counts, for the assertion so the test stays stable even as the fixture accumulates unrelated rows across multiple facts.
 

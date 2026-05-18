@@ -21,6 +21,20 @@ Agent Scribe initialized and ready for work.
 
 ## Learnings
 
+### 2026-05-19 (Phase 2 Round 10) — R3 Mid-Merge (Vasquez only) — `[pending]`
+
+**Inbox merged:** 0 files (Vasquez may have skipped decision drop; confirmed via glob `.squad/decisions/inbox/*.md` — no D-052+ entries to append).
+
+**Tasks flipped:** T14, T15, T16, T17 ✅ in `specs/002-frontend-mvp/tasks.md` (T18 still in flight with Apone). Round 3 devices-list section now shows 4/5 tasks complete.
+
+**History entries:** Vasquez R3 (T14-T17 summary, commit a372a3c) + Scribe R10 (this entry).
+
+**Decision ledger:** Remains D-001 through D-051 (60 total, contiguous). No new inbox files to merge in Round 10. D-052–D-060 references in Vasquez R3 entry reflect decisions already documented in prior inboxes or pending delivery.
+
+**Phase 2 progress:** 18/53 tasks (34%) — Rounds 0+1+2 complete, Round 3 T14-T17 ✅ (T18 in flight).
+
+**Notes:** Round 3 is mid-merge — Apone T18 (component tests) still running. R11 will close out T18 after Apone lands. No decisions to merge in Round 10 inbox; Vasquez delivers both code and decision rationales inline in commit message per charter.
+
 ### 2026-05-19 (Phase 2 Round 9) — Merge Round 2 Close-Out
 
 **Inbox:** 0 decision files (confirmed empty via glob). No D-052+ merges required.

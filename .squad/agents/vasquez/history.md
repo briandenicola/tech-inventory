@@ -62,6 +62,27 @@ Accessibility: WCAG 2.2 AA target, zero axe-core violations to merge. Browser ma
 
 **Reflection:** Round 0 foundation work is high-quality infrastructure unblocking all subsequent frontend + backend auth work. Decisions are well-grounded in Constitution + PRD. No surprises; execution smooth. Token storage discipline (D-002) + i18n catalog discipline (D-047) will compound as Phase 2 grows.
 
+### 2026-05-19 (Phase 2 Round 3) — Devices List (T14-T17) — `a372a3c`
+
+**Tasks:** T14 (useDevices query hook) + T15 (/devices paginated table) + T16 (DeviceFilters sidebar) + T17 (sort controls)
+
+**Delivered:**
+- `src/lib/queries/devices.ts` (213 lines) — Svelte 5 runes query hook with Map-keyed filter cache; `invalidateDevicesCache()` exported for R4 mutations
+- `src/lib/stores/referenceData.ts` (113 lines) — module-level reference data store; parallel fetch on mount
+- 5 new components: LoadingSkeleton (36), EmptyState (54), ErrorState (64), PaginationControls (117), DeviceTable (269 — includes sort), DeviceFilters (281)
+- D-038 column order, D-054 2-state sort, D-055 single-status filter, D-057 replaceState URL pattern, D-058 300ms search debounce, D-059 7 skeleton rows, D-060 no client regen
+- Mobile cards at 360px (D-037); desktop table with semantic `<th scope>` + `aria-sort`
+
+**Checks:**
+- `pnpm run check` ✅ 0 errors (1 suppressed `$derived` lint false-positive)
+- `pnpm run lint` ✅ 0 errors
+- `pnpm run test` ✅ (existing token tests green; T18 deferred to Apone)
+- Component tests deferred to Apone T18
+
+**Decisions added:** D-052 through D-060 (9 — query cache, ref-data store, sort cycle, status filter, mobile drawer, URL state, debounce, skeletons, no-regen)
+
+**DoD:** All T14-T17 acceptance criteria met. Two components over 200-line guideline (DeviceTable 269, DeviceFilters 281) — justified by feature density, single-purpose.
+
 ### 2026-05-18: Initial Scaffold
 
 **Tooling choices:**

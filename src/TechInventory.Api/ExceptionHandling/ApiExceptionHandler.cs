@@ -85,6 +85,7 @@ public sealed class ApiExceptionHandler(
             "Validation" => StatusCodes.Status400BadRequest,
             "NotFound" => StatusCodes.Status404NotFound,
             "Conflict" => StatusCodes.Status409Conflict,
+            "PayloadTooLarge" => StatusCodes.Status413PayloadTooLarge,
             _ => StatusCodes.Status400BadRequest,
         };
 
@@ -93,6 +94,7 @@ public sealed class ApiExceptionHandler(
         {
             StatusCodes.Status404NotFound => "Not Found",
             StatusCodes.Status409Conflict => "Conflict",
+            StatusCodes.Status413PayloadTooLarge => "Payload Too Large",
             _ => "Bad Request",
         };
 }

@@ -112,6 +112,14 @@ tasks:
       - cmd: ./scripts/verify.sh
         platforms: [linux, darwin]
 
+  openapi:export:
+    desc: Regenerate the committed OpenAPI YAML from the API project
+    cmds:
+      - cmd: dotnet run --project src\TechInventory.Api\TechInventory.Api.csproj -- export-openapi
+        platforms: [windows]
+      - cmd: dotnet run --project src/TechInventory.Api/TechInventory.Api.csproj -- export-openapi
+        platforms: [linux, darwin]
+
   logs:
     desc: Tail logs from all running containers
     cmds:

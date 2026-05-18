@@ -42,22 +42,22 @@ public sealed class AuditBehavior<TRequest, TResponse>(
                 return response;
             }
 
-            var entry = _auditContext.Current ?? throw new InvalidOperationException(
-                $"Successful auditable request '{typeof(TRequest).Name}' must populate {nameof(IAuditContext)}.");
-
-            var auditEvent = new AuditEvent(
-                Guid.NewGuid(),
-                string.IsNullOrWhiteSpace(entry.Actor) ? _currentUserService.GetCurrentUserId() : entry.Actor,
-                entry.EntityType,
-                entry.EntityId,
-                entry.Action,
-                JsonSerializer.Serialize(entry.BeforePayload, SerializerOptions),
-                JsonSerializer.Serialize(entry.AfterPayload ?? request, SerializerOptions));
-
-            var appendResult = await _auditEventRepository.AppendAsync(auditEvent, cancellationToken).ConfigureAwait(false);
-            if (appendResult.IsFailure)
+            foreach (var entry in _auditContext.Entries)
             {
-                return ResultFactory.CreateFailure<TResponse>(appendResult.Error!);
+                var auditEvent = new AuditEvent(
+                    Guid.NewGuid(),
+                    string.IsNullOrWhiteSpace(entry.Actor) ? _currentUserService.GetCurrentUserId() : entry.Actor,
+                    entry.EntityType,
+                    entry.EntityId,
+                    entry.Action,
+                    JsonSerializer.Serialize(entry.BeforePayload, SerializerOptions),
+                    JsonSerializer.Serialize(entry.AfterPayload ?? request, SerializerOptions));
+
+                var appendResult = await _auditEventRepository.AppendAsync(auditEvent, cancellationToken).ConfigureAwait(false);
+                if (appendResult.IsFailure)
+                {
+                    return ResultFactory.CreateFailure<TResponse>(appendResult.Error!);
+                }
             }
 
             await _unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

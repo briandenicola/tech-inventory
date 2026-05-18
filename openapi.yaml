@@ -1,0 +1,3393 @@
+openapi: 3.0.1
+info:
+  title: Tech Inventory API
+  version: v1
+paths:
+  /api/v1/audit-events:
+    get:
+      tags:
+        - AuditEvents
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 25
+        - name: entityType
+          in: query
+          schema:
+            type: string
+        - name: entityId
+          in: query
+          schema:
+            type: string
+        - name: action
+          in: query
+          schema:
+            $ref: '#/components/schemas/AuditAction'
+        - name: actor
+          in: query
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/AuditEventResponsePagedResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditEventResponsePagedResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/AuditEventResponsePagedResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+  /api/v1/brands:
+    get:
+      tags:
+        - Brands
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 25
+        - name: includeInactive
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/BrandResponsePagedResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrandResponsePagedResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/BrandResponsePagedResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+    post:
+      tags:
+        - Brands
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBrandRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/CreateBrandRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/CreateBrandRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/BrandResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrandResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/BrandResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  '/api/v1/brands/{id}':
+    get:
+      tags:
+        - Brands
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/BrandResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrandResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/BrandResponse'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+        - Brands
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBrandRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBrandRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/UpdateBrandRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/BrandResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrandResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/BrandResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    delete:
+      tags:
+        - Brands
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: No Content
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/categories:
+    get:
+      tags:
+        - Categories
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 25
+        - name: includeInactive
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/CategoryResponsePagedResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponsePagedResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponsePagedResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+    post:
+      tags:
+        - Categories
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCategoryRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/CreateCategoryRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/CreateCategoryRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/categories/tree:
+    get:
+      tags:
+        - Categories
+      parameters:
+        - name: includeInactive
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CategoryResponse'
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CategoryResponse'
+            text/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CategoryResponse'
+  '/api/v1/categories/{id}':
+    get:
+      tags:
+        - Categories
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+        - Categories
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCategoryRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCategoryRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/UpdateCategoryRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    delete:
+      tags:
+        - Categories
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: No Content
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/devices:
+    get:
+      tags:
+        - Devices
+      parameters:
+        - name: Page
+          in: query
+          schema:
+            type: integer
+            format: int32
+        - name: PageSize
+          in: query
+          schema:
+            type: integer
+            format: int32
+        - name: Search
+          in: query
+          schema:
+            type: string
+        - name: BrandId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: CategoryId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: OwnerId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: LocationId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: NetworkId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: Status
+          in: query
+          schema:
+            $ref: '#/components/schemas/DeviceStatus'
+        - name: Tags
+          in: query
+          schema:
+            type: string
+        - name: PurchaseYearFrom
+          in: query
+          schema:
+            type: integer
+            format: int32
+        - name: PurchaseYearTo
+          in: query
+          schema:
+            type: integer
+            format: int32
+        - name: SortBy
+          in: query
+          schema:
+            type: string
+        - name: SortDescending
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/DeviceResponsePagedResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceResponsePagedResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/DeviceResponsePagedResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+    post:
+      tags:
+        - Devices
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDeviceRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/CreateDeviceRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/CreateDeviceRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/DeviceResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/DeviceResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  '/api/v1/devices/{id}':
+    get:
+      tags:
+        - Devices
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/DeviceResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/DeviceResponse'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+        - Devices
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDeviceRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDeviceRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/UpdateDeviceRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/DeviceResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/DeviceResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    delete:
+      tags:
+        - Devices
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteDeviceRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/DeleteDeviceRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/DeleteDeviceRequest'
+      responses:
+        '204':
+          description: No Content
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  '/api/v1/devices/{id}/tags':
+    post:
+      tags:
+        - Devices
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddDeviceTagRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/AddDeviceTagRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/AddDeviceTagRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/DeviceTagResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceTagResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/DeviceTagResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  '/api/v1/devices/{id}/tags/{tagId}':
+    delete:
+      tags:
+        - Devices
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: tagId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: No Content
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  '/api/v1/devices/{id}/owner':
+    patch:
+      tags:
+        - Devices
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClaimDeviceOwnershipRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/ClaimDeviceOwnershipRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/ClaimDeviceOwnershipRequest'
+      responses:
+        '204':
+          description: No Content
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/exports/devices:
+    get:
+      tags:
+        - Exports
+      parameters:
+        - name: Format
+          in: query
+          schema:
+            $ref: '#/components/schemas/ExportFormat'
+        - name: Search
+          in: query
+          schema:
+            type: string
+        - name: BrandId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: CategoryId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: OwnerId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: LocationId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: NetworkId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: Status
+          in: query
+          schema:
+            $ref: '#/components/schemas/DeviceStatus'
+        - name: Tags
+          in: query
+          schema:
+            type: string
+        - name: PurchaseYearFrom
+          in: query
+          schema:
+            type: integer
+            format: int32
+        - name: PurchaseYearTo
+          in: query
+          schema:
+            type: integer
+            format: int32
+        - name: SortBy
+          in: query
+          schema:
+            type: string
+        - name: SortDescending
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+  /api/v1/imports/preview:
+    post:
+      tags:
+        - Imports
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                File:
+                  type: string
+                  format: binary
+                Mapping:
+                  type: string
+            encoding:
+              File:
+                style: form
+              Mapping:
+                style: form
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/PreviewImportResult'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreviewImportResult'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/PreviewImportResult'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '413':
+          description: Content Too Large
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/imports/commit:
+    post:
+      tags:
+        - Imports
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                File:
+                  type: string
+                  format: binary
+                Mapping:
+                  type: string
+            encoding:
+              File:
+                style: form
+              Mapping:
+                style: form
+      responses:
+        '201':
+          description: Created
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/CommitImportResult'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommitImportResult'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/CommitImportResult'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '413':
+          description: Content Too Large
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/imports:
+    get:
+      tags:
+        - Imports
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 25
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ImportStatus'
+        - name: createdAfter
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: createdBefore
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ImportBatchSummaryResponsePagedResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportBatchSummaryResponsePagedResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ImportBatchSummaryResponsePagedResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+  '/api/v1/imports/{id}':
+    get:
+      tags:
+        - Imports
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ImportBatchDetailResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportBatchDetailResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ImportBatchDetailResponse'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/locations:
+    get:
+      tags:
+        - Locations
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 25
+        - name: includeInactive
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/LocationResponsePagedResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationResponsePagedResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/LocationResponsePagedResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+    post:
+      tags:
+        - Locations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLocationRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/CreateLocationRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/CreateLocationRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/LocationResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/LocationResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  '/api/v1/locations/{id}':
+    get:
+      tags:
+        - Locations
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/LocationResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/LocationResponse'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+        - Locations
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLocationRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLocationRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/UpdateLocationRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/LocationResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/LocationResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    delete:
+      tags:
+        - Locations
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: No Content
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/networks:
+    get:
+      tags:
+        - Networks
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 25
+        - name: includeInactive
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/NetworkResponsePagedResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkResponsePagedResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/NetworkResponsePagedResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+    post:
+      tags:
+        - Networks
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateNetworkRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/CreateNetworkRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/CreateNetworkRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/NetworkResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/NetworkResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  '/api/v1/networks/{id}':
+    get:
+      tags:
+        - Networks
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/NetworkResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/NetworkResponse'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+        - Networks
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateNetworkRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/UpdateNetworkRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/UpdateNetworkRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/NetworkResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworkResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/NetworkResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    delete:
+      tags:
+        - Networks
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: No Content
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/owners:
+    get:
+      tags:
+        - Owners
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 25
+        - name: includeInactive
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/OwnerResponsePagedResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerResponsePagedResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/OwnerResponsePagedResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+    post:
+      tags:
+        - Owners
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOwnerRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/CreateOwnerRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/CreateOwnerRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/OwnerResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/OwnerResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  '/api/v1/owners/{id}':
+    get:
+      tags:
+        - Owners
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/OwnerResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/OwnerResponse'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+        - Owners
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOwnerRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOwnerRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/UpdateOwnerRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/OwnerResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/OwnerResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    delete:
+      tags:
+        - Owners
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: No Content
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/tags:
+    get:
+      tags:
+        - Tags
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 25
+        - name: includeInactive
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/TagResponsePagedResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagResponsePagedResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/TagResponsePagedResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+    post:
+      tags:
+        - Tags
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTagRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/CreateTagRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/CreateTagRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/TagResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/TagResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  '/api/v1/tags/{id}':
+    get:
+      tags:
+        - Tags
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/TagResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/TagResponse'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+        - Tags
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTagRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTagRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/UpdateTagRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/TagResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/TagResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    delete:
+      tags:
+        - Tags
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: No Content
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+components:
+  schemas:
+    AddDeviceTagRequest:
+      type: object
+      properties:
+        tagId:
+          type: string
+          format: uuid
+      additionalProperties: false
+    AuditAction:
+      enum:
+        - Created
+        - Updated
+        - Deleted
+      type: string
+    AuditEventResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        actor:
+          type: string
+          nullable: true
+        entityType:
+          type: string
+          nullable: true
+        entityId:
+          type: string
+          nullable: true
+        action:
+          type: string
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+        beforePayload:
+          type: string
+          nullable: true
+        afterPayload:
+          type: string
+          nullable: true
+      additionalProperties: false
+    AuditEventResponsePagedResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditEventResponse'
+          nullable: true
+        totalCount:
+          type: integer
+          format: int32
+        page:
+          type: integer
+          format: int32
+        pageSize:
+          type: integer
+          format: int32
+      additionalProperties: false
+    BrandResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          nullable: true
+        website:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+          nullable: true
+        modifiedAt:
+          type: string
+          format: date-time
+        modifiedBy:
+          type: string
+          nullable: true
+      additionalProperties: false
+    BrandResponsePagedResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BrandResponse'
+          nullable: true
+        totalCount:
+          type: integer
+          format: int32
+        page:
+          type: integer
+          format: int32
+        pageSize:
+          type: integer
+          format: int32
+      additionalProperties: false
+    CategoryResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          nullable: true
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+        depth:
+          type: integer
+          format: int32
+        icon:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+          nullable: true
+        modifiedAt:
+          type: string
+          format: date-time
+        modifiedBy:
+          type: string
+          nullable: true
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategoryResponse'
+          nullable: true
+      additionalProperties: false
+    CategoryResponsePagedResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategoryResponse'
+          nullable: true
+        totalCount:
+          type: integer
+          format: int32
+        page:
+          type: integer
+          format: int32
+        pageSize:
+          type: integer
+          format: int32
+      additionalProperties: false
+    ClaimDeviceOwnershipRequest:
+      type: object
+      properties:
+        ownerId:
+          type: string
+          format: uuid
+      additionalProperties: false
+    CommitImportResult:
+      type: object
+      properties:
+        batchId:
+          type: string
+          format: uuid
+        totalRows:
+          type: integer
+          format: int32
+        importedRows:
+          type: integer
+          format: int32
+        invalidRows:
+          type: integer
+          format: int32
+        failedRows:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImportRowError'
+          nullable: true
+      additionalProperties: false
+    CreateBrandRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+        website:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+      additionalProperties: false
+    CreateCategoryRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+        icon:
+          type: string
+          nullable: true
+      additionalProperties: false
+    CreateDeviceRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+        brandId:
+          type: string
+          format: uuid
+        categoryId:
+          type: string
+          format: uuid
+        ownerId:
+          type: string
+          format: uuid
+        locationId:
+          type: string
+          format: uuid
+        currencyCode:
+          type: string
+          nullable: true
+        model:
+          type: string
+          nullable: true
+        serialNumber:
+          type: string
+          nullable: true
+        networkId:
+          type: string
+          format: uuid
+          nullable: true
+        purchaseDate:
+          type: string
+          format: date
+          nullable: true
+        purchasePrice:
+          type: number
+          format: double
+          nullable: true
+        status:
+          $ref: '#/components/schemas/DeviceStatus'
+        notes:
+          type: string
+          nullable: true
+        retiredDate:
+          type: string
+          format: date
+          nullable: true
+        disposalMethod:
+          type: string
+          nullable: true
+      additionalProperties: false
+    CreateLocationRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+        type:
+          $ref: '#/components/schemas/LocationType'
+      additionalProperties: false
+    CreateNetworkRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+      additionalProperties: false
+    CreateOwnerRequest:
+      type: object
+      properties:
+        displayName:
+          type: string
+          nullable: true
+        role:
+          $ref: '#/components/schemas/OwnerRole'
+        entraObjectId:
+          type: string
+          format: uuid
+          nullable: true
+      additionalProperties: false
+    CreateTagRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+        color:
+          type: string
+          nullable: true
+      additionalProperties: false
+    DeleteDeviceRequest:
+      type: object
+      properties:
+        disposalMethod:
+          type: string
+          nullable: true
+        retiredDate:
+          type: string
+          format: date
+          nullable: true
+      additionalProperties: false
+    DeviceResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          nullable: true
+        model:
+          type: string
+          nullable: true
+        serialNumber:
+          type: string
+          nullable: true
+        brandId:
+          type: string
+          format: uuid
+        categoryId:
+          type: string
+          format: uuid
+        ownerId:
+          type: string
+          format: uuid
+        locationId:
+          type: string
+          format: uuid
+        networkId:
+          type: string
+          format: uuid
+          nullable: true
+        purchaseDate:
+          type: string
+          format: date
+          nullable: true
+        purchasePrice:
+          type: number
+          format: double
+          nullable: true
+        currencyCode:
+          type: string
+          nullable: true
+        status:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        retiredDate:
+          type: string
+          format: date
+          nullable: true
+        disposalMethod:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+          nullable: true
+        modifiedAt:
+          type: string
+          format: date-time
+        modifiedBy:
+          type: string
+          nullable: true
+      additionalProperties: false
+    DeviceResponsePagedResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeviceResponse'
+          nullable: true
+        totalCount:
+          type: integer
+          format: int32
+        page:
+          type: integer
+          format: int32
+        pageSize:
+          type: integer
+          format: int32
+      additionalProperties: false
+    DeviceStatus:
+      enum:
+        - Active
+        - Retired
+        - Disposed
+        - InRepair
+        - Lent
+      type: string
+    DeviceTagResponse:
+      type: object
+      properties:
+        deviceId:
+          type: string
+          format: uuid
+        tagId:
+          type: string
+          format: uuid
+        isActive:
+          type: boolean
+      additionalProperties: false
+    ExportFormat:
+      enum:
+        - Csv
+        - Json
+      type: string
+    ImportBatchDetailResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+          nullable: true
+        importedBy:
+          type: string
+          nullable: true
+        rowCount:
+          type: integer
+          format: int32
+        successCount:
+          type: integer
+          format: int32
+        errorCount:
+          type: integer
+          format: int32
+        status:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImportRowError'
+          nullable: true
+        isErrorLogTruncated:
+          type: boolean
+        omittedErrorCount:
+          type: integer
+          format: int32
+        errorLog:
+          type: string
+          nullable: true
+      additionalProperties: false
+    ImportBatchSummaryResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+          nullable: true
+        importedBy:
+          type: string
+          nullable: true
+        rowCount:
+          type: integer
+          format: int32
+        successCount:
+          type: integer
+          format: int32
+        errorCount:
+          type: integer
+          format: int32
+        status:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    ImportBatchSummaryResponsePagedResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImportBatchSummaryResponse'
+          nullable: true
+        totalCount:
+          type: integer
+          format: int32
+        page:
+          type: integer
+          format: int32
+        pageSize:
+          type: integer
+          format: int32
+      additionalProperties: false
+    ImportDevicePreview:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+        brand:
+          type: string
+          nullable: true
+        category:
+          type: string
+          nullable: true
+        owner:
+          type: string
+          nullable: true
+        location:
+          type: string
+          nullable: true
+        model:
+          type: string
+          nullable: true
+        serialNumber:
+          type: string
+          nullable: true
+        network:
+          type: string
+          nullable: true
+        purchaseDate:
+          type: string
+          format: date
+          nullable: true
+        purchasePrice:
+          type: number
+          format: double
+          nullable: true
+        currencyCode:
+          type: string
+          nullable: true
+        status:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        retiredDate:
+          type: string
+          format: date
+          nullable: true
+        disposalMethod:
+          type: string
+          nullable: true
+      additionalProperties: false
+    ImportFieldError:
+      type: object
+      properties:
+        field:
+          type: string
+          nullable: true
+        message:
+          type: string
+          nullable: true
+      additionalProperties: false
+    ImportRowError:
+      type: object
+      properties:
+        rowNumber:
+          type: integer
+          format: int32
+        rawValues:
+          type: object
+          additionalProperties:
+            type: string
+            nullable: true
+          nullable: true
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImportFieldError'
+          nullable: true
+      additionalProperties: false
+    ImportRowPreview:
+      type: object
+      properties:
+        rowNumber:
+          type: integer
+          format: int32
+        device:
+          $ref: '#/components/schemas/ImportDevicePreview'
+        brandId:
+          type: string
+          format: uuid
+          nullable: true
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+        ownerId:
+          type: string
+          format: uuid
+          nullable: true
+        locationId:
+          type: string
+          format: uuid
+          nullable: true
+        networkId:
+          type: string
+          format: uuid
+          nullable: true
+      additionalProperties: false
+    ImportStatus:
+      enum:
+        - Pending
+        - Completed
+        - PartialSuccess
+        - Failed
+      type: string
+    LocationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          nullable: true
+        type:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+          nullable: true
+        modifiedAt:
+          type: string
+          format: date-time
+        modifiedBy:
+          type: string
+          nullable: true
+      additionalProperties: false
+    LocationResponsePagedResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/LocationResponse'
+          nullable: true
+        totalCount:
+          type: integer
+          format: int32
+        page:
+          type: integer
+          format: int32
+        pageSize:
+          type: integer
+          format: int32
+      additionalProperties: false
+    LocationType:
+      enum:
+        - Home
+        - Storage
+        - External
+      type: string
+    MissingLookup:
+      type: object
+      properties:
+        entityType:
+          type: string
+          nullable: true
+        name:
+          type: string
+          nullable: true
+      additionalProperties: false
+    NetworkResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+          nullable: true
+        modifiedAt:
+          type: string
+          format: date-time
+        modifiedBy:
+          type: string
+          nullable: true
+      additionalProperties: false
+    NetworkResponsePagedResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/NetworkResponse'
+          nullable: true
+        totalCount:
+          type: integer
+          format: int32
+        page:
+          type: integer
+          format: int32
+        pageSize:
+          type: integer
+          format: int32
+      additionalProperties: false
+    OwnerResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+          nullable: true
+        role:
+          type: string
+          nullable: true
+        entraObjectId:
+          type: string
+          format: uuid
+          nullable: true
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+          nullable: true
+        modifiedAt:
+          type: string
+          format: date-time
+        modifiedBy:
+          type: string
+          nullable: true
+      additionalProperties: false
+    OwnerResponsePagedResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OwnerResponse'
+          nullable: true
+        totalCount:
+          type: integer
+          format: int32
+        page:
+          type: integer
+          format: int32
+        pageSize:
+          type: integer
+          format: int32
+      additionalProperties: false
+    OwnerRole:
+      enum:
+        - Admin
+        - Member
+        - Viewer
+      type: string
+    PreviewImportResult:
+      type: object
+      properties:
+        totalRows:
+          type: integer
+          format: int32
+        validRows:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImportRowPreview'
+          nullable: true
+        invalidRows:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImportRowError'
+          nullable: true
+        lookupsToCreate:
+          type: array
+          items:
+            $ref: '#/components/schemas/MissingLookup'
+          nullable: true
+      additionalProperties: false
+    ProblemDetails:
+      type: object
+      properties:
+        type:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        status:
+          type: integer
+          format: int32
+          nullable: true
+        detail:
+          type: string
+          nullable: true
+        instance:
+          type: string
+          nullable: true
+      additionalProperties: { }
+    TagResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          nullable: true
+        color:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+          nullable: true
+        modifiedAt:
+          type: string
+          format: date-time
+        modifiedBy:
+          type: string
+          nullable: true
+      additionalProperties: false
+    TagResponsePagedResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TagResponse'
+          nullable: true
+        totalCount:
+          type: integer
+          format: int32
+        page:
+          type: integer
+          format: int32
+        pageSize:
+          type: integer
+          format: int32
+      additionalProperties: false
+    UpdateBrandRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+        website:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+      additionalProperties: false
+    UpdateCategoryRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+        icon:
+          type: string
+          nullable: true
+      additionalProperties: false
+    UpdateDeviceRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+        brandId:
+          type: string
+          format: uuid
+        categoryId:
+          type: string
+          format: uuid
+        ownerId:
+          type: string
+          format: uuid
+        locationId:
+          type: string
+          format: uuid
+        currencyCode:
+          type: string
+          nullable: true
+        model:
+          type: string
+          nullable: true
+        serialNumber:
+          type: string
+          nullable: true
+        networkId:
+          type: string
+          format: uuid
+          nullable: true
+        purchaseDate:
+          type: string
+          format: date
+          nullable: true
+        purchasePrice:
+          type: number
+          format: double
+          nullable: true
+        status:
+          $ref: '#/components/schemas/DeviceStatus'
+        notes:
+          type: string
+          nullable: true
+        retiredDate:
+          type: string
+          format: date
+          nullable: true
+        disposalMethod:
+          type: string
+          nullable: true
+      additionalProperties: false
+    UpdateLocationRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+        type:
+          $ref: '#/components/schemas/LocationType'
+      additionalProperties: false
+    UpdateNetworkRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+      additionalProperties: false
+    UpdateOwnerRequest:
+      type: object
+      properties:
+        displayName:
+          type: string
+          nullable: true
+        role:
+          $ref: '#/components/schemas/OwnerRole'
+        entraObjectId:
+          type: string
+          format: uuid
+          nullable: true
+      additionalProperties: false
+    UpdateTagRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+        color:
+          type: string
+          nullable: true
+      additionalProperties: false
+    ValidationProblemDetails:
+      type: object
+      properties:
+        type:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        status:
+          type: integer
+          format: int32
+          nullable: true
+        detail:
+          type: string
+          nullable: true
+        instance:
+          type: string
+          nullable: true
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          nullable: true
+      additionalProperties: { }

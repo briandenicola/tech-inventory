@@ -4,13 +4,17 @@ using MediatR;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Serilog;
 using TechInventory.Api.Authentication;
 using TechInventory.Api.ExceptionHandling;
+using TechInventory.Api.OpenApi;
 using TechInventory.Application;
 using TechInventory.Application.Abstractions.Services;
+using TechInventory.Domain.Entities;
+using TechInventory.Domain.ValueObjects;
 using TechInventory.Infrastructure;
 using TechInventory.Infrastructure.Persistence;
 
@@ -67,7 +71,14 @@ builder.Services.AddAuthorizationBuilder()
         .Build());
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Tech Inventory API",
+        Version = "v1",
+    });
+});
 builder.Services.AddHealthChecks();
 
 var otlpEndpoint = builder.Configuration["OpenTelemetry:OtlpEndpoint"];
@@ -86,6 +97,15 @@ if (!string.IsNullOrEmpty(otlpEndpoint))
 const string DevBypassWarningMessage = "⚠️ Auth:DevBypass" + "=true — all requests authenticated as 'dev-admin'. NEVER enable outside Development.";
 
 var app = builder.Build();
+
+if (args.Length > 0 && string.Equals(args[0], "export-openapi", StringComparison.OrdinalIgnoreCase))
+{
+    var outputPath = args.Length > 1
+        ? args[1]
+        : Path.Combine(app.Environment.ContentRootPath, "..", "..", "openapi.yaml");
+    await OpenApiDocumentExporter.ExportAsync(app.Services, outputPath).ConfigureAwait(false);
+    return;
+}
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();
@@ -119,6 +139,13 @@ try
     {
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         await dbContext.Database.MigrateAsync();
+
+        if (!await dbContext.Households.AnyAsync())
+        {
+            await dbContext.Households.AddAsync(new Household(Guid.NewGuid(), "Primary Household", Currency.From("USD")));
+            await dbContext.SaveChangesAsync();
+            app.Logger.LogInformation("Seeded the default single-household record.");
+        }
     }
 
     if (devBypassEnabled)

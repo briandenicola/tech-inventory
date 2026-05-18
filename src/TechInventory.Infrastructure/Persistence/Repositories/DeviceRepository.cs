@@ -2,12 +2,13 @@ using Microsoft.EntityFrameworkCore;
 using TechInventory.Application.Abstractions.Repositories;
 using TechInventory.Application.Common.Paging;
 using TechInventory.Application.Common.Results;
+using TechInventory.Application.Exports;
 using TechInventory.Domain.Entities;
 using TechInventory.Domain.Enums;
 
 namespace TechInventory.Infrastructure.Persistence.Repositories;
 
-public sealed class DeviceRepository(AppDbContext dbContext) : Repository<Device, Guid>(dbContext), IDeviceRepository
+public sealed class DeviceRepository(AppDbContext dbContext) : Repository<Device, Guid>(dbContext), IDeviceRepository, IDeviceExportService
 {
     protected override IQueryable<Device> DefaultQuery => DbContext.Devices;
 
@@ -27,78 +28,58 @@ public sealed class DeviceRepository(AppDbContext dbContext) : Repository<Device
     {
         ArgumentNullException.ThrowIfNull(criteria);
 
-        IQueryable<Device> query = DbContext.Devices.AsNoTracking();
-
-        if (!string.IsNullOrWhiteSpace(criteria.Search))
-        {
-            var search = criteria.Search.Trim();
-            query = query.Where(device =>
-                device.Name.Contains(search) ||
-                (device.Model != null && device.Model.Contains(search)) ||
-                (device.SerialNumber != null && device.SerialNumber.Contains(search)) ||
-                (device.Notes != null && device.Notes.Contains(search)));
-        }
-
-        if (criteria.BrandId.HasValue)
-        {
-            query = query.Where(device => device.BrandId == criteria.BrandId.Value);
-        }
-
-        if (criteria.CategoryId.HasValue)
-        {
-            query = query.Where(device => device.CategoryId == criteria.CategoryId.Value);
-        }
-
-        if (criteria.OwnerId.HasValue)
-        {
-            query = query.Where(device => device.OwnerId == criteria.OwnerId.Value);
-        }
-
-        if (criteria.LocationId.HasValue)
-        {
-            query = query.Where(device => device.LocationId == criteria.LocationId.Value);
-        }
-
-        if (criteria.NetworkId.HasValue)
-        {
-            query = query.Where(device => device.NetworkId == criteria.NetworkId.Value);
-        }
-
-        if (criteria.Status.HasValue)
-        {
-            query = query.Where(device => device.Status == criteria.Status.Value);
-        }
-        else
-        {
-            query = query.Where(device => device.Status != DeviceStatus.Disposed);
-        }
-
-        if (criteria.PurchasedAfter.HasValue)
-        {
-            query = query.Where(device => device.PurchaseDate >= criteria.PurchasedAfter.Value);
-        }
-
-        if (criteria.PurchasedBefore.HasValue)
-        {
-            query = query.Where(device => device.PurchaseDate <= criteria.PurchasedBefore.Value);
-        }
-
-        if (criteria.TagIds.Count > 0)
-        {
-            var tagIds = criteria.TagIds.ToArray();
-            query = query.Where(device => DbContext.DeviceTags
-                .Where(deviceTag => deviceTag.DeviceId == device.Id && deviceTag.IsActive && tagIds.Contains(deviceTag.TagId))
-                .Select(deviceTag => deviceTag.TagId)
-                .Distinct()
-                .Count() == tagIds.Length);
-        }
+        var query = ApplyFilters(DbContext.Devices.AsNoTracking(), criteria);
 
         return await ToPagedResultAsync(
             query,
             device => MatchesCriteria(device, criteria),
-            devices => ApplyOrdering(devices, criteria.SortBy, criteria.SortDescending),
+            devices => ApplyEnumerableOrdering(devices, criteria.SortBy, criteria.SortDescending),
             criteria.PageRequest,
             cancellationToken).ConfigureAwait(false);
+    }
+
+    public async IAsyncEnumerable<DeviceExportRow> StreamExportAsync(DeviceListCriteria criteria)
+    {
+        ArgumentNullException.ThrowIfNull(criteria);
+
+        var devices = ApplyEnumerableOrdering(
+                await ApplyFilters(DbContext.Devices.AsNoTracking(), criteria)
+                    .ToListAsync()
+                    .ConfigureAwait(false),
+                criteria.SortBy,
+                criteria.SortDescending)
+            .ToArray();
+
+        var brands = await DbContext.Brands.AsNoTracking().ToDictionaryAsync(brand => brand.Id, brand => brand.Name).ConfigureAwait(false);
+        var categories = await DbContext.Categories.AsNoTracking().ToDictionaryAsync(category => category.Id, category => category.Name).ConfigureAwait(false);
+        var owners = await DbContext.Owners.AsNoTracking().ToDictionaryAsync(owner => owner.Id, owner => owner.DisplayName).ConfigureAwait(false);
+        var locations = await DbContext.Locations.AsNoTracking().ToDictionaryAsync(location => location.Id, location => location.Name).ConfigureAwait(false);
+        var networks = await DbContext.Networks.AsNoTracking().ToDictionaryAsync(network => network.Id, network => network.Name).ConfigureAwait(false);
+
+        foreach (var device in devices)
+        {
+            yield return new DeviceExportRow(
+                device.Id,
+                device.Name,
+                brands[device.BrandId],
+                categories[device.CategoryId],
+                owners[device.OwnerId],
+                locations[device.LocationId],
+                device.NetworkId is { } networkId && networks.TryGetValue(networkId, out var networkName) ? networkName : null,
+                device.Model,
+                device.SerialNumber,
+                device.PurchaseDate,
+                device.PurchasePrice,
+                device.Currency.Code,
+                device.Status.ToString(),
+                device.Notes,
+                device.RetiredDate,
+                device.DisposalMethod,
+                device.CreatedAt,
+                device.CreatedBy,
+                device.ModifiedAt,
+                device.ModifiedBy);
+        }
     }
 
     public async Task<IReadOnlyList<DeviceTag>> ListTagsAsync(Guid deviceId, CancellationToken cancellationToken)
@@ -190,9 +171,78 @@ public sealed class DeviceRepository(AppDbContext dbContext) : Repository<Device
     public Task<Result<Device>> UpdateAsync(Device aggregate, CancellationToken cancellationToken)
         => UpdateEntityAsync(aggregate, cancellationToken);
 
-    private static IOrderedEnumerable<Device> ApplyOrdering(IEnumerable<Device> devices, string? sortBy, bool sortDescending)
+    private IQueryable<Device> ApplyFilters(IQueryable<Device> query, DeviceListCriteria criteria)
     {
-        var normalizedSort = string.IsNullOrWhiteSpace(sortBy) ? "name" : sortBy.Trim().ToLowerInvariant();
+        if (!string.IsNullOrWhiteSpace(criteria.Search))
+        {
+            var search = criteria.Search.Trim();
+            query = query.Where(device =>
+                device.Name.Contains(search) ||
+                (device.Model != null && device.Model.Contains(search)) ||
+                (device.SerialNumber != null && device.SerialNumber.Contains(search)) ||
+                (device.Notes != null && device.Notes.Contains(search)));
+        }
+
+        if (criteria.BrandId.HasValue)
+        {
+            query = query.Where(device => device.BrandId == criteria.BrandId.Value);
+        }
+
+        if (criteria.CategoryId.HasValue)
+        {
+            query = query.Where(device => device.CategoryId == criteria.CategoryId.Value);
+        }
+
+        if (criteria.OwnerId.HasValue)
+        {
+            query = query.Where(device => device.OwnerId == criteria.OwnerId.Value);
+        }
+
+        if (criteria.LocationId.HasValue)
+        {
+            query = query.Where(device => device.LocationId == criteria.LocationId.Value);
+        }
+
+        if (criteria.NetworkId.HasValue)
+        {
+            query = query.Where(device => device.NetworkId == criteria.NetworkId.Value);
+        }
+
+        if (criteria.Status.HasValue)
+        {
+            query = query.Where(device => device.Status == criteria.Status.Value);
+        }
+        else
+        {
+            query = query.Where(device => device.Status != DeviceStatus.Disposed);
+        }
+
+        if (criteria.PurchasedAfter.HasValue)
+        {
+            query = query.Where(device => device.PurchaseDate >= criteria.PurchasedAfter.Value);
+        }
+
+        if (criteria.PurchasedBefore.HasValue)
+        {
+            query = query.Where(device => device.PurchaseDate <= criteria.PurchasedBefore.Value);
+        }
+
+        if (criteria.TagIds.Count > 0)
+        {
+            var tagIds = criteria.TagIds.ToArray();
+            query = query.Where(device => DbContext.DeviceTags
+                .Where(deviceTag => deviceTag.DeviceId == device.Id && deviceTag.IsActive && tagIds.Contains(deviceTag.TagId))
+                .Select(deviceTag => deviceTag.TagId)
+                .Distinct()
+                .Count() == tagIds.Length);
+        }
+
+        return query;
+    }
+
+    private static IOrderedEnumerable<Device> ApplyEnumerableOrdering(IEnumerable<Device> devices, string? sortBy, bool sortDescending)
+    {
+        var normalizedSort = NormalizeSort(sortBy);
 
         return normalizedSort switch
         {
@@ -205,6 +255,24 @@ public sealed class DeviceRepository(AppDbContext dbContext) : Repository<Device
             _ => sortDescending
                 ? devices.OrderByDescending(device => device.Name, StringComparer.OrdinalIgnoreCase).ThenByDescending(device => device.CreatedAt)
                 : devices.OrderBy(device => device.Name, StringComparer.OrdinalIgnoreCase).ThenBy(device => device.CreatedAt)
+        };
+    }
+
+    private static IOrderedQueryable<Device> ApplyQueryableOrdering(IQueryable<Device> devices, string? sortBy, bool sortDescending)
+    {
+        var normalizedSort = NormalizeSort(sortBy);
+
+        return normalizedSort switch
+        {
+            "purchasedate" => sortDescending
+                ? devices.OrderByDescending(device => device.PurchaseDate).ThenByDescending(device => device.Name).ThenByDescending(device => device.Id)
+                : devices.OrderBy(device => device.PurchaseDate).ThenBy(device => device.Name).ThenBy(device => device.Id),
+            "createdat" => sortDescending
+                ? devices.OrderByDescending(device => device.CreatedAt.UtcDateTime).ThenByDescending(device => device.Name).ThenByDescending(device => device.Id)
+                : devices.OrderBy(device => device.CreatedAt.UtcDateTime).ThenBy(device => device.Name).ThenBy(device => device.Id),
+            _ => sortDescending
+                ? devices.OrderByDescending(device => device.Name).ThenByDescending(device => device.Id)
+                : devices.OrderBy(device => device.Name).ThenBy(device => device.Id)
         };
     }
 
@@ -283,4 +351,7 @@ public sealed class DeviceRepository(AppDbContext dbContext) : Repository<Device
 
         return criteria.TagIds.All(activeTagIds.Contains);
     }
+
+    private static string NormalizeSort(string? sortBy)
+        => string.IsNullOrWhiteSpace(sortBy) ? "name" : sortBy.Trim().ToLowerInvariant();
 }

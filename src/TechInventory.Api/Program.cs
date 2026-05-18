@@ -2,8 +2,10 @@ using System.Text.Json.Serialization;
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -60,9 +62,59 @@ if (devBypassEnabled)
 }
 else
 {
-    authenticationBuilder.AddScheme<AuthenticationSchemeOptions, PlaceholderJwtAuthenticationHandler>(
-        ApiAuthenticationSchemes.DefaultScheme,
-        _ => { });
+    var authority = builder.Configuration["Auth:Entra:Authority"]
+        ?? throw new InvalidOperationException("Auth:Entra:Authority is required when Auth:DevBypass=false");
+    var audiences = builder.Configuration.GetSection("Auth:Entra:Audiences").Get<string[]>()
+        ?? throw new InvalidOperationException("Auth:Entra:Audiences is required when Auth:DevBypass=false");
+
+    authenticationBuilder.AddJwtBearer(ApiAuthenticationSchemes.DefaultScheme, options =>
+    {
+        options.Authority = authority;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidAudiences = audiences,
+            ClockSkew = TimeSpan.FromMinutes(2)
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = context =>
+            {
+                var principal = context.Principal;
+                if (principal == null)
+                {
+                    context.Fail("No principal in JWT");
+                    return Task.CompletedTask;
+                }
+
+                var rolesClaim = principal.FindFirst("roles");
+                if (rolesClaim == null)
+                {
+                    context.Fail("JWT missing 'roles' claim");
+                    return Task.CompletedTask;
+                }
+
+                var roles = System.Text.Json.JsonSerializer.Deserialize<string[]>(rolesClaim.Value);
+                if (roles == null || roles.Length == 0)
+                {
+                    context.Fail("JWT 'roles' claim is empty");
+                    return Task.CompletedTask;
+                }
+
+                var identity = (System.Security.Claims.ClaimsIdentity)principal.Identity!;
+                foreach (var role in roles)
+                {
+                    identity.AddClaim(new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, role));
+                }
+
+                return Task.CompletedTask;
+            }
+        };
+    });
 }
 
 builder.Services.AddAuthorizationBuilder()
@@ -95,6 +147,7 @@ if (!string.IsNullOrEmpty(otlpEndpoint))
 }
 
 const string DevBypassWarningMessage = "⚠️ Auth:DevBypass" + "=true — all requests authenticated as 'dev-admin'. NEVER enable outside Development.";
+const string JwtBearerEnabledMessage = "🔐 Auth mode: ENTRA JWT BEARER";
 
 var app = builder.Build();
 
@@ -151,6 +204,10 @@ try
     if (devBypassEnabled)
     {
         app.Logger.LogWarning(DevBypassWarningMessage);
+    }
+    else
+    {
+        app.Logger.LogInformation(JwtBearerEnabledMessage);
     }
 
     Log.Information("Starting Tech Inventory API");

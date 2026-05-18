@@ -9,7 +9,7 @@ export function getTranslations() {
 // Type-safe translation key helper
 export type TranslationKey = string;
 
-export function t(key: TranslationKey): string {
+export function t(key: TranslationKey, params?: Record<string, string | number>): string {
 	const translations = getTranslations();
 	const keys = key.split('.');
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -23,5 +23,15 @@ export function t(key: TranslationKey): string {
 		}
 	}
 
-	return String(value);
+	let result = String(value);
+
+	// Simple interpolation: replace {paramName} with params[paramName]
+	if (params) {
+		result = result.replace(/\{(\w+)\}/g, (match, paramName) => {
+			const replacement = params[paramName];
+			return replacement !== undefined ? String(replacement) : match;
+		});
+	}
+
+	return result;
 }

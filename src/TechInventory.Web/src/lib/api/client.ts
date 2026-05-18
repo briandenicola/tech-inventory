@@ -277,6 +277,10 @@ export const owners = {
 	get: async (id: string) =>
 		apiFetch<GetResponse<paths['/api/v1/owners/{id}']>>(`/api/v1/owners/${encodeURIComponent(id)}`),
 
+	// T11: Get current user (Bishop's task)
+	me: async () =>
+		apiFetch<GetResponse<paths['/api/v1/owners/{id}']>>(`/api/v1/owners/me`),
+
 	create: async (body: PostRequestBody<paths['/api/v1/owners']>) =>
 		apiFetch<PostResponse<paths['/api/v1/owners']>>(`/api/v1/owners`, {
 			method: 'POST',

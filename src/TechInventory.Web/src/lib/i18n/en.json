@@ -401,5 +401,15 @@
 		"validationError": "Please correct the errors in the form.",
 		"unknownError": "An unexpected error occurred. Please try again.",
 		"retryButton": "Try Again"
+	},
+	"footer": {
+		"version": "Version {version}",
+		"github": "View on GitHub",
+		"builtWith": "Built with SvelteKit"
+	},
+	"header": {
+		"menu": "Menu",
+		"closeMenu": "Close menu",
+		"userMenu": "User menu"
 	}
 }

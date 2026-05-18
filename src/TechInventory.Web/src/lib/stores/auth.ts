@@ -1,0 +1,125 @@
+/**
+ * Auth Store — Current User Context
+ * 
+ * Per T10: Svelte writable store containing authenticated user context.
+ * Populated from /api/v1/owners/me after MSAL sign-in.
+ * 
+ * Related: specs/002-frontend-mvp/spec.md §4.3, §5, J1, J13
+ */
+
+import { writable } from 'svelte/store';
+import { z } from 'zod';
+
+/**
+ * OwnerResponse schema (runtime validation mirror of OpenAPI)
+ * Per T02 pattern: Zod schema mirrors server FluentValidation rules
+ */
+const OwnerResponseSchema = z.object({
+	id: z.string().uuid(),
+	entraObjectId: z.string().uuid(),
+	email: z.string().email(),
+	displayName: z.string(),
+	role: z.enum(['Admin', 'Member', 'Viewer']),
+	isActive: z.boolean()
+});
+
+/**
+ * Current user shape (extracted from OwnerResponse)
+ */
+export interface CurrentUser {
+	id: string;
+	entraObjectId: string;
+	email: string;
+	displayName: string;
+	role: 'Admin' | 'Member' | 'Viewer';
+}
+
+/**
+ * Auth state shape
+ */
+export interface AuthState {
+	currentUser: CurrentUser | null;
+	isAuthenticated: boolean;
+	isLoading: boolean;
+	error: string | null;
+}
+
+/**
+ * Initial auth state (loading until we check MSAL + fetch /owners/me)
+ */
+const initialState: AuthState = {
+	currentUser: null,
+	isAuthenticated: false,
+	isLoading: true,
+	error: null
+};
+
+/**
+ * Auth store (writable)
+ */
+export const authStore = writable<AuthState>(initialState);
+
+/**
+ * Fetch current user from /api/v1/owners/me
+ * Call after MSAL sign-in succeeds; populates auth store
+ * 
+ * Per T10 DoD: If Bishop's T11 hasn't landed yet, gracefully handle 404
+ */
+export async function fetchCurrentUser(): Promise<void> {
+	authStore.update((state) => ({ ...state, isLoading: true, error: null }));
+
+	try {
+		// Dynamic import to avoid circular dependency (client.ts imports auth helpers)
+		const { owners } = await import('$lib/api/client');
+		
+		// T11 endpoint (Bishop's task — may 404 if not yet deployed)
+		// Shape: GET /api/v1/owners/me → OwnerResponse
+		const response = await owners.me();
+
+		// Runtime validation (Zod schema)
+		const parsed = OwnerResponseSchema.parse(response);
+
+		// Extract CurrentUser shape
+		const currentUser: CurrentUser = {
+			id: parsed.id,
+			entraObjectId: parsed.entraObjectId,
+			email: parsed.email,
+			displayName: parsed.displayName,
+			role: parsed.role
+		};
+
+		authStore.set({
+			currentUser,
+			isAuthenticated: true,
+			isLoading: false,
+			error: null
+		});
+	} catch (error) {
+		console.error('[auth] Failed to fetch current user:', error);
+
+		// If 404 (Bishop's T11 not landed), set error but don't crash
+		const errorMessage =
+			error instanceof Error && error.message.includes('404')
+				? 'User endpoint not available yet (T11 pending)'
+				: 'Failed to load user profile';
+
+		authStore.set({
+			currentUser: null,
+			isAuthenticated: false,
+			isLoading: false,
+			error: errorMessage
+		});
+	}
+}
+
+/**
+ * Clear auth state (on logout)
+ */
+export function clearAuth(): void {
+	authStore.set({
+		currentUser: null,
+		isAuthenticated: false,
+		isLoading: false,
+		error: null
+	});
+}

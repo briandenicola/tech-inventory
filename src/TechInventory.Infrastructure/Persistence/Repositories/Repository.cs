@@ -98,22 +98,19 @@ public abstract class Repository<TEntity, TKey>(AppDbContext dbContext)
         ArgumentNullException.ThrowIfNull(entity);
 
         var key = GetKey(entity);
-        var exists = FindTrackedEntity(candidate => EqualityComparer<TKey>.Default.Equals(GetKey(candidate), key)) is not null
-            || await Entities.FindAsync([key], cancellationToken).ConfigureAwait(false) is not null;
-        if (!exists)
+        var trackedEntity = FindTrackedEntity(candidate => EqualityComparer<TKey>.Default.Equals(GetKey(candidate), key));
+        if (trackedEntity is not null)
+        {
+            return ApplyTrackedUpdate(trackedEntity, entity);
+        }
+
+        var persistedEntity = await Entities.FindAsync([key], cancellationToken).ConfigureAwait(false);
+        if (persistedEntity is null)
         {
             return Result<TEntity>.Failure(CreateNotFoundError(key));
         }
 
-        var entry = DbContext.Entry(entity);
-        if (entry.State == EntityState.Detached)
-        {
-            Entities.Attach(entity);
-            entry = DbContext.Entry(entity);
-        }
-
-        entry.State = EntityState.Modified;
-        return Result<TEntity>.Success(entity);
+        return ApplyTrackedUpdate(persistedEntity, entity);
     }
 
     protected Result<TEntity> ToLookupResult(TEntity? entity, object lookupValue)
@@ -121,6 +118,17 @@ public abstract class Repository<TEntity, TKey>(AppDbContext dbContext)
         return entity is null
             ? Result<TEntity>.Failure(CreateNotFoundError(lookupValue))
             : Result<TEntity>.Success(entity);
+    }
+
+    private Result<TEntity> ApplyTrackedUpdate(TEntity trackedEntity, TEntity incomingEntity)
+    {
+        if (!ReferenceEquals(trackedEntity, incomingEntity))
+        {
+            DbContext.Entry(trackedEntity).CurrentValues.SetValues(incomingEntity);
+        }
+
+        DbContext.Entry(trackedEntity).State = EntityState.Modified;
+        return Result<TEntity>.Success(trackedEntity);
     }
 
     protected static string NormalizeLookupValue(string value, string paramName)

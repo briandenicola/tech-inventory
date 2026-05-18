@@ -5,4 +5,8 @@
     <Project Path="src/TechInventory.Domain/TechInventory.Domain.csproj" />
     <Project Path="src/TechInventory.Infrastructure/TechInventory.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TechInventory.IntegrationTests/TechInventory.IntegrationTests.csproj" />
+    <Project Path="tests/TechInventory.UnitTests/TechInventory.UnitTests.csproj" />
+  </Folder>
 </Solution>

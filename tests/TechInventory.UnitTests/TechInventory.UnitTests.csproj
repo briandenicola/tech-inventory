@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\TechInventory.Application\TechInventory.Application.csproj" />
     <ProjectReference Include="..\..\src\TechInventory.Domain\TechInventory.Domain.csproj" />
   </ItemGroup>
 

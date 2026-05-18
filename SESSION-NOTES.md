@@ -4,6 +4,20 @@ Append-only log. Newest entries at the top.
 
 ---
 
+## 2026-05-18 — Hicks T11-T15 audit event, persistence, and repository seams
+- Added immutable `AuditEvent` and `ImportBatch` domain entities under `src/TechInventory.Domain/Entities/`; `AuditEvent` now exposes `Actor`, `EntityType`, `EntityId`, `Action`, `Timestamp`, `BeforePayload`, and `AfterPayload` with no public mutation surface
+- Added Application-layer repository abstractions plus shared `Result<T>`, `Result`, `PageRequest`, and `PagedResult<T>` under `src/TechInventory.Application/`; `IAuditEventRepository` is append/query only and repository contracts never expose `IQueryable`
+- Added `AppDbContext`, EF Core entity configurations, a design-time factory, append-only save guards for `AuditEvent` / `ImportBatch`, and the `InitialCoreApi` migration under `src/TechInventory.Infrastructure/Persistence/`
+- Updated Hicks/Apone contract coverage so repo-root `dotnet test -c Release` exercises the backend tests via `TechInventory.slnx`; patched the reflection helpers/tests to handle the new repository paging/result shapes cleanly
+- Verified `dotnet ef migrations add InitialCoreApi`, `dotnet ef database update`, `dotnet test tests\TechInventory.UnitTests\TechInventory.UnitTests.csproj -c Release --filter FullyQualifiedName~RepositoryInterfaceContractTests`, and `dotnet test tests\TechInventory.UnitTests\TechInventory.UnitTests.csproj -c Release --filter FullyQualifiedName~AuditEvent`
+
+## 2026-05-18 — Apone T11/T15 contract coverage
+- Added `tests/TechInventory.UnitTests/Domain/AuditEventTests.cs` for append-only `AuditEvent` construction, UTC timestamp, public-surface immutability, and payload-transition guard clauses
+- Added `tests/TechInventory.UnitTests/Application/Abstractions/RepositoryInterfaceContractTests.cs` plus `Support/ContractReflectionAssertions.cs` to lock repository async/`CancellationToken`/no-`IQueryable` seams and the `IAuditEventRepository.AppendAsync`-only mutation contract
+- Added `tests/TechInventory.UnitTests` to `TechInventory.slnx` so repo-root `dotnet test -c Release` now executes the backend test projects instead of only building source projects
+- Verified `dotnet test tests\TechInventory.UnitTests\TechInventory.UnitTests.csproj -c Release`, `dotnet test tests\TechInventory.UnitTests\TechInventory.UnitTests.csproj -c Release --collect:"XPlat Code Coverage"`, and `dotnet test -c Release`
+- Coverage snapshot from the unit suite: Domain 96.45% line coverage, Application 0% line coverage (interfaces/results/paging scaffolding present but no executable Application tests yet)
+
 ## 2026-05-18 — Hudson SQLite integration harness + hermetic E2E contract
 - Added `IntegrationTestFactory<TMarker>` under `tests/TechInventory.IntegrationTests/` so each test class gets its own SQLite file, future EF Core migrations auto-apply when present, and cleanup removes the database plus WAL/SHM sidecars
 - Repointed the existing `/health` smoke test to the new factory and verified `task test:integration` passes end-to-end against the new harness

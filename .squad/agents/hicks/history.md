@@ -92,3 +92,11 @@ Phase 1 lands in `specs/001-core-api/`. Pattern references: **R1** for MediatR h
 - `Location`, `Network`, and `Tag` follow the `Brand` pattern: required trimmed names, uppercase normalization helpers for later uniqueness enforcement, and `Deactivate()` / `Reactivate()` soft-delete flow.
 - `DeviceTag` keeps composite identity as `DeviceId` + `TagId` and uses `IsActive` instead of hard delete; future repository logic should reactivate an existing pair instead of inserting duplicates.
 - Apone test targets next: category root/child depth edge cases, owner Entra identity linking, network normalized-name uniqueness checks, and device-tag reactivation semantics.
+
+### 2026-05-18: AuditEvent and repository contract foundations (Phase 1 T11-T15)
+
+- `AuditEvent` lives in `src/TechInventory.Domain/Entities/AuditEvent.cs` with immutable public properties `Actor`, `EntityType`, `EntityId`, `Action`, `Timestamp`, `BeforePayload`, and `AfterPayload`; there are no public mutators, and EF gets a private constructor/private setters only for materialization.
+- `ImportBatch` is likewise immutable from the public API: `FileName`, row counts, `Status`, `CreatedAt`, and optional `ErrorLog` are fixed at construction, with derived `ProcessedCount` / `HasErrors` helpers.
+- Repository abstractions now live in `src/TechInventory.Application/Abstractions/Repositories/`, not Domain. Every method is async, every signature carries `CancellationToken`, expected failures return `Result<T>` or `Result`, paged reads use `PagedResult<T>`, and `IQueryable` never crosses the boundary.
+- `IAuditEventRepository` exposes `AppendAsync`, `GetByIdAsync`, and paged `ListAsync` only; there is no update/delete/remove surface. `IImportBatchRepository` is add/read only, while mutable aggregates use the shared `IAggregateRepository<TAggregate>` base plus materialized list/query methods.
+- Infrastructure concrete repositories did not land in this round. What did land in Infrastructure is `AppDbContext`, entity configurations, append-only save guards for `AuditEvent`/`ImportBatch`, and the `InitialCoreApi` migration.

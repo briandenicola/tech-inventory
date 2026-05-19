@@ -25,7 +25,12 @@ RUN pnpm run build
 FROM nginxinc/nginx-unprivileged:1.27.5-alpine AS runtime
 
 USER root
-RUN apk add --no-cache wget
+# Pull the latest patched alpine packages on top of the pinned base tag.
+# Without this, libcrypto3 / busybox / curl drift behind nginxinc's release
+# cadence and Trivy gates HIGH/CRITICAL CVEs (CVE-2025-15467, etc.) even
+# though fixes exist in the alpine repository. `--no-cache` keeps the layer
+# from carrying the apk index.
+RUN apk upgrade --no-cache && apk add --no-cache wget
 USER 101
 
 COPY src/TechInventory.Web/nginx.conf /etc/nginx/nginx.conf

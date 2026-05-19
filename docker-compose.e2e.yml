@@ -24,6 +24,12 @@ services:
     build:
       context: .
       dockerfile: src/TechInventory.Api/Dockerfile
+    # Prod compose keeps api internal-only; the e2e harness needs to poll
+    # /health/ready from the runner host (scripts/run-e2e.{sh,ps1}) so the
+    # override publishes 8080 on the host. Web's host:3000 → container:8080
+    # mapping in the base file is unaffected.
+    ports:
+      - "8080:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       # F025 — break-glass local admin seed for E2E sign-in.

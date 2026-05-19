@@ -30,7 +30,7 @@
 services:
   api:
     image: ghcr.io/briandenicola/tech-inventory-api:${IMAGE_TAG:-latest}
-    container_name: techinv-api
+    container_name: tech-inventory-api
     restart: unless-stopped
     environment:
       # Force production wiring regardless of host env.
@@ -71,8 +71,14 @@ services:
 
   web:
     image: ghcr.io/briandenicola/tech-inventory-web:${IMAGE_TAG:-latest}
-    container_name: techinv-web
+    container_name: tech-inventory-web
     restart: unless-stopped
+    environment:
+      # Host:port the api container resolves to on the compose / Portainer
+      # / swarm network. Default matches our `container_name: tech-inventory-api`
+      # below; override via .env if your deploy tool names the container
+      # something else (e.g. Portainer stack `mystack_api_1`).
+      API_UPSTREAM: ${API_UPSTREAM:-tech-inventory-api:8080}
     # Host port 3000 → NPM upstream. The container listens on 8080 because
     # we use nginx-unprivileged (uid 101, can't bind <1024).
     ports:

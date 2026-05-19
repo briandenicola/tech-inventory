@@ -30,6 +30,7 @@ RUN apk add --no-cache wget
 USER 101
 
 COPY src/TechInventory.Web/nginx.conf /etc/nginx/nginx.conf
+COPY src/TechInventory.Web/templates/upstream.conf.template /etc/nginx/templates/upstream.conf.template
 COPY --from=build /app/build/ /usr/share/nginx/html/
 
 EXPOSE 8080

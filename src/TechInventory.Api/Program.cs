@@ -306,8 +306,8 @@ app.Use(async (httpContext, next) =>
     await next().ConfigureAwait(false);
 });
 
-app.MapHealthChecks("/health");
-app.MapHealthChecks("/health/ready");
+app.MapHealthChecks("/health").AllowAnonymous();
+app.MapHealthChecks("/health/ready").AllowAnonymous();
 app.MapControllers();
 
 try

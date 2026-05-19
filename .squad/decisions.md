@@ -2732,6 +2732,17 @@ Both groups typed via `paths['/api/v1/{resource}']` OpenAPI extraction.
 
 ---
 
+### D-131: `dev:up` One-Command Parallel Launcher — **SUPERSEDES D-130's Two-Terminal Fragment**
+
+**Author:** Hudson (DevOps / Platform)  
+**Date:** 2026-05-18 (Phase 2 post-R6b, Brian's directive: one-command dev)  
+**Status:** ✅ Shipped  
+**Related:** D-130 (local validation tasks), Taskfile.yml, package.json, `concurrently` 9.2.1, `.squad/decisions/inbox/hudson-dev-up-fix.md`
+
+**Decision:** Add `task dev:up` target with `concurrently` npm package for parallel process management. Replaces D-130's two-terminal print-only pattern. **Root `package.json` added** (repo-level dev tool, not web runtime) with `concurrently` 9.2.1. **`dev:up` target runs:** `deps: [db:migrate]` → parallel `dotnet run --project src/TechInventory.Api` (API, port 8080) + `pnpm --dir src/TechInventory.Web run dev` (Web, port 5173) via `npx concurrently --kill-others --names "API,WEB" --prefix-colors "blue,green"`. Environment: `ASPNETCORE_ENVIRONMENT=Development` (auth bypass active). Platform-specific syntax: Windows `set "...=" &&` prefix, Unix `ASPNETCORE_ENVIRONMENT=` prefix. `--kill-others` ensures Ctrl+C exits both servers cleanly. Output interleaved with `[API]` / `[WEB]` prefixes (blue/green). Rationale: Brian explicitly requested one-command dev launcher; `concurrently` is battle-tested for JS monorepos, provides cross-platform signal handling, and clean output prefixing. Alternatives (PowerShell Start-Job, bash `&`, npm-run-all) rejected for fragile cleanup or poor UX. **Supersession:** Replaces D-130's "two-terminal pattern (decided)" for the `dev:up` target *only*. D-130's other findings remain in force: auth bypass mechanism ✅, CSV defaults ✅, CONFIRM gate ✅, `dev:api`/`dev:web` standalone targets preserved ✅. **Full decision rationale:** `.squad/decisions/inbox/hudson-dev-up-fix.md`
+
+---
+
 ## Governance
 
 - All meaningful changes require team consensus

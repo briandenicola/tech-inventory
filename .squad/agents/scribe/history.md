@@ -204,3 +204,21 @@ Apone's commit message + T33 inbox BOTH falsely claimed "Categories/Owners defer
 
 **Verification:** `pnpm run check` ✅, `pnpm run lint` ✅, test suite 235/2 (+87 from T33)
 
+---
+
+## Phase 2 Round 17 — D-130 + D-131 Hudson Taskfile Reconciliation
+
+**Inbox merged:** 2 files → 1 net decision (D-130 pre-existing; D-131 added)
+- `hudson-validation-tasks.md` → D-130 (already in ledger from prior session)
+- `hudson-dev-up-fix.md` → D-131 (new entry, supersedes D-130's two-terminal fragment)
+
+**Decision ledger:** D-001 → D-131 (131 total; D-130 confirmed existing, D-131 appended)
+
+**Supersession:** D-131 replaces D-130's "two-terminal pattern (decided)" for `task dev:up` only. D-130's other findings (auth bypass, CSV defaults, CONFIRM gate) remain in force.
+
+**Tasks flipped:** NONE (Hudson's Taskfile work is infrastructure DevEx, not numbered T-task per specs/002-frontend-mvp/tasks.md)
+
+**History entries:** Scribe R17 (this entry)
+
+**Notes:** Hudson's two-commit arc (89cad1e validation tasks + 3a020d3 dev:up fix) reconciled. `concurrently` 9.2.1 added to root package.json for one-command parallel dev. Inbox files deleted post-merge. No breaking changes to D-130's documented behavior outside the dev launcher target.
+

@@ -36,14 +36,21 @@ public sealed class HmacJwtLocalTokenIssuer(IOptions<LocalJwtOptions> options, T
         var nowUtc = _timeProvider.GetUtcNow();
         var expiresAtUtc = nowUtc.Add(AccessTokenLifetime);
 
+        // Emit the short JSON claim names ("role", "name") that downstream
+        // JWT consumers (our SvelteKit frontend + standard JwtBearer inbound
+        // claim-type mapping) expect. Constructing JwtSecurityToken directly
+        // skips ClaimTypeMapping.DefaultOutboundClaimTypeMap, so if we left
+        // ClaimTypes.Role / ClaimTypes.Name in here the JWT JSON would carry
+        // the long XML URIs as keys and the frontend would silently default
+        // to Viewer / "Local user" (which is exactly what happened on first
+        // F025 prod sign-in, 2026-05-19).
         var claims = new List<Claim>
         {
             new("sub", user.Id.ToString()),
             new("oid", user.Id.ToString()),
-            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new(ClaimTypes.Name, user.DisplayName),
+            new("name", user.DisplayName),
             new("preferred_username", user.Username),
-            new(ClaimTypes.Role, user.Role.ToString()),
+            new("role", user.Role.ToString()),
             new("auth_method", "local"),
             new("must_change_password", user.MustChangePasswordOnNextLogin ? "true" : "false")
         };
@@ -88,4 +95,14 @@ public sealed class LocalJwtOptions
     public string? SeedPassword { get; set; }
 
     public bool SeedAllowInProd { get; set; }
+
+    /// <summary>
+    /// When true (default), the seeded local admin is forced through the
+    /// change-password flow on first login. The break-glass account is
+    /// intended to be rotated to a real operator-chosen password
+    /// immediately, so this default is safe. E2E and local-dev workflows
+    /// flip this to false in their config so the seeded admin can sign in
+    /// directly with the configured password.
+    /// </summary>
+    public bool SeedRequireChangeOnFirstLogin { get; set; } = true;
 }

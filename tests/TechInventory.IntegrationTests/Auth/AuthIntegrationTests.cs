@@ -7,45 +7,23 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using TechInventory.Application.Abstractions.Services;
 using TechInventory.IntegrationTests.Controllers;
 
 namespace TechInventory.IntegrationTests.Auth;
 
+/// <summary>
+/// Real-pipeline auth tests. The base <see cref="IntegrationTestFactory{TMarker}"/>
+/// installs <c>TestAuthHandler</c> for everyone else, but the factories in
+/// this file opt out via <c>UseTestAuth =&gt; false</c> so we exercise the
+/// production Entra JWT bearer + role-mapping wiring end-to-end.
+/// </summary>
 public sealed class AuthIntegrationTests(IntegrationTestFactory<AuthIntegrationTests> factory)
     : ControllerTestBase<AuthIntegrationTests>(factory), IClassFixture<IntegrationTestFactory<AuthIntegrationTests>>
 {
     [Fact]
-    public async Task DevBypassEnabled_UnauthenticatedRequest_ReturnsSuccessWithDevAdmin()
-    {
-        await ResetDatabaseAsync();
-        using var client = CreateClient();
-
-        var response = await client.GetAsync("/api/v1/brands");
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        await WithDbContextAsync(async dbContext =>
-        {
-            var postResponse = await client.PostAsync("/api/v1/brands", CreateJsonContent(new
-            {
-                name = $"Brand-{Guid.NewGuid():N}",
-                website = "https://example.com"
-            }));
-
-            postResponse.StatusCode.Should().Be(HttpStatusCode.Created);
-
-            var auditEvents = await dbContext.AuditEvents.ToListAsync();
-            auditEvents.Should().ContainSingle();
-            auditEvents[0].Actor.Should().Be("11111111-1111-1111-1111-111111111111");
-        });
-    }
-
-    [Fact]
-    public async Task DevBypassDisabled_NoToken_Returns401Unauthorized()
+    public async Task NoToken_Returns401Unauthorized()
     {
         await ResetDatabaseAsync();
         await using var noAuthFactory = new NoAuthFactory();
@@ -58,7 +36,7 @@ public sealed class AuthIntegrationTests(IntegrationTestFactory<AuthIntegrationT
     }
 
     [Fact]
-    public async Task DevBypassDisabled_InvalidToken_Returns401Unauthorized()
+    public async Task InvalidToken_Returns401Unauthorized()
     {
         await ResetDatabaseAsync();
         await using var noAuthFactory = new NoAuthFactory();
@@ -71,7 +49,7 @@ public sealed class AuthIntegrationTests(IntegrationTestFactory<AuthIntegrationT
     }
 
     [Fact(Skip = "T08 happy-path deferred — test factory cannot swap production JWKS for in-memory RSA key. Tracked in docs/known-issues.md#auth-jwt-happy-path-tests.")]
-    public async Task DevBypassDisabled_ValidTokenWithAdminRole_ReturnsSuccess()
+    public async Task ValidTokenWithAdminRole_ReturnsSuccess()
     {
         await ResetDatabaseAsync();
         await using var jwtFactory = new JwtAuthFactory();
@@ -93,7 +71,7 @@ public sealed class AuthIntegrationTests(IntegrationTestFactory<AuthIntegrationT
     }
 
     [Fact(Skip = "T08 happy-path deferred — test factory cannot swap production JWKS for in-memory RSA key. Tracked in docs/known-issues.md#auth-jwt-happy-path-tests.")]
-    public async Task DevBypassDisabled_ValidTokenWithAdminRole_AuditLogsShowCorrectUser()
+    public async Task ValidTokenWithAdminRole_AuditLogsShowCorrectUser()
     {
         await ResetDatabaseAsync();
         await using var jwtFactory = new JwtAuthFactory();
@@ -134,7 +112,7 @@ public sealed class AuthIntegrationTests(IntegrationTestFactory<AuthIntegrationT
     }
 
     [Fact(Skip = "T08 happy-path deferred — test factory cannot swap production JWKS for in-memory RSA key. Tracked in docs/known-issues.md#auth-jwt-happy-path-tests.")]
-    public async Task DevBypassDisabled_ViewerRoleOnAdminEndpoint_Returns403Forbidden()
+    public async Task ViewerRoleOnAdminEndpoint_Returns403Forbidden()
     {
         await ResetDatabaseAsync();
         await using var jwtFactory = new JwtAuthFactory();
@@ -156,7 +134,7 @@ public sealed class AuthIntegrationTests(IntegrationTestFactory<AuthIntegrationT
     }
 
     [Fact]
-    public async Task DevBypassDisabled_TokenWithNoRoles_Returns401Unauthorized()
+    public async Task TokenWithNoRoles_Returns401Unauthorized()
     {
         await ResetDatabaseAsync();
         await using var jwtFactory = new JwtAuthFactory();
@@ -213,25 +191,16 @@ public sealed class AuthIntegrationTests(IntegrationTestFactory<AuthIntegrationT
         });
     }
 
-    [Fact(Skip = "T08 deferred — startup-guard test requires same test-factory infra as the JWT happy-path tests. Tracked in docs/known-issues.md#auth-jwt-happy-path-tests.")]
-    public void ProductionWithDevBypass_ThrowsOnStartup()
-    {
-        try
-        {
-            using var factory = new ProductionDevBypassFactory();
-            // Trigger host creation which runs Program.cs
-            using var _ = factory.CreateClient();
-            Assert.Fail("Expected InvalidOperationException but no exception was thrown");
-        }
-        catch (InvalidOperationException ex)
-        {
-            ex.Message.Should().Be("Auth:DevBypass may only be enabled in Development.");
-        }
-    }
-
+    /// <summary>
+    /// Opts out of <c>TestAuthHandler</c> so the production Entra JWT bearer
+    /// pipeline is what answers the request. Used to assert the unauthenticated
+    /// / invalid-token 401 paths.
+    /// </summary>
     private sealed class NoAuthFactory : IntegrationTestFactory<NoAuthFactory>
     {
         protected override string Environment => "Testing";
+
+        protected override bool UseTestAuth => false;
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -242,7 +211,6 @@ public sealed class AuthIntegrationTests(IntegrationTestFactory<AuthIntegrationT
             {
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["Auth:DevBypass"] = "false",
                     ["Auth:Entra:Authority"] = "https://login.microsoftonline.com/test-tenant/v2.0",
                     ["Auth:Entra:TenantId"] = "test-tenant-id",
                     ["Auth:Entra:ClientId"] = "test-client-id",
@@ -253,6 +221,12 @@ public sealed class AuthIntegrationTests(IntegrationTestFactory<AuthIntegrationT
         }
     }
 
+    /// <summary>
+    /// Opts out of <c>TestAuthHandler</c> and post-configures the Entra
+    /// <c>JwtBearerOptions</c> with an in-memory RSA signing key so the real
+    /// JWT validation pipeline (issuer/audience/signature/roles) runs against
+    /// tokens minted by <see cref="TestJwtBuilder"/>.
+    /// </summary>
     private sealed class JwtAuthFactory : IntegrationTestFactory<JwtAuthFactory>
     {
         public RsaSecurityKey SigningKey { get; } = TestJwtBuilder.CreateTestSigningKey();
@@ -260,6 +234,8 @@ public sealed class AuthIntegrationTests(IntegrationTestFactory<AuthIntegrationT
         public string Audience => "api://test-client-id";
 
         protected override string Environment => "Testing";
+
+        protected override bool UseTestAuth => false;
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -269,7 +245,6 @@ public sealed class AuthIntegrationTests(IntegrationTestFactory<AuthIntegrationT
             {
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["Auth:DevBypass"] = "false",
                     ["Auth:Entra:Authority"] = Issuer,
                     ["Auth:Entra:TenantId"] = "test-tenant-id",
                     ["Auth:Entra:ClientId"] = "test-client-id",
@@ -281,10 +256,10 @@ public sealed class AuthIntegrationTests(IntegrationTestFactory<AuthIntegrationT
             builder.ConfigureTestServices(services =>
             {
                 // Use PostConfigure to run AFTER all other JwtBearerOptions configuration
-                // CRITICAL: Use the correct scheme name from Program.cs
-                const string techInventoryAuthScheme = "TechInventoryAuth";
+                // CRITICAL: must target the Entra scheme that Program.cs registers.
+                const string entraScheme = TechInventory.Api.Authentication.ApiAuthenticationSchemes.EntraScheme;
 
-                services.PostConfigure<JwtBearerOptions>(techInventoryAuthScheme, options =>
+                services.PostConfigure<JwtBearerOptions>(entraScheme, options =>
                 {
                     // Completely nuke OIDC discovery
                     options.Authority = null!;
@@ -386,24 +361,6 @@ public sealed class AuthIntegrationTests(IntegrationTestFactory<AuthIntegrationT
             using var scope = Services.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<TechInventory.Infrastructure.Persistence.AppDbContext>();
             await action(dbContext);
-        }
-    }
-
-    private sealed class ProductionDevBypassFactory : IntegrationTestFactory<ProductionDevBypassFactory>
-    {
-        protected override string Environment => "Production";
-
-        protected override void ConfigureWebHost(IWebHostBuilder builder)
-        {
-            base.ConfigureWebHost(builder);
-
-            builder.ConfigureAppConfiguration((ctx, config) =>
-            {
-                config.AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["Auth:DevBypass"] = "true"
-                }!);
-            });
         }
     }
 }

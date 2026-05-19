@@ -4,12 +4,13 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 $originalLocation = Get-Location
 $e2eLocationPushed = $false
 $originalBaseUrl = $env:BASE_URL
-$originalDevBypass = $env:VITE_AUTH_DEV_BYPASS
 
 # Combined compose invocation: prod compose + e2e override + stub env file.
 # The env file satisfies docker-compose.yml's `${VAR:?}` required-var guards
 # (which abort interpolation before any service starts); the override file
-# swaps GHCR images for local builds and forces Development env / DevBypass.
+# swaps GHCR images for local builds, forces Development env (so the F025
+# LocalAdminSeedHostedService is willing to run without SeedAllowInProd), and
+# seeds the local admin Playwright fixtures sign in as.
 # Hoisted to script scope so the `finally` cleanup block can reuse it.
 $composeArgs = @(
     "compose",
@@ -47,10 +48,6 @@ function Wait-ForReady {
 try {
     Set-Location $repoRoot
 
-    # E2E tests rely on the dev-bypass shim (no MSAL bounce off Microsoft).
-    # Compose forwards this as a build ARG to the web Dockerfile.
-    $env:VITE_AUTH_DEV_BYPASS = "true"
-
     docker @composeArgs up -d --build
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
@@ -82,13 +79,6 @@ finally {
     }
     else {
         $env:BASE_URL = $originalBaseUrl
-    }
-
-    if ($null -eq $originalDevBypass) {
-        Remove-Item Env:VITE_AUTH_DEV_BYPASS -ErrorAction SilentlyContinue
-    }
-    else {
-        $env:VITE_AUTH_DEV_BYPASS = $originalDevBypass
     }
 
     Set-Location $repoRoot

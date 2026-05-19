@@ -4,7 +4,7 @@
  * trail back to the list)
  *
  * PRD §7.5.4: Critical user journey #7
- * The dev-bypass identity is Admin, so Edit + Delete + (Claim|Release) are
+ * The seeded local admin is Admin role, so Edit + Delete + (Claim|Release) are
  * all expected to render. Reference resolution itself is tested at the API
  * level; here we assert the page shell + role gating.
  */
@@ -35,7 +35,7 @@ test.describe('Journey 7: Detail view', () => {
   });
 
   test('Admin sees the Claim ownership affordance when device has no owner', async ({ adminPage, request }) => {
-    // Newly seeded devices have no ownerId, so the dev-admin sees Claim.
+    // Newly seeded devices have no ownerId, so the seeded local admin sees Claim.
     const device = await seedDevice(request);
     await adminPage.goto(`/devices/${device.id}`);
     await expect(adminPage.getByRole('button', { name: /claim/i })).toBeVisible();

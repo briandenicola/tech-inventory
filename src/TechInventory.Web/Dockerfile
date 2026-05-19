@@ -5,13 +5,12 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 
-# When VITE_AUTH_DEV_BYPASS=true is passed at build time, the bundle skips MSAL
-# and lets the backend DevBypass authenticate (used by `task test:e2e` and local
-# dev sessions). Default is false so production builds keep real Entra auth.
-ARG VITE_AUTH_DEV_BYPASS=false
-ENV VITE_AUTH_DEV_BYPASS=$VITE_AUTH_DEV_BYPASS
-
 RUN corepack enable
+
+# Tell pnpm we're in CI so `pnpm run`'s implicit deps-status check doesn't
+# try to interactively confirm a modules-directory purge (no TTY → abort).
+# See ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY.
+ENV CI=true
 
 COPY src/TechInventory.Web/package.json src/TechInventory.Web/pnpm-lock.yaml* src/TechInventory.Web/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile || pnpm install

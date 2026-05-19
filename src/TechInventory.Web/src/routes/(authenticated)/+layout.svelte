@@ -39,8 +39,20 @@
 	const isAdmin = $derived(currentUser?.role === 'Admin');
 	const settingsActive = $derived($page.url.pathname.startsWith('/settings'));
 
-	// T09 + J3: Sign out — call MSAL logoutRedirect + clear auth store
+	// T09 + J3: Sign out — branch on auth method.
+	// Local (F025) sessions live in sessionStorage and have no Entra session
+	// to terminate; calling msalInstance.logoutRedirect would kick the user
+	// out of their unrelated Entra account. Entra sessions still go through
+	// MSAL so the IdP session + cookies are cleared.
 	async function handleSignOut() {
+		const authMethod = $authStore.authMethod;
+
+		if (authMethod === 'local') {
+			clearAuth();
+			await goto('/auth/login');
+			return;
+		}
+
 		try {
 			clearAuth();
 			await ensureMsalInitialized();

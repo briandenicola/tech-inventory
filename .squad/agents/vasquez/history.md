@@ -193,6 +193,36 @@ Accessibility: WCAG 2.2 AA target, zero axe-core violations to merge. Browser ma
 
 
 
+## 2026-05-19 — DevBypass rip (frontend portion, parallel with Bishop+Hudson)
+
+**Charter:** Remove `VITE_AUTH_DEV_BYPASS` shim from SvelteKit. Local F025 username/password sign-in (`LocalLoginForm.svelte` + `/api/v1/auth/local/login`) is now the easy local-dev path; backend no longer emits the DevBypass scheme.
+
+**Changes (3 files, working tree only — no commit):**
+
+- **Deleted** `src/TechInventory.Web/src/lib/auth/dev-bypass.ts` (53 lines) — `isAuthDevBypass()` + `devBypassAccount()` shim, including the dev-admin subject `11111111-1111-1111-1111-111111111111` mirror constant.
+- **`src/lib/auth/index.ts`** — removed `./dev-bypass` import and the four `if (isAuthDevBypass()) ...` early-returns from `initializeMsal`, `handleRedirectPromise`, `getActiveAccount`, `acquireApiToken`. MSAL is now the only auth path; functions call straight through to `ensureMsalInitialized()` / `msalInstance`.
+- **`Dockerfile`** — removed the `ARG VITE_AUTH_DEV_BYPASS=false` + `ENV VITE_AUTH_DEV_BYPASS=$VITE_AUTH_DEV_BYPASS` pair (was lines 11–12) plus the 3-line explanatory comment block above them (was lines 8–10). Kills the Trivy `SecretsUsedInArgOrEnv` warnings against the build stage.
+
+**Scope check:**
+- `grep -ri "dev[_-]?bypass" src/TechInventory.Web/src` → 0 matches after the rip.
+- `grep -ri "VITE_AUTH_DEV_BYPASS" src/TechInventory.Web` → 0 matches after the rip.
+- `.env.development` had no DevBypass reference (just `VITE_API_BASE_URL`).
+- No component tests mocked the shim — nothing to update on the test side. `tests/e2e/` files containing `dev-bypass` references were left untouched per coordinator note (Hudson owns those).
+
+**Verification (all green):**
+- `pnpm install` — already up to date.
+- `pnpm run check` — svelte-check 0 errors / 0 warnings.
+- `pnpm run lint` — 0 errors.
+- `pnpm exec vitest --run` — **293 passed / 2 skipped (24 test files).** Note: `pnpm run test` uses watch mode by default in this repo (no `--run` flag in the script), so one-shot CI runs need `vitest --run`. Worth fixing the script someday but not in this rip.
+- `pnpm run build` — production build ✅ (PWA SW + adapter-static both clean, 9.42s).
+
+**Coordination state at handoff:**
+- Working tree dirty as instructed — Copilot CLI will fold these three frontend changes alongside Bishop's backend rip (DevBypassAuthenticationHandler.cs deleted + Program.cs/appsettings/integration-test factories updated) and Hudson's E2E/docs/scripts updates into one cohesive commit.
+- No new dependencies, no new env vars, no API client regen (none needed — backend DTOs untouched by this rip).
+- JWT short-claim hot-fix (commit `6b9f634`) confirmed not in scope — no decode logic touched.
+
+**Reflection:** Clean mechanical rip. The original shim was well-isolated (single `dev-bypass.ts` module + 4 inline branches in `index.ts` + 2 Dockerfile lines), which is what made deleting it a 10-minute job rather than an archaeology dig. Worth remembering as a pattern: when adding a dev-only escape hatch, isolate it in its own module + a single import site so the day someone rips it out, the diff stays tiny.
+
 ## Phase 2 Round 6b — Categories + Owners Admin (T28, T29) — Already Delivered
 
 **Charter:** Implement Categories tree view (T28) and Owners admin with role badges (T29).

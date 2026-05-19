@@ -45,11 +45,19 @@ builder.Services.AddScoped<ICurrentUserService, HttpContextCurrentUserService>()
 builder.Services.AddMediatR(configuration => configuration.RegisterServicesFromAssembly(typeof(Program).Assembly));
 builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 
-var devBypassEnabled = builder.Configuration.GetValue<bool>("Auth:DevBypass");
-if (devBypassEnabled && !builder.Environment.IsDevelopment())
-{
-    throw new InvalidOperationException("Auth:DevBypass may only be enabled in Development.");
-}
+// Auth registration. Two real bearer schemes — Entra (cloud SSO) and
+// F025 Local HS256 (break-glass username/password). If Entra is configured,
+// the default scheme is a policy scheme that sniffs the JWT `iss` claim and
+// forwards to whichever handler issued the token. If Entra is not configured
+// (pure-local-dev or air-gapped deployments), the Local handler IS the
+// default and Entra is never registered.
+//
+// There is no longer any DevBypass / fake-admin shim in the production
+// binary. Integration tests install a TestAuthHandler via ConfigureTestServices.
+var entraAuthority = builder.Configuration["Auth:Entra:Authority"];
+var entraAudiences = builder.Configuration.GetSection("Auth:Entra:Audiences").Get<string[]>();
+var entraTenantId = builder.Configuration["Auth:Entra:TenantId"];
+var entraConfigured = !string.IsNullOrWhiteSpace(entraAuthority) && entraAudiences is { Length: > 0 };
 
 var authenticationBuilder = builder.Services.AddAuthentication(options =>
 {
@@ -57,21 +65,10 @@ var authenticationBuilder = builder.Services.AddAuthentication(options =>
     options.DefaultChallengeScheme = ApiAuthenticationSchemes.DefaultScheme;
 });
 
-if (devBypassEnabled)
+if (entraConfigured)
 {
-    authenticationBuilder.AddScheme<AuthenticationSchemeOptions, DevBypassAuthenticationHandler>(
-        ApiAuthenticationSchemes.DefaultScheme,
-        _ => { });
-}
-else
-{
-    var authority = builder.Configuration["Auth:Entra:Authority"]
-        ?? throw new InvalidOperationException("Auth:Entra:Authority is required when Auth:DevBypass=false");
-    var audiences = builder.Configuration.GetSection("Auth:Entra:Audiences").Get<string[]>()
-        ?? throw new InvalidOperationException("Auth:Entra:Audiences is required when Auth:DevBypass=false");
-
-    // F025 — composite policy scheme. We sniff the JWT `iss` claim and forward
-    // to either the Entra JwtBearer handler or our local HS256 handler. Both
+    // Composite policy scheme. We sniff the JWT `iss` claim and forward to
+    // either the Entra JwtBearer handler or our local HS256 handler. Both
     // produce a ClaimsPrincipal with the same `role` shape, so existing
     // `[Authorize(Roles=...)]` attributes Just Work regardless of issuer.
     authenticationBuilder.AddPolicyScheme(ApiAuthenticationSchemes.DefaultScheme, ApiAuthenticationSchemes.DefaultScheme, options =>
@@ -102,14 +99,49 @@ else
 
     authenticationBuilder.AddJwtBearer(ApiAuthenticationSchemes.EntraScheme, options =>
     {
-        options.Authority = authority;
+        options.Authority = entraAuthority;
+
+        // Accept BOTH the v1 (`sts.windows.net/<tenant>/`) and v2
+        // (`login.microsoftonline.com/<tenant>/v2.0`) issuer formats from the
+        // same tenant. Which form Entra emits depends on the app
+        // registration's `accessTokenAcceptedVersion` manifest setting
+        // (null/1 → v1, 2 → v2). MSAL.js requests v2 by default but the
+        // resulting access token still uses the v1 issuer if the manifest
+        // hasn't been flipped. Rather than silently 401, accept either —
+        // the audience + signing-key + lifetime checks remain authoritative.
+        var resolvedTenantId = entraTenantId;
+        if (string.IsNullOrWhiteSpace(resolvedTenantId))
+        {
+            // Fall back to parsing it from the Authority URL: the path
+            // segment immediately after the host is the tenant GUID.
+            if (Uri.TryCreate(entraAuthority, UriKind.Absolute, out var authorityUri))
+            {
+                var segments = authorityUri.AbsolutePath.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+                if (segments.Length > 0)
+                {
+                    resolvedTenantId = segments[0];
+                }
+            }
+        }
+
+        string[]? validIssuers = null;
+        if (!string.IsNullOrWhiteSpace(resolvedTenantId))
+        {
+            validIssuers = new[]
+            {
+                $"https://login.microsoftonline.com/{resolvedTenantId}/v2.0",
+                $"https://sts.windows.net/{resolvedTenantId}/"
+            };
+        }
+
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidAudiences = audiences,
+            ValidAudiences = entraAudiences,
+            ValidIssuers = validIssuers,
             ClockSkew = TimeSpan.FromMinutes(2)
         };
 
@@ -148,45 +180,57 @@ else
             }
         };
     });
-
-    // F025 — local HS256 bearer. We register the JwtBearer scheme up front and
-    // wire its TokenValidationParameters via a PostConfigure that pulls from
-    // IOptions<LocalJwtOptions>. This is critical for WebApplicationFactory test
-    // hosts: their ConfigureAppConfiguration callbacks land AFTER Program.cs
-    // reads builder.Configuration, so any direct .Get<LocalJwtOptions>() here
-    // would miss the test's signing-key override.
-    authenticationBuilder.AddJwtBearer(ApiAuthenticationSchemes.LocalScheme, _ => { });
-    builder.Services.AddOptions<JwtBearerOptions>(ApiAuthenticationSchemes.LocalScheme)
-        .Configure<IOptions<LocalJwtOptions>>((options, localOptions) =>
-        {
-            var localJwt = localOptions.Value;
-            options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
-
-            SymmetricSecurityKey? signingKey = null;
-            if (!string.IsNullOrWhiteSpace(localJwt.SigningKey))
-            {
-                var keyBytes = Encoding.UTF8.GetBytes(localJwt.SigningKey);
-                if (keyBytes.Length < 32)
-                {
-                    throw new InvalidOperationException("Auth:Local:SigningKey must be at least 32 bytes (256 bits).");
-                }
-                signingKey = new SymmetricSecurityKey(keyBytes);
-            }
-
-            options.TokenValidationParameters = new TokenValidationParameters
-            {
-                ValidateIssuer = true,
-                ValidIssuer = LocalJwtOptions.Issuer,
-                ValidateAudience = true,
-                ValidAudience = localJwt.Audience,
-                ValidateLifetime = true,
-                ValidateIssuerSigningKey = signingKey is not null,
-                IssuerSigningKey = signingKey,
-                IssuerSigningKeys = signingKey is not null ? new[] { signingKey } : null,
-                ClockSkew = TimeSpan.FromMinutes(1)
-            };
-        });
 }
+else
+{
+    // Pure-local mode: no Entra config present. Forward the default scheme
+    // straight to the Local HS256 handler so the rest of the pipeline
+    // (controllers, fallback policy, audit logging) is unaffected.
+    authenticationBuilder.AddPolicyScheme(ApiAuthenticationSchemes.DefaultScheme, ApiAuthenticationSchemes.DefaultScheme, options =>
+    {
+        options.ForwardDefaultSelector = _ => ApiAuthenticationSchemes.LocalScheme;
+    });
+}
+
+// F025 — local HS256 bearer. Always registered (it is the only auth source
+// when Entra is absent, and the break-glass admin when Entra is present).
+// We register the JwtBearer scheme up front and wire its
+// TokenValidationParameters via a PostConfigure that pulls from
+// IOptions<LocalJwtOptions>. This is critical for WebApplicationFactory test
+// hosts: their ConfigureAppConfiguration callbacks land AFTER Program.cs
+// reads builder.Configuration, so any direct .Get<LocalJwtOptions>() here
+// would miss the test's signing-key override.
+authenticationBuilder.AddJwtBearer(ApiAuthenticationSchemes.LocalScheme, _ => { });
+builder.Services.AddOptions<JwtBearerOptions>(ApiAuthenticationSchemes.LocalScheme)
+    .Configure<IOptions<LocalJwtOptions>>((options, localOptions) =>
+    {
+        var localJwt = localOptions.Value;
+        options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
+
+        SymmetricSecurityKey? signingKey = null;
+        if (!string.IsNullOrWhiteSpace(localJwt.SigningKey))
+        {
+            var keyBytes = Encoding.UTF8.GetBytes(localJwt.SigningKey);
+            if (keyBytes.Length < 32)
+            {
+                throw new InvalidOperationException("Auth:Local:SigningKey must be at least 32 bytes (256 bits).");
+            }
+            signingKey = new SymmetricSecurityKey(keyBytes);
+        }
+
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = LocalJwtOptions.Issuer,
+            ValidateAudience = true,
+            ValidAudience = localJwt.Audience,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = signingKey is not null,
+            IssuerSigningKey = signingKey,
+            IssuerSigningKeys = signingKey is not null ? new[] { signingKey } : null,
+            ClockSkew = TimeSpan.FromMinutes(1)
+        };
+    });
 
 builder.Services.AddAuthorizationBuilder()
     .SetFallbackPolicy(new AuthorizationPolicyBuilder()
@@ -238,8 +282,8 @@ if (!string.IsNullOrEmpty(otlpEndpoint))
         });
 }
 
-const string DevBypassWarningMessage = "⚠️ Auth:DevBypass" + "=true — all requests authenticated as 'dev-admin'. NEVER enable outside Development.";
-const string JwtBearerEnabledMessage = "🔐 Auth mode: ENTRA JWT BEARER";
+const string EntraPlusLocalAuthMessage = "🔐 Auth mode: ENTRA JWT BEARER (+ local F025 fallback)";
+const string LocalOnlyAuthMessage = "🔐 Auth mode: LOCAL F025 ONLY (Auth:Entra:Authority not set)";
 
 var app = builder.Build();
 
@@ -325,14 +369,7 @@ try
         }
     }
 
-    if (devBypassEnabled)
-    {
-        app.Logger.LogWarning(DevBypassWarningMessage);
-    }
-    else
-    {
-        app.Logger.LogInformation(JwtBearerEnabledMessage);
-    }
+    app.Logger.LogInformation(entraConfigured ? EntraPlusLocalAuthMessage : LocalOnlyAuthMessage);
 
     Log.Information("Starting Tech Inventory API");
     await app.RunAsync();

@@ -144,7 +144,7 @@ Postgres via Testcontainers and exercise the API through `WebApplicationFactory`
 
 - `IntegrationTestFactory` boots the API with a per-test Postgres container.
 - `ControllerTestBase` provides an authenticated `HttpClient` via
-  `TestJwtBuilder` (HS256 token matching the dev-bypass JwtBearer scheme).
+  `TestJwtBuilder` (HS256 token matching the local-issuer JwtBearer scheme).
 - Migrations run on container start — schema drift is caught immediately.
 - Audit-stamp assertions go through `AuditEventAssertionHelper`.
 
@@ -198,9 +198,11 @@ with `npm ci` inside `tests/e2e`. Page objects live in `tests/e2e/pages/`
 
 - Spec files: `tests/e2e/specs/*.spec.ts`
 - Critical journeys (the ones that gate releases) are tagged `@critical`.
-- Auth is wired through a **dev-bypass fixture** (`tests/e2e/fixtures/auth.ts`)
-  that mints a test JWT against the dev-only bypass scheme. Tests do not go
-  through the real Entra redirect.
+- Auth is wired through a **local-account fixture** (`tests/e2e/fixtures/auth.ts`)
+  that exchanges the F025-seeded admin's credentials at
+  `POST /api/v1/auth/local/login` for an HS256 JWT, decodes the claims, and
+  drops both into sessionStorage before any in-page script runs. Tests do not
+  go through the real Entra redirect.
 
 Run:
 
@@ -273,10 +275,11 @@ will fail loudly otherwise.
 | Unit (BE)    | Not applicable — pure logic.                                                                                                                         |
 | Integration  | `TestJwtBuilder` mints an HS256 token consumed by the dev-only JwtBearer scheme. Set `role`, `oid`, `name` per test. Local-fallback paths use the same builder but with issuer `techinventory-local`. |
 | Unit (FE)    | Mock the `auth` store, not `fetch`. If you find yourself stubbing `sessionStorage`, prefer a store-level fake.                                       |
-| E2E          | `tests/e2e/fixtures/auth.ts` — `useAuthenticatedPage(role)` fixture mints a dev-bypass JWT and primes sessionStorage before the page loads. No Entra redirect in E2E. |
+| E2E          | `tests/e2e/fixtures/auth.ts` — the `authenticated` test variant POSTs to `/api/v1/auth/local/login` with the F025-seeded admin creds, injects the returned JWT + meta into sessionStorage via `page.addInitScript`, and overrides Playwright's `request` fixture to carry `Authorization: Bearer <token>`. No Entra redirect in E2E. |
 
 **Do not** test against a live Entra tenant from CI. The whole point of the
-dev-bypass scheme is that auth is exercised in isolation.
+F025 local-account path is that auth is exercised in isolation against a
+seeded admin row.
 
 ---
 

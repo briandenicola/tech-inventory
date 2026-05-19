@@ -5,6 +5,7 @@ using TechInventory.Application.Common.Paging;
 using TechInventory.Application.Owners;
 using TechInventory.Domain.Entities;
 using TechInventory.Domain.Enums;
+using TechInventory.IntegrationTests.Support;
 
 namespace TechInventory.IntegrationTests.Controllers;
 
@@ -166,10 +167,10 @@ public sealed class OwnersControllerTests(IntegrationTestFactory<OwnersControlle
     }
 
     [Fact]
-    public async Task GetCurrentOwner_WithDevBypass_AutoProvisionsOnFirstCall_AndReturnsSameOwnerOnSecondCall()
+    public async Task GetCurrentOwner_AutoProvisionsOnFirstCall_AndReturnsSameOwnerOnSecondCall()
     {
         await ResetDatabaseAsync();
-        var devEntraObjectId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var devEntraObjectId = Guid.Parse(TestAuthHandler.DefaultUserId);
         using var client = CreateClient();
 
         var firstResponse = await client.GetAsync("/api/v1/owners/me");
@@ -203,12 +204,12 @@ public sealed class OwnersControllerTests(IntegrationTestFactory<OwnersControlle
     }
 
     [Fact]
-    public async Task UpdateMyProfile_WithDevBypass_RenamesOwnerAndEmitsAuditEvent()
+    public async Task UpdateMyProfile_RenamesOwnerAndEmitsAuditEvent()
     {
         await ResetDatabaseAsync();
         using var client = CreateClient();
 
-        // GET /me first to auto-provision the dev-bypass owner.
+        // GET /me first to auto-provision the authenticated owner.
         var provisioned = await client.GetAsync("/api/v1/owners/me");
         provisioned.StatusCode.Should().Be(HttpStatusCode.OK);
         var seed = await ReadJsonAsync<OwnerResponse>(provisioned);

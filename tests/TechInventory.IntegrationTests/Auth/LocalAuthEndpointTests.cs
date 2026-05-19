@@ -15,8 +15,8 @@ namespace TechInventory.IntegrationTests.Auth;
 
 /// <summary>
 /// F025 — end-to-end behaviour of /api/v1/auth/local/login + change-password.
-/// Uses a dedicated factory that disables DevBypass and enables the local
-/// signing key so the actual JWT scheme is exercised.
+/// Uses a dedicated factory that opts out of the in-memory TestAuthHandler
+/// and enables the local signing key so the actual JWT scheme is exercised.
 /// </summary>
 public sealed class LocalAuthEndpointTests : IClassFixture<LocalAuthEndpointTests.LocalAuthFactory>
 {
@@ -148,6 +148,8 @@ public sealed class LocalAuthEndpointTests : IClassFixture<LocalAuthEndpointTest
     {
         protected override string Environment => "Testing";
 
+        protected override bool UseTestAuth => false;
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             base.ConfigureWebHost(builder);
@@ -156,7 +158,6 @@ public sealed class LocalAuthEndpointTests : IClassFixture<LocalAuthEndpointTest
             {
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["Auth:DevBypass"] = "false",
                     // Entra wiring is required by the startup-config check even
                     // though we never exchange Entra tokens here.
                     ["Auth:Entra:Authority"] = "https://login.microsoftonline.com/test-tenant/v2.0",

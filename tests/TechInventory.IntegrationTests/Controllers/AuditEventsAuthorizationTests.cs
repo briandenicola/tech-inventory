@@ -7,7 +7,7 @@ namespace TechInventory.IntegrationTests.Controllers;
 /// <summary>
 /// Negative-path coverage for F021: confirms <c>/api/v1/audit-events</c>
 /// rejects non-Admin callers with 403, even when authenticated via the
-/// dev-bypass handler stamped as a Member.
+/// in-memory <c>TestAuthHandler</c> stamped as a Member.
 /// </summary>
 public sealed class AuditEventsAuthorizationTests(MemberRoleIntegrationTestFactory<AuditEventsAuthorizationTests> factory)
     : IClassFixture<MemberRoleIntegrationTestFactory<AuditEventsAuthorizationTests>>

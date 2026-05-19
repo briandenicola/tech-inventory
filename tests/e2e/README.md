@@ -82,16 +82,19 @@ All tests enforce **localhost-only** network access. Any outbound call to a non-
 
 ## Authentication
 
-Tests do **not** go through the real Entra redirect. Two paths are wired:
+Tests do **not** go through the real Entra redirect. The E2E stack runs the
+F025 break-glass local-account path end-to-end:
 
-- **Dev-bypass JWT fixture** — `fixtures/auth.ts` exposes
-  `useAuthenticatedPage(role)`, which mints a test JWT against the API's
-  dev-only `JwtBearer` scheme and primes sessionStorage before navigation.
-  Use this for every journey that needs an authenticated user.
-- **Local-account fallback** — for journeys that specifically exercise F025
-  v1b, sign in through `LocalLoginForm` against `POST /api/v1/auth/local/login`;
-  the token lands in sessionStorage under `ti_local_token` and the same
-  `useAuthenticatedPage` helper covers the rest of the journey.
+- **Local-account fixture** — `fixtures/auth.ts` exposes an `authenticated`
+  test variant. Its `adminPage` fixture POSTs the F025-seeded admin's
+  credentials to `/api/v1/auth/local/login`, decodes the returned HS256 JWT,
+  and injects both the token and the decoded meta into `sessionStorage` via
+  `page.addInitScript` (so the SvelteKit root layout's `hydrateLocalSession()`
+  picks them up on first navigation). The same fixture also overrides
+  Playwright's default `request` so journey specs that seed reference data
+  via `fixtures/api.ts` carry `Authorization: Bearer <token>` automatically.
+- **Override the seed creds** via `E2E_SEED_USERNAME` / `E2E_SEED_PASSWORD`
+  if you change them in `docker-compose.e2e.yml`.
 
 End-to-end auth design lives in `docs/auth-design.md` (Workforce tenant +
 F025 v1b §6); per-test usage of the fixture is documented inline in

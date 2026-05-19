@@ -60,6 +60,7 @@ public sealed class LocalAdminSeedHostedService(
             .ConfigureAwait(false);
 
         var hash = hasher.Hash(password);
+        var requireChange = _options.SeedRequireChangeOnFirstLogin;
         if (existing is null)
         {
             var seeded = new LocalUser(
@@ -69,20 +70,34 @@ public sealed class LocalAdminSeedHostedService(
                 role: OwnerRole.Admin,
                 passwordHash: hash,
                 passwordAlgorithm: hasher.CurrentAlgorithm,
-                mustChangePasswordOnNextLogin: true,
+                mustChangePasswordOnNextLogin: requireChange,
                 createdBy: "seed:LocalAdminSeedHostedService");
             await dbContext.LocalUsers.AddAsync(seeded, cancellationToken).ConfigureAwait(false);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            logger.LogCritical("[F025] Seeded local Admin account '{Username}' (must change password on first login). Clear Auth:Local:Seed* env vars after first successful login.", normalizedUsername);
+            if (requireChange)
+            {
+                logger.LogCritical("[F025] Seeded local Admin account '{Username}' (must change password on first login). Clear Auth:Local:Seed* env vars after first successful login.", normalizedUsername);
+            }
+            else
+            {
+                logger.LogWarning("[F025] Seeded local Admin account '{Username}' with SeedRequireChangeOnFirstLogin=false (intended for dev/E2E only — never enable this in production).", normalizedUsername);
+            }
         }
         else
         {
-            // Idempotent: re-hash + force must-change so a rerun acts as a
-            // password reset for the break-glass account.
-            existing.SetPassword(hash, hasher.CurrentAlgorithm, requireChangeOnNextLogin: true, modifiedBy: "seed:LocalAdminSeedHostedService");
+            // Idempotent: re-hash + (optionally) force must-change so a rerun
+            // acts as a password reset for the break-glass account.
+            existing.SetPassword(hash, hasher.CurrentAlgorithm, requireChangeOnNextLogin: requireChange, modifiedBy: "seed:LocalAdminSeedHostedService");
             existing.Reactivate("seed:LocalAdminSeedHostedService");
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            logger.LogCritical("[F025] Reset local Admin '{Username}' from seed config (must change password on next login). Clear Auth:Local:Seed* env vars after first successful login.", normalizedUsername);
+            if (requireChange)
+            {
+                logger.LogCritical("[F025] Reset local Admin '{Username}' from seed config (must change password on next login). Clear Auth:Local:Seed* env vars after first successful login.", normalizedUsername);
+            }
+            else
+            {
+                logger.LogWarning("[F025] Reset local Admin '{Username}' with SeedRequireChangeOnFirstLogin=false (intended for dev/E2E only).", normalizedUsername);
+            }
         }
     }
 

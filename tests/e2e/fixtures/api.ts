@@ -1,17 +1,21 @@
 /**
  * API test helpers for Playwright E2E.
  *
- * The dev-bypass auth shim (see /src/TechInventory.Web/src/lib/auth/dev-bypass.ts
- * + DevBypassAuthenticationHandler on the backend) authenticates every request
- * as the dev-admin user when the API runs with the Auth:DevBypass flag enabled.
- * That means Playwright's request context can POST to /api/v1/* without any
- * auth headers — the web container reverse-proxies /api/* to the backend over
- * the compose network and the backend stamps the dev-admin identity onto the
- * request.
+ * The F025 local-account auth path is in force for E2E (see
+ * tests/e2e/fixtures/auth.ts): the `authenticated` test variant exchanges
+ * the seeded admin's credentials at POST /api/v1/auth/local/login for an
+ * HS256 JWT and overrides Playwright's default `request` fixture so the
+ * resulting `APIRequestContext` carries `Authorization: Bearer <token>` on
+ * every call. The web container reverse-proxies /api/* to the backend over
+ * the compose network; the API's TechInventoryAuth PolicyScheme routes the
+ * local-issuer token to the HMAC validator and stamps the seeded admin's
+ * identity onto the request.
  *
  * These helpers seed reference data + devices on demand so journey specs don't
  * need to depend on a pre-populated database. Each helper returns the created
- * entity (with `id`) so the caller can chain dependent requests.
+ * entity (with `id`) so the caller can chain dependent requests. Tests that
+ * call them MUST destructure `request` from the `authenticated` fixture (not
+ * the vanilla `test`) so the seeds are authorised.
  *
  * IMPORTANT: tests own their data. Use a unique suffix (Date.now() + random)
  * on every seed so parallel workers don't collide on unique-name validation.

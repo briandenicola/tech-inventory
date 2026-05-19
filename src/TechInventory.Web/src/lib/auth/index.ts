@@ -8,7 +8,6 @@
  */
 
 import { msalInstance, apiTokenRequest, ensureMsalInitialized } from './msal';
-import { isAuthDevBypass, devBypassAccount } from './dev-bypass';
 import type { AccountInfo, AuthenticationResult, InteractionRequiredAuthError } from '@azure/msal-browser';
 
 /**
@@ -20,7 +19,6 @@ import type { AccountInfo, AuthenticationResult, InteractionRequiredAuthError } 
  * awaits the same promise via acquireApiToken().
  */
 export async function initializeMsal(): Promise<void> {
-	if (isAuthDevBypass()) return;
 	await ensureMsalInitialized();
 }
 
@@ -30,7 +28,6 @@ export async function initializeMsal(): Promise<void> {
  * Returns AuthenticationResult if redirect contained auth response, null otherwise
  */
 export async function handleRedirectPromise(): Promise<AuthenticationResult | null> {
-	if (isAuthDevBypass()) return null;
 	await ensureMsalInitialized();
 	return await msalInstance.handleRedirectPromise();
 }
@@ -42,7 +39,6 @@ export async function handleRedirectPromise(): Promise<AuthenticationResult | nu
  * Caller must ensure MSAL is initialized first (see ensureMsalInitialized).
  */
 export function getActiveAccount(): AccountInfo | null {
-	if (isAuthDevBypass()) return devBypassAccount();
 	const accounts = msalInstance.getAllAccounts();
 	if (accounts.length === 0) {
 		return null;
@@ -68,7 +64,6 @@ export function getActiveAccount(): AccountInfo | null {
  * Per Constitution: Uses acquireTokenRedirect (NOT popup) — popups are blocked / poor UX
  */
 export async function acquireApiToken(): Promise<string | null> {
-	if (isAuthDevBypass()) return null;
 	await ensureMsalInitialized();
 	const account = getActiveAccount();
 	

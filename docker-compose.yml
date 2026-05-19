@@ -1,4 +1,12 @@
-# Tech Inventory — Dev Stack
+# Tech Inventory — Compose stack
+#
+# Single-file deploy for local prod-shape testing and Brian's home-server stack.
+# Brian's external reverse proxy terminates TLS at
+# https://inventory.denicolafamily.com and forwards plain HTTP to http://<host>:3000.
+# The web container serves the SvelteKit static bundle and reverse-proxies
+# /api/* -> http://api:8080/api/* over techinv-net.
+# Set ASPNETCORE_ENVIRONMENT=Production on the host for production deploys;
+# local compose defaults stay Development for auth-bypass workflows.
 #
 # DATABASE NOTE: SQLite is a file, not a container. The `techinv-data` volume
 # is mounted into the API container at /data/. The API writes to /data/techinv.db.
@@ -15,8 +23,6 @@
 #   task logs    — Tail logs
 #   task ps      — Show running services
 
-version: '3.9'
-
 services:
   api:
     build:
@@ -27,7 +33,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
       ConnectionStrings__Default: "Data Source=/data/techinv.db"
       OTEL_EXPORTER_OTLP_ENDPOINT: ""  # Empty in dev; override for local Seq/Jaeger
     volumes:
@@ -59,13 +65,7 @@ services:
     container_name: techinv-web
     image: techinv-web:dev
     ports:
-      - "3000:3000"
-    environment:
-      NODE_ENV: development
-      PUBLIC_API_URL: http://localhost:8080/api/v1
-    tmpfs:
-      - /tmp
-    user: "1000:1000"
+      - "3000:80"
     restart: unless-stopped
     networks:
       - techinv-net
@@ -73,7 +73,7 @@ services:
       api:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
       interval: 10s
       timeout: 5s
       retries: 3

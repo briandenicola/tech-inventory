@@ -287,3 +287,10 @@ CI quality gate must be green to merge: tests, security scans, SBOM.
 - No open Windows compatibility issues remain
 
 <!-- Append new learnings below. Each entry is something lasting about the project. -->
+
+### 2026-05-19 — D-135 Web reverse proxy runtime
+- **Static adapter contract:** `src/TechInventory.Web/svelte.config.js` uses `@sveltejs/adapter-static`, so the container runtime must serve files from `build/`; `node build` is invalid and was a latent startup bug in the old Dockerfile.
+- **Prod ingress shape:** Brian's home deployment is same-origin at `https://inventory.denicolafamily.com`; the web container owns both SPA hosting and `/api/*` proxying to `http://api:8080` over `techinv-net`.
+- **Compose stance:** Keep web published as `3000:80` for local prod-shape testing, but treat the external TLS proxy as the only intended public entrypoint in production.
+- **CORS defense-in-depth:** Even with same-origin proxying, `src/TechInventory.Api/appsettings.Production.json` should whitelist `https://inventory.denicolafamily.com` so accidental direct exposure still has an origin allow-list.
+- **Verification lesson:** Check tool availability first; this Windows session still lacks both `docker` and `nginx`, so container validation can be blocked even when repo-local build and config changes are ready.

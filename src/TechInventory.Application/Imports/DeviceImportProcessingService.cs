@@ -4,6 +4,7 @@ using CsvHelper;
 using CsvHelper.Configuration;
 using FluentValidation;
 using TechInventory.Application.Abstractions.Repositories;
+using TechInventory.Application.Abstractions.Services;
 using TechInventory.Application.Common.Validation;
 using TechInventory.Domain.Entities;
 using TechInventory.Domain.Enums;
@@ -38,7 +39,8 @@ internal sealed class DeviceImportProcessingService(
     ICategoryRepository categoryRepository,
     IOwnerRepository ownerRepository,
     ILocationRepository locationRepository,
-    INetworkRepository networkRepository) : IDeviceImportProcessingService
+    INetworkRepository networkRepository,
+    ICurrentUserService currentUserService) : IDeviceImportProcessingService
 {
     private const int MaxStoredErrorLogLength = 32_768;
 
@@ -60,6 +62,7 @@ internal sealed class DeviceImportProcessingService(
         ArgumentNullException.ThrowIfNull(fileContents);
 
         var lookupCatalog = await BuildLookupCatalogAsync(cancellationToken).ConfigureAwait(false);
+        var currentImporter = await ResolveCurrentImporterAsync(cancellationToken).ConfigureAwait(false);
         using var stream = new MemoryStream(fileContents, writable: false);
         using var reader = new StreamReader(stream);
         using var csv = new CsvReader(reader, CsvConfiguration);
@@ -150,16 +153,13 @@ internal sealed class DeviceImportProcessingService(
                     rowErrors,
                     rowMissingLookups,
                     allowCreate: true);
-                var ownerId = ResolveLookup(
-                    entityType: nameof(Owner),
-                    fieldName: ImportFieldNames.Owner,
-                    value: candidate.Owner,
+                var ownerId = ResolveOwnerLookup(
+                    candidate.Owner,
+                    currentImporter,
                     lookupCatalog.ActiveOwners,
                     lookupCatalog.InactiveOwners,
-                    owner => owner.Id,
                     rowErrors,
-                    rowMissingLookups,
-                    allowCreate: true);
+                    rowMissingLookups);
                 var locationId = ResolveLookup(
                     entityType: nameof(Location),
                     fieldName: ImportFieldNames.Location,
@@ -184,6 +184,9 @@ internal sealed class DeviceImportProcessingService(
                 if (rowErrors.Count == 0)
                 {
                     missingLookups.AddRange(rowMissingLookups);
+                    var resolvedOwnerName = string.IsNullOrWhiteSpace(candidate.Owner) && currentImporter is not null
+                        ? currentImporter.DisplayName
+                        : candidate.Owner;
                     validRows.Add(new PreparedImportRow(
                         rowNumber,
                         rawValues,
@@ -191,7 +194,7 @@ internal sealed class DeviceImportProcessingService(
                             candidate.Name,
                             candidate.Brand,
                             candidate.Category,
-                            candidate.Owner,
+                            resolvedOwnerName,
                             candidate.Location,
                             candidate.Model,
                             candidate.SerialNumber,
@@ -512,6 +515,56 @@ internal sealed class DeviceImportProcessingService(
         return null;
     }
 
+    private Guid? ResolveOwnerLookup(
+        string ownerValue,
+        Owner? currentImporter,
+        IReadOnlyDictionary<string, IReadOnlyList<Owner>> activeOwners,
+        IReadOnlyDictionary<string, IReadOnlyList<Owner>> inactiveOwners,
+        ICollection<ImportFieldError> errors,
+        ICollection<MissingLookup> missingLookups)
+    {
+        if (string.IsNullOrWhiteSpace(ownerValue))
+        {
+            if (currentImporter is not null)
+            {
+                return currentImporter.Id;
+            }
+
+            errors.Add(new ImportFieldError(
+                ImportFieldNames.Owner,
+                "Owner is required when the importing user has no provisioned owner record."));
+            return null;
+        }
+
+        return ResolveLookup(
+            entityType: nameof(Owner),
+            fieldName: ImportFieldNames.Owner,
+            value: ownerValue,
+            activeOwners,
+            inactiveOwners,
+            owner => owner.Id,
+            errors,
+            missingLookups,
+            allowCreate: true);
+    }
+
+    private async Task<Owner?> ResolveCurrentImporterAsync(CancellationToken cancellationToken)
+    {
+        var userId = currentUserService.GetCurrentUserId();
+        if (string.IsNullOrWhiteSpace(userId) || string.Equals(userId, "system", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        if (!Guid.TryParse(userId, out var entraObjectId))
+        {
+            return null;
+        }
+
+        var result = await ownerRepository.GetByEntraObjectIdAsync(entraObjectId, cancellationToken).ConfigureAwait(false);
+        return result.IsSuccess ? result.Value : null;
+    }
+
     private async Task<LookupCatalog> BuildLookupCatalogAsync(CancellationToken cancellationToken)
     {
         var brands = await brandRepository.ListAsync(true, cancellationToken).ConfigureAwait(false);
@@ -601,7 +654,6 @@ internal sealed class DeviceImportProcessingService(
                 .MaximumLength(200);
 
             RuleFor(row => row.Owner)
-                .NotEmpty()
                 .MaximumLength(200);
 
             RuleFor(row => row.Location)

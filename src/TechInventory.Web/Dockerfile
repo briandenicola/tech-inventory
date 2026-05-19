@@ -13,7 +13,7 @@ ENV VITE_AUTH_DEV_BYPASS=$VITE_AUTH_DEV_BYPASS
 
 RUN corepack enable
 
-COPY src/TechInventory.Web/package.json src/TechInventory.Web/pnpm-lock.yaml* ./
+COPY src/TechInventory.Web/package.json src/TechInventory.Web/pnpm-lock.yaml* src/TechInventory.Web/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile || pnpm install
 
 COPY src/TechInventory.Web/ ./

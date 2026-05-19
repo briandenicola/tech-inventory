@@ -657,5 +657,17 @@
 		"menu": "Menu",
 		"closeMenu": "Close menu",
 		"userMenu": "User menu"
+	},
+	"offline": {
+		"title": "You're offline",
+		"description": "Tech Inventory needs an internet connection to load fresh data. Check your network and try again.",
+		"retry": "Try again"
+	},
+	"pwa": {
+		"update": {
+			"message": "A new version of Tech Inventory is ready.",
+			"reload": "Reload",
+			"dismiss": "Dismiss"
+		}
 	}
 }

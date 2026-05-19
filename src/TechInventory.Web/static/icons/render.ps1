@@ -53,6 +53,7 @@ try {
 # Rasterization sizes
 $sizes = @(
     @{Name="icon-240.png"; Width=240; Height=240; Purpose="Entra app registration"},
+    @{Name="icon-180.png"; Width=180; Height=180; Purpose="iOS apple-touch-icon"},
     @{Name="icon-192.png"; Width=192; Height=192; Purpose="PWA manifest standard"},
     @{Name="icon-512.png"; Width=512; Height=512; Purpose="PWA manifest large"},
     @{Name="icon-maskable-512.png"; Width=512; Height=512; Purpose="PWA maskable (full bleed)"},

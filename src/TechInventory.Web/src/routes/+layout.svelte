@@ -6,6 +6,7 @@
 	import '$lib/api'; // Wire MSAL token provider into API client
 	import '../app.css';
 	import { t } from '$lib/i18n';
+	import PwaUpdatePrompt from '$lib/components/PwaUpdatePrompt.svelte';
 
 	let { children } = $props();
 
@@ -57,6 +58,8 @@
 <main id="main-content">
 	{@render children()}
 </main>
+
+<PwaUpdatePrompt />
 
 <style>
 	.skip-link {

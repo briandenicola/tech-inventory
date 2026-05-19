@@ -10,7 +10,7 @@ How to decide who handles what.
 | Backend / API / Domain / EF Core / MediatR | Hicks | "Add a Devices endpoint", "write the import handler", domain model changes, migrations |
 | Frontend / SvelteKit / PWA / TS client / Tailwind | Vasquez | "Build the device list view", "wire MSAL on the client", design tokens, i18n, offline cache |
 | Docker / Compose / Taskfile / GHA / observability / backups | Hudson | "Set up `task up`", healthchecks, prod compose, CI workflow, backup drill |
-| Entra ID / OIDC / authz policies / audit / threat model / secret handling | Bishop | "Design the role policies", "review token storage", threat model updates, vuln triage |
+| Entra ID / OIDC / authz policies / audit / threat model / secret handling / local-account fallback (F025 v1b per D-140) | Bishop | "Design the role policies", "review token storage", threat model updates, vuln triage, "local admin fallback design" |
 | Tests at any level — unit, integration, contract, Playwright E2E, axe-core, Lighthouse | Apone | "Write Playwright for journey #3", "find why this test is flaky", coverage gaps, perf budgets |
 | Icons, favicons, PWA icon sets, logos, brand palette, SVG illustrations, raster pipelines | Drake | "Design the app icon", "make a maskable variant", "extend the color palette", "build the README hero" |
 | Code review (domain-specific) | Owning agent | Each owner reviews PRs in their domain; Ripley arbitrates cross-cutting |

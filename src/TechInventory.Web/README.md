@@ -35,14 +35,25 @@ pnpm run preview
 
 ## Structure
 
-- `src/lib/tokens.css` - Design tokens (CSS custom properties)
-- `src/lib/i18n/` - Internationalization catalogs
-- `src/lib/auth/` - MSAL.js auth (Phase 2)
-- `src/lib/api/` - Generated TypeScript API client (Phase 1)
-- `src/routes/` - SvelteKit routes
+- `src/lib/tokens.css` - Design tokens (CSS custom properties) — D-137 / D-138 visual baseline.
+- `src/lib/i18n/` - Internationalization catalogs.
+- `src/lib/auth/` - MSAL.js (Workforce-tenant Entra) and the local-auth client (sessionStorage tokens
+  `ti_local_token` / `ti_local_meta`) — see `docs/auth-design.md` §6 and ADR D-140.
+- `src/lib/api/` - Generated TypeScript API client.
+- `src/routes/` - SvelteKit routes (notably `auth/change-password` for the F025 v1b force-rotation flow).
+
+## Auth surface (F025 v1b)
+
+The sign-in page renders MSAL by default and offers a **"Use a local account
+instead"** toggle (`LocalLoginForm`) that calls `POST /api/v1/auth/local/login`,
+stores the returned JWT under `ti_local_token` plus metadata under `ti_local_meta`
+in **sessionStorage only** (per Constitution §6 / D-002 / security-baseline §1),
+and routes through the same `auth` store the Entra flow uses. If the local
+token carries `mustChangePassword: true`, a root-layout `$effect` redirects to
+`/auth/change-password`, which submits to `POST /api/v1/auth/local/change-password`
+and clears the flag on success. End-to-end design lives in `docs/auth-design.md`
+§6; operator runbook lives in `docs/operations.md`.
 
 ## TODO
 
-- [ ] Generate TS API client from OpenAPI spec (after Hicks lands Phase 1 endpoints)
-- [ ] Wire MSAL.js auth (Phase 2, Bishop owns design)
-- [ ] Service worker for offline support (PRD §U22)
+- [ ] Service worker for offline support (PRD §U22).

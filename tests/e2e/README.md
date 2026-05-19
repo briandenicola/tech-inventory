@@ -82,9 +82,20 @@ All tests enforce **localhost-only** network access. Any outbound call to a non-
 
 ## Authentication
 
-TODO: Wire once Bishop delivers Entra ID test tenant fixture OR local-dev auth bypass.
+Tests do **not** go through the real Entra redirect. Two paths are wired:
 
-See `fixtures/auth.ts` for placeholder. Reference: `docs/auth-design.md`.
+- **Dev-bypass JWT fixture** — `fixtures/auth.ts` exposes
+  `useAuthenticatedPage(role)`, which mints a test JWT against the API's
+  dev-only `JwtBearer` scheme and primes sessionStorage before navigation.
+  Use this for every journey that needs an authenticated user.
+- **Local-account fallback** — for journeys that specifically exercise F025
+  v1b, sign in through `LocalLoginForm` against `POST /api/v1/auth/local/login`;
+  the token lands in sessionStorage under `ti_local_token` and the same
+  `useAuthenticatedPage` helper covers the rest of the journey.
+
+End-to-end auth design lives in `docs/auth-design.md` (Workforce tenant +
+F025 v1b §6); per-test usage of the fixture is documented inline in
+`fixtures/auth.ts`.
 
 ## Accessibility
 

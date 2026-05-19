@@ -27,7 +27,7 @@
 - **Owner:** Brian
 - **Project:** Tech Inventory — self-hosted family device/appliance inventory tracker. Single household. Replaces a long-running SharePoint List with a modern PWA + REST API.
 - **Stack:** ASP.NET Core 10 (Clean Architecture, MediatR, FluentValidation, EF Core, SQLite, Serilog, OpenTelemetry). SvelteKit PWA (TypeScript strict, Tailwind, MSAL.js, generated TS client). Docker Compose, Task (taskfile.dev), GitHub Actions → GHCR.
-- **Auth:** Microsoft Entra ID (External ID), OIDC + PKCE. Roles: Admin / Member / Viewer.
+- **Auth:** Microsoft Entra ID (Workforce tenant) — OIDC + PKCE via MSAL.js. Roles: Admin / Member / Viewer. Local-account fallback per ADR D-140 (F025 v1b — `LocalAdminSeedHostedService` + `/api/v1/auth/local/{login,change-password}`).
 - **Testing:** xUnit + Testcontainers, Vitest + Testing Library, Playwright (mandatory E2E, Chromium + WebKit + Firefox), axe-core, Lighthouse CI.
 - **Authority hierarchy:** `.specify/memory/constitution.md` → `docs/prd.md` → `specs/00X-*/spec.md` → `specs/00X-*/plan.md` → `tasks.md` → agent judgment.
 - **References:** R1 drinks-and-desserts, R2 coin-collection-app (`docs/references.md`). Patterns yes, code no.

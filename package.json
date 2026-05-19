@@ -1,0 +1,9 @@
+{
+  "name": "tech-inventory-devtools",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Root devtools for Tech Inventory monorepo",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

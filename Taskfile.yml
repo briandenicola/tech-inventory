@@ -12,6 +12,7 @@ version: '3'
 #
 # Local validation:
 #   task validate:local  — Fresh checkout → working dev environment with DB migrations applied
+#   task dev:up          — One-command dev: migrate + run API + Web in parallel (Ctrl+C exits both)
 #   task dev:api         — Run API (foreground, http://localhost:8080)
 #   task dev:web         — Run Web dev server (foreground, http://localhost:5173)
 #   task import:preview  — Preview CSV import (default: data/Devices.csv)
@@ -170,6 +171,15 @@ tasks:
       - cmd: cd src/TechInventory.Web && pnpm run dev
         platforms: [linux, darwin]
 
+  dev:up:
+    desc: One-command dev — migrate + run API + Web in parallel (Ctrl+C exits both)
+    deps: [db:migrate]
+    cmds:
+      - cmd: set "ASPNETCORE_ENVIRONMENT=Development" && npx concurrently --kill-others --names "API,WEB" --prefix-colors "blue,green" "dotnet run --project src\TechInventory.Api\TechInventory.Api.csproj" "pnpm --dir src\TechInventory.Web run dev"
+        platforms: [windows]
+      - cmd: ASPNETCORE_ENVIRONMENT=Development npx concurrently --kill-others --names "API,WEB" --prefix-colors "blue,green" "dotnet run --project src/TechInventory.Api/TechInventory.Api.csproj" "pnpm --dir src/TechInventory.Web run dev"
+        platforms: [linux, darwin]
+
   dev:
     desc: Run API and Web dev servers (see task validate:local for full flow)
     cmds:
@@ -264,7 +274,7 @@ tasks:
         platforms: [linux, darwin]
 
   validate:local:
-    desc: Full local validation flow (restore → migrate → instructions)
+    desc: Full local validation flow (restore → migrate → ready to run dev:up)
     cmds:
       - task: restore
       - task: db:migrate
@@ -272,14 +282,17 @@ tasks:
           Write-Host ""
           Write-Host "✅ Dependencies restored and database migrated." -ForegroundColor Green
           Write-Host ""
-          Write-Host "🚀 Next steps:" -ForegroundColor Cyan
-          Write-Host "   1. Open Terminal 1 and run: task dev:api"
-          Write-Host "   2. Open Terminal 2 and run: task dev:web"
-          Write-Host "   3. Wait for both to start, then:"
-          Write-Host "      • API health: http://localhost:8080/health/ready"
-          Write-Host "      • Web UI: http://localhost:5173"
-          Write-Host "   4. Preview your CSV: task import:preview"
-          Write-Host "   5. Commit to DB: task import:commit CONFIRM=yes"
+          Write-Host "🚀 Next step: Run the dev stack with one command:" -ForegroundColor Cyan
+          Write-Host "   task dev:up" -ForegroundColor Green
+          Write-Host ""
+          Write-Host "   This will start API (http://localhost:8080) and Web (http://localhost:5173) in parallel." -ForegroundColor White
+          Write-Host "   Press Ctrl+C to stop both servers." -ForegroundColor White
+          Write-Host ""
+          Write-Host "Once running:" -ForegroundColor Cyan
+          Write-Host "   • API health: http://localhost:8080/health/ready"
+          Write-Host "   • Web UI: http://localhost:5173"
+          Write-Host "   • Preview CSV: task import:preview"
+          Write-Host "   • Commit to DB: task import:commit CONFIRM=yes"
           Write-Host ""
           Write-Host "💡 Auth bypass is enabled in Development mode (no token required)." -ForegroundColor Yellow
         platforms: [windows]
@@ -287,14 +300,17 @@ tasks:
           echo ""
           echo "✅ Dependencies restored and database migrated."
           echo ""
-          echo "🚀 Next steps:"
-          echo "   1. Open Terminal 1 and run: task dev:api"
-          echo "   2. Open Terminal 2 and run: task dev:web"
-          echo "   3. Wait for both to start, then:"
-          echo "      • API health: http://localhost:8080/health/ready"
-          echo "      • Web UI: http://localhost:5173"
-          echo "   4. Preview your CSV: task import:preview"
-          echo "   5. Commit to DB: task import:commit CONFIRM=yes"
+          echo "🚀 Next step: Run the dev stack with one command:"
+          echo "   task dev:up"
+          echo ""
+          echo "   This will start API (http://localhost:8080) and Web (http://localhost:5173) in parallel."
+          echo "   Press Ctrl+C to stop both servers."
+          echo ""
+          echo "Once running:"
+          echo "   • API health: http://localhost:8080/health/ready"
+          echo "   • Web UI: http://localhost:5173"
+          echo "   • Preview CSV: task import:preview"
+          echo "   • Commit to DB: task import:commit CONFIRM=yes"
           echo ""
           echo "💡 Auth bypass is enabled in Development mode (no token required)."
         platforms: [linux, darwin]

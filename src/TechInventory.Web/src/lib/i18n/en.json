@@ -242,7 +242,18 @@
 			"statusDisposed": "Disposed",
 			"statusInRepair": "In Repair",
 			"statusLent": "Lent",
-			"resultsAnnouncement": "{count} devices found"
+			"resultsAnnouncement": "{count} devices found",
+			"groupByLabel": "Group by",
+			"groupByNone": "None",
+			"groupByCategory": "Category",
+			"groupByOwner": "Owner",
+			"groupByYear": "Purchase year"
+		},
+		"groups": {
+			"unknown": "Unknown",
+			"countBadge": "{count}",
+			"expandGroup": "Expand {label}",
+			"collapseGroup": "Collapse {label}"
 		}
 	},
 	"ownership": {

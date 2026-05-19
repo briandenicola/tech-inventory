@@ -1,6 +1,6 @@
 # F023: Group Devices By Category, Owner, or Purchase Year
 
-**Status**: backlog
+**Status**: shipped (v1)
 **Priority**: P3
 **Effort**: M
 **Value**: medium
@@ -87,3 +87,13 @@ When a grouping is active:
 ## History
 - 2026-05-19: created — captured during R10/R11 testing as a v1.1 list-view
   ergonomics improvement
+- 2026-05-19: shipped v1 — frontend-only. Added Group By dropdown to the
+  filters sidebar (None / Category / Owner / Purchase year). State is
+  URL-persisted via `?groupBy=`; sorting still applies inside each bucket;
+  ephemeral collapse state per group. When grouping is active the page
+  switches to a 500-row fetch so groups span the full filter result set,
+  and pagination controls are hidden. `groupDevices` helper extracted to
+  `src/lib/utils/groupDevices.ts` with 7 vitest cases covering partition,
+  sort order (year desc, alpha otherwise), and the Unknown (no
+  purchaseDate) bucket. Multi-level grouping and group-level bulk actions
+  remain explicitly out of scope.

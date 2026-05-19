@@ -19,6 +19,8 @@
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import PaginationControls from '$lib/components/PaginationControls.svelte';
 	import AddDeviceModal from '$lib/components/AddDeviceModal.svelte';
+	import { referenceDataStore } from '$lib/stores/referenceData';
+	import { groupDevices } from '$lib/utils/groupDevices';
 
 	/**
 	 * T15: Devices list page — paginated table with filters, sort, and pagination.
@@ -54,13 +56,23 @@
 				? parseInt(params.get('yearMax')!, 10)
 				: undefined,
 			sort: (params.get('sort') as 'name' | 'purchaseDate' | 'createdAt') || undefined,
-			sortDir: (params.get('sortDir') as 'asc' | 'desc') || 'asc'
+			sortDir: (params.get('sortDir') as 'asc' | 'desc') || 'asc',
+			groupBy:
+				(params.get('groupBy') as 'category' | 'owner' | 'year' | null) || undefined
 		};
 		return filters;
 	});
 
 	// Devices query (reactive — pass a getter so filter changes propagate)
-	const query = useDevices(() => urlFilters);
+	// When grouping is active we fetch all matching rows so groups span the
+	// full result set instead of a single page.
+	const effectiveFilters = $derived.by(() => {
+		if (urlFilters.groupBy) {
+			return { ...urlFilters, page: 1, pageSize: 500 };
+		}
+		return urlFilters;
+	});
+	const query = useDevices(() => effectiveFilters);
 
 	// Mobile drawer state
 	let filtersOpen = $state(false);
@@ -88,6 +100,7 @@
 		if (newFilters.sort) params.set('sort', newFilters.sort);
 		if (newFilters.sortDir && newFilters.sortDir !== 'asc')
 			params.set('sortDir', newFilters.sortDir);
+		if (newFilters.groupBy) params.set('groupBy', newFilters.groupBy);
 
 		const url = params.toString() ? `?${params.toString()}` : $page.url.pathname;
 		goto(url, { replaceState: true, keepFocus: true, noScroll: true });
@@ -152,6 +165,19 @@
 		refreshStoredDefault();
 		showToast({ message: t('devices.filters.defaultCleared'), type: 'success' });
 	}
+
+	// F023: group devices client-side when a groupBy dimension is active.
+	// Pulls reference data for human-readable labels (Category/Owner names).
+	const refData = $derived($referenceDataStore);
+	const groupedView = $derived.by(() => {
+		if (!urlFilters.groupBy || !query.data?.items) return undefined;
+		return groupDevices(
+			query.data.items,
+			urlFilters.groupBy,
+			{ categories: refData.categories, owners: refData.owners },
+			t('devices.groups.unknown')
+		);
+	});
 </script>
 
 <div class="flex min-h-screen">
@@ -227,18 +253,21 @@
 			<!-- Table -->
 			<DeviceTable
 				devices={query.data.items}
+				groups={groupedView}
 				currentSort={urlFilters.sort}
 				sortDir={urlFilters.sortDir}
 				onSort={handleSort}
 			/>
 
-			<!-- Pagination -->
-			<PaginationControls
-				currentPage={query.data.page}
-				pageSize={query.data.pageSize}
-				totalCount={query.data.totalCount}
-				onPageChange={handlePageChange}
-			/>
+			<!-- Pagination (hidden while grouping is active; groups span the full page) -->
+			{#if !urlFilters.groupBy}
+				<PaginationControls
+					currentPage={query.data.page}
+					pageSize={query.data.pageSize}
+					totalCount={query.data.totalCount}
+					onPageChange={handlePageChange}
+				/>
+			{/if}
 		{/if}
 	</div>
 </div>

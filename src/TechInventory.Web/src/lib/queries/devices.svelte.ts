@@ -84,6 +84,8 @@ export interface DeviceFilters {
 	sortDir?: 'asc' | 'desc';
 	page?: number;
 	pageSize?: number;
+	/** F023: client-side grouping dimension. Undefined => flat list. */
+	groupBy?: 'category' | 'owner' | 'year';
 }
 
 /**

@@ -77,7 +77,7 @@
 
 	// Clear all filters
 	function clearAll() {
-		onFiltersChange({ page: 1, pageSize: filters.pageSize || 25 });
+		onFiltersChange({ page: 1, pageSize: filters.pageSize || 25, groupBy: filters.groupBy });
 	}
 
 	// Fetch reference data on mount
@@ -129,6 +129,31 @@
 				</svg>
 			</button>
 		{/if}
+	</div>
+
+	<!-- Search -->
+	<div class="mb-6">
+		<label for="groupBy" class="mb-2 block text-base font-medium text-neutral-800 dark:text-neutral-200">
+			{t('devices.filters.groupByLabel')}
+		</label>
+		<select
+			id="groupBy"
+			value={filters.groupBy || ''}
+			onchange={(e) => {
+				const value = (e.target as HTMLSelectElement).value;
+				onFiltersChange({
+					...filters,
+					groupBy: value === '' ? undefined : (value as 'category' | 'owner' | 'year'),
+					page: 1
+				});
+			}}
+			class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:bg-neutral-900"
+		>
+			<option value="">{t('devices.filters.groupByNone')}</option>
+			<option value="category">{t('devices.filters.groupByCategory')}</option>
+			<option value="owner">{t('devices.filters.groupByOwner')}</option>
+			<option value="year">{t('devices.filters.groupByYear')}</option>
+		</select>
 	</div>
 
 	<!-- Search -->

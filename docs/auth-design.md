@@ -258,44 +258,72 @@ Family Member (SvelteKit PWA)
 
 ## 6. Local Admin Bootstrap (PRD §F5)
 
-**Scenario**: First deployment. Admin needs a way to sign in before Entra app is fully configured, or as a fallback if Entra is unavailable.
+**Status**: F025 v1b shipped. The original spec proposal in this section
+described a bcrypt-hashed local account with a web bootstrap page; the
+implementation that actually shipped uses Argon2id + an env-var driven
+hosted-service seeder. The authoritative description of the shipped
+behaviour is **ADR D-140** in [`.squad/decisions.md`](../.squad/decisions.md)
+and the operator runbook in [`docs/operations.md`](operations.md#break-glass-local-admin-f025-v1b).
+Carved-out items (admin CRUD UI, lockout enforcement, refresh tokens,
+self-service convert-to-local) are tracked in
+[`specs/_backlog/F025b-local-admin-power.md`](../specs/_backlog/F025b-local-admin-power.md).
 
-### Design
+### What shipped (F025 v1b)
 
-1. **Local Account Credentials** (stored in DB, hashed with bcrypt):
-   - Initial admin user created during bootstrap setup.
-   - Credentials: `Username` + `PasswordHash` (bcrypt, cost factor ≥ 12).
-   - Endpoint: `POST /api/v1/auth/local-login` (no authorization policy; public during bootstrap).
+| Concern                  | Implementation                                                                                                                                     |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Password hashing         | **Argon2id** via `Konscious.Security.Cryptography.Argon2` 1.3.1 — OWASP 2025 baseline `m=19 456 KiB, t=2, p=1`, salt 16 B, hash 32 B. Encoded `$argon2id$v=19$m=…,t=…,p=…$saltB64$hashB64`. Tunable via `Auth__Local__Argon2__*`. Verification is fixed-time; an unknown algorithm tag fails closed. |
+| Token format             | HS256 JWT, issuer `techinventory-local`, audience `Auth__Local__Audience`, 8 h lifetime. Claims: `sub` / `oid` / `name` / `preferred_username` / `role` / `auth_method=local` / `must_change_password`. |
+| Token routing            | A `PolicyScheme` named `TechInventoryAuth` sniffs the incoming JWT `iss` claim and forwards to either the existing Entra `JwtBearer` scheme or the new Local `JwtBearer` scheme. Both schemes set `ClaimTypes.Role`, so existing `[Authorize(Roles=…)]` attributes are unchanged. |
+| Public endpoints         | `POST /api/v1/auth/local/login` (anonymous; uniform `401 InvalidCredentials` for both unknown user and wrong password — no enumeration) and `POST /api/v1/auth/local/change-password` (requires a local-issued token). |
+| Force-rotation middleware | Runs after `UseAuthentication`. Any local-auth principal with `must_change_password=true` receives `403 PasswordChangeRequired` on every endpoint except `/api/v1/auth/local/change-password`. |
+| Bootstrap                | `LocalAdminSeedHostedService` — env-var-driven, idempotent. Refuses to seed in `Production` unless `Auth__Local__SeedAllowInProd=true`. Logs a CRITICAL warning on every startup while seed env vars are present, so leaving the seed configured in prod is loud. |
+| Frontend                 | sessionStorage token (Constitution §6 / D-002) under keys `ti_local_token` + `ti_local_meta`. "Use a local account instead" toggle on the sign-in page. Dedicated `/auth/change-password` route guarded by a root-layout `$effect` that redirects there when `must_change_password=true`. Local sign-in preferred over MSAL when a local token is present. |
 
-2. **Bootstrap Flow**:
-   - First deployment, no users in DB → `/` redirects to `/admin/bootstrap`.
-   - Bootstrap page displays form: "Set Admin Username" + "Set Admin Password".
-   - Submit → `POST /api/v1/auth/bootstrap` (one-time endpoint; checks if any users exist).
-   - Backend: Create `Owner` record: `username`, `role: Admin`, `PasswordHash`, `IsLocalAccount: true`, `EntraObjectId: null`.
-   - Endpoint self-destructs (check `count(Owner) > 0` on next call → 403 Forbidden).
-   - Log: `AuditEvent { action: "LocalAdminBootstrap", username, timestamp, ... }`.
+### Operator runbook
 
-3. **Entra Setup in Parallel**:
-   - During bootstrap, Admin also completes Entra app registration in Azure Portal (Phase 2 runbook).
-   - Once app is registered and Admin's household account is assigned the `admin` role in Entra:
-     - Admin signs in with household credentials (Entra redirect).
-     - First-login handler creates `Owner` record (if not exists) with `EntraObjectId` (no local password).
-     - Two `Owner` records may coexist: one local (bootstrap), one Entra. Both Admin.
-   - Client redirects to Entra login by default (if Entra configured); local login is fallback.
+The end-to-end seed → rotate → decommission flow lives in
+[`docs/operations.md` § "Break-glass local admin (F025 v1b)"](operations.md#break-glass-local-admin-f025-v1b)
+and covers: required env vars, idempotent re-seed for password reset,
+production safety knob, post-rotation cleanup, and the security properties
+the v1b slice guarantees. The deployment-side knobs (signing key generation,
+which env vars to set, NPM forwarding) are in
+[`docs/deployment.md` § 7](deployment.md).
 
-4. **Local Account Lifecycle**:
-   - **During bootstrap**: Local account is the only way to sign in (Entra not yet ready).
-   - **After Entra setup**: Both local and Entra sign-in work; Entra is preferred.
-   - **Optional cleanup**: Admin can disable local login endpoint once Entra is stable (docs in ops runbook).
-   - **Fallback**: If Entra is unavailable, local login is always available (fail-safe).
+### Out of scope for v1b (deferred to F025b)
 
-### Security Notes
+- Admin UI for managing local accounts (CRUD, reset, deactivate).
+- Per-account lockout enforcement (`FailedAttemptCount` / `LockoutUntilUtc`
+  columns exist but are not checked at login yet).
+- IP-based rate limiting on `/api/v1/auth/local/login`.
+- Refresh tokens / sliding sessions (the 8 h JWT is the whole story).
+- Soft-delete semantics + last-Admin guard.
+- Self-service "convert me to local" for an existing Entra admin.
 
-- Local login endpoint rate-limited: max 5 failed attempts per IP per 15 min (TODO Phase 2).
-- Bcrypt cost factor ≥ 12.
-- No plaintext passwords logged (Serilog destructuring).
-- Bootstrap endpoint verified (count > 0) before allowing next setup.
-- Admin password not transmitted over unencrypted channels (HTTPS only in production).
+### Threats addressed by v1b
+
+- **Entra tenant outage → total lockout** — the original single point of
+  failure that motivated F025. A bootstrapped local admin can sign in,
+  perform recovery, and rotate Entra config without depending on Entra
+  being reachable. Residual: the seed password is now a high-value target;
+  mitigated by force-rotation on first login + Argon2id + the CRITICAL log
+  line that nags the operator to clear the seed env vars.
+- **Username enumeration** — uniform 401 responses; no per-error distinction.
+- **Hash cracking** — Argon2id with OWASP 2025 parameters; tunable upward
+  via `Auth__Local__Argon2__*` once we benchmark prod hardware (tracked in
+  F025b).
+
+### What this supersedes from the original §6 proposal
+
+- The original §6 described `bcrypt` cost-factor ≥ 12; shipped is Argon2id
+  per the rationale above.
+- The original §6 described a `/admin/bootstrap` web page that
+  self-destructs after first use; shipped is an env-var-driven hosted
+  service so the bootstrap path works even when the SPA is broken (which
+  is precisely when you need break-glass).
+- The original §6 endpoint paths (`/api/v1/auth/local-login`,
+  `/api/v1/auth/bootstrap`) are not what shipped — see the table above for
+  actual paths.
 
 ---
 
@@ -375,4 +403,5 @@ Family Member (SvelteKit PWA)
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-05-18 | Bishop | Initial proposal: External ID recommended; OIDC+PKCE flow; role strategy; bootstrap. |
-| 2.0 | 2026-05-18 | Bishop | **REVISED** per decision `copilot-directive-2026-05-18T140924Z-entra-tenant.md`: Use household Workforce tenant (not External ID). Updated app registration flow, MSAL.js config, role mapping, and bootstrap sequence. Removed External ID rationale. Added implementation sequence for Hicks.
+| 2.0 | 2026-05-18 | Bishop | **REVISED** per decision `copilot-directive-2026-05-18T140924Z-entra-tenant.md`: Use household Workforce tenant (not External ID). Updated app registration flow, MSAL.js config, role mapping, and bootstrap sequence. Removed External ID rationale. Added implementation sequence for Hicks. |
+| 2.1 | 2026-05-19 | Scribe | **§6 rewritten to match F025 v1b reality**: Argon2id (not bcrypt), env-var hosted-service seed (not web bootstrap page), endpoints at `/api/v1/auth/local/{login,change-password}`, force-rotation middleware, `TechInventoryAuth` PolicyScheme. Cross-linked ADR D-140, `operations.md`, `deployment.md`, and `specs/_backlog/F025b-local-admin-power.md`. |

@@ -274,8 +274,6 @@
 		<div class="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 text-sm text-neutral-600 dark:text-neutral-400 sm:flex-row">
 			<div class="flex items-center gap-4">
 				<span>{t('footer.version', { version: '0.1.0' })}</span>
-				<span>•</span>
-				<span>{t('footer.builtWith')}</span>
 			</div>
 			<a
 				href="https://github.com/briandenicola/tech-inventory"

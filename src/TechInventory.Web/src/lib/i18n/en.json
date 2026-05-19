@@ -649,8 +649,7 @@
 	},
 	"footer": {
 		"version": "Version {version}",
-		"github": "View on GitHub",
-		"builtWith": "Built with SvelteKit"
+		"github": "View on GitHub"
 	},
 	"header": {
 		"menu": "Menu",

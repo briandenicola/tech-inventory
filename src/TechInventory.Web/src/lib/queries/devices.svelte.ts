@@ -25,7 +25,7 @@ export const DeviceResponseSchema = z.object({
 	name: z.string().nullable(),
 	model: z.string().nullable(),
 	serialNumber: z.string().nullable(),
-	brandId: z.string().uuid(),
+	brandId: z.string().uuid().nullable(),
 	categoryId: z.string().uuid(),
 	ownerId: z.string().uuid(),
 	locationId: z.string().uuid(),

@@ -217,7 +217,7 @@
 			initialData={{
 				name: device.name ?? '',
 				serialNumber: device.serialNumber ?? '',
-				brandId: device.brandId,
+				brandId: device.brandId ?? '',
 				categoryId: device.categoryId,
 				ownerId: device.ownerId ?? '',
 				locationId: device.locationId ?? '',

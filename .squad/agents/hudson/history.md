@@ -152,4 +152,65 @@ CI quality gate must be green to merge: tests, security scans, SBOM.
 
 **Commit:** Will commit as `feat(taskfile): local validation + CSV import targets (db:migrate, dev, import:preview/commit, validate:local)` with body listing targets and D-130 reference.
 
+## dev:up correction — one-command parallel (supersedes D-130 fragment)
+
+**Date:** 2026-05-18 (Phase 2 post-R6b, correction round)
+**Status:** Complete — `task dev:up` shipped with concurrently
+**Related:** Taskfile.yml, package.json (new), pnpm-lock.yaml (new), D-131 (inbox/hudson-dev-up-fix.md)
+**Commit:** `3a020d3` — feat(taskfile): real one-command dev:up — parallel API + Web with concurrently
+
+**Context:** D-130 implemented two-terminal pattern (print instructions, no backgrounding) for cross-platform reliability. Brian explicitly requested **"one command task dev:up that does the db:migrate, dev:api and dev:web all in one go"**. User directive overrides D-130's two-terminal-only stance.
+
+**Solution: `concurrently` npm package (battle-tested parallel process manager)**
+
+1. **Root `package.json` created** with `concurrently` 9.2.1 as devDependency
+   - Rationale: Repo-level dev tool (not web app runtime dep), adjacent to Taskfile.yml
+
+2. **`task dev:up` target added:**
+   ```yaml
+   dev:up:
+     desc: One-command dev — migrate + run API + Web in parallel (Ctrl+C exits both)
+     deps: [db:migrate]  # sequential first
+     cmds:
+       - npx concurrently --kill-others --names "API,WEB" --prefix-colors "blue,green" \
+           "dotnet run --project src/TechInventory.Api/TechInventory.Api.csproj" \
+           "pnpm --dir src/TechInventory.Web run dev"
+   ```
+   - `--kill-others`: Ctrl+C kills both processes
+   - `--names "API,WEB"`: Prefix output with [API]/[WEB]
+   - `--prefix-colors`: Blue (API), green (Web) for readability
+   - `ASPNETCORE_ENVIRONMENT=Development` set for auth bypass
+   - Cross-platform (Windows `set + &&`, Unix inline env var)
+
+3. **Standalone targets preserved:** `dev:api` and `dev:web` remain for solo debugging
+
+4. **`validate:local` updated:** Now instructs `task dev:up` instead of two-terminal pattern
+
+5. **Taskfile header updated:** Added `dev:up` to local validation section
+
+**Why concurrently?**
+- Cross-platform single command (no shell-specific scripting)
+- Signal handling (`--kill-others` ensures clean teardown)
+- Output prefixing makes interleaved logs readable
+- Zero config (works via `npx`)
+- Battle-tested in JS monorepo ecosystems
+
+**Alternatives rejected:**
+- PowerShell `Start-Job` + bash `& jobs`: platform-split, fragile cleanup
+- `npm-run-all --parallel`: less ergonomic output
+- Custom Node.js launcher: unnecessary maintenance
+- Task parallel `deps:`: blocks, doesn't run in parallel
+
+**Consequences:**
+- ✅ `task dev:up` → db:migrate → API + Web parallel → Ctrl+C exits both (Brian's ask delivered)
+- ✅ Root package.json + pnpm-lock.yaml committed (new devDependency)
+- ✅ `dev:api` / `dev:web` still work for single-server debugging
+- ⚠️ Fresh clones need `pnpm install` at root OR `npx concurrently` auto-installs on first run
+- 🔄 D-130 fragment superseded: two-terminal pattern replaced for local dev workflow
+- 🔄 D-130 other findings remain: auth bypass mechanism, CSV path default, CONFIRM gate
+
+**Decision:** D-131 (`.squad/decisions/inbox/hudson-dev-up-fix.md`) — one-command parallel launcher supersedes D-130 two-terminal approach per user directive
+
+**Not tested yet:** Actual parallel startup behavior, Ctrl+C teardown on Windows/Linux/macOS, signal propagation to child processes. Brian should verify.
+
 <!-- Append new learnings below. Each entry is something lasting about the project. -->

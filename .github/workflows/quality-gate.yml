@@ -19,7 +19,10 @@ jobs:
 
   codeql:
     runs-on: ubuntu-latest
-    permissions: { security-events: write }
+    permissions:
+      contents: read           # actions/checkout needs this when permissions are scoped
+      security-events: write   # uploading CodeQL findings to the Security tab
+      actions: read            # required by CodeQL on private repositories
     steps:
       - uses: actions/checkout@v4
       - uses: github/codeql-action/init@v3

@@ -294,3 +294,46 @@ CI quality gate must be green to merge: tests, security scans, SBOM.
 - **Compose stance:** Keep web published as `3000:80` for local prod-shape testing, but treat the external TLS proxy as the only intended public entrypoint in production.
 - **CORS defense-in-depth:** Even with same-origin proxying, `src/TechInventory.Api/appsettings.Production.json` should whitelist `https://inventory.denicolafamily.com` so accidental direct exposure still has an origin allow-list.
 - **Verification lesson:** Check tool availability first; this Windows session still lacks both `docker` and `nginx`, so container validation can be blocked even when repo-local build and config changes are ready.
+
+---
+
+## 2026-05-19 — Prod deployment plumbing (single-compose rewrite)
+
+**Branch:** `hudson/prod-deployment-plumbing` · **Commit:** `8f2661b` · **Requested by:** Brian
+
+Shipped a single-PR rewrite of the prod deployment surface, mirroring Brian's coin-collection-app compose posture. Brian's directives for this round explicitly override prior infra plans.
+
+**Files changed**
+- `.env.example` — rewritten as a tight prod template. `IMAGE_TAG`, Entra required vars, `openssl rand -base64 48` signing key, opt-in break-glass seed, `Cors__AllowedOrigins__0`, optional OTEL/Serilog. `CHANGEME_` placeholders are greppable.
+- `docker-compose.yml` — single prod-only file. GHCR images `ghcr.io/briandenicola/tech-inventory-{api,web}:${IMAGE_TAG:-latest}`. `${VAR:?msg}` for required env, `${VAR:-default}` for optional. Healthcheck-gated `depends_on`. Named volume `techinv-data`. `restart: unless-stopped`. NO hardening, NO backup sidecar, NO resource limits, NO build sections.
+- `docker-compose.prod.yml` — DELETED. Overlay folded into the single file.
+- `.github/workflows/release-images.yml` — narrowed to `v*.*.*` tag pushes only. Matrix job builds api+web for linux/amd64. Tags `:latest` AND `:${{ github.ref_name }}`. `provenance:false`, `sbom:false` (Bishop owns scanning).
+- `docs/deployment.md` — 10-section runbook: prereqs, first-time setup (full-checkout + compose-only flavors), pull/start, NPM upstream config with nginx snippet, first sign-in (Entra + break-glass + decommission), updating, version pinning, troubleshooting, ad-hoc SQLite backup, related docs.
+
+**Decisions baked in this round (Brian's explicit overrides)**
+1. Single-compose: no `prod.yml` overlay, no `dev.yml`. Local dev uses `task dev:up` (dotnet+pnpm, no docker).
+2. GHCR-only images; no local builds in the compose file.
+3. No container hardening: stripped `read_only`, `tmpfs`, `cap_drop`, `security_opt: no-new-privileges`, deploy.resources. NPM + Entra are the security boundary.
+4. No backup sidecar: Litestream service removed; Brian handles backups externally. `docs/deployment.md` §9 has an ad-hoc `sqlite3 .backup` one-liner.
+5. `${VAR:?msg}` env validation pattern for required env.
+6. `depends_on: service_healthy` web→api gating preserved.
+
+**Open questions surfaced to Brian**
+1. **Taskfile fallout** — `task up`, `task test:e2e`, `task backup:verify`, `task backup:restore`, `task clean` all reference the old compose shape (`build:` blocks or `docker-compose.prod.yml`). Will break next session. Per brief I did NOT touch Taskfile — flagged as follow-up PR.
+2. **Seed env-var naming** — brief said `SeedEmail`/`SeedDisplayName`, but code (`LocalAdminSeedHostedService.cs`) binds `Auth:Local:SeedUsername` only. Used the code-binding names. May indicate planned-but-unshipped schema change.
+3. **Release trigger scope** — narrowed to `v*.*.*` tag pushes only per brief. Previous workflow also tagged `:latest` on main push and had `workflow_dispatch`. Confirm strict tag-only is right.
+
+**Validation done**
+- `python -c "import yaml; yaml.safe_load(...)"` on both new YAML files — clean.
+- Pre-commit hook (lint + secret scan) — passed.
+- `docker compose config` — deferred (no Docker on Hudson's runtime).
+- Full `verify.ps1` skipped intentionally (config/docs-only change, full E2E rebuild has poor cost-to-signal ratio; Quality Gate reruns on PR).
+
+**PR (Brian opens manually — gh CLI not installed on runtime)**
+- Branch pushed: `hudson/prod-deployment-plumbing`
+- Open via: `https://github.com/briandenicola/tech-inventory/pull/new/hudson/prod-deployment-plumbing`
+- Pre-filled body lives at `.git/PR_BODY_HUDSON.md` (uncommitted, in .git/, won't be tracked)
+- Title: `feat(deploy): prod deployment plumbing (env, GHCR release, compose, runbook)`
+- DO NOT MERGE per brief — Brian will revise.
+
+**Refs:** D-135, D-139, D-140.

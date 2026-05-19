@@ -1,6 +1,6 @@
 # F021: Admin Audit Log Viewer & System Logs UI
 
-**Status**: backlog
+**Status**: shipped (v1 — `/admin/audit` only). `/admin/logs` carved out to F021b.
 **Priority**: P2
 **Effort**: M
 **Value**: high
@@ -130,3 +130,13 @@ content-security baseline (no inline scripts, sanitized JSON rendering).
 ## History
 - 2026-05-19: created — captured during Add Device modal session in response
   to Brian asking about per-user settings + in-app log viewing
+- 2026-05-19: shipped v1 (`/admin/audit`). Backend gained
+  `[Authorize(Policy = AuthorizationPolicies.Admin)]` on the audit-events
+  controller, `Auth:DevBypassRole` config knob so integration tests can stamp
+  Member, and a Member→403 contract test. Frontend got `/admin/audit` page
+  with URL-backed filters + paginated table, `AuditDiffDrawer` with
+  added/removed/changed/unchanged coloring (in-house `jsonDiff.ts` helper,
+  no new deps), Admin nav entry, and a "View change history" deep link from
+  `DeviceDetailModal` → `/admin/audit?entityType=Device&entityId=<id>`.
+  `/admin/logs` deferred to **F021b** (separate spec) because the Serilog
+  sink-choice open question still needs an ADR.

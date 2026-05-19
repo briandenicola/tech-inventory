@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TechInventory.Api.Authentication;
 using TechInventory.Api.Common;
 using TechInventory.Api.Features.AuditEvents;
 using TechInventory.Application.Common.Paging;
@@ -9,7 +10,7 @@ using TechInventory.Domain.Enums;
 namespace TechInventory.Api.Controllers;
 
 [ApiController]
-[Authorize]
+[Authorize(Policy = AuthorizationPolicies.Admin)]
 [Route("api/v1/audit-events")]
 public sealed class AuditEventsController(ISender sender) : ControllerBase
 {

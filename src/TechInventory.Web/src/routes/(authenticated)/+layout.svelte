@@ -29,6 +29,7 @@
 		{ href: '/admin/networks', key: 'navigation.adminNetworks' },
 		{ href: '/admin/owners', key: 'navigation.adminOwners' },
 		{ href: '/admin/tags', key: 'navigation.adminTags' },
+		{ href: '/admin/audit', key: 'navigation.adminAudit' },
 		{ href: '/admin/import', key: 'navigation.imports' },
 		{ href: '/admin/export', key: 'navigation.exports' }
 	] as const;

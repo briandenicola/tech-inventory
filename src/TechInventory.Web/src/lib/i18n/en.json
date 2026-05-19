@@ -112,7 +112,8 @@
 		"adminLocations": "Locations",
 		"adminNetworks": "Networks",
 		"adminOwners": "Owners",
-		"adminTags": "Tags"
+		"adminTags": "Tags",
+		"adminAudit": "Audit Log"
 	},
 	"devices": {
 		"list": {
@@ -640,6 +641,51 @@
 				"admin": "Admin",
 				"member": "Member",
 				"viewer": "Viewer"
+			}
+		},
+		"audit": {
+			"list": {
+				"title": "Audit Log",
+				"subtitle": "Append-only record of every entity change. Click a row to see the BEFORE / AFTER diff.",
+				"emptyState": "No audit events match your filters."
+			},
+			"columns": {
+				"timestamp": "Timestamp",
+				"actor": "Actor",
+				"entityType": "Entity Type",
+				"entityId": "Entity ID",
+				"action": "Action",
+				"summary": "Change"
+			},
+			"filters": {
+				"entityType": "Entity Type",
+				"entityId": "Entity ID",
+				"action": "Action",
+				"actionAny": "Any action",
+				"actor": "Actor",
+				"from": "From",
+				"to": "To",
+				"apply": "Apply Filters"
+			},
+			"summary": {
+				"created": "Created (new record)",
+				"updated": "Updated (fields changed)",
+				"deleted": "Deleted (record removed)"
+			},
+			"diff": {
+				"title": "Change Detail",
+				"changes": "Changes",
+				"showUnchanged": "Show unchanged fields",
+				"empty": "No payload changes to display.",
+				"added": "Added",
+				"removed": "Removed",
+				"changed": "Changed",
+				"unchanged": "Unchanged",
+				"before": "Before",
+				"after": "After"
+			},
+			"link": {
+				"viewHistory": "View change history"
 			}
 		}
 	},

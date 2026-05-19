@@ -125,3 +125,17 @@ export function clearAuth(): void {
 		error: null
 	});
 }
+
+/**
+ * F020 v1 — update the displayName on the current user in the store so the
+ * header chip + any other live consumers reflect a self-service rename
+ * without a hard reload. Call this AFTER a successful
+ * `api.owners.updateMyProfile(...)` round-trip.
+ */
+export function updateCurrentUserDisplayName(displayName: string): void {
+	authStore.update((state) =>
+		state.currentUser
+			? { ...state, currentUser: { ...state.currentUser, displayName } }
+			: state
+	);
+}

@@ -201,4 +201,75 @@ public sealed class OwnersControllerTests(IntegrationTestFactory<OwnersControlle
             owners[0].Role.Should().Be(OwnerRole.Admin);
         });
     }
+
+    [Fact]
+    public async Task UpdateMyProfile_WithDevBypass_RenamesOwnerAndEmitsAuditEvent()
+    {
+        await ResetDatabaseAsync();
+        using var client = CreateClient();
+
+        // GET /me first to auto-provision the dev-bypass owner.
+        var provisioned = await client.GetAsync("/api/v1/owners/me");
+        provisioned.StatusCode.Should().Be(HttpStatusCode.OK);
+        var seed = await ReadJsonAsync<OwnerResponse>(provisioned);
+
+        var newName = $"renamed-{Guid.NewGuid():N}";
+        var patchResponse = await client.PatchAsync(
+            "/api/v1/owners/me",
+            CreateJsonContent(new { displayName = newName }));
+
+        patchResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var patched = await ReadJsonAsync<OwnerResponse>(patchResponse);
+        patched.Id.Should().Be(seed.Id);
+        patched.DisplayName.Should().Be(newName);
+        patched.Role.Should().Be(OwnerRole.Admin.ToString());
+
+        // GET /me again returns the new name (no re-provisioning).
+        var refetch = await client.GetAsync("/api/v1/owners/me");
+        var refetched = await ReadJsonAsync<OwnerResponse>(refetch);
+        refetched.DisplayName.Should().Be(newName);
+
+        // Audit row recorded with BEFORE snapshot carrying the old name.
+        await WithDbContextAsync(async dbContext =>
+        {
+            var auditEvents = await dbContext.AuditEvents
+                .Where(ae => ae.EntityType == "Owner" && ae.EntityId == seed.Id.ToString())
+                .ToListAsync();
+
+            auditEvents.Should().NotBeEmpty();
+            auditEvents.Should().Contain(ae => ae.Action == AuditAction.Updated);
+            auditEvents.Should().Contain(ae => ae.BeforePayload != null && ae.BeforePayload.Contains(seed.DisplayName));
+        });
+    }
+
+    [Fact]
+    public async Task UpdateMyProfile_WithBlankDisplayName_Returns400()
+    {
+        await ResetDatabaseAsync();
+        using var client = CreateClient();
+        await client.GetAsync("/api/v1/owners/me"); // provision
+
+        var response = await client.PatchAsync(
+            "/api/v1/owners/me",
+            CreateJsonContent(new { displayName = "" }));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task UpdateMyProfile_WhenNameAlreadyUsedByAnotherOwner_Returns409()
+    {
+        await ResetDatabaseAsync();
+        var sharedName = $"taken-{Guid.NewGuid():N}";
+        var other = new Owner(Guid.NewGuid(), sharedName, OwnerRole.Member, Guid.NewGuid());
+        await SeedAsync(entities: [other]);
+        using var client = CreateClient();
+        await client.GetAsync("/api/v1/owners/me"); // provision dev-admin
+
+        var response = await client.PatchAsync(
+            "/api/v1/owners/me",
+            CreateJsonContent(new { displayName = sharedName }));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
 }

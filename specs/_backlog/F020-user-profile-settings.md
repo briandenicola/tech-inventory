@@ -1,6 +1,6 @@
 # F020: User Profile & Personal Settings
 
-**Status**: backlog
+**Status**: shipped (v1 — Profile/display-name only). Avatar / preferences / session tab carved out to F020b.
 **Priority**: P2
 **Effort**: M
 **Value**: medium
@@ -95,3 +95,12 @@ nav item that the user-menu dropdown links to, not a primary nav pill.
 ## History
 - 2026-05-19: created — captured during Add Device modal session as a follow-up
   to D-137 admin menu work
+- 2026-05-19: shipped v1 — Profile tab (display name only).
+  Backend added `PATCH /api/v1/owners/me` backed by `UpdateMyProfileCommand`
+  (looks up the owner row via the current user's Entra object id, validates
+  display name length + uniqueness, emits a standard `Owner Updated` audit
+  row via the existing pipeline). Frontend added `/settings` page with
+  read-only role + Entra OID, a toast on save, and an `updateCurrentUserDisplayName`
+  store helper so the header chip refreshes without a reload. Settings link
+  added to the user-menu dropdown (desktop + mobile). Avatar upload,
+  preferences, and session tab carved out to **F020b**.

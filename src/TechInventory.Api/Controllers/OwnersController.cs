@@ -56,6 +56,32 @@ public sealed class OwnersController(ISender sender, ICurrentUserService current
             cancellationToken));
     }
 
+    [HttpPatch("me")]
+    [ProducesResponseType(typeof(OwnerResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<OwnerResponse>> UpdateCurrentOwner(
+        [FromBody] UpdateMyProfileRequest request,
+        CancellationToken cancellationToken)
+    {
+        var oidString = currentUserService.GetCurrentUserId();
+        if (string.IsNullOrEmpty(oidString) || oidString == "system")
+        {
+            return Unauthorized();
+        }
+
+        if (!Guid.TryParse(oidString, out var entraObjectId))
+        {
+            return Unauthorized();
+        }
+
+        return this.OkResult(await sender.Send(
+            new UpdateMyProfileCommand(entraObjectId, request.DisplayName),
+            cancellationToken));
+    }
+
     [HttpPost]
     [ProducesResponseType(typeof(OwnerResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
@@ -90,4 +116,6 @@ public sealed class OwnersController(ISender sender, ICurrentUserService current
     {
         public UpdateOwnerCommand ToCommand(Guid id) => new(id, DisplayName, Role, EntraObjectId);
     }
+
+    public sealed record UpdateMyProfileRequest(string DisplayName);
 }

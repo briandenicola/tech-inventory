@@ -37,6 +37,7 @@
 	// Derive auth state from store
 	const currentUser = $derived($authStore.currentUser);
 	const isAdmin = $derived(currentUser?.role === 'Admin');
+	const settingsActive = $derived($page.url.pathname.startsWith('/settings'));
 
 	// T09 + J3: Sign out — call MSAL logoutRedirect + clear auth store
 	async function handleSignOut() {
@@ -191,6 +192,21 @@
 								{/each}
 								<hr class="my-2 border-t border-neutral-200 dark:border-neutral-800" />
 							{/if}
+							<a
+								href="/settings"
+								role="menuitem"
+								class="flex min-h-11 items-center rounded-xl px-3 py-2.5 text-base font-medium transition-colors duration-150"
+								class:bg-primary-50={settingsActive}
+								class:text-primary-700={settingsActive}
+								class:dark:bg-primary-900={settingsActive}
+								class:dark:text-primary-200={settingsActive}
+								class:text-neutral-700={!settingsActive}
+								class:hover:bg-neutral-100={!settingsActive}
+								class:dark:text-neutral-300={!settingsActive}
+								class:dark:hover:bg-neutral-800={!settingsActive}
+							>
+								{t('navigation.settings')}
+							</a>
 							<button
 								type="button"
 								role="menuitem"
@@ -248,6 +264,10 @@
 							{/each}
 						</div>
 					{/if}
+
+					<div class="mt-2 space-y-1 border-t border-neutral-200 pt-3 dark:border-neutral-800">
+						{@render mobileNavLink('/settings', t('navigation.settings'))}
+					</div>
 
 					<!-- Mobile: User Info + Sign Out -->
 					{#if currentUser}

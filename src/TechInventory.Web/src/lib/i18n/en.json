@@ -689,6 +689,34 @@
 			}
 		}
 	},
+	"settings": {
+		"title": "Settings",
+		"subtitle": "Manage your profile and personal preferences.",
+		"profile": {
+			"heading": "Profile",
+			"subheading": "Update how your name appears in the app and in audit history.",
+			"saving": "Saving…",
+			"fields": {
+				"displayName": "Display name",
+				"displayNameHelp": "Visible to other members and recorded with every change you make.",
+				"role": "Role",
+				"roleHelp": "Roles are managed by an Admin or in Entra ID.",
+				"entraObjectId": "Entra Object ID",
+				"entraObjectIdHelp": "Read-only. Sourced from your sign-in token."
+			},
+			"errors": {
+				"required": "Display name is required.",
+				"tooLong": "Display name must be 200 characters or fewer."
+			},
+			"toast": {
+				"success": "Display name updated."
+			}
+		},
+		"deferred": {
+			"heading": "Coming soon",
+			"body": "Avatar upload, dark-mode override, default landing page, and density controls land in the next iteration (F020b)."
+		}
+	},
 	"errors": {
 		"networkError": "Network error. Please check your connection and try again.",
 		"serverError": "Server error. Please try again later.",

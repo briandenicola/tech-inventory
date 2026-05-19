@@ -5,7 +5,7 @@
  * Spec §4.2: Wrapper configures base URL + auth headers; ready for MSAL token injection (T05)
  */
 
-import type { paths } from './generated/types';
+import type { paths, components } from './generated/types';
 
 /**
  * Type helpers to extract request/response types from OpenAPI paths
@@ -313,7 +313,16 @@ export const owners = {
 			{
 				method: 'PATCH'
 			}
-		)
+		),
+
+	// F020 v1 — self-service display-name update.
+	updateMyProfile: async (
+		body: components['schemas']['UpdateMyProfileRequest']
+	) =>
+		apiFetch<components['schemas']['OwnerResponse']>(`/api/v1/owners/me`, {
+			method: 'PATCH',
+			body: JSON.stringify(body)
+		})
 };
 
 // Locations

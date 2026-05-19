@@ -2143,6 +2143,81 @@ paths:
             text/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+    patch:
+      tags:
+        - Owners
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMyProfileRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMyProfileRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/UpdateMyProfileRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/OwnerResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/OwnerResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '401':
+          description: Unauthorized
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
   /api/v1/tags:
     get:
       tags:
@@ -3434,6 +3509,13 @@ components:
           nullable: true
         type:
           $ref: '#/components/schemas/LocationType'
+      additionalProperties: false
+    UpdateMyProfileRequest:
+      type: object
+      properties:
+        displayName:
+          type: string
+          nullable: true
       additionalProperties: false
     UpdateNetworkRequest:
       type: object

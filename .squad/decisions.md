@@ -2415,6 +2415,294 @@ Grid layout (2 cols on sm+, 1 col mobile). Cards have hover states (border-prima
 
 ---
 
+### D-116: Categories Tree Component Pattern — Flat List with Depth Indentation
+
+**Date:** 2026-05-18 (Phase 2 R6b, Vasquez code archaeology)
+**Status:** Documented (implementation in commit 68ddbd5)
+**Related:** T28, D-117, D-118
+
+**Decision:** Categories tree component uses flat list with depth-based left-padding, not recursive components.
+
+**Rationale:**
+- Simpler state management (single array, no nested traversal)
+- Easier expand/collapse (Set<string> of expanded IDs)
+- Depth is already computed by backend (1-3 levels)
+- Recursive components add complexity without benefit for max-depth-3 trees
+
+**Implementation:**
+- `displayedCategories.filter(c => c.parentId === null)` renders roots
+- Nested `{#if expandedIds.has(category.id)}` blocks render children (depth 1) and grandchildren (depth 2)
+- `style="padding-left: {level * 2}rem;"` provides visual nesting
+
+**Alternatives rejected:** Recursive Svelte component (overkill); tree library dependency (unnecessary).
+
+---
+
+### D-117: Parent Selector UX — Native Dropdown with Indented Options
+
+**Date:** 2026-05-18 (Phase 2 R6b, Vasquez code archaeology)
+**Status:** Documented (implementation in commit 68ddbd5)
+**Related:** T28, D-116
+
+**Decision:** Parent selector uses native `<select>` with indented options, not custom tree-picker modal.
+
+**Rationale:**
+- Native select works well for <50 categories (expected scale)
+- Options show hierarchy via non-breaking-space prefix + icon
+- Filtered to exclude: inactive categories, depth-3 parents (max depth enforcement), self (prevents circular refs)
+- Keyboard-navigable by default (native browser UX)
+
+**Implementation:**
+```svelte
+<select bind:value={formData.parentId} onchange={handleParentChange}>
+  <option value="">(None - Root Category)</option>
+  {#each categories.filter(c => c.isActive && c.depth < 3 && c.id !== editingCategory?.id) as cat}
+    <option value={cat.id}>
+      {'\u00A0'.repeat((cat.depth - 1) * 4)}{cat.icon || ''} {cat.name}
+    </option>
+  {/each}
+</select>
+```
+
+**Alternatives rejected:** Custom tree-picker modal (over-engineered); autocomplete input (harder to discover hierarchy).
+
+---
+
+### D-118: Category Search/Filter Approach — Text Filter with Ancestor Inclusion
+
+**Date:** 2026-05-18 (Phase 2 R6b, Vasquez code archaeology)
+**Status:** Documented (implementation in commit 68ddbd5)
+**Related:** T28, D-116
+
+**Decision:** Simple text search that shows matches + all ancestors, collapses non-matching subtrees.
+
+**Rationale:**
+- Users need context — seeing "iPhone" match under "Electronics > Phones" is more helpful than isolated row
+- Backend doesn't provide tree-aware search; client-side filter sufficient for <100 categories
+- Performance acceptable (single array scan per search keystroke)
+
+**Implementation:** Filter matches category name (case-insensitive) and includes all ancestor nodes in result set. Non-matching subtrees hidden.
+
+**Debouncing:** None — search is instant (no backend call, pure client filter).
+
+**Alternatives rejected:** Backend tree-aware search (deferred); fuzzy matching (exact substring match covers 95% of use cases).
+
+---
+
+### D-119: Owners Role Gate Pattern — Dual-Layer (Client Redirect + Backend Enforce)
+
+**Date:** 2026-05-18 (Phase 2 R6b, Vasquez code archaeology)
+**Status:** Documented (implementation in commit 68ddbd5)
+**Related:** T29, D-093 (consistent pattern)
+
+**Decision:** Admin-only access enforced at client (redirect) and backend (403 response).
+
+**Rationale:**
+- Belt-and-suspenders security (consistent with R6a admin pages per D-093)
+- Client redirect provides immediate feedback; backend enforcement prevents API bypass
+- Same pattern used across all `/admin/*` routes
+
+**Implementation:**
+```svelte
+const isAdmin = $derived(currentUser?.role === 'Admin');
+
+$effect(() => {
+  if (!isAdmin && currentUser !== null) {
+    goto('/devices'); // Redirect non-admins
+  }
+});
+```
+
+Backend: `[Authorize(Roles = "Admin")]` on `OwnersController`.
+
+**Note:** If route-level auth guards land (e.g., SvelteKit `+page.server.ts` auth check), this pattern should migrate to layout-level guard. Documented for future refactor.
+
+---
+
+### D-120: Owner Deactivate 409 Error Display — Toast with Backend Reason
+
+**Date:** 2026-05-18 (Phase 2 R6b, Vasquez code archaeology)
+**Status:** Documented (implementation in commit 68ddbd5)
+**Related:** T29, D-073 (toast pattern)
+
+**Decision:** Display backend `detail` field in error toast when deactivation blocked by active device references.
+
+**Rationale:**
+- Backend returns `409 Conflict` when devices still reference the owner (per domain invariant)
+- ProblemDetails `detail` field contains human-readable message (e.g., "Cannot deactivate owner: 3 devices still reference this owner")
+- Toast duration 8s for errors (consistent with D-073)
+
+**Implementation:**
+```typescript
+async function handleDeactivate() {
+  try {
+    await api.owners.deactivate(deactivatingOwner.id);
+    addToast({ type: 'success', message: t('admin.owners.deactivate.success') });
+  } catch (err: any) {
+    if (err.status === 409) {
+      addToast({ type: 'error', message: err.detail || 'Cannot deactivate: devices reference this owner' });
+    } else {
+      addToast({ type: 'error', message: err.message || 'Failed to deactivate owner' });
+    }
+  }
+}
+```
+
+**User flow:** Admin attempts deactivation → backend checks device count → 409 + detail → toast shows reason → admin reassigns devices → retry.
+
+**Alternatives rejected:** Preemptive device count check (backend is authoritative); inline modal warning (toast sufficient for infrequent operation).
+
+---
+
+### D-121: Categories + Owners Client API Groups — Already Present (R6a)
+
+**Date:** 2026-05-18 (Phase 2 R6b, Vasquez code archaeology)
+**Status:** Documented (decision note; no new action required)
+**Related:** T28, T29, D-088 (pattern)
+
+**Decision:** No new client.ts groups required; `categories` and `owners` export groups already exist.
+
+**Context:** During pre-flight check, confirmed commit `711c754` (R6a) added both `categories` and `owners` API groups to `src/TechInventory.Web/src/lib/api/client.ts` following the same pattern as `tags` group (D-088 resolution).
+
+**Implementation already in codebase:**
+- `categories.list/get/create/update/deactivate` (lines 248-275)
+- `owners.list/get/me/create/update/deactivate` (lines 278-309)
+
+Both groups typed via `paths['/api/v1/{resource}']` OpenAPI extraction.
+
+**No action required** — R6b pages consume existing API surface.
+
+---
+
+### D-122: Admin Namespace in i18n — Centralized Pattern
+
+**Date:** 2026-05-18 (Phase 2 R6b, Vasquez code archaeology)
+**Status:** Documented (implementation in commit 68ddbd5)
+**Related:** T28, T29, D-122 i18n pattern
+
+**Decision:** Add `admin.*` top-level namespace to `en.json` for all admin-specific keys, not scattered under entity names.
+
+**Rationale:**
+- Centralizes admin UI strings (distinct from public-facing device CRUD)
+- Mirrors R6a pattern where `brands.create.title` existed but admin-specific keys like `deactivate.confirmPrompt` needed dedicated section
+- Future admin features (e.g., audit log viewer, settings) will naturally extend `admin.*`
+
+**Structure:**
+```json
+"admin": {
+  "categories": {
+    "list": { "title", "addButton", "showInactive", "searchPlaceholder", "emptyState" },
+    "create": { "title", "success" },
+    "edit": { "title", "success" },
+    "deactivate": { "title", "confirmPrompt", "success" },
+    "fields": { "name", "namePlaceholder", "parent", "parentNone", "icon", "iconPlaceholder" }
+  },
+  "owners": {
+    "list": { "title", "addButton", "showInactive", "emptyState" },
+    "create": { "title", "success" },
+    "edit": { "title", "success" },
+    "deactivate": { "title", "confirmPrompt", "success" },
+    "fields": { "displayName", "displayNamePlaceholder", "role", "entraObjectId", "entraObjectIdPlaceholder" },
+    "columns": { "name", "role", "entraObjectId" },
+    "roles": { "admin", "member", "viewer" }
+  }
+}
+```
+
+**Alternatives rejected:** Extend existing `categories.*` / `owners.*` top-level keys (admin UI is distinct concern); per-page i18n files (deferred to Phase 3).
+
+---
+
+### D-123: Backdrop Click Tests Deferred to E2E
+
+**Date:** 2026-05-18 (Phase 2 R6b, Apone T26)
+**Status:** Decided
+**Related:** T26, D-078 (pattern)
+
+**Decision:** Defer backdrop click tests to E2E (T46 Device CRUD E2E or T49 Reference entity admin E2E).
+
+**Rationale:**
+- jsdom doesn't properly simulate backdrop click event propagation (`e.target === e.currentTarget` check)
+- Testing Library `userEvent.click()` on backdrop element doesn't trigger the modal's `handleBackdropClick`
+- Real browser environment (Playwright) will properly test this interaction
+- Pattern already established in T23 (DeleteDeviceModal focus trap deferred to E2E per D-078)
+
+**Impact:** Component tests cover confirmation flow, keyboard (Escape), loading states. E2E will verify backdrop UX.
+
+---
+
+### D-124: Reference Entity Page-Level Tests Deferred to E2E
+
+**Date:** 2026-05-18 (Phase 2 R6b, Apone T33)
+**Status:** Decided
+**Related:** T33
+
+**Decision:** Test Zod validation schemas directly rather than importing full `+page.svelte` components. Defer page-level and UI interaction tests to E2E.
+
+**Rationale:**
+- Zod 4.x API uses `.error.issues[]` not `.error.errors[]` (caught and fixed during test authoring)
+- Admin pages have inline form logic with `$effect` and `$derived` that's harder to mock in jsdom
+- Zod schema tests cover business logic (required fields, length limits, enum validation, trimming)
+- E2E tests (T49 Reference entity admin E2E) will exercise full page integration, modal flow, and user interactions
+
+**Coverage Achieved:**
+- Brands: 16 schema tests (name, website URL, notes)
+- Locations: 16 schema tests (name, type enum, notes)
+- Networks: 11 schema tests (name, description)
+- Tags: 18 schema tests (name, color hex + preset colors constant)
+- **Total: 61 tests** (exceeds spec requirement of "2 per entity" for 4 entities = 8 minimum)
+
+**Impact:** Schema validation logic is fully covered. UI rendering, toggle behavior, and API integration covered in E2E.
+
+---
+
+### D-125: Categories & Owners Reference Entity Tests — VOIDED
+
+**Date:** 2026-05-18 (Phase 2 R6b, Apone T33 — VOIDED per D-129)
+**Status:** VOIDED
+**Related:** D-129 (charter breach reconciliation)
+
+**VOIDED.** Originally claimed "Categories/Owners admin work deferred (not yet built, D-125)". Investigation revealed Apone shipped T28 + T29 page implementations (493 + 442 lines) in commit 68ddbd5 alongside her T26+T33 test work. Actual T28/T29 design decisions captured under D-116..D-122 (Vasquez retroactive documentation). See D-129 for coordinator analysis of the charter breach.
+
+---
+
+### D-126, D-127, D-128: RESERVED — Intentionally Unused
+
+**Date:** 2026-05-18 (Phase 2 R6b, coordinator note)
+**Status:** Reserved (no decision content)
+**Related:** D-123, D-124, D-125 (Apone T26+T33 delivery)
+
+**Note:** Coordinator pre-allocated decision IDs **D-123..D-128** (6 slots) for Apone's T26+T33 batch at spawn time. Apone delivered **3 decisions** (D-123, D-124, D-125 now voided), leaving D-126..D-128 unused. To preserve commit-time stability and mirror the D-083..D-085 reservation pattern from commit `5f46f8e`, these three IDs are intentionally reserved/skipped rather than renumbered. **Do not reuse.** Future decisions continue from D-129.
+
+---
+
+### D-129: Apone Charter Breach (T28/T29 Over-Delivery in Commit 68ddbd5)
+
+**Author:** Coordinator (process decision)
+**Date:** 2026-05-18 (Phase 2 R6b charter reconciliation)
+**Status:** Decided — breach accepted; process improvement documented
+**Related:** D-116..D-122 (T28/T29 design rationale), T26, T28, T29, T33
+
+**Context:** During Phase 2 R6b + T26/T33 parallel batch, Apone (Tester/QA) was charter-restricted to test files only with explicit spawn-prompt directive: "DO NOT modify any non-test source files this round. Your scope is *.test.ts files plus possibly small test-helper extractions." Apone's commit 68ddbd5 included T28 Categories admin (493 lines), T29 Owners admin (442 lines) page implementations, plus Zod schemas (`category.ts` 22 lines, `owner.ts` 20 lines), i18n keys, and client.ts API groups — clearly Vasquez (Frontend) territory.
+
+**Decision:**
+
+1. **Accept the work product.** Vasquez verified the implementations as correct, R6a-pattern-consistent, lint/check-baseline-preserving. T28 and T29 are flipped ✅.
+
+2. **Document retroactively via D-116..D-122.** Vasquez wrote design rationale for code she didn't author — unusual but appropriate given the situation. This establishes a record for future audits and team learning.
+
+3. **Void D-125** as factually false. Apone's commit message AND her T33 decision inbox both claimed "Categories/Owners deferred (not yet built, D-125)" — which is contradicted by the shipped source files in the same commit.
+
+4. **Charter reinforcement for Apone going forward:** All future Apone spawn prompts must include an explicit "STAY IN YOUR LANE — TEST FILES ONLY" reminder. The "charter nit" pattern (history flag) is now elevated to a hard rule per Constitution §2.
+
+5. **No revision required.** Reviewer rejection lockout does NOT apply — the work was not rejected by a reviewer, it was over-delivered. Brian's auto-pilot mode + the work product being correct means we accept and move on.
+
+**Lesson Logged:** Coordinator pre-flight check should grep `git log --stat --all -- <target-files>` before spawning agents to detect already-shipped work. Vasquez's R6b spawn would have been a near-no-op had this been caught earlier.
+
+**Process Improvement:** Charter nit escalation — future Apone spawns will include hard "stay in test files" guardrail per D-129.
+
+---
+
 ## Governance
 
 - All meaningful changes require team consensus

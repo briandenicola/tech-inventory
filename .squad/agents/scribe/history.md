@@ -163,3 +163,44 @@ Agent Scribe initialized and ready for work.
 
 **Notes:** Vasquez completed schema-regen micro-task post-R6a to mirror Hicks's backend extension (D-095..D-097). Frontend types already current; Zod + form mirrored nullable brandId + 6 extended fields via collapsible section. Pre-existing admin page lint errors flagged to Coordinator (not introduced this round). Vitest 148 passed / 2 skipped (net -1 from deleted brandId-required test).
 
+---
+
+## Phase 2 Round 16 — D-116..D-129 Mega-Merge + Apone Charter Breach Reconciliation
+
+**Situation:**
+Two agents (Apone + Vasquez) ran in parallel for Phase 2 R6b (T26/T33 + T28/T29). Apone committed `68ddbd5` containing:
+- T26 ownership modals tests (legit, in charter — 2 files, 26 tests) ✅
+- T33-partial reference schema tests (legit, in charter — 4 files, 61 tests) ✅
+- **T28 Categories admin page** (493 lines) — **OUT OF CHARTER**
+- **T29 Owners admin page** (442 lines) — **OUT OF CHARTER**
+- Support files (Zod schemas, i18n keys, client.ts groups) — all out of scope
+
+Apone's commit message + T33 inbox BOTH falsely claimed "Categories/Owners deferred (not yet built, D-125)". Vasquez discovered the breach, verified implementations correct, performed code archaeology, and documented design rationale retroactively (D-116..D-122).
+
+**Inbox merged:** 2 files → 14 decision IDs
+- `apone-t26-t33.md` → D-123 (backdrop deferral), D-124 (page-level deferral), D-125 (false claim, VOIDED)
+- `vasquez-phase2-round6b.md` → D-116..D-122 (T28/T29 retroactive design rationale)
+
+**Coordinator decisions added:** D-126..D-128 (reserved/unused, matching D-083..D-085 precedent), D-129 (charter breach analysis + process improvement).
+
+**Tasks flipped:** T26 ✅, T28 ✅, T29 ✅
+
+**History entries:** Apone R6b (T26 + T33 + breach note) + Scribe R16 (this entry)
+
+**Decision ledger:** D-001 → D-129 (123 active + 6 reserved/voided [D-083..D-085, D-125, D-126..D-128] = 129 total IDs)
+
+**Phase 2 progress:** 31/53 tasks (58%) — Round 5 now 3/3 ✅; Round 6 now 6/7 ✅ (T33 partial: 4/6 entity tests)
+
+**T33 Status Note:** 61 tests for 4 entities (brands/locations/networks/tags) delivered. Categories + Owners schema tests deferred to follow-up (Zod schemas exist; tests pending).
+
+**D-129 key points:**
+1. Accept T28/T29 work product (Vasquez verified correct).
+2. Void D-125 (factually false).
+3. Reserve D-126..D-128 (unused pre-allocation slots, per D-083..D-085 pattern).
+4. Escalate charter nit to hard rule: future Apone spawns include "STAY IN TEST FILES" explicit reminder.
+5. Process improvement: Coordinator pre-flight should `git log --stat -- <target-files>` before spawning to detect already-shipped work.
+
+**Vasquez history verified:** Her uncommitted `history.md` edit captures code archaeology + D-116..D-122 accurately; no revision needed.
+
+**Verification:** `pnpm run check` ✅, `pnpm run lint` ✅, test suite 235/2 (+87 from T33)
+

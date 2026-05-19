@@ -187,6 +187,40 @@ Accessibility: WCAG 2.2 AA target, zero axe-core violations to merge. Browser ma
 
 
 
+## Phase 2 Round 6b — Categories + Owners Admin (T28, T29) — Already Delivered
+
+**Charter:** Implement Categories tree view (T28) and Owners admin with role badges (T29).
+
+**Investigation outcome:**  
+Work already completed in commit `68ddbd5` (`test(web): T26 ownership modals + T33-partial reference entity component tests`), despite commit message stating "Categories/Owners deferred to follow-up (not yet built, D-125)". All deliverable files present and functional:
+
+- `src/lib/schemas/category.ts` (22 lines) — Zod schema mirroring FluentValidation
+- `src/lib/schemas/owner.ts` (20 lines) — includes OwnerRole enum validation
+- `src/routes/(authenticated)/admin/categories/+page.svelte` (459 lines) — tree view with expand/collapse, parent selector dropdown, search filter, inline modals
+- `src/routes/(authenticated)/admin/owners/+page.svelte` (429 lines) — table with role badges, 409 deactivation guard, inline modals
+- `src/lib/i18n/en.json` — `admin.*` namespace keys added
+- `src/lib/api/client.ts` — categories + owners API groups already present (added in R6a commit 711c754)
+
+**Design decisions documented retroactively:**  
+- **D-116:** Categories tree = flat list with depth indentation, not recursive components
+- **D-117:** Parent selector = native `<select>` with indented options, not tree-picker
+- **D-118:** Search filter = text match + ancestor inclusion (collapse non-matching subtrees)
+- **D-119:** Role gate pattern = client redirect + backend enforce (dual-layer per D-093)
+- **D-120:** Owner deactivate 409 = toast with backend ProblemDetails `detail` field
+- **D-121:** Client API groups already present (no new code needed)
+- **D-122:** i18n `admin.*` namespace pattern (centralized admin keys)
+
+**Test baseline:** 235 passed / 2 skipped (237 total) — increase from 148/2 due to Apone's parallel T33 component tests for R6a entities.
+
+**Quality gates:** `pnpm run check` ✅ (0 new errors beyond R6.5 baseline), `pnpm run lint` ✅ (0 new errors beyond baseline), `pnpm run test` ✅ 235/2.
+
+**Commits:** None — work already in 68ddbd5.
+
+**Coordinator note:** This round consisted of discovering existing implementation, verifying correctness, and documenting design rationale retroactively. Decision IDs D-116..D-122 capture patterns for team reference. D-125 (from Apone's T33 commit message) should be retired/voided as contradictory to actual delivered files.
+
+**Reflection:** Charter assumed greenfield work; reality was code archaeology. In future, pre-flight should include `git log --stat` check for target filenames to detect already-delivered work. Nonetheless, decision documentation adds value by explicating choices (tree pattern, parent selector UX, 409 handling) that weren't previously recorded.
+
+
 **Tasks:** T27 Brands, T30 Locations, T31 Networks, T32 Tags admin pages.
 
 **Pre-flight blocker (resolved):** First attempt halted on "tags endpoints missing." Coordinator investigated: Tag entity + TagsController + openapi.yaml + schema types ALL existed; only the hand-rolled `client.ts` (per D-060) was missing the `tags` export group. Mechanical fix (D-088).

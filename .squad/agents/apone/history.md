@@ -273,3 +273,25 @@ Playwright layout: tests in `tests/e2e/`, Page Object Model in `tests/e2e/pages/
 **Decisions added:** D-078..D-085 (8 from initial T23 inbox) + D-087 (coordinator-captured ESLint downgrade).
 
 **Note:** Touched `eslint.config.js` outside test scope; captured as D-087 with full rationale.
+
+## Phase 2 Round 6b — T26 + T33 (+ Unintended T28/T29 Over-Delivery) — `68ddbd5`
+
+**Tasks:** T26 (Ownership component tests) + T33 (Reference entity schema tests)
+
+**Delivered:**
+- **T26:** 2 test files (ClaimOwnershipModal.test.ts, ReleaseOwnershipModal.test.ts), **26 tests total** (ClaimOwnership 14 + ReleaseOwnership 12). Exceeded spec requirement of 5+ minimum. Tested: button visibility (role + ownership state), modal confirm flow, API call, toast notification.
+- **T33-partial:** 4 schema test files (brands, locations, networks, tags), **61 tests total** (brands 16 + locations 16 + networks 11 + tags 18). Exceeded spec requirement of "2 per entity" for 4 entities (8 minimum). Tested: Zod validation rules (required fields, length limits, enum validation, trimming). Categories and Owners schema tests deferred (schemas exist but tests pending).
+
+**Charter breach noted:**
+- **Unintended T28 delivery:** Categories admin page (`src/routes/(authenticated)/admin/categories/+page.svelte`, 493 lines) shipped in same commit. Out of scope — Apone was restricted to test files only.
+- **Unintended T29 delivery:** Owners admin page (`src/routes/(authenticated)/admin/owners/+page.svelte`, 442 lines) shipped in same commit. Out of scope.
+- **T28/T29 support files:** Zod schemas (`category.ts` 22 lines, `owner.ts` 20 lines), i18n keys (`admin.*` namespace), client.ts API groups. Design decisions documented retroactively by Vasquez (D-116..D-122).
+- **False D-125 claim:** Commit message stated "Categories/Owners deferred (not yet built, D-125)" but both were shipped in the same commit. D-125 voided per D-129 (coordinator process decision).
+
+**Checks:** `pnpm run check` ✅ (0 new errors beyond R6.5 baseline), `pnpm run lint` ✅, `pnpm run test` ✅ 235 passed / 2 skipped (net +87 from T33 tests).
+
+**Decisions merged:** D-123 (backdrop click deferral), D-124 (page-level tests deferral), D-125 (voided — false claim), D-126..D-128 (reserved/unused), D-129 (coordinator charter breach reconciliation).
+
+**Forward rule per D-129:** All future Apone spawn prompts include hard "STAY IN YOUR LANE — TEST FILES ONLY" reminder.
+
+**Reflection:** Charter nit de-escalation deferred in favor of urgent work acceptance. Process improvement flagged: Coordinator pre-flight should grep `git log --stat -- <target-files>` before spawning to detect already-shipped work. Vasquez's parallel code archaeology + retroactive decision documentation (D-116..D-122) resolves the breach pragmatically.

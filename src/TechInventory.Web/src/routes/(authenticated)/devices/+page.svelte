@@ -10,6 +10,7 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import PaginationControls from '$lib/components/PaginationControls.svelte';
+	import AddDeviceModal from '$lib/components/AddDeviceModal.svelte';
 
 	/**
 	 * T15: Devices list page — paginated table with filters, sort, and pagination.
@@ -56,6 +57,9 @@
 
 	// Mobile drawer state
 	let filtersOpen = $state(false);
+
+	// Add Device modal state (D-137 — Apple-elegant modal replaces /devices/new flow)
+	let createModalOpen = $state(false);
 
 	// Update URL when filters change
 	function updateFilters(newFilters: DeviceFiltersType) {
@@ -155,15 +159,16 @@
 				</button>
 
 				<!-- Add Device CTA -->
-				<a
-					href="/devices/new"
-					class="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600"
+				<button
+					type="button"
+					onclick={() => (createModalOpen = true)}
+					class="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary-600 px-5 py-2.5 text-base font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600"
 				>
 					<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
 					</svg>
 					{t('devices.list.addButton')}
-				</a>
+				</button>
 			</div>
 		</div>
 
@@ -193,4 +198,11 @@
 		{/if}
 	</div>
 </div>
+
+{#if createModalOpen}
+	<AddDeviceModal
+		onClose={() => (createModalOpen = false)}
+		onCreated={() => query.refetch()}
+	/>
+{/if}
 

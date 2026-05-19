@@ -156,24 +156,33 @@ if (entraConfigured)
                     return Task.CompletedTask;
                 }
 
-                var rolesClaim = principal.FindFirst("roles");
-                if (rolesClaim == null)
+                // Entra emits `roles` as a JSON array. JwtSecurityTokenHandler
+                // expands that into one Claim per array element (each with
+                // Value being the bare string, NOT a JSON-encoded array), and
+                // by default `MapInboundClaims = true` also re-types them as
+                // ClaimTypes.Role. Accept both shapes so [Authorize(Roles=...)]
+                // works regardless of mapping configuration.
+                var roleClaims = principal.FindAll(System.Security.Claims.ClaimTypes.Role)
+                    .Concat(principal.FindAll("roles"))
+                    .ToList();
+
+                if (roleClaims.Count == 0)
                 {
                     context.Fail("JWT missing 'roles' claim");
                     return Task.CompletedTask;
                 }
 
-                var roles = System.Text.Json.JsonSerializer.Deserialize<string[]>(rolesClaim.Value);
-                if (roles == null || roles.Length == 0)
-                {
-                    context.Fail("JWT 'roles' claim is empty");
-                    return Task.CompletedTask;
-                }
-
+                // Make sure every role value is present under ClaimTypes.Role,
+                // so downstream policy/role checks find them even if the
+                // inbound map didn't run for some reason.
                 var identity = (System.Security.Claims.ClaimsIdentity)principal.Identity!;
-                foreach (var role in roles)
+                foreach (var rolesClaim in principal.FindAll("roles"))
                 {
-                    identity.AddClaim(new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, role));
+                    if (!identity.HasClaim(System.Security.Claims.ClaimTypes.Role, rolesClaim.Value))
+                    {
+                        identity.AddClaim(new System.Security.Claims.Claim(
+                            System.Security.Claims.ClaimTypes.Role, rolesClaim.Value));
+                    }
                 }
 
                 return Task.CompletedTask;

@@ -1,5 +1,10 @@
 # Tech Inventory
 
+[![Quality Gate](https://github.com/briandenicola/tech-inventory/actions/workflows/quality-gate.yml/badge.svg?branch=main)](https://github.com/briandenicola/tech-inventory/actions/workflows/quality-gate.yml)
+[![CI Pipeline](https://github.com/briandenicola/tech-inventory/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/briandenicola/tech-inventory/actions/workflows/ci.yml)
+[![Release Container Images](https://github.com/briandenicola/tech-inventory/actions/workflows/release-images.yml/badge.svg)](https://github.com/briandenicola/tech-inventory/actions/workflows/release-images.yml)
+[![Container Image Security Scan](https://github.com/briandenicola/tech-inventory/actions/workflows/security-scan.yml/badge.svg?branch=main)](https://github.com/briandenicola/tech-inventory/actions/workflows/security-scan.yml)
+
 A self-hosted family device and appliance inventory tracker. Single-household, authenticated via Microsoft Entra ID, deployed as Docker Compose on home infrastructure.
 
 ## Architecture
@@ -84,6 +89,17 @@ Run `task hooks:install` once per clone. It downloads the pinned `gitleaks` bina
 
 - **API Liveness**: `http://localhost:8080/health`
 - **API Readiness**: `http://localhost:8080/health/ready`
+
+## Container Images
+
+Published to [GitHub Container Registry](https://github.com/briandenicola?tab=packages&repo_name=tech-inventory) on every `v*.*.*` tag push via [`release-images.yml`](.github/workflows/release-images.yml). Both images are publicly pullable (no `docker login` required).
+
+| Image | Registry link | Pull command |
+|-------|---------------|--------------|
+| API   | [`ghcr.io/briandenicola/tech-inventory-api`](https://github.com/users/briandenicola/packages/container/package/tech-inventory-api) | `docker pull ghcr.io/briandenicola/tech-inventory-api:latest` |
+| Web   | [`ghcr.io/briandenicola/tech-inventory-web`](https://github.com/users/briandenicola/packages/container/package/tech-inventory-web) | `docker pull ghcr.io/briandenicola/tech-inventory-web:latest` |
+
+Pin a release by setting `IMAGE_TAG=v0.1.0` in `.env`. See [`docs/deployment.md`](docs/deployment.md) for the full home-server deploy runbook.
 
 ## Documentation
 

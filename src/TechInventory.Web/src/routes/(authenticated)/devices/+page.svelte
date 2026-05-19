@@ -59,9 +59,8 @@
 		return filters;
 	});
 
-	// Devices query (reactive via $derived hook — eslint warning is false positive)
-	// eslint-disable-next-line svelte/valid-compile
-	const query = useDevices(urlFilters);
+	// Devices query (reactive — pass a getter so filter changes propagate)
+	const query = useDevices(() => urlFilters);
 
 	// Mobile drawer state
 	let filtersOpen = $state(false);

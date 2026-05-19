@@ -126,8 +126,8 @@ function serializeFilters(filters: DeviceFilters): string {
  * Usage:
  * ```
  * let filters = $state({ page: 1, pageSize: 25, search: 'iPhone' });
- * const query = useDevices(filters);
- * 
+ * const query = useDevices(() => filters);
+ *
  * $effect(() => {
  *   // query.data, query.isLoading, query.error are reactive
  * });
@@ -135,19 +135,41 @@ function serializeFilters(filters: DeviceFilters): string {
  * 
  * Auto-refetches when filters change via $derived + $effect internally.
  */
-export function useDevices(filters: DeviceFilters): DevicesQueryResult {
+/**
+ * Devices query hook (Svelte 5 runes)
+ *
+ * Accepts a *getter* so updates to the caller's reactive filters propagate
+ * into the hook. Passing a plain object snapshot would freeze the hook on
+ * the first render and silently swallow every subsequent filter change —
+ * the exact bug that hid `?search=` typing from the backend prior to this
+ * refactor.
+ *
+ * Usage:
+ * ```
+ * const urlFilters = $derived.by(() => buildFiltersFromUrl());
+ * const query = useDevices(() => urlFilters);
+ * ```
+ *
+ * Auto-refetches when the caller's reactive filters change.
+ */
+export function useDevices(getFilters: () => DeviceFilters): DevicesQueryResult {
 	// Internal reactive state
 	let data = $state<PaginatedResponse<DeviceResponse> | null>(null);
 	let isLoading = $state<boolean>(true);
 	let error = $state<string | null>(null);
 
-	// Serialize filters for cache key
-	const cacheKey = $derived(serializeFilters(filters));
+	// Serialize filters for cache key — recomputes whenever the caller's
+	// reactive filters change because we invoke the getter inside $derived.
+	const cacheKey = $derived(serializeFilters(getFilters()));
 
 	// Fetch function (called on mount + filter change)
 	async function fetchDevices() {
 		isLoading = true;
 		error = null;
+
+		// Snapshot filters at fetch time so the request body matches the
+		// cacheKey that triggered it.
+		const filters = getFilters();
 
 		// Check cache first
 		const cached = cache.get(cacheKey);

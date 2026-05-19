@@ -1,9 +1,17 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
+	import { onMount } from 'svelte';
 	import { t } from '$lib/i18n';
 	import { authStore } from '$lib/stores/auth';
 	import { useDevices, type DeviceFilters as DeviceFiltersType } from '$lib/queries/devices.svelte';
+	import {
+		getDevicesDefaultView,
+		setDevicesDefaultView,
+		clearDevicesDefaultView,
+		normalizeQueryString
+	} from '$lib/stores/userPrefs';
+	import { showToast } from '$lib/stores/toast';
 	import DeviceTable from '$lib/components/DeviceTable.svelte';
 	import DeviceFilters from '$lib/components/DeviceFilters.svelte';
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
@@ -112,6 +120,39 @@
 			urlFilters.purchaseYearMax
 		)
 	);
+
+	// F022: per-user default view persistence (localStorage).
+	// Apply a stored default exactly once on first mount when the URL is bare;
+	// explicit deep-links always win.
+	let storedDefault = $state<string | null>(null);
+	function refreshStoredDefault() {
+		storedDefault = getDevicesDefaultView(currentUser?.id);
+	}
+	onMount(() => {
+		refreshStoredDefault();
+		const bareEntry = $page.url.search === '' || $page.url.search === '?';
+		if (bareEntry && storedDefault) {
+			void goto(`?${storedDefault}`, { replaceState: true, keepFocus: true, noScroll: true });
+		}
+	});
+
+	const currentQueryNormalized = $derived(normalizeQueryString($page.url.search));
+	const hasStoredDefault = $derived(storedDefault !== null);
+	const canSaveDefault = $derived(currentQueryNormalized !== storedDefault);
+
+	function handleSaveDefault() {
+		if (!currentUser?.id) return;
+		setDevicesDefaultView(currentUser.id, $page.url.search);
+		refreshStoredDefault();
+		showToast({ message: t('devices.filters.defaultSaved'), type: 'success' });
+	}
+
+	function handleClearDefault() {
+		if (!currentUser?.id) return;
+		clearDevicesDefaultView(currentUser.id);
+		refreshStoredDefault();
+		showToast({ message: t('devices.filters.defaultCleared'), type: 'success' });
+	}
 </script>
 
 <div class="flex min-h-screen">
@@ -121,6 +162,10 @@
 		onFiltersChange={updateFilters}
 		isOpen={filtersOpen}
 		onClose={() => (filtersOpen = false)}
+		onSaveDefault={handleSaveDefault}
+		onClearDefault={handleClearDefault}
+		hasStoredDefault={hasStoredDefault}
+		canSaveDefault={canSaveDefault}
 	/>
 
 	<!-- Main content -->

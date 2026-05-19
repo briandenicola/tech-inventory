@@ -1,6 +1,6 @@
 # F022: User Default Sort & Filter Preferences
 
-**Status**: backlog
+**Status**: shipped (v1.0 — localStorage); server-sync follow-up tracked
 **Priority**: P3
 **Effort**: S
 **Value**: medium
@@ -85,3 +85,8 @@ Initial scope:
 ## History
 - 2026-05-20: created — captured during R10 smoke session as a v1.1 polish
   follow-up to the filter toolbar
+- 2026-05-19: shipped v1.0 as localStorage-only (per-user oid key,
+  schema-versioned via Zod, SSR-safe). Cross-device sync deferred to F020's
+  `UserPreference` table. New module `src/lib/stores/userPrefs.ts`,
+  toolbar additions in `DeviceFilters.svelte`, auto-apply on bare-URL entry
+  in `/devices/+page.svelte`. 16 new Vitest cases.

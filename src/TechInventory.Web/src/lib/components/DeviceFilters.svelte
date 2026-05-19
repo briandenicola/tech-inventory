@@ -20,9 +20,22 @@
 		onFiltersChange: (filters: DeviceFilters) => void;
 		isOpen?: boolean;
 		onClose?: () => void;
+		onSaveDefault?: () => void;
+		onClearDefault?: () => void;
+		hasStoredDefault?: boolean;
+		canSaveDefault?: boolean;
 	}
 
-	let { filters, onFiltersChange, isOpen = true, onClose }: Props = $props();
+	let {
+		filters,
+		onFiltersChange,
+		isOpen = true,
+		onClose,
+		onSaveDefault,
+		onClearDefault,
+		hasStoredDefault = false,
+		canSaveDefault = true
+	}: Props = $props();
 
 	const refData = $derived($referenceDataStore);
 
@@ -296,6 +309,30 @@
 	>
 		{t('devices.filters.clearAll')}
 	</button>
+
+	{#if onSaveDefault || onClearDefault}
+		<div class="mt-3 flex flex-col gap-2">
+			{#if onSaveDefault}
+				<button
+					type="button"
+					onclick={onSaveDefault}
+					disabled={!canSaveDefault}
+					class="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-primary-600 px-5 py-2.5 text-base font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-primary-500 dark:hover:bg-primary-600"
+				>
+					{t('devices.filters.saveDefault')}
+				</button>
+			{/if}
+			{#if onClearDefault && hasStoredDefault}
+				<button
+					type="button"
+					onclick={onClearDefault}
+					class="inline-flex min-h-11 w-full items-center justify-center rounded-full px-5 py-2.5 text-sm font-medium text-neutral-600 underline-offset-4 transition-colors hover:underline focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:text-neutral-400"
+				>
+					{t('devices.filters.clearDefault')}
+				</button>
+			{/if}
+		</div>
+	{/if}
 
 	<!-- ARIA live region for results announcement -->
 	<div class="sr-only" role="status" aria-live="polite" aria-atomic="true">

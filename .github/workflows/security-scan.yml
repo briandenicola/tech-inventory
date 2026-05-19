@@ -115,6 +115,11 @@ jobs:
 
       - name: Upload SARIF to Security tab
         if: always()
+        # Code Scanning is a paid GHAS feature on private repos — until Brian
+        # enables it the upload-sarif action returns "Resource not accessible
+        # by integration" and red-marks the run. SARIF artifact upload below
+        # still preserves results for manual inspection.
+        continue-on-error: true
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-api.sarif
@@ -159,6 +164,8 @@ jobs:
 
       - name: Upload SARIF to Security tab
         if: always()
+        # Same gating as the API scan above — paid GHAS Code Scanning feature.
+        continue-on-error: true
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-web.sarif

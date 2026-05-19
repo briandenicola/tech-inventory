@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json.Serialization;
 using FluentValidation;
 using MediatR;
@@ -5,6 +6,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using OpenTelemetry.Resources;
@@ -19,6 +21,7 @@ using TechInventory.Domain.Entities;
 using TechInventory.Domain.ValueObjects;
 using TechInventory.Infrastructure;
 using TechInventory.Infrastructure.Persistence;
+using TechInventory.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -67,7 +70,37 @@ else
     var audiences = builder.Configuration.GetSection("Auth:Entra:Audiences").Get<string[]>()
         ?? throw new InvalidOperationException("Auth:Entra:Audiences is required when Auth:DevBypass=false");
 
-    authenticationBuilder.AddJwtBearer(ApiAuthenticationSchemes.DefaultScheme, options =>
+    // F025 — composite policy scheme. We sniff the JWT `iss` claim and forward
+    // to either the Entra JwtBearer handler or our local HS256 handler. Both
+    // produce a ClaimsPrincipal with the same `role` shape, so existing
+    // `[Authorize(Roles=...)]` attributes Just Work regardless of issuer.
+    authenticationBuilder.AddPolicyScheme(ApiAuthenticationSchemes.DefaultScheme, ApiAuthenticationSchemes.DefaultScheme, options =>
+    {
+        options.ForwardDefaultSelector = context =>
+        {
+            var header = context.Request.Headers.Authorization.ToString();
+            if (!string.IsNullOrEmpty(header) && header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            {
+                var token = header["Bearer ".Length..].Trim();
+                try
+                {
+                    var jwt = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().ReadJwtToken(token);
+                    if (string.Equals(jwt.Issuer, LocalJwtOptions.Issuer, StringComparison.Ordinal))
+                    {
+                        return ApiAuthenticationSchemes.LocalScheme;
+                    }
+                }
+                catch (Exception)
+                {
+                    // Fall through to Entra so the JwtBearer handler can emit the
+                    // proper 401 ProblemDetails.
+                }
+            }
+            return ApiAuthenticationSchemes.EntraScheme;
+        };
+    });
+
+    authenticationBuilder.AddJwtBearer(ApiAuthenticationSchemes.EntraScheme, options =>
     {
         options.Authority = authority;
         options.TokenValidationParameters = new TokenValidationParameters
@@ -115,6 +148,44 @@ else
             }
         };
     });
+
+    // F025 — local HS256 bearer. We register the JwtBearer scheme up front and
+    // wire its TokenValidationParameters via a PostConfigure that pulls from
+    // IOptions<LocalJwtOptions>. This is critical for WebApplicationFactory test
+    // hosts: their ConfigureAppConfiguration callbacks land AFTER Program.cs
+    // reads builder.Configuration, so any direct .Get<LocalJwtOptions>() here
+    // would miss the test's signing-key override.
+    authenticationBuilder.AddJwtBearer(ApiAuthenticationSchemes.LocalScheme, _ => { });
+    builder.Services.AddOptions<JwtBearerOptions>(ApiAuthenticationSchemes.LocalScheme)
+        .Configure<IOptions<LocalJwtOptions>>((options, localOptions) =>
+        {
+            var localJwt = localOptions.Value;
+            options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
+
+            SymmetricSecurityKey? signingKey = null;
+            if (!string.IsNullOrWhiteSpace(localJwt.SigningKey))
+            {
+                var keyBytes = Encoding.UTF8.GetBytes(localJwt.SigningKey);
+                if (keyBytes.Length < 32)
+                {
+                    throw new InvalidOperationException("Auth:Local:SigningKey must be at least 32 bytes (256 bits).");
+                }
+                signingKey = new SymmetricSecurityKey(keyBytes);
+            }
+
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidIssuer = LocalJwtOptions.Issuer,
+                ValidateAudience = true,
+                ValidAudience = localJwt.Audience,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = signingKey is not null,
+                IssuerSigningKey = signingKey,
+                IssuerSigningKeys = signingKey is not null ? new[] { signingKey } : null,
+                ClockSkew = TimeSpan.FromMinutes(1)
+            };
+        });
 }
 
 builder.Services.AddAuthorizationBuilder()
@@ -150,6 +221,9 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 builder.Services.AddHealthChecks();
+
+// F025 — seed a local Admin from env vars if Auth:Local:SeedEnabled is set.
+builder.Services.AddHostedService<LocalAdminSeedHostedService>();
 
 var otlpEndpoint = builder.Configuration["OpenTelemetry:OtlpEndpoint"];
 if (!string.IsNullOrEmpty(otlpEndpoint))
@@ -201,6 +275,36 @@ app.UseCors("ApiCorsPolicy");
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// F025 — must-change-password gate. While a local-auth principal carries
+// must_change_password=true, allow only the change-password endpoint (plus
+// anonymous routes like swagger/health). Everything else returns 403 so the UI
+// can route them through the rotation flow.
+app.Use(async (httpContext, next) =>
+{
+    var user = httpContext.User;
+    if (user?.Identity?.IsAuthenticated == true
+        && string.Equals(user.FindFirst("auth_method")?.Value, "local", StringComparison.Ordinal)
+        && string.Equals(user.FindFirst("must_change_password")?.Value, "true", StringComparison.OrdinalIgnoreCase))
+    {
+        var path = httpContext.Request.Path.Value ?? string.Empty;
+        if (!path.StartsWith("/api/v1/auth/local/change-password", StringComparison.OrdinalIgnoreCase))
+        {
+            httpContext.Response.StatusCode = StatusCodes.Status403Forbidden;
+            httpContext.Response.ContentType = "application/problem+json";
+            await httpContext.Response.WriteAsJsonAsync(new
+            {
+                type = "https://tools.ietf.org/html/rfc9110#name-403-forbidden",
+                title = "Password change required",
+                status = 403,
+                code = "PasswordChangeRequired",
+                detail = "Your local account must change its password before using the API."
+            });
+            return;
+        }
+    }
+    await next().ConfigureAwait(false);
+});
 
 app.MapHealthChecks("/health");
 app.MapHealthChecks("/health/ready");

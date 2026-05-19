@@ -22,7 +22,9 @@ describe('updateCurrentUserDisplayName', () => {
 			},
 			isAuthenticated: true,
 			isLoading: false,
-			error: null
+			error: null,
+			authMethod: 'entra',
+			mustChangePassword: false
 		});
 
 		updateCurrentUserDisplayName('New Name');

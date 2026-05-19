@@ -2,3 +2,17 @@ title = "Tech Inventory gitleaks configuration"
 
 [extend]
 useDefault = true
+
+# False-positive suppressions: feature-flag and configuration-key documentation
+# in markdown / runbooks. These are not credentials — they are public knob
+# names with a boolean value the operator must set. They tripped gitleaks'
+# generic-api-key heuristic because the surrounding text looks like an
+# assignment expression.
+[allowlist]
+description = "Documentation references to non-secret config knobs."
+regexTarget = "match"
+regexes = [
+  '''Auth:DevBypass\s*=\s*true''',
+  '''Auth__Local__SeedEnabled\s*=\s*true''',
+  '''Auth__Local__SeedAllowInProd\s*=\s*true''',
+]

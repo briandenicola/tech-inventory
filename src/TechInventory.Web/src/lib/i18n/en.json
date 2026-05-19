@@ -91,7 +91,32 @@
 		"sessionExpired": "Your session has expired. Please sign in again.",
 		"accessDenied": "Access denied. You do not have permission to view this page.",
 		"welcomeMessage": "Welcome back, {name}!",
-		"unauthorized": "You must be signed in to access this page."
+		"unauthorized": "You must be signed in to access this page.",
+		"local": {
+			"useLocalAccount": "Use a local account instead",
+			"backToSso": "Back to single sign-on",
+			"formTitle": "Local account sign-in",
+			"formDescription": "Reserved for break-glass access when Entra ID is unavailable.",
+			"usernameLabel": "Username",
+			"passwordLabel": "Password",
+			"submit": "Sign in locally",
+			"submitting": "Signing in…",
+			"invalidCredentials": "Username or password is incorrect.",
+			"unknownError": "Local sign-in failed. Please try again.",
+			"changePassword": {
+				"title": "Change your password",
+				"description": "Your local account must rotate its password before continuing.",
+				"currentLabel": "Current password",
+				"newLabel": "New password",
+				"confirmLabel": "Confirm new password",
+				"submit": "Update password",
+				"submitting": "Updating…",
+				"mustDifferFromCurrent": "New password must differ from the current password.",
+				"mustMatch": "Passwords do not match.",
+				"minLength": "Password must be at least 12 characters.",
+				"success": "Password updated. Please sign in again with your new password."
+			}
+		}
 	},
 	"navigation": {
 		"home": "Home",

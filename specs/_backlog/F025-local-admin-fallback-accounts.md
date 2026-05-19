@@ -1,6 +1,6 @@
 # F025: Local Admin Fallback Accounts (Entra Continuity)
 
-**Status**: backlog
+**Status**: shipped (v1b — bootstrap seed + login + change-password only). Admin-account CRUD UI, lockout enforcement, rate limiting, refresh cookies, soft delete, last-Admin guard, and self-service "convert me to local" carved out to **F025b**. See ADR D-140 for the v1b scope rationale.
 **Priority**: P1
 **Effort**: L
 **Value**: high

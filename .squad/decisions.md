@@ -2917,6 +2917,90 @@ Added `src/TechInventory.Web/nginx.conf` (SPA fallback for client routing + `/ap
 
 ---
 
+### D-140: F025 v1b — Break-Glass Local Admin (Bootstrap-Only Slice)
+
+**Author:** brian.denicolafamily (via Copilot, solo)
+**Date:** 2026-05-19
+**Status:** ✅ Implemented (v1b slice — bootstrap seed + login + change-password)
+**Related:** F025 spec (`specs/_backlog/F025-local-admin-fallback-accounts.md`), `docs/auth-design.md`, Constitution §2, §6
+
+**Context.** Entra ID is a single point of failure for sign-in. If the tenant
+is misconfigured, the secret is rotated incorrectly, or Azure has an outage,
+no household admin can log in to repair the deployment. F025 designs the full
+"local credentials provider" alongside Entra; v1b is the minimum slice that
+gives the operator a usable rescue path **without** building a credential-
+management UI.
+
+**v1b carved scope (in):**
+
+- `LocalUser` aggregate + EF migration + repository (NOCASE username index).
+- Argon2id password hashing — OWASP 2025 baseline of `m=19_456 KiB, t=2, p=1`,
+  encoded `$argon2id$v=19$m=...,t=...,p=...$saltB64$hashB64`. Salt 16 B, hash
+  32 B. Verify uses fixed-time comparison; unknown algorithm tag fails closed.
+- HS256 JWT issuer with claims `sub/oid/name/preferred_username/role/auth_method=local/must_change_password`,
+  issuer `techinventory-local`, 8 h lifetime.
+- ASP.NET Core `PolicyScheme` `TechInventoryAuth` sniffs the JWT `iss` and
+  forwards to the existing Entra JwtBearer scheme or the new Local JwtBearer
+  scheme. Both schemes set `ClaimTypes.Role` so `[Authorize(Roles=…)]` is
+  unchanged.
+- Public endpoints: `POST /api/v1/auth/local/login` (anonymous, uniform 401
+  for `InvalidCredentials`) and `POST /api/v1/auth/local/change-password`
+  (requires `auth_method=local`).
+- Force-rotation middleware: after `UseAuthentication`, any local-auth
+  principal with `must_change_password=true` gets a 403
+  `code=PasswordChangeRequired` on every endpoint except change-password.
+- `LocalAdminSeedHostedService`: env-var-driven idempotent seeder. Refuses
+  Production unless `SeedAllowInProd=true`. Logs a CRITICAL warning on every
+  startup while configured, so leaving seed env vars in prod is loud.
+- Frontend: sessionStorage token (per D-002 / Constitution §6), local sign-in
+  preferred over MSAL when present, "Use a local account" toggle on the login
+  page, dedicated `/auth/change-password` page guarded by a root-layout
+  `$effect`.
+
+**v1b carved scope (out, deferred to F025b):**
+
+- Admin UI for managing local accounts (CRUD, reset, deactivate).
+- Per-account lockout enforcement (`FailedAttemptCount`, `LockoutUntilUtc` are
+  stored but not yet checked on login).
+- IP-based rate limiting on the login endpoint.
+- Refresh tokens / sliding sessions.
+- Soft delete semantics + last-Admin guard.
+- Self-service "convert me to local" for an existing Entra admin.
+
+**Key parameter choices and why:**
+
+| Choice                       | Value                                | Why                                                                                                                                                |
+| ---------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Algorithm                    | Argon2id                             | OWASP 2025 baseline; library: Konscious.Security.Cryptography.Argon2 1.3.1.                                                                        |
+| Memory / iterations / lanes  | 19 456 KiB / 2 / 1                   | OWASP minimum profile; safe on a Raspberry-Pi-class host. Re-tune via `Auth:Local:Argon2:*` when we benchmark target hardware (tracked in F025b).  |
+| JWT signing                  | HS256 with shared secret             | One service issues + validates; no token relying-party other than the API itself. RS256 would force operators to manage a key file with no payoff. |
+| JWT lifetime                 | 8 h, no refresh cookie               | Break-glass UX, not daily-driver auth. Long enough to fix the outage, short enough to limit theft window. Refresh deferred to F025b.               |
+| Token storage                | sessionStorage (`ti_local_token`)    | Constitution §6 forbids localStorage. Memory-only would break page refresh during the very outage we are recovering from.                          |
+| Error response on bad creds  | Uniform 401 + `code=InvalidCredentials` for both unknown user and wrong password | Prevents username enumeration.                                                                                                |
+| Bootstrap admin              | Env vars + hosted service, idempotent | Seed flow has zero UI dependencies, so it still works when the SPA is broken. Idempotent re-hashing acts as "operator reset" by restart.          |
+| Production seed safety       | Refuses unless `Auth:Local:SeedAllowInProd=true` + always-CRITICAL log         | Makes it very hard to accidentally leave a known-credential admin in prod.                                                    |
+
+**Operator runbook:** Documented in `docs/operations.md` § "Break-glass local
+admin". Required env vars: `Auth__Local__SigningKey` (≥ 32 chars),
+`Auth__Local__SeedEnabled=true`, `Auth__Local__SeedUsername`,
+`Auth__Local__SeedPassword`. After first successful sign-in + password
+rotation, remove the seed env vars and restart.
+
+**Consequences:**
+
+- Any new endpoint must continue to ride the shared `TechInventoryAuth`
+  PolicyScheme; bypassing it would skip the must-change-password gate.
+- Future password storage changes must keep the encoded `$argon2id$…` format
+  or migrate every row + lift the strict algorithm-tag check.
+- F025b is now the single landing place for the deferred items above; the
+  v1b columns in `LocalUser` (`FailedAttemptCount`, `LockoutUntilUtc`,
+  `IsActive`) intentionally already exist so F025b can light them up without
+  another migration.
+
+---
+
+
+
 ## Governance
 
 - All meaningful changes require team consensus

@@ -491,6 +491,22 @@ export const auditEvents = {
 	) => apiFetch<GetResponse<paths['/api/v1/audit-events']>>(`/api/v1/audit-events${buildQueryString(params)}`)
 };
 
+// F025 — local-account fallback endpoints. Kept narrow on purpose; admin-side
+// management lives in F025b.
+export const localAuth = {
+	login: async (body: { username: string; password: string }) =>
+		apiFetch<PostResponse<paths['/api/v1/auth/local/login']>>(
+			`/api/v1/auth/local/login`,
+			{ method: 'POST', body: JSON.stringify(body) }
+		),
+
+	changePassword: async (body: { currentPassword: string; newPassword: string }) =>
+		apiFetch<void>(`/api/v1/auth/local/change-password`, {
+			method: 'POST',
+			body: JSON.stringify(body)
+		})
+};
+
 const api = {
 	devices,
 	brands,
@@ -502,6 +518,7 @@ const api = {
 	imports,
 	exports,
 	auditEvents,
+	localAuth,
 	setApiConfig
 };
 

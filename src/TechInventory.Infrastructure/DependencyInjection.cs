@@ -40,6 +40,15 @@ public static class DependencyInjection
         services.AddScoped<ITagRepository, TagRepository>();
         services.AddScoped<IAuditEventRepository, AuditEventRepository>();
         services.AddScoped<IImportBatchRepository, ImportBatchRepository>();
+        services.AddScoped<ILocalUserRepository, LocalUserRepository>();
+
+        // F025 — local-account fallback wiring. Options bind even when the
+        // feature is disabled so test configs can still touch the values.
+        services.Configure<LocalJwtOptions>(configuration.GetSection(LocalJwtOptions.SectionPath));
+        services.Configure<Argon2idOptions>(configuration.GetSection(Argon2idOptions.SectionPath));
+        services.AddSingleton(TimeProvider.System);
+        services.AddSingleton<IPasswordHasher, Argon2idPasswordHasher>();
+        services.AddSingleton<ILocalTokenIssuer, HmacJwtLocalTokenIssuer>();
 
         return services;
     }

@@ -33,6 +33,8 @@ public sealed class AppDbContext(
 
     public DbSet<Tag> Tags => Set<Tag>();
 
+    public DbSet<LocalUser> LocalUsers => Set<LocalUser>();
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         base.OnConfiguring(optionsBuilder);

@@ -4,11 +4,14 @@ import { goto } from '$app/navigation';
 import { msalInstance, loginRequest, ensureMsalInitialized } from '$lib/auth/msal';
 import { getActiveAccount } from '$lib/auth';
 import { t } from '$lib/i18n';
+import LocalLoginForm from '$lib/components/LocalLoginForm.svelte';
 
 // T09: Login page — redirect to Entra via MSAL loginRedirect
 // Per J1: Click "Sign In" → redirect to Entra → auth → callback → sessionStorage JWT
+// F025 — also offer a hidden-by-default local-account toggle for break-glass access.
 
-let isRedirecting = false;
+let isRedirecting = $state(false);
+let showLocalForm = $state(false);
 
 // If user is already signed in, redirect to devices list
 onMount(async () => {
@@ -51,8 +54,13 @@ class="mx-auto h-24 w-24"
 </p>
 </div>
 
+{#if showLocalForm}
+<div class="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-950/40">
+<LocalLoginForm onCancel={() => (showLocalForm = false)} />
+</div>
+{:else}
 <!-- Sign In Button -->
-<div class="mt-8">
+<div class="mt-8 space-y-3">
 <button
 type="button"
 class="flex w-full items-center justify-center rounded-lg bg-primary-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:cursor-not-allowed disabled:opacity-50"
@@ -69,7 +77,15 @@ onclick={handleSignIn}
 {t('auth.signIn.button')}
 {/if}
 </button>
+<button
+type="button"
+class="block w-full text-center text-xs font-medium text-primary-700 hover:underline dark:text-primary-300"
+onclick={() => (showLocalForm = true)}
+>
+{t('auth.local.useLocalAccount')}
+</button>
 </div>
+{/if}
 
 <!-- Footer -->
 <p class="mt-8 text-center text-xs text-neutral-500 dark:text-neutral-400">

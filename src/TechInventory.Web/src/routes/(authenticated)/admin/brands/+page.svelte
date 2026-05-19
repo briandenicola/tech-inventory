@@ -4,6 +4,7 @@
 	import { t } from '$lib/i18n';
 	import { authStore } from '$lib/stores/auth';
 	import api from '$lib/api/client';
+	import type { BrandResponse } from '$lib/api/types';
 	import { brandSchema, type BrandFormData } from '$lib/schemas/brand';
 	import { addToast } from '$lib/stores/toast';
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
@@ -45,19 +46,16 @@
 	});
 
 	// Brands query state
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	let brands = $state<any[]>([]);
+	let brands = $state<BrandResponse[]>([]);
 	let totalCount = $state(0);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 
 	// Modal states
 	let formModalOpen = $state(false);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	let editingBrand = $state<any | null>(null);
+	let editingBrand = $state<BrandResponse | null>(null);
 	let deactivateModalOpen = $state(false);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	let deactivatingBrand = $state<any | null>(null);
+	let deactivatingBrand = $state<BrandResponse | null>(null);
 
 	// Form state
 	let formData = $state<BrandFormData>({ name: '', website: '', notes: '' });
@@ -74,11 +72,11 @@
 		error = null;
 		try {
 			const response = await api.brands.list(urlParams);
-			brands = response.items || [];
-			totalCount = response.totalCount || 0;
-		} catch (err: any) {
+			brands = response.items ?? [];
+			totalCount = response.totalCount ?? 0;
+		} catch (err: unknown) {
 			console.error('[BrandsAdmin] Load failed:', err);
-			error = err.message || 'Failed to load brands';
+			error = err instanceof Error ? err.message : 'Failed to load brands';
 		} finally {
 			loading = false;
 		}
@@ -93,12 +91,12 @@
 	}
 
 	// Open edit modal
-	function openEditModal(brand: any) {
+	function openEditModal(brand: BrandResponse) {
 		editingBrand = brand;
 		formData = {
-			name: brand.name || '',
-			website: brand.website || '',
-			notes: brand.notes || ''
+			name: brand.name ?? '',
+			website: brand.website ?? '',
+			notes: brand.notes ?? ''
 		};
 		formErrors = {};
 		formModalOpen = true;
@@ -128,7 +126,7 @@
 
 		formSubmitting = true;
 		try {
-			if (editingBrand) {
+			if (editingBrand?.id) {
 				// Update
 				await api.brands.update(editingBrand.id, result.data);
 				addToast({ type: 'success', message: 'Brand updated successfully' });
@@ -139,16 +137,17 @@
 			}
 			closeFormModal();
 			await loadBrands();
-		} catch (err: any) {
+		} catch (err: unknown) {
 			console.error('[BrandsAdmin] Submit failed:', err);
-			addToast({ type: 'error', message: err.message || 'Failed to save brand' });
+			const message = err instanceof Error ? err.message : 'Failed to save brand';
+			addToast({ type: 'error', message });
 		} finally {
 			formSubmitting = false;
 		}
 	}
 
 	// Open deactivate modal
-	function openDeactivateModal(brand: any) {
+	function openDeactivateModal(brand: BrandResponse) {
 		deactivatingBrand = brand;
 		deactivateModalOpen = true;
 	}
@@ -161,15 +160,16 @@
 
 	// Confirm deactivate
 	async function handleDeactivate() {
-		if (!deactivatingBrand) return;
+		if (!deactivatingBrand?.id) return;
 		try {
 			await api.brands.deactivate(deactivatingBrand.id);
 			addToast({ type: 'success', message: t('brands.deactivate.success') });
 			closeDeactivateModal();
 			await loadBrands();
-		} catch (err: any) {
+		} catch (err: unknown) {
 			console.error('[BrandsAdmin] Deactivate failed:', err);
-			addToast({ type: 'error', message: err.message || 'Failed to deactivate brand' });
+			const message = err instanceof Error ? err.message : 'Failed to deactivate brand';
+			addToast({ type: 'error', message });
 		}
 	}
 
@@ -193,8 +193,6 @@
 		else params.delete('pageSize');
 		goto(`?${params.toString()}`, { replaceState: true, keepFocus: true, noScroll: true });
 	}
-
-	const totalPages = $derived(Math.ceil(totalCount / urlParams.pageSize));
 </script>
 
 <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -407,7 +405,7 @@
 <!-- Deactivate Modal -->
 {#if deactivateModalOpen && deactivatingBrand}
 	<DeactivateConfirmModal
-		entityName={deactivatingBrand.name}
+		entityName={deactivatingBrand.name ?? ''}
 		entityType="brand"
 		onConfirm={handleDeactivate}
 		onCancel={closeDeactivateModal}

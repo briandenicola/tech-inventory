@@ -4,6 +4,7 @@
 	import { t } from '$lib/i18n';
 	import { authStore } from '$lib/stores/auth';
 	import api from '$lib/api/client';
+	import type { CategoryResponse } from '$lib/api/types';
 	import { categorySchema, type CategoryFormData } from '$lib/schemas/category';
 	import { addToast } from '$lib/stores/toast';
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
@@ -46,8 +47,7 @@
 	});
 
 	// Categories state
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	let categories = $state<any[]>([]);
+	let categories = $state<CategoryResponse[]>([]);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 
@@ -57,11 +57,9 @@
 
 	// Modal states
 	let formModalOpen = $state(false);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	let editingCategory = $state<any | null>(null);
+	let editingCategory = $state<CategoryResponse | null>(null);
 	let deactivateModalOpen = $state(false);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	let deactivatingCategory = $state<any | null>(null);
+	let deactivatingCategory = $state<CategoryResponse | null>(null);
 
 	// Form state
 	let formData = $state<CategoryFormData>({ name: '', parentId: '', icon: '', depth: 1 });
@@ -78,12 +76,12 @@
 		error = null;
 		try {
 			const response = await api.categories.list({ includeInactive: urlParams.includeInactive });
-			categories = response.items || [];
+			categories = response.items ?? [];
 			// Auto-expand all on load
-			expandedIds = new Set(categories.map((c: any) => c.id));
-		} catch (err: any) {
+			expandedIds = new Set(categories.map((c) => c.id).filter((id): id is string => !!id));
+		} catch (err: unknown) {
 			console.error('[CategoriesAdmin] Load failed:', err);
-			error = err.message || 'Failed to load categories';
+			error = err instanceof Error ? err.message : 'Failed to load categories';
 		} finally {
 			loading = false;
 		}
@@ -98,19 +96,19 @@
 		const ancestorIds = new Set<string>();
 
 		// Find matches
-		categories.forEach((cat: any) => {
-			if (cat.name.toLowerCase().includes(lowerQuery)) {
+		categories.forEach((cat) => {
+			if (cat.name?.toLowerCase().includes(lowerQuery) && cat.id) {
 				matchingIds.add(cat.id);
 				// Add all ancestors
-				let current = categories.find((c: any) => c.id === cat.parentId);
-				while (current) {
+				let current = categories.find((c) => c.id === cat.parentId);
+				while (current?.id) {
 					ancestorIds.add(current.id);
-					current = categories.find((c: any) => c.id === current?.parentId);
+					current = categories.find((c) => c.id === current?.parentId);
 				}
 			}
 		});
 
-		return categories.filter((c: any) => matchingIds.has(c.id) || ancestorIds.has(c.id));
+		return categories.filter((c) => (c.id ? matchingIds.has(c.id) || ancestorIds.has(c.id) : false));
 	});
 
 	// Open add modal
@@ -122,13 +120,13 @@
 	}
 
 	// Open edit modal
-	function openEditModal(category: any) {
+	function openEditModal(category: CategoryResponse) {
 		editingCategory = category;
 		formData = {
-			name: category.name || '',
-			parentId: category.parentId || '',
-			icon: category.icon || '',
-			depth: category.depth || 1
+			name: category.name ?? '',
+			parentId: category.parentId ?? '',
+			icon: category.icon ?? '',
+			depth: category.depth ?? 1
 		};
 		formErrors = {};
 		formModalOpen = true;
@@ -165,7 +163,7 @@
 				depth: result.data.depth
 			};
 
-			if (editingCategory) {
+			if (editingCategory?.id) {
 				// Update
 				await api.categories.update(editingCategory.id, payload);
 				addToast({ type: 'success', message: t('admin.categories.edit.success') });
@@ -176,16 +174,17 @@
 			}
 			closeFormModal();
 			await loadCategories();
-		} catch (err: any) {
+		} catch (err: unknown) {
 			console.error('[CategoriesAdmin] Submit failed:', err);
-			addToast({ type: 'error', message: err.message || 'Failed to save category' });
+			const message = err instanceof Error ? err.message : 'Failed to save category';
+			addToast({ type: 'error', message });
 		} finally {
 			formSubmitting = false;
 		}
 	}
 
 	// Open deactivate modal
-	function openDeactivateModal(category: any) {
+	function openDeactivateModal(category: CategoryResponse) {
 		deactivatingCategory = category;
 		deactivateModalOpen = true;
 	}
@@ -198,15 +197,16 @@
 
 	// Confirm deactivate
 	async function handleDeactivate() {
-		if (!deactivatingCategory) return;
+		if (!deactivatingCategory?.id) return;
 		try {
 			await api.categories.deactivate(deactivatingCategory.id);
 			addToast({ type: 'success', message: t('admin.categories.deactivate.success') });
 			closeDeactivateModal();
 			await loadCategories();
-		} catch (err: any) {
+		} catch (err: unknown) {
 			console.error('[CategoriesAdmin] Deactivate failed:', err);
-			addToast({ type: 'error', message: err.message || 'Failed to deactivate category' });
+			const message = err instanceof Error ? err.message : 'Failed to deactivate category';
+			addToast({ type: 'error', message });
 		}
 	}
 
@@ -237,21 +237,16 @@
 		const selectedId = target.value;
 		formData.parentId = selectedId;
 		if (selectedId) {
-			const parent = categories.find((c: any) => c.id === selectedId);
-			formData.depth = parent ? parent.depth + 1 : 1;
+			const parent = categories.find((c) => c.id === selectedId);
+			formData.depth = parent?.depth ? parent.depth + 1 : 1;
 		} else {
 			formData.depth = 1;
 		}
 	}
 
-	// Get visible children (for expand/collapse UI)
-	function getVisibleChildren(parentId: string | null) {
-		return displayedCategories.filter((c: any) => c.parentId === parentId);
-	}
-
 	// Check if category has children
 	function hasChildren(categoryId: string) {
-		return displayedCategories.some((c: any) => c.parentId === categoryId);
+		return displayedCategories.some((c) => c.parentId === categoryId);
 	}
 </script>
 
@@ -313,10 +308,10 @@
 			<div class="divide-y divide-neutral-200 dark:divide-neutral-800">
 				{#each displayedCategories.filter((c) => c.parentId === null) as category (category.id)}
 					{@render categoryRow(category, 0)}
-					{#if expandedIds.has(category.id)}
+					{#if expandedIds.has(category.id ?? '')}
 						{#each displayedCategories.filter((c) => c.parentId === category.id) as child (child.id)}
 							{@render categoryRow(child, 1)}
-							{#if expandedIds.has(child.id)}
+							{#if expandedIds.has(child.id ?? '')}
 								{#each displayedCategories.filter((c) => c.parentId === child.id) as grandchild (grandchild.id)}
 									{@render categoryRow(grandchild, 2)}
 								{/each}
@@ -373,9 +368,9 @@
 						class:border-error-600={formErrors.parentId}
 					>
 						<option value="">{t('admin.categories.fields.parentNone')}</option>
-						{#each categories.filter((c) => c.isActive && c.depth < 3 && c.id !== editingCategory?.id) as cat (cat.id)}
+						{#each categories.filter((c) => c.isActive && (c.depth ?? 0) < 3 && c.id !== editingCategory?.id) as cat (cat.id)}
 							<option value={cat.id}>
-								{'\u00A0'.repeat((cat.depth - 1) * 4)}{cat.icon || ''} {cat.name}
+								{'\u00A0'.repeat(((cat.depth ?? 1) - 1) * 4)}{cat.icon || ''} {cat.name}
 							</option>
 						{/each}
 					</select>
@@ -429,24 +424,25 @@
 <!-- Deactivate Modal -->
 {#if deactivateModalOpen && deactivatingCategory}
 	<DeactivateConfirmModal
-		entityName={deactivatingCategory.name}
+		entityName={deactivatingCategory.name ?? ''}
 		entityType="category"
 		onConfirm={handleDeactivate}
 		onCancel={closeDeactivateModal}
 	/>
 {/if}
 
-{#snippet categoryRow(category: any, level: number)}
+{#snippet categoryRow(category: CategoryResponse, level: number)}
+	{@const categoryId = category.id ?? ''}
 	<div class="flex items-center justify-between px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-900">
 		<div class="flex items-center gap-2" style="padding-left: {level * 2}rem;">
-			{#if hasChildren(category.id)}
+			{#if hasChildren(categoryId)}
 				<button
 					type="button"
-					onclick={() => toggleExpanded(category.id)}
+					onclick={() => toggleExpanded(categoryId)}
 					class="flex h-6 w-6 items-center justify-center text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
-					aria-label={expandedIds.has(category.id) ? 'Collapse' : 'Expand'}
+					aria-label={expandedIds.has(categoryId) ? 'Collapse' : 'Expand'}
 				>
-					{#if expandedIds.has(category.id)}
+					{#if expandedIds.has(categoryId)}
 						<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
 						</svg>

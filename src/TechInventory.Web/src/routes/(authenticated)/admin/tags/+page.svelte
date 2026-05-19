@@ -4,6 +4,7 @@
 	import { t } from '$lib/i18n';
 	import { authStore } from '$lib/stores/auth';
 	import api from '$lib/api/client';
+	import type { TagResponse } from '$lib/api/types';
 	import { tagSchema, type TagFormData, TAG_PRESET_COLORS } from '$lib/schemas/tag';
 	import { addToast } from '$lib/stores/toast';
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
@@ -35,18 +36,15 @@
 		};
 	});
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	let tags = $state<any[]>([]);
+	let tags = $state<TagResponse[]>([]);
 	let totalCount = $state(0);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 
 	let formModalOpen = $state(false);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	let editingTag = $state<any | null>(null);
+	let editingTag = $state<TagResponse | null>(null);
 	let deactivateModalOpen = $state(false);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	let deactivatingTag = $state<any | null>(null);
+	let deactivatingTag = $state<TagResponse | null>(null);
 
 	let formData = $state<TagFormData>({ name: '', color: TAG_PRESET_COLORS[0] });
 	let formErrors = $state<Record<string, string>>({});
@@ -61,11 +59,11 @@
 		error = null;
 		try {
 			const response = await api.tags.list(urlParams);
-			tags = response.items || [];
-			totalCount = response.totalCount || 0;
-		} catch (err: any) {
+			tags = response.items ?? [];
+			totalCount = response.totalCount ?? 0;
+		} catch (err: unknown) {
 			console.error('[TagsAdmin] Load failed:', err);
-			error = err.message || 'Failed to load tags';
+			error = err instanceof Error ? err.message : 'Failed to load tags';
 		} finally {
 			loading = false;
 		}
@@ -78,11 +76,11 @@
 		formModalOpen = true;
 	}
 
-	function openEditModal(tag: any) {
+	function openEditModal(tag: TagResponse) {
 		editingTag = tag;
 		formData = {
-			name: tag.name || '',
-			color: tag.color || TAG_PRESET_COLORS[0]
+			name: tag.name ?? '',
+			color: tag.color ?? TAG_PRESET_COLORS[0]
 		};
 		formErrors = {};
 		formModalOpen = true;
@@ -109,7 +107,7 @@
 
 		formSubmitting = true;
 		try {
-			if (editingTag) {
+			if (editingTag?.id) {
 				await api.tags.update(editingTag.id, result.data);
 				addToast({ type: 'success', message: 'Tag updated successfully' });
 			} else {
@@ -118,15 +116,16 @@
 			}
 			closeFormModal();
 			await loadTags();
-		} catch (err: any) {
+		} catch (err: unknown) {
 			console.error('[TagsAdmin] Submit failed:', err);
-			addToast({ type: 'error', message: err.message || 'Failed to save tag' });
+			const message = err instanceof Error ? err.message : 'Failed to save tag';
+			addToast({ type: 'error', message });
 		} finally {
 			formSubmitting = false;
 		}
 	}
 
-	function openDeactivateModal(tag: any) {
+	function openDeactivateModal(tag: TagResponse) {
 		deactivatingTag = tag;
 		deactivateModalOpen = true;
 	}
@@ -137,15 +136,16 @@
 	}
 
 	async function handleDeactivate() {
-		if (!deactivatingTag) return;
+		if (!deactivatingTag?.id) return;
 		try {
 			await api.tags.deactivate(deactivatingTag.id);
 			addToast({ type: 'success', message: t('tags.deactivate.success') });
 			closeDeactivateModal();
 			await loadTags();
-		} catch (err: any) {
+		} catch (err: unknown) {
 			console.error('[TagsAdmin] Deactivate failed:', err);
-			addToast({ type: 'error', message: err.message || 'Failed to deactivate tag' });
+			const message = err instanceof Error ? err.message : 'Failed to deactivate tag';
+			addToast({ type: 'error', message });
 		}
 	}
 
@@ -167,8 +167,6 @@
 		else params.delete('pageSize');
 		goto(`?${params.toString()}`, { replaceState: true, keepFocus: true, noScroll: true });
 	}
-
-	const totalPages = $derived(Math.ceil(totalCount / urlParams.pageSize));
 </script>
 
 <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -302,10 +300,10 @@
 					{/if}
 				</div>
 
-				<div class="mb-6">
-					<label class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
+				<fieldset class="mb-6 border-0 p-0">
+					<legend class="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2">
 						{t('tags.fields.color')}
-					</label>
+					</legend>
 					<div class="grid grid-cols-8 gap-2">
 						{#each TAG_PRESET_COLORS as presetColor}
 							<button
@@ -318,6 +316,7 @@
 								class:dark:border-neutral-600={formData.color !== presetColor}
 								style="background-color: {presetColor}"
 								aria-label="Select color {presetColor}"
+								aria-pressed={formData.color === presetColor}
 							></button>
 						{/each}
 					</div>
@@ -333,7 +332,7 @@
 							{formData.name || 'Tag Preview'}
 						</span>
 					</div>
-				</div>
+				</fieldset>
 
 				<div class="flex justify-end gap-3">
 					<button
@@ -359,7 +358,7 @@
 
 {#if deactivateModalOpen && deactivatingTag}
 	<DeactivateConfirmModal
-		entityName={deactivatingTag.name}
+		entityName={deactivatingTag.name ?? ''}
 		entityType="tag"
 		onConfirm={handleDeactivate}
 		onCancel={closeDeactivateModal}

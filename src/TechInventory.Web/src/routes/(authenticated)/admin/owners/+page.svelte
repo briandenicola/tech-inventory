@@ -3,7 +3,8 @@
 	import { page } from '$app/stores';
 	import { t } from '$lib/i18n';
 	import { authStore } from '$lib/stores/auth';
-	import api from '$lib/api/client';
+	import api, { ApiError } from '$lib/api/client';
+	import type { OwnerResponse } from '$lib/api/types';
 	import { ownerSchema, type OwnerFormData } from '$lib/schemas/owner';
 	import { addToast } from '$lib/stores/toast';
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
@@ -49,19 +50,16 @@
 	});
 
 	// Owners query state
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	let owners = $state<any[]>([]);
+	let owners = $state<OwnerResponse[]>([]);
 	let totalCount = $state(0);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 
 	// Modal states
 	let formModalOpen = $state(false);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	let editingOwner = $state<any | null>(null);
+	let editingOwner = $state<OwnerResponse | null>(null);
 	let deactivateModalOpen = $state(false);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	let deactivatingOwner = $state<any | null>(null);
+	let deactivatingOwner = $state<OwnerResponse | null>(null);
 
 	// Form state
 	let formData = $state<OwnerFormData>({ displayName: '', role: 'Member', entraObjectId: '' });
@@ -78,11 +76,11 @@
 		error = null;
 		try {
 			const response = await api.owners.list(urlParams);
-			owners = response.items || [];
-			totalCount = response.totalCount || 0;
-		} catch (err: any) {
+			owners = response.items ?? [];
+			totalCount = response.totalCount ?? 0;
+		} catch (err: unknown) {
 			console.error('[OwnersAdmin] Load failed:', err);
-			error = err.message || 'Failed to load owners';
+			error = err instanceof Error ? err.message : 'Failed to load owners';
 		} finally {
 			loading = false;
 		}
@@ -97,12 +95,12 @@
 	}
 
 	// Open edit modal
-	function openEditModal(owner: any) {
+	function openEditModal(owner: OwnerResponse) {
 		editingOwner = owner;
 		formData = {
-			displayName: owner.displayName || '',
-			role: owner.role || 'Member',
-			entraObjectId: owner.entraObjectId || ''
+			displayName: owner.displayName ?? '',
+			role: (owner.role as OwnerFormData['role']) ?? 'Member',
+			entraObjectId: owner.entraObjectId ?? ''
 		};
 		formErrors = {};
 		formModalOpen = true;
@@ -138,7 +136,7 @@
 				entraObjectId: result.data.entraObjectId || null
 			};
 
-			if (editingOwner) {
+			if (editingOwner?.id) {
 				// Update
 				await api.owners.update(editingOwner.id, payload);
 				addToast({ type: 'success', message: t('admin.owners.edit.success') });
@@ -149,16 +147,17 @@
 			}
 			closeFormModal();
 			await loadOwners();
-		} catch (err: any) {
+		} catch (err: unknown) {
 			console.error('[OwnersAdmin] Submit failed:', err);
-			addToast({ type: 'error', message: err.message || 'Failed to save owner' });
+			const message = err instanceof Error ? err.message : 'Failed to save owner';
+			addToast({ type: 'error', message });
 		} finally {
 			formSubmitting = false;
 		}
 	}
 
 	// Open deactivate modal
-	function openDeactivateModal(owner: any) {
+	function openDeactivateModal(owner: OwnerResponse) {
 		deactivatingOwner = owner;
 		deactivateModalOpen = true;
 	}
@@ -171,22 +170,23 @@
 
 	// Confirm deactivate
 	async function handleDeactivate() {
-		if (!deactivatingOwner) return;
+		if (!deactivatingOwner?.id) return;
 		try {
 			await api.owners.deactivate(deactivatingOwner.id);
 			addToast({ type: 'success', message: t('admin.owners.deactivate.success') });
 			closeDeactivateModal();
 			await loadOwners();
-		} catch (err: any) {
+		} catch (err: unknown) {
 			console.error('[OwnersAdmin] Deactivate failed:', err);
 			// Backend returns 409 if devices still reference this owner
-			if (err.status === 409) {
+			if (err instanceof ApiError && err.status === 409) {
 				addToast({
 					type: 'error',
 					message: err.detail || 'Cannot deactivate owner: devices still reference this owner'
 				});
 			} else {
-				addToast({ type: 'error', message: err.message || 'Failed to deactivate owner' });
+				const message = err instanceof Error ? err.message : 'Failed to deactivate owner';
+				addToast({ type: 'error', message });
 			}
 		}
 	}
@@ -212,10 +212,8 @@
 		goto(`?${params.toString()}`, { replaceState: true, keepFocus: true, noScroll: true });
 	}
 
-	const totalPages = $derived(Math.ceil(totalCount / urlParams.pageSize));
-
 	// Role badge color
-	function getRoleBadgeClass(role: string) {
+	function getRoleBadgeClass(role: string | null | undefined) {
 		if (role === 'Admin') return 'bg-error-100 text-error-800 dark:bg-error-900 dark:text-error-200';
 		if (role === 'Member') return 'bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200';
 		return 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200';
@@ -297,7 +295,7 @@
 							</td>
 							<td class="px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300">
 								<span class="inline-flex rounded-full px-2 py-1 text-xs font-semibold {getRoleBadgeClass(owner.role)}">
-									{t(`admin.owners.roles.${owner.role.toLowerCase()}`)}
+									{t(`admin.owners.roles.${(owner.role ?? 'member').toLowerCase()}`)}
 								</span>
 							</td>
 							<td class="px-4 py-3 text-sm font-mono text-neutral-700 dark:text-neutral-300">
@@ -434,7 +432,7 @@
 <!-- Deactivate Modal -->
 {#if deactivateModalOpen && deactivatingOwner}
 	<DeactivateConfirmModal
-		entityName={deactivatingOwner.displayName}
+		entityName={deactivatingOwner.displayName ?? ''}
 		entityType="owner"
 		onConfirm={handleDeactivate}
 		onCancel={closeDeactivateModal}

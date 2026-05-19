@@ -14,6 +14,7 @@
 	Related: specs/002-frontend-mvp/spec.md J5-J7, Constitution §4.3
 -->
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { t } from '$lib/i18n';
 	import { referenceDataStore } from '$lib/stores/referenceData';
 	import { deviceCreateSchema, type DeviceCreateInput } from '$lib/schemas/device';
@@ -32,27 +33,30 @@
 	// Reference data from store
 	const refData = $derived($referenceDataStore);
 
-	// Form state (capture initial values at component creation; no reactivity to prop changes)
-	// This is intentional: initialData is only read once when form mounts
-	let formData = $state<Record<string, unknown>>({
-		name: initialData.name ?? '',
-		serialNumber: initialData.serialNumber ?? '',
-		brandId: initialData.brandId ?? '',
-		categoryId: initialData.categoryId ?? '',
-		ownerId: initialData.ownerId ?? '',
-		locationId: initialData.locationId ?? '',
-		networkId: initialData.networkId ?? '',
-		purchaseDate: initialData.purchaseDate ?? '',
-		purchasePrice: initialData.purchasePrice ?? null,
-		currencyCode: initialData.currencyCode ?? 'USD', // TODO D-070: Household default currency
-		notes: initialData.notes ?? '',
-		purpose: initialData.purpose ?? '',
-		operatingSystem: initialData.operatingSystem ?? '',
-		ipAddress: initialData.ipAddress ?? '',
-		macAddress: initialData.macAddress ?? '',
-		productUrl: initialData.productUrl ?? '',
-		version: initialData.version ?? ''
-	});
+	// Form state — capture initial values once when the form mounts and intentionally
+	// ignore future prop changes. `untrack` makes the snapshot intent explicit so the
+	// Svelte compiler stops warning about `state_referenced_locally`.
+	let formData = $state<Record<string, unknown>>(
+		untrack(() => ({
+			name: initialData.name ?? '',
+			serialNumber: initialData.serialNumber ?? '',
+			brandId: initialData.brandId ?? '',
+			categoryId: initialData.categoryId ?? '',
+			ownerId: initialData.ownerId ?? '',
+			locationId: initialData.locationId ?? '',
+			networkId: initialData.networkId ?? '',
+			purchaseDate: initialData.purchaseDate ?? '',
+			purchasePrice: initialData.purchasePrice ?? null,
+			currencyCode: initialData.currencyCode ?? 'USD', // TODO D-070: Household default currency
+			notes: initialData.notes ?? '',
+			purpose: initialData.purpose ?? '',
+			operatingSystem: initialData.operatingSystem ?? '',
+			ipAddress: initialData.ipAddress ?? '',
+			macAddress: initialData.macAddress ?? '',
+			productUrl: initialData.productUrl ?? '',
+			version: initialData.version ?? ''
+		}))
+	);
 
 	let errors = $state<Record<string, string>>({});
 	let touched = $state<Record<string, boolean>>({});

@@ -4,6 +4,7 @@
 	import { t } from '$lib/i18n';
 	import { authStore } from '$lib/stores/auth';
 	import api from '$lib/api/client';
+	import type { LocationResponse } from '$lib/api/types';
 	import { locationSchema, type LocationFormData } from '$lib/schemas/location';
 	import { addToast } from '$lib/stores/toast';
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
@@ -34,18 +35,15 @@
 		};
 	});
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	let locations = $state<any[]>([]);
+	let locations = $state<LocationResponse[]>([]);
 	let totalCount = $state(0);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 
 	let formModalOpen = $state(false);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	let editingLocation = $state<any | null>(null);
+	let editingLocation = $state<LocationResponse | null>(null);
 	let deactivateModalOpen = $state(false);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	let deactivatingLocation = $state<any | null>(null);
+	let deactivatingLocation = $state<LocationResponse | null>(null);
 
 	let formData = $state<LocationFormData>({ name: '', type: 'Home', notes: '' });
 	let formErrors = $state<Record<string, string>>({});
@@ -60,11 +58,11 @@
 		error = null;
 		try {
 			const response = await api.locations.list(urlParams);
-			locations = response.items || [];
-			totalCount = response.totalCount || 0;
-		} catch (err: any) {
+			locations = response.items ?? [];
+			totalCount = response.totalCount ?? 0;
+		} catch (err: unknown) {
 			console.error('[LocationsAdmin] Load failed:', err);
-			error = err.message || 'Failed to load locations';
+			error = err instanceof Error ? err.message : 'Failed to load locations';
 		} finally {
 			loading = false;
 		}
@@ -77,12 +75,13 @@
 		formModalOpen = true;
 	}
 
-	function openEditModal(location: any) {
+	function openEditModal(location: LocationResponse) {
 		editingLocation = location;
+		const notes = (location as LocationResponse & { notes?: string | null }).notes;
 		formData = {
-			name: location.name || '',
-			type: location.type || 'Home',
-			notes: location.notes || ''
+			name: location.name ?? '',
+			type: (location.type as LocationFormData['type']) ?? 'Home',
+			notes: notes ?? ''
 		};
 		formErrors = {};
 		formModalOpen = true;
@@ -109,7 +108,7 @@
 
 		formSubmitting = true;
 		try {
-			if (editingLocation) {
+			if (editingLocation?.id) {
 				await api.locations.update(editingLocation.id, result.data);
 				addToast({ type: 'success', message: 'Location updated successfully' });
 			} else {
@@ -118,15 +117,16 @@
 			}
 			closeFormModal();
 			await loadLocations();
-		} catch (err: any) {
+		} catch (err: unknown) {
 			console.error('[LocationsAdmin] Submit failed:', err);
-			addToast({ type: 'error', message: err.message || 'Failed to save location' });
+			const message = err instanceof Error ? err.message : 'Failed to save location';
+			addToast({ type: 'error', message });
 		} finally {
 			formSubmitting = false;
 		}
 	}
 
-	function openDeactivateModal(location: any) {
+	function openDeactivateModal(location: LocationResponse) {
 		deactivatingLocation = location;
 		deactivateModalOpen = true;
 	}
@@ -137,15 +137,16 @@
 	}
 
 	async function handleDeactivate() {
-		if (!deactivatingLocation) return;
+		if (!deactivatingLocation?.id) return;
 		try {
 			await api.locations.deactivate(deactivatingLocation.id);
 			addToast({ type: 'success', message: t('locations.deactivate.success') });
 			closeDeactivateModal();
 			await loadLocations();
-		} catch (err: any) {
+		} catch (err: unknown) {
 			console.error('[LocationsAdmin] Deactivate failed:', err);
-			addToast({ type: 'error', message: err.message || 'Failed to deactivate location' });
+			const message = err instanceof Error ? err.message : 'Failed to deactivate location';
+			addToast({ type: 'error', message });
 		}
 	}
 
@@ -167,8 +168,6 @@
 		else params.delete('pageSize');
 		goto(`?${params.toString()}`, { replaceState: true, keepFocus: true, noScroll: true });
 	}
-
-	const totalPages = $derived(Math.ceil(totalCount / urlParams.pageSize));
 </script>
 
 <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -233,10 +232,10 @@
 								{location.name}
 							</td>
 							<td class="whitespace-nowrap px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300">
-								{t(`locations.types.${location.type.toLowerCase()}`)}
+								{t(`locations.types.${(location.type ?? 'home').toLowerCase()}`)}
 							</td>
 							<td class="px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300">
-								{location.notes || '—'}
+								{(location as LocationResponse & { notes?: string | null }).notes || '—'}
 							</td>
 							<td class="whitespace-nowrap px-4 py-3 text-right text-sm">
 								<button
@@ -363,7 +362,7 @@
 
 {#if deactivateModalOpen && deactivatingLocation}
 	<DeactivateConfirmModal
-		entityName={deactivatingLocation.name}
+		entityName={deactivatingLocation.name ?? ''}
 		entityType="location"
 		onConfirm={handleDeactivate}
 		onCancel={closeDeactivateModal}

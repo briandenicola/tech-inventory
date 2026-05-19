@@ -21,6 +21,17 @@ on:
   push:
     tags:
       - "v*.*.*"
+  # Manual trigger from the Actions UI / `gh workflow run`. Useful for
+  # rebuilding `:latest` off main without cutting a fresh tag (e.g. after
+  # a security patch lands and you want the home server to pick it up).
+  # Optionally pass a `tag` input to also publish a named tag alongside
+  # `:latest` (defaults to empty → only `:latest` is pushed).
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Optional extra image tag (e.g. hotfix-2026-05-19). Leave blank to only push :latest."
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -66,9 +77,14 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}-${{ matrix.image.name }}
+          # On tag pushes (`v*.*.*`): publish `:latest` + `:vX.Y.Z`.
+          # On workflow_dispatch: publish `:latest`, plus `:<inputs.tag>`
+          # if the operator provided one. `enable=` keeps the second
+          # tag from materialising as a literal `:` when no input is set.
           tags: |
             type=raw,value=latest
-            type=raw,value=${{ github.ref_name }}
+            type=raw,value=${{ github.ref_name }},enable=${{ github.event_name == 'push' }}
+            type=raw,value=${{ inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' && inputs.tag != '' }}
           labels: |
             org.opencontainers.image.title=${{ matrix.image.title }}
             org.opencontainers.image.description=${{ matrix.image.description }}

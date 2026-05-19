@@ -101,8 +101,13 @@ async function apiFetch<TResponse>(
 	options: RequestInit = {}
 ): Promise<TResponse> {
 	const url = `${clientConfig.baseUrl}${path}`;
+	// FormData uploads must NOT carry an explicit Content-Type — the browser
+	// generates `multipart/form-data; boundary=...` and any manual value (incl.
+	// the default `application/json` below) bypasses that, causing a 415 from
+	// endpoints decorated with [Consumes("multipart/form-data")].
+	const isFormDataBody = typeof FormData !== 'undefined' && options.body instanceof FormData;
 	const headers: Record<string, string> = {
-		'Content-Type': 'application/json',
+		...(isFormDataBody ? {} : { 'Content-Type': 'application/json' }),
 		...(options.headers as Record<string, string> | undefined)
 	};
 

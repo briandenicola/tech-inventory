@@ -353,7 +353,9 @@
 			"addButton": "Add Category",
 			"emptyState": "No categories yet.",
 			"expandAll": "Expand All",
-			"collapseAll": "Collapse All"
+			"collapseAll": "Collapse All",
+			"showInactive": "Show Inactive",
+			"searchPlaceholder": "Search categories..."
 		},
 		"detail": {
 			"title": "Category Details"
@@ -361,16 +363,31 @@
 		"create": {
 			"title": "Add Category",
 			"parentLabel": "Parent Category",
-			"noneOption": "(None - Root Category)"
+			"noneOption": "(None - Root Category)",
+			"success": "Category created successfully"
 		},
 		"edit": {
-			"title": "Edit Category"
+			"title": "Edit Category",
+			"success": "Category updated successfully"
+		},
+		"deactivate": {
+			"title": "Deactivate Category",
+			"confirmPrompt": "Are you sure you want to deactivate this category? All child categories will also be deactivated.",
+			"success": "Category deactivated successfully"
 		},
 		"columns": {
 			"name": "Name",
 			"parent": "Parent",
 			"icon": "Icon",
 			"description": "Description"
+		},
+		"fields": {
+			"name": "Category Name",
+			"namePlaceholder": "Enter category name",
+			"parent": "Parent Category (optional)",
+			"parentNone": "(None - Root Category)",
+			"icon": "Icon (optional)",
+			"iconPlaceholder": "e.g., 📱 or 💻"
 		}
 	},
 	"models": {
@@ -393,22 +410,37 @@
 		"list": {
 			"title": "Owners",
 			"addButton": "Add Owner",
-			"emptyState": "No owners yet."
+			"emptyState": "No owners yet.",
+			"showInactive": "Show Inactive"
 		},
 		"detail": {
 			"title": "Owner Details"
 		},
 		"create": {
-			"title": "Add Owner"
+			"title": "Add Owner",
+			"success": "Owner created successfully"
 		},
 		"edit": {
-			"title": "Edit Owner"
+			"title": "Edit Owner",
+			"success": "Owner updated successfully"
+		},
+		"deactivate": {
+			"title": "Deactivate Owner",
+			"confirmPrompt": "Are you sure you want to deactivate this owner?",
+			"success": "Owner deactivated successfully"
 		},
 		"columns": {
 			"name": "Name",
 			"email": "Email",
 			"role": "Role",
 			"entraObjectId": "Entra Object ID"
+		},
+		"fields": {
+			"displayName": "Display Name",
+			"displayNamePlaceholder": "Enter display name",
+			"role": "Role",
+			"entraObjectId": "Entra Object ID (optional)",
+			"entraObjectIdPlaceholder": "00000000-0000-0000-0000-000000000000"
 		},
 		"roles": {
 			"admin": "Admin",
@@ -533,6 +565,76 @@
 			"nameMaxLength": "Tag name must be 50 characters or less",
 			"colorRequired": "Color is required",
 			"colorInvalid": "Please select a valid color"
+		}
+	},
+	"admin": {
+		"categories": {
+			"list": {
+				"title": "Categories",
+				"addButton": "Add Category",
+				"emptyState": "No categories yet.",
+				"showInactive": "Show Inactive",
+				"searchPlaceholder": "Search categories..."
+			},
+			"create": {
+				"title": "Add Category",
+				"success": "Category created successfully"
+			},
+			"edit": {
+				"title": "Edit Category",
+				"success": "Category updated successfully"
+			},
+			"deactivate": {
+				"title": "Deactivate Category",
+				"confirmPrompt": "Are you sure you want to deactivate this category? All child categories will also be deactivated.",
+				"success": "Category deactivated successfully"
+			},
+			"fields": {
+				"name": "Category Name",
+				"namePlaceholder": "Enter category name",
+				"parent": "Parent Category (optional)",
+				"parentNone": "(None - Root Category)",
+				"icon": "Icon (optional)",
+				"iconPlaceholder": "e.g., 📱 or 💻"
+			}
+		},
+		"owners": {
+			"list": {
+				"title": "Owners",
+				"addButton": "Add Owner",
+				"emptyState": "No owners yet.",
+				"showInactive": "Show Inactive"
+			},
+			"create": {
+				"title": "Add Owner",
+				"success": "Owner created successfully"
+			},
+			"edit": {
+				"title": "Edit Owner",
+				"success": "Owner updated successfully"
+			},
+			"deactivate": {
+				"title": "Deactivate Owner",
+				"confirmPrompt": "Are you sure you want to deactivate this owner?",
+				"success": "Owner deactivated successfully"
+			},
+			"fields": {
+				"displayName": "Display Name",
+				"displayNamePlaceholder": "Enter display name",
+				"role": "Role",
+				"entraObjectId": "Entra Object ID (optional)",
+				"entraObjectIdPlaceholder": "00000000-0000-0000-0000-000000000000"
+			},
+			"columns": {
+				"name": "Name",
+				"role": "Role",
+				"entraObjectId": "Entra Object ID"
+			},
+			"roles": {
+				"admin": "Admin",
+				"member": "Member",
+				"viewer": "Viewer"
+			}
 		}
 	},
 	"errors": {

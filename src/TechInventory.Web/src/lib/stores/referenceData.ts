@@ -54,13 +54,16 @@ export async function fetchReferenceData(): Promise<void> {
 	referenceDataStore.update((state) => ({ ...state, isLoading: true, error: null }));
 
 	try {
-		// Fetch all in parallel
+		// Fetch all in parallel.
+		// pageSize is capped at 200 by Application validators (see Brands/Categories/
+		// Owners/Locations/Networks ListQueryValidator) — asking for more would 400
+		// the whole reference-data fetch and leave every dropdown empty.
 		const [brandsRes, categoriesRes, ownersRes, locationsRes, networksRes] = await Promise.all([
-			brands.list({ pageSize: 1000, includeInactive: false }),
-			categories.list({ pageSize: 1000, includeInactive: false }),
-			owners.list({ pageSize: 1000, includeInactive: false }),
-			locations.list({ pageSize: 1000, includeInactive: false }),
-			networks.list({ pageSize: 1000, includeInactive: false })
+			brands.list({ pageSize: 200, includeInactive: false }),
+			categories.list({ pageSize: 200, includeInactive: false }),
+			owners.list({ pageSize: 200, includeInactive: false }),
+			locations.list({ pageSize: 200, includeInactive: false }),
+			networks.list({ pageSize: 200, includeInactive: false })
 		]);
 
 		// Extract items (each response shape: { items: [], totalCount, page, pageSize })

@@ -64,11 +64,13 @@
 	});
 
 	// Devices query (reactive — pass a getter so filter changes propagate)
-	// When grouping is active we fetch all matching rows so groups span the
-	// full result set instead of a single page.
+	// When grouping is active we fetch the max page size (200, capped by the
+	// API's ListDevicesQueryValidator) so groups span the largest practical
+	// result set. For households with >200 devices, grouping a filtered
+	// subset still works; a future enhancement could loop pages.
 	const effectiveFilters = $derived.by(() => {
 		if (urlFilters.groupBy) {
-			return { ...urlFilters, page: 1, pageSize: 500 };
+			return { ...urlFilters, page: 1, pageSize: 200 };
 		}
 		return urlFilters;
 	});

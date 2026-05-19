@@ -279,14 +279,16 @@
 		</thead>
 		<tbody class="divide-y divide-neutral-200 bg-white dark:divide-neutral-800 dark:bg-neutral-950">
 			{#snippet desktopRow(device: DeviceResponse)}
+				{@const selected = selectable && isSelected(device.id)}
 				<tr
-					class="cursor-pointer transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-900"
-					class:bg-primary-50={selectable && isSelected(device.id)}
-					class:dark:bg-primary-950={selectable && isSelected(device.id)}
+					class="cursor-pointer transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-900 {selected ? 'bg-primary-500/10' : ''}"
 					onclick={() => (window.location.href = `/devices/${device.id}`)}
 				>
 					{#if selectable}
-						<td class="w-12 px-4 py-4" onclick={(e) => e.stopPropagation()}>
+						<td
+							class="w-12 px-4 py-4 {selected ? 'border-l-4 border-primary-500' : ''}"
+							onclick={(e) => e.stopPropagation()}
+						>
 							<input
 								type="checkbox"
 								class="h-4 w-4 cursor-pointer rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
@@ -381,10 +383,9 @@
 <!-- Mobile card layout -->
 <div class="md:hidden space-y-4">
 	{#snippet mobileCard(device: DeviceResponse)}
+		{@const selected = selectable && isSelected(device.id)}
 		<div
-			class="relative rounded-lg border border-neutral-200 bg-white transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:bg-neutral-900"
-			class:ring-2={selectable && isSelected(device.id)}
-			class:ring-primary-500={selectable && isSelected(device.id)}
+			class="relative rounded-lg border border-neutral-200 bg-white transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:bg-neutral-900 {selected ? 'ring-2 ring-primary-500 bg-primary-500/5' : ''}"
 		>
 			{#if selectable}
 				<label class="absolute left-3 top-3 z-10 flex h-8 w-8 cursor-pointer items-center justify-center">

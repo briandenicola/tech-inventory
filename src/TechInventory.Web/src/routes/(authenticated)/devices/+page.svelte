@@ -178,7 +178,7 @@
 		{:else if query.error}
 			<ErrorState error={query.error} onRetry={query.refetch} />
 		{:else if !query.data || !query.data.items || query.data.items.length === 0}
-			<EmptyState filtered={hasActiveFilters} />
+			<EmptyState filtered={hasActiveFilters} onAdd={() => (createModalOpen = true)} />
 		{:else}
 			<!-- Table -->
 			<DeviceTable

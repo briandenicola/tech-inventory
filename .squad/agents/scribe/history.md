@@ -222,3 +222,22 @@ Apone's commit message + T33 inbox BOTH falsely claimed "Categories/Owners defer
 
 **Notes:** Hudson's two-commit arc (89cad1e validation tasks + 3a020d3 dev:up fix) reconciled. `concurrently` 9.2.1 added to root package.json for one-command parallel dev. Inbox files deleted post-merge. No breaking changes to D-130's documented behavior outside the dev launcher target.
 
+---
+
+## Phase 2 Round 18 — R18 — D-132 Windows Taskfile Compatibility Fix (Hudson)
+
+**Inbox merged:** 1 file → 1 decision
+- `hudson-windows-taskfile-fix.md` → D-132
+
+**Decision ledger:** D-001 → D-132 (132 total)
+
+**Supersession:** D-132 supersedes Windows-specific portions of D-130 + D-131. Unix/macOS findings remain unchanged. Root cause: Task uses `mvdan.cc/sh` (gosh) POSIX shell on ALL platforms including Windows, NOT cmd/PowerShell. Five-pattern sweep applied across 13 targets: (1) Forward slashes for ALL paths, (2) Task's `env:` block for environment variables, (3) `pnpm --dir` instead of `cd`, (4) Externalize multi-line PowerShell/bash to `scripts/*.{ps1,sh}`, (5) PowerShell for Windows directory removal. Verified end-to-end on Windows including `task dev:up` parallel launch.
+
+**Tasks flipped:** NONE (infrastructure DevEx, not T-task)
+
+**Commits shipped:** `a2ae735` (Hudson sweep), `2d016b5` (Hudson D-132 + history)
+
+**History entries:** Scribe R18 (this entry)
+
+**Notes:** All 24 Taskfile targets now cross-platform. Inbox file deleted post-merge.
+

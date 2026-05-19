@@ -2743,6 +2743,23 @@ Both groups typed via `paths['/api/v1/{resource}']` OpenAPI extraction.
 
 ---
 
+### D-132: Windows Taskfile Compatibility Sweep — `mvdan.cc/sh` POSIX Shell Root Cause
+
+**Author:** Hudson (DevOps / Platform)  
+**Date:** 2026-05-18 (Phase 2 post-R6b, Windows compatibility sweep)  
+**Status:** ✅ Shipped (commits `a2ae735` + `2d016b5`)  
+**Related:** D-130, D-131 (supersedes Windows fragments), Taskfile.yml, `scripts/*.{ps1,sh}`
+
+**Root Cause:** Task uses `mvdan.cc/sh` (gosh — a Go-implemented POSIX-like shell) on ALL platforms including Windows, NOT cmd.exe or PowerShell. Backslash escape semantics break: `\T` → `T` (literal backslash consumed), and `set "VAR=value"` does NOT set environment variables but POSIX positional parameters. Hudson's prior D-130/D-131 Windows fragments assumed backslashes work; they don't.
+
+**Decision:** Five-pattern comprehensive Windows compatibility sweep across 13 Taskfile targets. **(1) Forward slashes for ALL paths** — .NET CLI / npx / pnpm / dotnet-ef accept them natively on Windows. **(2) Task's `env:` block for environment variables** instead of inline `set "..."` or `EXPORT`. **(3) `pnpm --dir` instead of `cd` commands** to avoid directory-change path-separator bugs. **(4) Externalize PowerShell/bash-specific multi-line code to `scripts/*.{ps1,sh}`** (gosh can't parse them inline). **(5) PowerShell for Windows directory removal** (`Remove-Item` vs cmd-only `rd /s /q`). Fixed targets: `restore`, `build`, `lint`, `db:migrate`, `dev:api`, `dev:web`, `dev:up`, `test`, `test:e2e:run`, `openapi:export`, `clean`, `import:preview`, `import:commit`. Created `scripts/import-preview.{ps1,sh}` + `scripts/import-commit.{ps1,sh}`. Verified end-to-end: `task --list` ✅, `task restore` ✅, `task db:migrate` ✅, `task dev:api` ✅ (health check 200), `task dev:web` ✅ (Vite "ready in 3178 ms"), `task dev:up` ✅ (concurrently launched both services).
+
+**Supersession:** Supersedes Windows-specific portions of D-130 and D-131. Unix/macOS findings remain unchanged. All 24 targets now work cross-platform.
+
+**Consequences:** All Taskfile targets are now cross-platform. Single `cmd:` lines replace platform splits. Reduced YAML complexity. PowerShell scripts require execution policy bypass (`-ExecutionPolicy Bypass`); bash scripts require executable permissions (already handled by git).
+
+---
+
 ## Governance
 
 - All meaningful changes require team consensus

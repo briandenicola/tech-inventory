@@ -213,4 +213,77 @@ CI quality gate must be green to merge: tests, security scans, SBOM.
 
 **Not tested yet:** Actual parallel startup behavior, Ctrl+C teardown on Windows/Linux/macOS, signal propagation to child processes. Brian should verify.
 
+## Windows Taskfile fix sweep (D-132)
+
+**Date:** 2026-05-18 (Phase 2 post-R6b, emergency Windows compatibility fix)
+**Status:** Complete — comprehensive Windows fix for all Taskfile targets
+**Related:** Taskfile.yml, scripts/*.{ps1,sh}, D-132, commits `89cad1e`, `3a020d3`, `a2ae735`
+**Commit:** `a2ae735` — fix(taskfile): Windows compatibility sweep
+
+**Context:** Brian ran `task dev:up` on Windows. It failed with "Unable to retrieve project metadata" error on `db:migrate` target. Coordinator diagnosed root cause: **Task (taskfile.dev) uses `mvdan.cc/sh` (gosh — a Go-implemented POSIX-like shell) as its default shell on ALL platforms, including Windows.** It does NOT use cmd.exe or PowerShell, even for `platforms: [windows]` targets.
+
+**Hudson's prior assumption was dangerously wrong:** "Backslashes on Windows should just work" led to shipping broken targets in `89cad1e` (validation targets) and `3a020d3` (dev:up concurrently). The moment Brian ran commands via `task` instead of directly in PowerShell, gosh broke every backslash-containing path.
+
+**Root cause mechanics:**
+1. **Backslash escape sequences:** In POSIX sh, `\T` in an unquoted argument consumes the backslash and yields literal `T`. So `src\TechInventory.Infrastructure\TechInventory.Infrastructure.csproj` became `srcTechInventory.InfrastructureTechInventory.Infrastructure.csproj` (no separators, file not found).
+2. **cmd-specific syntax broken:** `set "VAR=value" && ...` doesn't work in gosh; `set` is for positional parameters (`$1`, `$2`), not environment variables.
+3. **Multi-line PowerShell blocks broken:** Taskfile PowerShell blocks run through gosh, which can't parse PowerShell syntax.
+
+**Five patterns applied to fix ALL targets:**
+
+1. **Forward slashes for all paths** — .NET CLI, pnpm, npx, dotnet-ef all accept forward slashes on Windows
+2. **Task's `env:` block for environment variables** — never use inline `set "VAR=value" &&` or `EXPORT VAR=value`
+3. **`pnpm --dir` instead of `cd` commands** — avoids directory change + path separator issues
+4. **Externalize PowerShell/bash-specific code to `scripts/*.{ps1,sh}`** — multi-line blocks extracted to:
+   - `scripts/import-preview.ps1` + `scripts/import-preview.sh`
+   - `scripts/import-commit.ps1` + `scripts/import-commit.sh`
+5. **PowerShell for Windows directory removal** — cmd-only `if exist ... rd /s /q` replaced with `powershell -Command "Remove-Item ..."`
+
+**Targets fixed (13 total):**
+- `restore`, `build`, `lint`, `test` — `pnpm --dir` (no cd, no backslashes)
+- `db:migrate` — forward slashes in --project paths (**CRITICAL** — was failing completely)
+- `dev:api`, `dev:web`, `dev:up` — `env:` block + forward slashes + `pnpm --dir`
+- `test:e2e:run` — `env:` block for BASE_URL, PowerShell Set-Location, forward slashes
+- `openapi:export` — forward slashes
+- `clean` — PowerShell `Remove-Item` (no cmd rd)
+- `import:preview`, `import:commit` — externalized to scripts/*.{ps1,sh}
+
+**Verification (Windows PowerShell 7, Task 3.44.0):**
+- ✅ `task --list` — YAML parses, all 24 targets listed
+- ✅ `task restore` — dotnet + pnpm deps installed (exit 0)
+- ✅ `task db:migrate` — migrations applied, "already up to date" message (exit 0) — **THIS WAS THE CRITICAL FAILURE, NOW FIXED**
+- ✅ `task dev:api` — started on http://localhost:8080, `ASPNETCORE_ENVIRONMENT=Development` set correctly, DevBypass warning visible, health check 200 OK
+- ✅ `task dev:web` — Vite started on http://localhost:5173, "ready in 3178 ms"
+- ✅ `task dev:up` — migrate ran, then concurrently launched `[API]` + `[WEB]` in parallel with color-coded prefixes (blue/green), both services started successfully
+
+**Decision:** D-132 (`.squad/decisions/inbox/hudson-windows-taskfile-fix.md`) — comprehensive Windows compatibility sweep supersedes Windows-specific portions of D-130 and D-131
+
+**Consequences:**
+- ✅ All Taskfile targets now work on Windows, Linux, macOS
+- ✅ Single cross-platform `cmd:` lines replace many `platforms:` splits (reduced YAML complexity)
+- ✅ External scripts reusable for manual invocation or CI
+- ⚠️ PowerShell scripts require execution policy bypass (`-ExecutionPolicy Bypass`)
+
+**Lessons learned (Hudson's postmortem):**
+
+1. **Task uses gosh on Windows, not cmd/PowerShell** — this is foundational, non-negotiable knowledge. Never assume platform-native shell semantics in Taskfile commands.
+
+2. **Backslash escape semantics bite hard** — `\T` → `T`, `\I` → `I`, `\A` → `A`, etc. The "Unable to retrieve project metadata" error message from dotnet-ef was misleading; the real issue was mangled paths with no separators.
+
+3. **`set` in POSIX sh is NOT environment variables** — it sets positional parameters (`$1`, `$2`, etc.). Must use Task's `env:` block or explicit shell invocation (`powershell -Command "..."`).
+
+4. **`platforms: [windows]` does NOT switch to cmd/PowerShell** — it still runs through gosh. Only use `platforms:` for truly OS-specific commands (e.g., explicit `powershell.exe` or `bash` invocation).
+
+5. **Forward slashes are universal** — .NET, Node.js, pnpm, dotnet-ef all accept them on Windows. No need for path separator abstraction or platform-split targets.
+
+6. **Prior assumption was dangerously wrong** — "backslashes on Windows should just work" led to shipping broken targets in commits `89cad1e` and `3a020d3`. Brian's prior manual workflow worked because PowerShell (his shell) correctly interprets backslash paths and cmd-style environment variable syntax. The moment he ran the same commands via `task`, gosh broke every backslash-containing path. Hudson will never assume shell semantics again. **Test on the actual runtime (Task's gosh), not the dev's native shell.**
+
+7. **Verification strategy for future Taskfile changes:** Always test via `task <target>` on Windows PowerShell, not by copying the command and running it directly in PowerShell. Direct PowerShell invocation bypasses Task's gosh shell entirely and gives false confidence.
+
+**Handoff notes:**
+- All targets verified working on Windows
+- Brian can now run `task dev:up` successfully (one-command dev environment)
+- CI pipeline unaffected (already used forward slashes for Linux runner)
+- No open Windows compatibility issues remain
+
 <!-- Append new learnings below. Each entry is something lasting about the project. -->

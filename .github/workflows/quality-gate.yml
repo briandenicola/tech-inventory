@@ -19,6 +19,11 @@ jobs:
 
   codeql:
     runs-on: ubuntu-latest
+    # SARIF upload requires Code Scanning to be enabled in repo settings
+    # (Settings → Code security → Code scanning → Set up). On private repos
+    # this is a paid GHAS feature; keep the job advisory until then so it
+    # still surfaces findings in logs without blocking PRs.
+    continue-on-error: true
     permissions:
       contents: read           # actions/checkout needs this when permissions are scoped
       security-events: write   # uploading CodeQL findings to the Security tab

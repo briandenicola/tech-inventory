@@ -1,7 +1,7 @@
 <script lang="ts">
 import { onMount } from 'svelte';
 import { goto } from '$app/navigation';
-import { msalInstance, loginRequest } from '$lib/auth/msal';
+import { msalInstance, loginRequest, ensureMsalInitialized } from '$lib/auth/msal';
 import { getActiveAccount } from '$lib/auth';
 import { t } from '$lib/i18n';
 
@@ -11,7 +11,8 @@ import { t } from '$lib/i18n';
 let isRedirecting = false;
 
 // If user is already signed in, redirect to devices list
-onMount(() => {
+onMount(async () => {
+await ensureMsalInitialized();
 const account = getActiveAccount();
 if (account) {
 goto('/devices');
@@ -21,6 +22,7 @@ goto('/devices');
 async function handleSignIn() {
 try {
 isRedirecting = true;
+await ensureMsalInitialized();
 // Per T09 DoD + J1: Call loginRedirect with API scope + OIDC scopes
 // This will redirect the user to Entra; they'll return via handleRedirectPromise in +layout.svelte
 await msalInstance.loginRedirect(loginRequest);

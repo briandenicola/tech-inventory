@@ -57,6 +57,23 @@ export const apiTokenRequest = {
 
 /**
  * MSAL PublicClientApplication instance
- * Singleton — call initializeMsal() once at app bootstrap before using
+ * Singleton — call ensureMsalInitialized() before any other MSAL API call.
  */
 export const msalInstance = new PublicClientApplication(msalConfig);
+
+/**
+ * Idempotent initialization gate.
+ *
+ * MSAL v3+ throws `uninitialized_public_client_application` if any other API is
+ * called before `initialize()` completes. Several call sites (root +layout
+ * onMount, the API client's auth-token provider invoked from child $effect
+ * blocks, etc.) can race the first MSAL call. This helper caches the
+ * init promise so every caller awaits the same single initialization.
+ */
+let initPromise: Promise<void> | null = null;
+export function ensureMsalInitialized(): Promise<void> {
+	if (initPromise === null) {
+		initPromise = msalInstance.initialize();
+	}
+	return initPromise;
+}

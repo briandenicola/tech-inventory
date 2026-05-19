@@ -2,6 +2,7 @@
 	import { page } from '$app/stores';
 	import { authStore } from '$lib/stores/auth';
 	import { msalInstance } from '$lib/auth/msal';
+	import { ensureMsalInitialized } from '$lib/auth/msal';
 	import { clearAuth } from '$lib/stores/auth';
 	import { t } from '$lib/i18n';
 	import { goto } from '$app/navigation';
@@ -39,6 +40,7 @@
 	async function handleSignOut() {
 		try {
 			clearAuth();
+			await ensureMsalInitialized();
 			await msalInstance.logoutRedirect({
 				postLogoutRedirectUri: window.location.origin
 			});

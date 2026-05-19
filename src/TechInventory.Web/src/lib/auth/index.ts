@@ -7,15 +7,19 @@
  * Related: specs/002-frontend-mvp/spec.md §4.1, docs/auth-design.md §3
  */
 
-import { msalInstance, apiTokenRequest } from './msal';
+import { msalInstance, apiTokenRequest, ensureMsalInitialized } from './msal';
 import type { AccountInfo, AuthenticationResult, InteractionRequiredAuthError } from '@azure/msal-browser';
 
 /**
- * Initialize MSAL instance (required in v3+ before any other MSAL call)
- * Call once at app bootstrap (e.g., in +layout.svelte onMount or +layout.ts load)
+ * Initialize MSAL instance (required in v3+ before any other MSAL call).
+ *
+ * Delegates to the shared idempotent init promise so concurrent callers all
+ * await the same initialization. Safe to call from root +layout onMount even
+ * if a child component's $effect has already triggered an API call that
+ * awaits the same promise via acquireApiToken().
  */
 export async function initializeMsal(): Promise<void> {
-	await msalInstance.initialize();
+	await ensureMsalInitialized();
 }
 
 /**
@@ -24,12 +28,15 @@ export async function initializeMsal(): Promise<void> {
  * Returns AuthenticationResult if redirect contained auth response, null otherwise
  */
 export async function handleRedirectPromise(): Promise<AuthenticationResult | null> {
+	await ensureMsalInitialized();
 	return await msalInstance.handleRedirectPromise();
 }
 
 /**
  * Get the currently signed-in account (if any)
  * Returns null if no user is authenticated
+ *
+ * Caller must ensure MSAL is initialized first (see ensureMsalInitialized).
  */
 export function getActiveAccount(): AccountInfo | null {
 	const accounts = msalInstance.getAllAccounts();
@@ -46,14 +53,18 @@ export function getActiveAccount(): AccountInfo | null {
  * Acquire access token for API calls
  * 
  * Flow:
- * 1. Try silent acquisition (uses cached token or refresh token)
- * 2. If InteractionRequiredAuthError, fall back to redirect (user will be redirected to Entra)
+ * 1. Await MSAL initialization (idempotent) so callers from $effect blocks
+ *    racing the root layout's bootstrap don't hit
+ *    uninitialized_public_client_application.
+ * 2. Try silent acquisition (uses cached token or refresh token)
+ * 3. If InteractionRequiredAuthError, fall back to redirect (user will be redirected to Entra)
  * 
  * Returns access token string, or null if no active account (unauthenticated)
  * 
  * Per Constitution: Uses acquireTokenRedirect (NOT popup) — popups are blocked / poor UX
  */
 export async function acquireApiToken(): Promise<string | null> {
+	await ensureMsalInitialized();
 	const account = getActiveAccount();
 	
 	if (!account) {

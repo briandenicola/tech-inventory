@@ -33,6 +33,51 @@
 		letter-spacing: -0.022em;
 	}
 
+	/* D-137: Apple-style thin overlay scrollbars (replaces chunky default
+	   Windows/Chromium scrollbars). Track is transparent; thumb is a
+	   semi-transparent pill that darkens on hover. Firefox uses the
+	   scrollbar-* properties; Chromium/WebKit uses the pseudo-elements. */
+	* {
+		scrollbar-width: thin;
+		scrollbar-color: rgba(60, 60, 67, 0.28) transparent;
+	}
+
+	*::-webkit-scrollbar {
+		width: 10px;
+		height: 10px;
+	}
+
+	*::-webkit-scrollbar-track,
+	*::-webkit-scrollbar-corner {
+		background: transparent;
+	}
+
+	*::-webkit-scrollbar-thumb {
+		background-color: rgba(60, 60, 67, 0.28);
+		border: 2px solid transparent;
+		background-clip: content-box;
+		border-radius: 9999px;
+		transition: background-color var(--duration-fast) var(--ease-out);
+	}
+
+	*::-webkit-scrollbar-thumb:hover {
+		background-color: rgba(60, 60, 67, 0.5);
+	}
+
+	@media (prefers-color-scheme: dark) {
+		* {
+			scrollbar-color: rgba(235, 235, 245, 0.28) transparent;
+		}
+
+		*::-webkit-scrollbar-thumb {
+			background-color: rgba(235, 235, 245, 0.28);
+		}
+
+		*::-webkit-scrollbar-thumb:hover {
+			background-color: rgba(235, 235, 245, 0.5);
+		}
+	}
+
 	:root {
 		/* ===== Color Palette — Light Theme ===== */
 		

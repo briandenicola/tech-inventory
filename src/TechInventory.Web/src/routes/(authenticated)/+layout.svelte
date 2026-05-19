@@ -35,7 +35,6 @@
 	// Derive auth state from store
 	const currentUser = $derived($authStore.currentUser);
 	const isAdmin = $derived(currentUser?.role === 'Admin');
-	const isMemberOrAdmin = $derived(currentUser?.role === 'Admin' || currentUser?.role === 'Member');
 	const isAdminPath = $derived($page.url.pathname.startsWith('/admin'));
 
 	// T09 + J3: Sign out — call MSAL logoutRedirect + clear auth store
@@ -95,12 +94,6 @@
 			<!-- Desktop Nav (hidden on mobile) -->
 			<nav class="hidden items-center gap-1 md:flex" aria-label="Main navigation">
 				{@render desktopNavLink('/devices', t('navigation.devices'))}
-
-				{#if isMemberOrAdmin}
-					{@render desktopNavLink('/import', t('navigation.imports'))}
-				{/if}
-
-				{@render desktopNavLink('/export', t('navigation.exports'))}
 
 				{#if isAdmin}
 					<!-- Admin Dropdown (Desktop) -->
@@ -233,12 +226,6 @@
 			>
 				<div class="flex flex-col gap-1.5">
 					{@render mobileNavLink('/devices', t('navigation.devices'))}
-
-					{#if isMemberOrAdmin}
-						{@render mobileNavLink('/import', t('navigation.imports'))}
-					{/if}
-
-					{@render mobileNavLink('/export', t('navigation.exports'))}
 
 					{#if isAdmin}
 						<!-- Admin Section (Mobile) -->

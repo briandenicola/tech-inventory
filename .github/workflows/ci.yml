@@ -1,12 +1,12 @@
 name: CI Pipeline
 
+# Disabled — left on workflow_dispatch only so it doesn't auto-fire on
+# every push/PR. Quality Gate carries the merge-blocking checks; this
+# workflow's verify.sh pipeline (Playwright E2E + Docker compose) is
+# the one we keep wanting to repair-then-mute. Run manually from the
+# Actions tab when you want the full verify pass.
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
   verify:

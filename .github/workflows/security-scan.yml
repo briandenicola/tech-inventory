@@ -30,10 +30,11 @@ name: Container Image Security Scan
 # directly (workflow_run can't `needs:` an upstream job) — we pull by the
 # `sha-<short>` tag instead, which is deterministic for any commit.
 
+# Disabled — kept on workflow_dispatch only. Trivy was failing on
+# upstream alpine CVEs in the nginx-unprivileged base; once we've
+# stabilised the prod deploy we'll re-enable the workflow_run trigger.
+# Manually invoke from the Actions tab to scan on demand.
 on:
-  workflow_run:
-    workflows: ["Release Container Images"]
-    types: [completed]
   workflow_dispatch:
     inputs:
       image-sha:

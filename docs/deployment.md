@@ -1,10 +1,9 @@
 # Deployment Runbook
 
-> Production deployment guide for Tech Inventory on a self-hosted Linux host
-> behind Brian's **Nginx Proxy Manager** (NPM) at
-> `https://inventory.denicolafamily.com`.
+> Production deployment for Tech Inventory on a self-hosted Linux host behind
+> Brian's **Nginx Proxy Manager (NPM)** at `https://inventory.denicolafamily.com`.
 >
-> Architecture reference: D-135 (web container = nginx reverse proxy),
+> Architecture refs: D-135 (web container = nginx reverse proxy),
 > D-139 (same-origin via NPM), D-140 (F025 v1b break-glass admin).
 > See also: `docs/operations.md`, `docs/architecture.md`.
 
@@ -14,353 +13,106 @@
 
 On the deployment host:
 
-- **Docker Engine ≥ 24** and **Docker Compose v2.24+**
-  (`!reset` YAML override syntax in `docker-compose.prod.yml` requires v2.24+;
-  check with `docker compose version`).
-- **Nginx Proxy Manager** already deployed and reachable, with:
-  - A proxy host for `inventory.denicolafamily.com` forwarding to the host
-    machine on port `3000` (see §9 below for the NPM cheat sheet).
-  - A valid TLS certificate (Let's Encrypt is fine — NPM handles renewals).
-- **Outbound network** to `ghcr.io` for image pulls.
-- **Optional:** an S3-compatible bucket for off-host backups (Backblaze B2,
-  Wasabi, AWS S3 — anything Litestream supports). Skip this if local-disk
-  backups via `BACKUP_PATH` are sufficient.
+- **Docker Engine ≥ 24** and **Docker Compose v2** (`docker compose version`).
+- **Network access to `ghcr.io`** for image pulls.
+- **Nginx Proxy Manager** already deployed on the LAN with a valid wildcard
+  or per-host Let's Encrypt cert (NPM handles renewals).
 
-On Microsoft Entra ID:
+On Microsoft Entra ID — **App registration** with:
 
-- **App registration** with:
-  - **Redirect URI** (SPA platform): `https://inventory.denicolafamily.com/auth/callback`
-  - **Expose an API** → application ID URI: `api://<client-id>`
-  - **App roles** defined: `Admin`, `Member`, `Viewer` (assignable to users)
-  - At least one user assigned to the `Admin` role for the initial sign-in.
+- **Redirect URI** (SPA platform): `https://inventory.denicolafamily.com/auth/callback`
+- **Expose an API** → application ID URI `api://<client-id>`
+- **App roles** `Admin`, `Member`, `Viewer` defined and assigned to at least
+  one user (the first sign-in needs to land on an Admin).
+- Full walkthrough: `docs/operations.md` → *Entra App Registration*.
 
 ---
 
-## 2. One-Time Bootstrap
+## 2. First-time setup
+
+Two flavors — pick one.
+
+**Flavor A — full repo checkout** (gives you the Taskfile + helper scripts):
 
 ```bash
-# Clone the repo on the deployment host
 git clone https://github.com/briandenicola/tech-inventory.git
 cd tech-inventory
-
-# Copy the env template and fill in real values
 cp .env.example .env
 $EDITOR .env
-
-# Generate a strong local-admin signing key — paste the output into
-# Auth__Local__SigningKey in .env (and never commit it).
-openssl rand -base64 48
-
-# Pre-create the backup directory if you'll enable the Litestream sidecar
-mkdir -p ./backups
 ```
 
-**Required `.env` values** (everything else has sensible defaults):
-
-| Key | Source |
-| --- | --- |
-| `Auth__Entra__Authority`              | `https://login.microsoftonline.com/<tenant-guid>/v2.0` |
-| `Auth__Entra__TenantId`               | Entra App Registration → Overview → *Directory (tenant) ID* |
-| `Auth__Entra__ClientId`               | Entra App Registration → Overview → *Application (client) ID* |
-| `Auth__Entra__Audiences__0`           | `api://<client-id>` (matches Expose an API → Application ID URI) |
-| `Auth__Entra__Audiences__1`           | `<client-id>` (bare GUID — Entra issues both forms) |
-| `Auth__Local__SigningKey`             | Output of `openssl rand -base64 48` — **SECRET** |
-| `TECHINV_IMAGE_TAG`                   | `latest` (or pin to a `v*` tag for reproducibility) |
-
-Decide on backup strategy:
-
-- **Local-disk only:** leave `LITESTREAM_REPLICA_URL` empty. Backups land in
-  `${BACKUP_PATH:-./backups}/techinv/` on the host.
-- **Local + off-host:** set `LITESTREAM_REPLICA_URL`,
-  `LITESTREAM_ACCESS_KEY_ID`, `LITESTREAM_SECRET_ACCESS_KEY` in `.env`.
-
----
-
-## 3. Pull & Roll
-
-The standard deploy command is:
+**Flavor B — compose-only** (lighter on the deploy host):
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-```
-
-To also start the Litestream backup sidecar:
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml \
-    --profile backup pull
-docker compose -f docker-compose.yml -f docker-compose.prod.yml \
-    --profile backup up -d
-```
-
-Verify health:
-
-```bash
-# Containers
-docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
-
-# API responds on the internal network via the web container
-docker compose -f docker-compose.yml -f docker-compose.prod.yml exec web \
-    wget -qO- http://api:8080/health/ready
-
-# Public endpoint via NPM
-curl -fsS https://inventory.denicolafamily.com/health   # web nginx /health
-```
-
----
-
-## 4. Database Migrations
-
-**EF Core migrations apply automatically on API startup.**
-`src/TechInventory.Api/Program.cs` runs `dbContext.Database.MigrateAsync()`
-before binding the HTTP listener, so a fresh deploy or a deploy that bumps
-the schema simply works on the next container restart.
-
-Implications:
-
-- **First-ever boot** creates the schema and seeds the default Household row.
-- **Schema-changing release** — pull the new image, `up -d`; the new API
-  container migrates the volume's `techinv.db` before it accepts traffic.
-- **Manual migration** is normally unnecessary. If you ever need to run it
-  out-of-band (e.g., before swapping images during a maintenance window):
-
-  ```bash
-  # On a workstation with the .NET SDK + repo checkout at the target commit
-  dotnet ef database update \
-      --project src/TechInventory.Infrastructure/TechInventory.Infrastructure.csproj \
-      --startup-project src/TechInventory.Api/TechInventory.Api.csproj \
-      --connection "Data Source=/path/to/techinv.db"
-  ```
-
----
-
-## 5. Rollback
-
-Every container build is tagged with both `latest` (when on `main`) and the
-short commit SHA. Tag pushes (`v*`) also produce semver tags. Pin the
-desired version via `TECHINV_IMAGE_TAG` and re-`up`:
-
-```bash
-# Roll forward — typical case
-TECHINV_IMAGE_TAG=v1.3.0 \
-    docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-
-# Roll back to a previous tag
-TECHINV_IMAGE_TAG=v1.2.2 \
-    docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-
-# Roll back to a specific commit (use the short SHA from the build)
-TECHINV_IMAGE_TAG=sha-54f8c6e \
-    docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-```
-
-> Persist `TECHINV_IMAGE_TAG` in `.env` after a successful rollback so
-> subsequent `up -d` calls don't snap back to `latest`.
-
-**Schema-incompatible rollback:** if the rollback target predates a
-migration, the API will refuse to start (EF detects the newer schema). In
-that case, restore the database to a snapshot taken before the migration
-(see §6) and then roll the image back.
-
----
-
-## 6. Backup & Restore
-
-The Litestream sidecar (opt-in via `--profile backup`) continuously
-streams the SQLite WAL to:
-
-1. A **local file replica** under `${BACKUP_PATH:-./backups}/techinv/`
-   (always on when the sidecar runs).
-2. An **optional S3-compatible replica** when `LITESTREAM_REPLICA_URL` is set.
-
-Retention is governed by `BACKUP_RETENTION_DAYS` (default 30).
-
-**Verify the latest snapshot:**
-
-```bash
-task backup:verify
-# Prints the snapshot generations and timestamps.
-# Exits non-zero if the sidecar isn't running.
-```
-
-**Manual snapshot inspection** (without Taskfile):
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml exec backup \
-    litestream snapshots -config /etc/litestream.yml /data/techinv.db
-```
-
-**Restore the latest snapshot** (Linux/macOS host):
-
-```bash
-task backup:restore
-# Interactive: stops API, restores to /data/techinv.db, restarts API.
-# Old DB is preserved at /data/techinv.db.pre-restore in the volume.
-```
-
-**Restore manually** (any host):
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml stop api
-docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile backup \
-    run --rm backup \
-    litestream restore -config /etc/litestream.yml \
-        -o /data/techinv.db.restored \
-        /data/techinv.db
-docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile backup \
-    run --rm --entrypoint sh backup \
-    -c 'mv /data/techinv.db /data/techinv.db.pre-restore \
-         && mv /data/techinv.db.restored /data/techinv.db'
-docker compose -f docker-compose.yml -f docker-compose.prod.yml start api
-```
-
-**Restore from a specific point in time:**
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile backup \
-    run --rm backup \
-    litestream restore -config /etc/litestream.yml \
-        -timestamp 2026-05-19T03:00:00Z \
-        -o /data/techinv.db.restored \
-        /data/techinv.db
-```
-
----
-
-## 7. Break-Glass Admin Recovery
-
-If Entra ID is unreachable (tenant misconfigured, secret rotated wrong,
-Azure outage), use the local-admin fallback. Full procedure is in
-[`docs/operations.md` → Break-Glass Local Admin](./operations.md#break-glass-local-admin-f025-v1b).
-
-**One-shot summary:**
-
-1. Set `Auth__Local__SeedEnabled=true`, `Auth__Local__SeedUsername=rescue`,
-   `Auth__Local__SeedPassword=<strong-temp>`, `Auth__Local__SeedAllowInProd=true`
-   in `.env`.
-2. `docker compose ... up -d api` — watch logs for the CRITICAL "Seeded local
-   Admin" line.
-3. Sign in via *Use a local account instead*, rotate the password.
-4. **Decommission the seed:** unset the four `Auth__Local__Seed*` keys in
-   `.env`, restart the API. Keep `Auth__Local__SigningKey` set — it's
-   required to validate existing local JWTs.
-
----
-
-## 8. Signing-Key Rotation (`Auth__Local__SigningKey`)
-
-> Applies only to the local break-glass JWT issuer (F025 v1b, D-140).
-> Entra-issued tokens are signed by Microsoft and are not affected by
-> this procedure.
-
-The local issuer signs JWTs with HMAC-SHA256 keyed by
-`Auth__Local__SigningKey`. Rotating the key is a deliberate,
-session-invalidating operation — there is **no key-id (`kid`) header
-rotation** in v1b and **no refresh tokens**, so every outstanding local
-session becomes invalid the moment the API restarts with a new key.
-
-### When to rotate
-
-| Trigger | Urgency | Notes |
-| --- | --- | --- |
-| Suspected key compromise (host theft, `.env` leak, accidental commit) | **Immediate** | Treat the existing key as burned; rotate, then audit `AuditEvent` for unexpected local sign-ins. |
-| Operator turnover with `.env` access | Same-day | A departing operator who saw `.env` saw the key. |
-| Routine hygiene | Annual | Calendar it. Low-traffic stack, low risk, but free defense-in-depth. |
-| After break-glass use that involved sharing the seed credentials | At decommission | Pair with the seed-cleanup step in §7. |
-
-### Blast radius
-
-Rotating the signing key:
-
-- ✅ **Invalidates every outstanding local JWT immediately on API
-  restart.** Holders are sent back to the sign-in screen on their next
-  request (401, then the SvelteKit auth layer redirects to `/login`).
-- ✅ Does **not** affect Entra-authenticated sessions — those tokens are
-  signed by Microsoft and validated against the Entra JWKS endpoint.
-- ✅ Does **not** invalidate stored password hashes — operators sign in
-  again with the same credentials.
-- ❌ Does **not** require a database migration or volume change. The key
-  lives only in `.env` and process memory.
-- ❌ Does **not** require coordination with NPM, DNS, or Entra.
-
-### Zero-downtime procedure
-
-v1b has no refresh tokens — there is nothing to migrate forward, so a
-straight restart is the simplest correct path. The API process is
-single-replica, so "zero-downtime" here means "no DB or NPM work; just a
-container restart of seconds."
-
-```bash
-# 1. Generate the new key (do this on the host, not in shell history).
-NEW_KEY=$(openssl rand -base64 48)
-
-# 2. Edit .env and replace Auth__Local__SigningKey with $NEW_KEY.
-#    Keep a copy of the old value in a secret store ONLY if you have a
-#    compelling forensic reason — otherwise overwrite cleanly.
+mkdir -p ~/stacks/tech-inventory && cd ~/stacks/tech-inventory
+curl -fsSL https://raw.githubusercontent.com/briandenicola/tech-inventory/main/docker-compose.yml -o docker-compose.yml
+curl -fsSL https://raw.githubusercontent.com/briandenicola/tech-inventory/main/.env.example -o .env
 $EDITOR .env
-
-# 3. Recreate the API container so the new env value is loaded.
-#    `up -d` is sufficient; Compose detects the env change and recreates.
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d api
-
-# 4. Confirm the new key is active (no log line prints the key itself —
-#    Serilog destructuring policy redacts it). A successful boot is the
-#    confirmation; failed JWT validation on the next local sign-in attempt
-#    would surface as a 401 with "IDX10503: Signature validation failed".
-docker compose -f docker-compose.yml -f docker-compose.prod.yml logs --tail=50 api \
-    | grep -iE 'starting tech inventory|application failed'
 ```
 
-The web container and external NPM proxy are untouched; only the API
-process bounces. Browsers holding a now-invalid local JWT will see a 401
-on their next API call and the SvelteKit auth interceptor will redirect
-to the sign-in page. Operators sign in again with the same username +
-password — only the token is invalidated, not the account.
+In `.env`, fill in:
 
-### After rotation
+| Key | What to put |
+| --- | --- |
+| `Auth__Entra__TenantId`        | Entra App registration → Overview → *Directory (tenant) ID* |
+| `Auth__Entra__ClientId`        | Entra App registration → Overview → *Application (client) ID* |
+| `Auth__Entra__Authority`       | `https://login.microsoftonline.com/<tenant-guid>/v2.0` |
+| `Auth__Entra__Audiences__0`    | `api://<client-id>` |
+| `Auth__Entra__Audiences__1`    | `<client-id>` (bare GUID — Entra sometimes stamps this form into `aud`) |
+| `Auth__Local__SigningKey`      | `openssl rand -base64 48` — paste the output |
+| `Cors__AllowedOrigins__0`      | `https://inventory.denicolafamily.com` (already the default) |
+| `IMAGE_TAG`                    | `latest` for now; you'll pin in §7 |
 
-- Audit `AuditEvent` for any local-account activity around the rotation
-  window. If the rotation was triggered by suspected compromise, look for
-  sign-ins from unexpected IPs, password changes, or role changes.
-- Confirm the old key value is not present in `.env`, `.env.bak`, shell
-  history, or the secret manager unless you explicitly need to retain it
-  for forensic decryption of historical logs (you don't — JWTs are not
-  encrypted, only signed; the old key has no decryption value).
-- If the rotation was triggered by a leaked `.env`, also rotate
-  `Auth__Entra__ClientSecret` in the Entra portal (and any
-  `LITESTREAM_SECRET_ACCESS_KEY`) — assume everything in that file
-  shares the leak's blast radius.
-
-### What v1b deliberately does **not** do
-
-- No `kid` header on issued JWTs → no overlapping-key validation window.
-  A future v2 with key rotation tolerance would add a JWKS endpoint and
-  accept tokens signed by either the current or previous key for a grace
-  period. Out of scope for v1b.
-- No refresh tokens → no need to invalidate a separate refresh-token
-  store. Rotation = restart, full stop.
+Leave the seed knobs (`Auth__Local__Seed*`) at their defaults for now — §5
+covers turning them on for the very first sign-in.
 
 ---
 
-## 9. Nginx Proxy Manager (NPM) Cheat Sheet
+## 3. Pull & start
 
-Configure a **Proxy Host** for `inventory.denicolafamily.com` with:
+```bash
+# One-time per host: authenticate to GHCR so `docker compose pull` works.
+docker login ghcr.io
+# Username = your GitHub username
+# Password = a PAT with read:packages scope (classic) OR a fine-grained
+#            token with "Read access to packages" on this repo.
 
-| NPM field | Value |
+docker compose pull
+docker compose up -d
+docker compose logs -f api          # ctrl-c when you see "Now listening on: http://[::]:8080"
+```
+
+Sanity checks:
+
+```bash
+docker compose ps                                     # both services Up and healthy
+docker compose exec web wget -qO- http://api:8080/health/ready   # API readiness from inside the network
+curl -fsS http://<host-ip>:3000/health                # web nginx liveness from the LAN
+```
+
+If `${VAR:?…}` blocks compose at this step with `error while interpolating
+environment variables`, your `.env` is missing a required key — the error
+message names it.
+
+---
+
+## 4. NPM upstream config
+
+Configure a **Proxy Host** in NPM for `inventory.denicolafamily.com`:
+
+| Field | Value |
 | --- | --- |
 | **Domain Names** | `inventory.denicolafamily.com` |
 | **Scheme** | `http` |
-| **Forward Hostname / IP** | `<host-ip>` (the LAN IP of the box running this stack) |
+| **Forward Hostname / IP** | `<deploy-host-LAN-IP>` |
 | **Forward Port** | `3000` |
-| **Cache Assets** | ☐ Off (web container handles long-cache headers itself) |
-| **Block Common Exploits** | ☑ On |
-| **Websockets Support** | ☑ On (MSAL doesn't need it but the PWA service-worker update channel benefits) |
-| **SSL** | ☑ Request a new Let's Encrypt cert. ☑ Force SSL. ☑ HTTP/2 Support. ☑ HSTS Enabled. |
-| **Custom Nginx Configuration** | See snippet below |
+| **Cache Assets** | ☐ off (web container sends its own long-cache headers) |
+| **Block Common Exploits** | ☑ on |
+| **Websockets Support** | ☑ on (PWA service-worker update channel) |
+| **SSL** | ☑ Let's Encrypt cert · ☑ Force SSL · ☑ HTTP/2 · ☑ HSTS Enabled |
 
-**Custom Nginx Configuration** (paste into NPM's *Custom Nginx Configuration*
-tab — preserves real client IP so the API's audit log shows the actual user):
+**Custom Nginx Configuration** tab — paste this so the API sees the real
+client IP in audit logs and CSV uploads aren't truncated:
 
 ```nginx
 proxy_set_header X-Real-IP $remote_addr;
@@ -368,71 +120,175 @@ proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 proxy_set_header X-Forwarded-Proto $scheme;
 proxy_set_header X-Forwarded-Host $host;
 
-# Upload size — F009 CSV import accepts up to 10 MiB per appsettings.json
+# F009 CSV import accepts up to 10 MiB per appsettings.json — give the
+# upstream some headroom for multipart overhead.
 client_max_body_size 16m;
+
+# Long-running streamed responses (server-sent events, future websockets)
+# deserve more than the default 60s read timeout.
+proxy_read_timeout 300s;
+proxy_send_timeout 300s;
 ```
 
-> The TLS chain terminates at NPM. The stack's web container speaks plain
-> HTTP on `:3000`; do **not** expose `:8080` (API) on the host — NPM should
-> never see the API directly. The `docker-compose.prod.yml` override drops
-> the dev-time `8080:8080` mapping for exactly this reason.
+The TLS chain terminates at NPM; the stack speaks plain HTTP on `:3000`.
+**Do NOT** publish the API port (`:8080`) on the host — NPM has no business
+seeing the API directly, and the compose file deliberately doesn't map it.
 
 ---
 
-## 10. Log Inspection
+## 5. First sign-in
+
+The intended path is **Entra first**:
+
+1. Open `https://inventory.denicolafamily.com`.
+2. Sign in with the Entra account you assigned the `Admin` role to.
+3. You should land on the dashboard. Stop here if it works.
+
+If Entra is misconfigured (or you're locked out), use **break-glass local
+admin** (per F025 v1b / D-140):
 
 ```bash
-# Tail everything
-docker compose -f docker-compose.yml -f docker-compose.prod.yml logs -f
+# In .env, flip these four knobs ON:
+Auth__Local__SeedEnabled=true
+Auth__Local__SeedAllowInProd=true
+Auth__Local__SeedUsername=rescue
+Auth__Local__SeedPassword=<strong-temp-password>
 
-# Just the API (Serilog structured JSON + stdout)
-docker compose -f docker-compose.yml -f docker-compose.prod.yml logs -f api
-
-# Just the web (nginx access + error log)
-docker compose -f docker-compose.yml -f docker-compose.prod.yml logs -f web
-
-# Just the backup sidecar
-docker compose -f docker-compose.yml -f docker-compose.prod.yml logs -f backup
-
-# Last 200 lines of the API, no follow
-docker compose -f docker-compose.yml -f docker-compose.prod.yml logs --tail=200 api
+# Reload the API so it reads the new env.
+docker compose up -d api
+docker compose logs --tail=50 api | grep -i seed
+# Expect: "Seeded local Admin 'rescue'…"
 ```
 
-**API Serilog rolling files** are written to the `/app/logs` tmpfs inside
-the API container (`techinventory-YYYYMMDD.txt`). They survive container
-restarts only as long as the container isn't recreated. For durable log
-retention, point `OTEL_EXPORTER_OTLP_ENDPOINT` / `OpenTelemetry__OtlpEndpoint`
-at a Seq or OpenTelemetry collector and consume traces there.
+Then:
 
-**What to grep for after a deploy:**
+1. Open the app, click **Use a local account instead**.
+2. Sign in as `rescue` with the temp password.
+3. You'll be forced to change the password on first login — pick a strong one.
+4. **Decommission the seed** immediately:
 
-| Pattern | Meaning |
-| --- | --- |
-| `Starting Tech Inventory API`         | API came up cleanly |
-| `Application failed to start`         | API died — read the stack trace immediately above |
-| `Seeded the default single-household` | First-ever boot ran |
-| `[F025] Seeded local Admin`           | Break-glass seed fired (rotate + decommission) |
-| `must change password`                | Local user hasn't rotated yet |
+   ```bash
+   # In .env, set these back / blank:
+   Auth__Local__SeedEnabled=false
+   Auth__Local__SeedAllowInProd=false
+   Auth__Local__SeedUsername=
+   Auth__Local__SeedPassword=
+
+   docker compose up -d api
+   ```
+
+5. Keep `Auth__Local__SigningKey` set — it's required to validate the local
+   JWT the rescue user just got.
+
+Full procedure with rotation runbook: `docs/operations.md` →
+*Break-glass local admin* and `docs/deployment.md` (this file) is referenced
+from there for the env-cleanup half.
 
 ---
 
-## 11. Common Failure Modes
+## 6. Updating
+
+```bash
+docker compose pull             # fetch the new :latest (or pinned tag)
+docker compose up -d            # recreate containers whose image changed
+docker compose logs -f api      # watch the migration apply + readiness flip green
+```
+
+EF Core migrations apply automatically on API startup before the container
+goes healthy, so a schema-bumping release is just `pull` + `up -d`.
+
+**Before pulling**, skim the release notes for breaking changes — especially
+anything that touches `.env` shape (new required keys, renamed env vars, or
+removed knobs).
+
+---
+
+## 7. Pinning versions
+
+`IMAGE_TAG=latest` is the lazy default. For real production stability:
+
+```bash
+# In .env:
+IMAGE_TAG=v0.1.0
+```
+
+Then `docker compose up -d` deploys *exactly that build* and survives
+re-creates without surprise upgrades. Update the value when you decide to
+move forward; revert to the previous tag to roll back:
+
+```bash
+# Roll back:
+sed -i 's/^IMAGE_TAG=.*/IMAGE_TAG=v0.0.9/' .env
+docker compose pull
+docker compose up -d
+```
+
+> **Schema-incompatible rollbacks**: if the rollback target predates a
+> migration, the API will refuse to start (EF detects the newer schema).
+> Restore the database from your last backup (§9) *before* rolling the
+> image back.
+
+---
+
+## 8. Troubleshooting
 
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
-| `https://inventory.denicolafamily.com` returns 502 | Web container isn't reachable on port 3000 | `docker compose ... ps` — confirm `web` is `Up` and `healthy`; check NPM forward host/port |
-| Sign-in loops, redirects keep firing | Entra redirect URI mismatch | Confirm `https://inventory.denicolafamily.com/auth/callback` is registered as a SPA redirect URI in the Entra app |
-| API logs `Auth:Entra:Authority is required` | `.env` missing Entra values | Refill from `.env.example`, restart `api` |
-| API refuses to start with `SeedAllowInProd` error | `SeedEnabled=true` in prod without `SeedAllowInProd=true` | Either set both for intentional seed, or unset both for normal operation |
-| Litestream snapshot age keeps growing | Sidecar not running, or no `--profile backup` on last `up -d` | Re-run `docker compose ... --profile backup up -d backup`; check `task backup:verify` |
-| `read_only: true` on api causes startup failure mentioning `/app/logs` | Tmpfs mount lost (e.g., on an older Compose) | Confirm Compose ≥ 2.24 and the tmpfs entries in `docker-compose.prod.yml` are intact |
+| `docker compose pull` returns `denied` / `unauthorized` | GHCR login expired or PAT missing `read:packages` | Re-run `docker login ghcr.io` with a fresh PAT |
+| `error while interpolating environment variables: required variable XYZ is missing a value` | The `${VAR:?…}` guard tripped — a required env var isn't set | Open `.env`, set the named key, `docker compose up -d` again |
+| Sign-in loops, browser keeps bouncing back to Entra | Redirect URI mismatch | Confirm `https://inventory.denicolafamily.com/auth/callback` is a **SPA** redirect URI on the Entra app (not Web, not Public client) |
+| API logs `Auth:Entra:Authority is required` and exits | `.env` was rebuilt without the Entra block, or `ASPNETCORE_ENVIRONMENT` isn't Production | Refill from `.env.example`; the compose file always sets `ASPNETCORE_ENVIRONMENT=Production` so you should not see this unless `.env` is incomplete |
+| API logs `Auth:Local:SeedEnabled is true in Production without Auth:Local:SeedAllowInProd. Refusing to start.` | You enabled the seed but forgot the prod-safety toggle | Set both `Auth__Local__SeedEnabled=true` AND `Auth__Local__SeedAllowInProd=true` for an intentional break-glass; otherwise unset both |
+| `https://inventory.denicolafamily.com` returns 502 | Web container isn't reachable on host:3000 | `docker compose ps` — confirm `web` is `Up (healthy)`; from the NPM host run `curl http://<deploy-host>:3000/health` |
+| NPM proxy times out on large CSV imports | Default `client_max_body_size` / `proxy_read_timeout` too small | Apply the *Custom Nginx Configuration* snippet from §4 |
+| Second `docker compose up -d` re-seeds the same break-glass user | You left `Auth__Local__SeedEnabled=true` in `.env` | Decommission the seed per §5 — set the four `Auth__Local__Seed*` keys back to defaults |
+| `web` container restarts complaining about `/var/run/nginx.pid` permissions | You're on an old web image that ran nginx as root | Pull `:latest` (current image uses `nginxinc/nginx-unprivileged:1.27.5-alpine` and writes pid to `/tmp`) |
+
+Where to look first when something's off:
+
+```bash
+docker compose ps
+docker compose logs --tail=200 api
+docker compose logs --tail=200 web
+docker compose exec api wget -qO- http://localhost:8080/health/ready
+```
 
 ---
 
-## 12. Related Documents
+## 9. Backup
 
+Brian's external backup workflow handles SQLite snapshots — that lives
+outside this repo and outside this stack. Point that process at the
+`techinv-data` named volume (or, more precisely, at the live
+`/data/techinv.db` inside the API container).
+
+**Ad-hoc snapshot** when you want one right now (uses SQLite's online
+`.backup` so it's safe to run against a live DB):
+
+```bash
+docker compose exec api sqlite3 /data/techinv.db \
+  ".backup /data/techinv-$(date +%Y%m%d-%H%M%S).db"
+
+# Then copy it off the volume to wherever your backup target lives:
+docker compose cp api:/data/. ./snapshots/
+```
+
+The snapshot file lands inside the same `techinv-data` volume, alongside
+`techinv.db`. Move it out-of-host via your normal backup tooling — don't
+leave snapshots accumulating in the volume.
+
+> If you ever need continuous WAL replication (Litestream and similar)
+> back in the stack, it can be added as an opt-in service later — it was
+> intentionally pulled out for this round so NPM + Entra remain the only
+> moving security pieces.
+
+---
+
+## 10. Related documents
+
+- `docs/operations.md` — break-glass admin runbook, password rotation,
+  signing-key rotation
 - `docs/architecture.md` — system design + container topology
-- `docs/operations.md` — break-glass admin, password rotation
 - `docs/security-baseline.md` — auth + secret handling rules
 - `docs/threat-model.md` — STRIDE for the deployed stack
 - `.squad/decisions.md` — D-135, D-139, D-140 set the production shape

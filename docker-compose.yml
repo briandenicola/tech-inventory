@@ -38,7 +38,6 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: ""  # Empty in dev; override for local Seq/Jaeger
     volumes:
       - techinv-data:/data
-      - techinv-api-tmp:/tmp
     tmpfs:
       - /tmp
     user: "1000:1000"
@@ -98,5 +97,3 @@ networks:
 volumes:
   techinv-data:
     name: techinv-data
-  techinv-api-tmp:
-    name: techinv-api-tmp

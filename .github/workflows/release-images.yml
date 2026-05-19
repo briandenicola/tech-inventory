@@ -81,10 +81,16 @@ jobs:
           # On workflow_dispatch: publish `:latest`, plus `:<inputs.tag>`
           # if the operator provided one. `enable=` keeps the second
           # tag from materialising as a literal `:` when no input is set.
+          # `:sha-<short>` is published on every run so the downstream
+          # Container Image Security Scan workflow can pull a
+          # deterministic, race-free tag for whatever commit triggered
+          # this run (it resolves the upstream head_sha → short SHA →
+          # `sha-<short>` tag).
           tags: |
             type=raw,value=latest
             type=raw,value=${{ github.ref_name }},enable=${{ github.event_name == 'push' }}
             type=raw,value=${{ inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' && inputs.tag != '' }}
+            type=sha,format=short
           labels: |
             org.opencontainers.image.title=${{ matrix.image.title }}
             org.opencontainers.image.description=${{ matrix.image.description }}

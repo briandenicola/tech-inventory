@@ -22,9 +22,14 @@ RUN dotnet restore src/TechInventory.Api/TechInventory.Api.csproj
 # Copy remaining source
 COPY src/ ./src/
 
-# Build and publish
+# Build and publish.
+# NOTE: we intentionally do NOT pass --no-restore here. With .NET 10 SDK
+# 10.0.300 we hit NETSDK1064 ("Microsoft.CodeAnalysis.Analyzers 3.11.0
+# was not found") when publish reused the obj/ from the earlier restore
+# step inside BuildKit layer cache. Re-restoring during publish is a few
+# extra seconds and avoids the analyzer-package mismatch entirely.
 WORKDIR /src/src/TechInventory.Api
-RUN dotnet publish -c Release -o /app/publish --no-restore
+RUN dotnet publish -c Release -o /app/publish
 
 # --- Runtime stage ---
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS runtime

@@ -170,6 +170,12 @@ Accessibility: WCAG 2.2 AA target, zero axe-core violations to merge. Browser ma
 
 **Charter nit:** Vasquez touched `DeleteDeviceModal.test.ts` (test file) to fix a stray lint error during pre-commit gating — Apone's territory. Noted for future discipline.
 
+## 2026-05-19 (Phase 2 Round 6.6) — D-134 relative API base URL
+
+- Files changed: `src/TechInventory.Web/src/lib/api/client.ts`, `src/TechInventory.Web/src/lib/stores/toast.ts`, `src/TechInventory.Web/.env.development`, `.gitignore`, `.squad/decisions/inbox/vasquez-relative-api-url.md`.
+- Learned: prod same-origin deployments should default the browser client to a relative API base URL while preserving an explicit localhost dev override for Vite-to-API cross-origin work.
+- Next time: check ignore rules for inbox/env artifacts earlier so required coordination docs can be committed without a second pass.
+
 ## Phase 2 Round 6.5 — Schema Regen Mini-Task (Post-R6a)
 
 **Summary:**

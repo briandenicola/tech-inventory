@@ -66,6 +66,8 @@ export function showToast(options: ToastOptions): string {
 	return id;
 }
 
+export const addToast = showToast;
+
 /**
  * Dismiss toast by ID
  */

@@ -71,10 +71,13 @@ interface ApiClientConfig {
 }
 
 /**
- * Default base URL from environment
+ * D-134: production builds should use a relative base URL so Hudson's
+ * same-origin web-container proxy can forward `/api/*` to the API service.
+ * Development stays on localhost:8080 unless VITE_API_BASE_URL overrides it.
  */
 const DEFAULT_BASE_URL =
-	import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+	import.meta.env.VITE_API_BASE_URL ||
+	(import.meta.env.DEV ? 'http://localhost:8080' : '');
 
 /**
  * Global client config (can be overridden by setApiConfig)
@@ -448,3 +451,19 @@ export const auditEvents = {
 		params?: paths['/api/v1/audit-events']['get']['parameters']['query']
 	) => apiFetch<GetResponse<paths['/api/v1/audit-events']>>(`/api/v1/audit-events${buildQueryString(params)}`)
 };
+
+const api = {
+	devices,
+	brands,
+	categories,
+	owners,
+	locations,
+	networks,
+	tags,
+	imports,
+	exports,
+	auditEvents,
+	setApiConfig
+};
+
+export default api;

@@ -18,8 +18,8 @@
 	// touch targets, pill-style active state.
 
 	let mobileMenuOpen = $state(false);
-	let adminMenuOpen = $state(false);
-	let adminMenuTrigger = $state<HTMLButtonElement | undefined>(undefined);
+	let userMenuOpen = $state(false);
+	let userMenuTrigger = $state<HTMLButtonElement | undefined>(undefined);
 
 	const adminLinks = [
 		{ href: '/admin/brands', key: 'navigation.adminBrands' },
@@ -35,7 +35,6 @@
 	// Derive auth state from store
 	const currentUser = $derived($authStore.currentUser);
 	const isAdmin = $derived(currentUser?.role === 'Admin');
-	const isAdminPath = $derived($page.url.pathname.startsWith('/admin'));
 
 	// T09 + J3: Sign out — call MSAL logoutRedirect + clear auth store
 	async function handleSignOut() {
@@ -57,27 +56,27 @@
 		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
 		$page.url.pathname; // Trigger effect on route change
 		mobileMenuOpen = false;
-		adminMenuOpen = false;
+		userMenuOpen = false;
 	});
 
-	// Admin dropdown: close on outside-click + Escape
-	function handleAdminMenuKeydown(e: KeyboardEvent) {
-		if (e.key === 'Escape' && adminMenuOpen) {
-			adminMenuOpen = false;
-			adminMenuTrigger?.focus();
+	// User dropdown: close on outside-click + Escape
+	function handleUserMenuKeydown(e: KeyboardEvent) {
+		if (e.key === 'Escape' && userMenuOpen) {
+			userMenuOpen = false;
+			userMenuTrigger?.focus();
 		}
 	}
 
 	function handleDocumentClick(e: MouseEvent) {
-		if (!adminMenuOpen) return;
+		if (!userMenuOpen) return;
 		const target = e.target as Node | null;
-		if (target && adminMenuTrigger && !adminMenuTrigger.parentElement?.contains(target)) {
-			adminMenuOpen = false;
+		if (target && userMenuTrigger && !userMenuTrigger.parentElement?.contains(target)) {
+			userMenuOpen = false;
 		}
 	}
 </script>
 
-<svelte:window onkeydown={handleAdminMenuKeydown} onclick={handleDocumentClick} />
+<svelte:window onkeydown={handleUserMenuKeydown} onclick={handleDocumentClick} />
 
 <div class="flex min-h-screen flex-col bg-neutral-50 dark:bg-neutral-900">
 	<!-- Header -->
@@ -91,79 +90,23 @@
 				</span>
 			</a>
 
-			<!-- Desktop Nav (hidden on mobile) -->
-			<nav class="hidden items-center gap-1 md:flex" aria-label="Main navigation">
-				{@render desktopNavLink('/devices', t('navigation.devices'))}
+			<!-- Desktop spacer (nav links removed — wordmark links to /devices,
+				 admin links + sign out live in the user menu on the right) -->
+			<div class="hidden flex-1 md:block"></div>
 
-				{#if isAdmin}
-					<!-- Admin Dropdown (Desktop) -->
-					<div class="relative">
-						<button
-							type="button"
-							bind:this={adminMenuTrigger}
-							onclick={() => (adminMenuOpen = !adminMenuOpen)}
-							aria-haspopup="menu"
-							aria-expanded={adminMenuOpen}
-							class="inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 py-2 text-base font-medium transition-colors duration-150"
-							class:bg-neutral-100={isAdminPath}
-							class:text-primary-700={isAdminPath}
-							class:dark:bg-neutral-800={isAdminPath}
-							class:dark:text-primary-300={isAdminPath}
-							class:text-neutral-700={!isAdminPath}
-							class:hover:bg-neutral-100={!isAdminPath}
-							class:hover:text-neutral-900={!isAdminPath}
-							class:dark:text-neutral-300={!isAdminPath}
-							class:dark:hover:bg-neutral-800={!isAdminPath}
-							class:dark:hover:text-neutral-50={!isAdminPath}
-						>
-							<span>{t('navigation.admin')}</span>
-							<svg
-								class="h-4 w-4 transition-transform duration-150"
-								class:rotate-180={adminMenuOpen}
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-								aria-hidden="true"
-							>
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-							</svg>
-						</button>
-
-						{#if adminMenuOpen}
-							<div
-								class="absolute right-0 mt-2 w-56 origin-top-right rounded-2xl border border-neutral-200/70 bg-white/95 p-2 shadow-xl backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-950/95"
-								role="menu"
-								aria-label={t('navigation.admin')}
-							>
-								{#each adminLinks as link (link.href)}
-									{@const active = $page.url.pathname.startsWith(link.href)}
-									<a
-										href={link.href}
-										role="menuitem"
-										class="flex min-h-11 items-center rounded-xl px-3 py-2.5 text-base font-medium transition-colors duration-150"
-										class:bg-primary-50={active}
-										class:text-primary-700={active}
-										class:dark:bg-primary-900={active}
-										class:dark:text-primary-200={active}
-										class:text-neutral-700={!active}
-										class:hover:bg-neutral-100={!active}
-										class:dark:text-neutral-300={!active}
-										class:dark:hover:bg-neutral-800={!active}
-									>
-										{t(link.key)}
-									</a>
-								{/each}
-							</div>
-						{/if}
-					</div>
-				{/if}
-			</nav>
-
-			<!-- Right: User Display Name + Role Badge + Sign Out (desktop) -->
-			<div class="hidden items-center gap-3 md:flex">
+			<!-- Right: Unified user menu (display name + role + dropdown) -->
+			<div class="relative hidden md:block">
 				{#if currentUser}
-					<div class="flex items-center gap-2 rounded-full bg-neutral-100 px-3 py-1.5 dark:bg-neutral-800">
-						<span class="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+					<button
+						type="button"
+						bind:this={userMenuTrigger}
+						onclick={() => (userMenuOpen = !userMenuOpen)}
+						aria-haspopup="menu"
+						aria-expanded={userMenuOpen}
+						aria-label={t('header.userMenu')}
+						class="inline-flex min-h-11 items-center gap-2 rounded-full bg-neutral-100 px-3 py-1.5 text-neutral-900 transition-colors duration-150 hover:bg-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700"
+					>
+						<span class="text-sm font-medium">
 							{currentUser.displayName}
 						</span>
 						<span
@@ -183,14 +126,58 @@
 						>
 							{currentUser.role}
 						</span>
-					</div>
-					<button
-						type="button"
-						onclick={handleSignOut}
-						class="inline-flex min-h-11 items-center rounded-full px-4 py-2 text-base font-medium text-neutral-700 transition-colors duration-150 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-neutral-50"
-					>
-						{t('auth.signOut.button')}
+						<svg
+							class="h-4 w-4 transition-transform duration-150"
+							class:rotate-180={userMenuOpen}
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+							aria-hidden="true"
+						>
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+						</svg>
 					</button>
+
+					{#if userMenuOpen}
+						<div
+							class="absolute right-0 mt-2 w-56 origin-top-right rounded-2xl border border-neutral-200/70 bg-white/95 p-2 shadow-xl backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-950/95"
+							role="menu"
+							aria-label={t('header.userMenu')}
+						>
+							{#if isAdmin}
+								<div class="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+									{t('navigation.admin')}
+								</div>
+								{#each adminLinks as link (link.href)}
+									{@const active = $page.url.pathname.startsWith(link.href)}
+									<a
+										href={link.href}
+										role="menuitem"
+										class="flex min-h-11 items-center rounded-xl px-3 py-2.5 text-base font-medium transition-colors duration-150"
+										class:bg-primary-50={active}
+										class:text-primary-700={active}
+										class:dark:bg-primary-900={active}
+										class:dark:text-primary-200={active}
+										class:text-neutral-700={!active}
+										class:hover:bg-neutral-100={!active}
+										class:dark:text-neutral-300={!active}
+										class:dark:hover:bg-neutral-800={!active}
+									>
+										{t(link.key)}
+									</a>
+								{/each}
+								<hr class="my-2 border-t border-neutral-200 dark:border-neutral-800" />
+							{/if}
+							<button
+								type="button"
+								role="menuitem"
+								onclick={handleSignOut}
+								class="flex min-h-11 w-full items-center rounded-xl px-3 py-2.5 text-left text-base font-medium text-neutral-700 transition-colors duration-150 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+							>
+								{t('auth.signOut.button')}
+							</button>
+						</div>
+					{/if}
 				{/if}
 			</div>
 
@@ -303,26 +290,6 @@
 	<!-- Toast notifications (fixed top-right, z-50) -->
 	<ToastContainer />
 </div>
-
-{#snippet desktopNavLink(href: string, label: string)}
-	{@const active = $page.url.pathname.startsWith(href)}
-	<a
-		{href}
-		class="inline-flex min-h-11 items-center rounded-full px-4 py-2 text-base font-medium transition-colors duration-150"
-		class:bg-neutral-100={active}
-		class:text-primary-700={active}
-		class:dark:bg-neutral-800={active}
-		class:dark:text-primary-300={active}
-		class:text-neutral-700={!active}
-		class:hover:bg-neutral-100={!active}
-		class:hover:text-neutral-900={!active}
-		class:dark:text-neutral-300={!active}
-		class:dark:hover:bg-neutral-800={!active}
-		class:dark:hover:text-neutral-50={!active}
-	>
-		{label}
-	</a>
-{/snippet}
 
 {#snippet mobileNavLink(href: string, label: string)}
 	{@const active = $page.url.pathname.startsWith(href)}

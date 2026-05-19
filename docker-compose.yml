@@ -62,6 +62,11 @@ services:
     build:
       context: .
       dockerfile: src/TechInventory.Web/Dockerfile
+      args:
+        # Forwarded to the SvelteKit build stage. Default off; set to "true" in
+        # the host shell (or via .env) to bake the dev-bypass shim into the
+        # bundle. Required for `task test:e2e` against this compose stack.
+        VITE_AUTH_DEV_BYPASS: ${VITE_AUTH_DEV_BYPASS:-false}
     container_name: techinv-web
     image: techinv-web:dev
     ports:

@@ -14,6 +14,9 @@ cleanup() {
 trap cleanup EXIT
 
 cd "$repo_root"
+# E2E tests rely on the dev-bypass shim (no MSAL bounce off Microsoft).
+# Compose forwards this as a build ARG to the web Dockerfile.
+export VITE_AUTH_DEV_BYPASS=true
 docker compose up -d --build
 
 for attempt in $(seq 1 60); do

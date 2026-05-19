@@ -4,6 +4,7 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 $originalLocation = Get-Location
 $e2eLocationPushed = $false
 $originalBaseUrl = $env:BASE_URL
+$originalDevBypass = $env:VITE_AUTH_DEV_BYPASS
 
 function Wait-ForReady {
     param(
@@ -33,6 +34,10 @@ function Wait-ForReady {
 
 try {
     Set-Location $repoRoot
+
+    # E2E tests rely on the dev-bypass shim (no MSAL bounce off Microsoft).
+    # Compose forwards this as a build ARG to the web Dockerfile.
+    $env:VITE_AUTH_DEV_BYPASS = "true"
 
     docker compose up -d --build
     if ($LASTEXITCODE -ne 0) {
@@ -65,6 +70,13 @@ finally {
     }
     else {
         $env:BASE_URL = $originalBaseUrl
+    }
+
+    if ($null -eq $originalDevBypass) {
+        Remove-Item Env:VITE_AUTH_DEV_BYPASS -ErrorAction SilentlyContinue
+    }
+    else {
+        $env:VITE_AUTH_DEV_BYPASS = $originalDevBypass
     }
 
     Set-Location $repoRoot

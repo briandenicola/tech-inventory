@@ -122,7 +122,7 @@
 		// Zod validation
 		const result = ownerSchema.safeParse(formData);
 		if (!result.success) {
-			result.error.errors.forEach((err) => {
+			result.error.issues.forEach((err) => {
 				if (err.path[0]) formErrors[err.path[0] as string] = err.message;
 			});
 			return;

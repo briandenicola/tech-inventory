@@ -108,8 +108,10 @@
 		"settings": "Settings",
 		"admin": "Admin",
 		"adminBrands": "Brands",
+		"adminCategories": "Categories",
 		"adminLocations": "Locations",
 		"adminNetworks": "Networks",
+		"adminOwners": "Owners",
 		"adminTags": "Tags"
 	},
 	"devices": {

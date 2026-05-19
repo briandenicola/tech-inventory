@@ -1,17 +1,38 @@
 /**
  * Design Tokens — Tech Inventory
  * 
- * Visual direction: "Quietly elegant. Mid-2010s Apple in spirit"
- * — Minimal, typographic, uncluttered
+ * Visual direction: "Apple elegant" — macOS Settings, App Store, Apple Music
+ * — Polish trumps density; let it breathe.
  * 
  * Phase 2 T03: Expanded to ~100 tokens covering color scales, spacing,
  * typography, radii, shadows, z-index, motion. Light + dark variants.
  * 
  * D-035: Dark mode via prefers-color-scheme only (no manual toggle).
  * D-037: Mobile min 360px; breakpoints: sm 640, md 768, lg 1024, xl 1280.
+ * D-137: Apple-elegant baseline — 17px body, 44px touch targets, generous
+ *        whitespace, soft shadows, rounded shapes, antialiased rendering.
  */
 
 @layer base {
+	/* D-137: Apple-elegant baseline — bumps body 16px → 17px, scaling all
+	   rem-based spacing utilities ~6% for additional breathing room. */
+	html {
+		font-size: 17px;
+	}
+
+	body {
+		font-family: var(--font-sans);
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+		font-feature-settings: 'cv02', 'cv11', 'ss01';
+		letter-spacing: -0.011em;
+		text-rendering: optimizeLegibility;
+	}
+
+	h1, h2, h3, h4, h5, h6 {
+		letter-spacing: -0.022em;
+	}
+
 	:root {
 		/* ===== Color Palette — Light Theme ===== */
 		
@@ -182,6 +203,9 @@
 		--ease-in: cubic-bezier(0.4, 0, 1, 1);
 		--ease-out: cubic-bezier(0, 0, 0.2, 1);
 		--ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+		/* ===== Touch Targets (D-137 — iOS HIG min) ===== */
+		--touch-target-min: 2.75rem; /* 44px @ 16px / ~47px @ 17px root */
 
 		/* ===== Breakpoints (documented for reference) ===== */
 		/* Mobile: 360px min (D-037) */

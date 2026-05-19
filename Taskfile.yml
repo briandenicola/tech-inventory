@@ -26,29 +26,20 @@ tasks:
     desc: Restore .NET and pnpm dependencies
     cmds:
       - dotnet restore
-      - cmd: cd src\TechInventory.Web && pnpm install
-        platforms: [windows]
-      - cmd: cd src/TechInventory.Web && pnpm install
-        platforms: [linux, darwin]
+      - pnpm --dir src/TechInventory.Web install
 
   build:
     desc: Build backend and frontend
     deps: [restore]
     cmds:
       - dotnet build -c Release --no-restore
-      - cmd: cd src\TechInventory.Web && pnpm run build
-        platforms: [windows]
-      - cmd: cd src/TechInventory.Web && pnpm run build
-        platforms: [linux, darwin]
+      - pnpm --dir src/TechInventory.Web run build
 
   lint:
     desc: Lint backend and frontend
     cmds:
       - dotnet format --verify-no-changes
-      - cmd: cd src\TechInventory.Web && pnpm run lint
-        platforms: [windows]
-      - cmd: cd src/TechInventory.Web && pnpm run lint
-        platforms: [linux, darwin]
+      - pnpm --dir src/TechInventory.Web run lint
 
   hooks:install:
     desc: Install repo-managed git hooks and pinned gitleaks binary
@@ -83,14 +74,16 @@ tasks:
 
   test:e2e:run:
     internal: true
+    env:
+      BASE_URL: http://localhost:3000
     cmds:
       - cmd: powershell -NoProfile -ExecutionPolicy Bypass -Command "& { $maxAttempts = 60; for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) { try { $response = Invoke-WebRequest -Uri 'http://localhost:8080/health/ready' -UseBasicParsing -TimeoutSec 5; if ($response.StatusCode -eq 200) { exit 0 } } catch { } Start-Sleep -Seconds 2 }; throw 'API readiness check failed at http://localhost:8080/health/ready.' }"
         platforms: [windows]
       - cmd: bash -c 'for attempt in $(seq 1 60); do curl --fail --silent http://localhost:8080/health/ready >/dev/null && exit 0; sleep 2; done; echo "API readiness check failed at http://localhost:8080/health/ready." >&2; exit 1'
         platforms: [linux, darwin]
-      - cmd: cd tests\e2e && npm ci && set "BASE_URL=http://localhost:3000" && npx playwright test
+      - cmd: powershell -NoProfile -Command "Set-Location tests/e2e; npm ci; npx playwright test"
         platforms: [windows]
-      - cmd: cd tests/e2e && npm ci && BASE_URL=http://localhost:3000 npx playwright test
+      - cmd: bash -c 'cd tests/e2e && npm ci && npx playwright test'
         platforms: [linux, darwin]
 
   test:e2e:
@@ -106,10 +99,7 @@ tasks:
     cmds:
       - task: test:unit
       - task: test:integration
-      - cmd: cd src\TechInventory.Web && pnpm run test
-        platforms: [windows]
-      - cmd: cd src/TechInventory.Web && pnpm run test
-        platforms: [linux, darwin]
+      - pnpm --dir src/TechInventory.Web run test
       - task: test:e2e:run
 
   verify:
@@ -123,10 +113,7 @@ tasks:
   openapi:export:
     desc: Regenerate the committed OpenAPI YAML from the API project
     cmds:
-      - cmd: dotnet run --project src\TechInventory.Api\TechInventory.Api.csproj -- export-openapi
-        platforms: [windows]
-      - cmd: dotnet run --project src/TechInventory.Api/TechInventory.Api.csproj -- export-openapi
-        platforms: [linux, darwin]
+      - dotnet run --project src/TechInventory.Api/TechInventory.Api.csproj -- export-openapi
 
   logs:
     desc: Tail logs from all running containers
@@ -142,9 +129,7 @@ tasks:
     desc: Remove build artifacts and volumes
     cmds:
       - dotnet clean
-      - cmd: if exist src\TechInventory.Web\build rd /s /q src\TechInventory.Web\build
-        platforms: [windows]
-      - cmd: if exist src\TechInventory.Web\.svelte-kit rd /s /q src\TechInventory.Web\.svelte-kit
+      - cmd: powershell -NoProfile -Command "Remove-Item -Path 'src/TechInventory.Web/build', 'src/TechInventory.Web/.svelte-kit' -Recurse -Force -ErrorAction SilentlyContinue"
         platforms: [windows]
       - cmd: rm -rf src/TechInventory.Web/build src/TechInventory.Web/.svelte-kit
         platforms: [linux, darwin]
@@ -153,32 +138,27 @@ tasks:
   db:migrate:
     desc: Apply EF Core migrations to the local database
     cmds:
-      - dotnet ef database update --project src\TechInventory.Infrastructure\TechInventory.Infrastructure.csproj --startup-project src\TechInventory.Api\TechInventory.Api.csproj
+      - dotnet ef database update --project src/TechInventory.Infrastructure/TechInventory.Infrastructure.csproj --startup-project src/TechInventory.Api/TechInventory.Api.csproj
 
   dev:api:
     desc: Run the API in Development mode (foreground, http://localhost:8080)
+    env:
+      ASPNETCORE_ENVIRONMENT: Development
     cmds:
-      - cmd: set "ASPNETCORE_ENVIRONMENT=Development" && dotnet run --project src\TechInventory.Api\TechInventory.Api.csproj
-        platforms: [windows]
-      - cmd: ASPNETCORE_ENVIRONMENT=Development dotnet run --project src/TechInventory.Api/TechInventory.Api.csproj
-        platforms: [linux, darwin]
+      - dotnet run --project src/TechInventory.Api/TechInventory.Api.csproj
 
   dev:web:
     desc: Run the Web dev server (foreground, http://localhost:5173)
     cmds:
-      - cmd: cd src\TechInventory.Web && pnpm run dev
-        platforms: [windows]
-      - cmd: cd src/TechInventory.Web && pnpm run dev
-        platforms: [linux, darwin]
+      - pnpm --dir src/TechInventory.Web run dev
 
   dev:up:
     desc: One-command dev — migrate + run API + Web in parallel (Ctrl+C exits both)
     deps: [db:migrate]
+    env:
+      ASPNETCORE_ENVIRONMENT: Development
     cmds:
-      - cmd: set "ASPNETCORE_ENVIRONMENT=Development" && npx concurrently --kill-others --names "API,WEB" --prefix-colors "blue,green" "dotnet run --project src\TechInventory.Api\TechInventory.Api.csproj" "pnpm --dir src\TechInventory.Web run dev"
-        platforms: [windows]
-      - cmd: ASPNETCORE_ENVIRONMENT=Development npx concurrently --kill-others --names "API,WEB" --prefix-colors "blue,green" "dotnet run --project src/TechInventory.Api/TechInventory.Api.csproj" "pnpm --dir src/TechInventory.Web run dev"
-        platforms: [linux, darwin]
+      - npx concurrently --kill-others --names "API,WEB" --prefix-colors "blue,green" "dotnet run --project src/TechInventory.Api/TechInventory.Api.csproj" "pnpm --dir src/TechInventory.Web run dev"
 
   dev:
     desc: Run API and Web dev servers (see task validate:local for full flow)
@@ -205,29 +185,9 @@ tasks:
     vars:
       CSV: '{{default "data/Devices.csv" .CSV}}'
     cmds:
-      - cmd: |
-          if (-Not (Test-Path "{{.CSV}}")) {
-            throw "CSV file not found: {{.CSV}}"
-          }
-          Write-Host "📄 Previewing import from: {{.CSV}}" -ForegroundColor Cyan
-          Write-Host ""
-          $response = Invoke-WebRequest -Uri "http://localhost:8080/api/v1/imports/preview" `
-            -Method POST `
-            -Form @{ file = Get-Item "{{.CSV}}" } `
-            -UseBasicParsing
-          $json = $response.Content | ConvertFrom-Json | ConvertTo-Json -Depth 10
-          Write-Host $json
+      - cmd: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/import-preview.ps1 -CsvPath "{{.CSV}}"
         platforms: [windows]
-      - cmd: |
-          if [ ! -f "{{.CSV}}" ]; then
-            echo "CSV file not found: {{.CSV}}" >&2
-            exit 1
-          fi
-          echo "📄 Previewing import from: {{.CSV}}"
-          echo ""
-          curl -f -X POST http://localhost:8080/api/v1/imports/preview \
-            -F "file=@{{.CSV}}" \
-            | jq .
+      - cmd: bash scripts/import-preview.sh "{{.CSV}}"
         platforms: [linux, darwin]
 
   import:commit:
@@ -236,41 +196,9 @@ tasks:
       CSV: '{{default "data/Devices.csv" .CSV}}'
       CONFIRM: '{{default "no" .CONFIRM}}'
     cmds:
-      - cmd: |
-          if ("{{.CONFIRM}}" -ne "yes") {
-            Write-Host "⚠️  WARNING: This will write devices to the database." -ForegroundColor Yellow
-            Write-Host "   Run with CONFIRM=yes to proceed:" -ForegroundColor Yellow
-            Write-Host "   task import:commit CONFIRM=yes" -ForegroundColor Cyan
-            exit 1
-          }
-          if (-Not (Test-Path "{{.CSV}}")) {
-            throw "CSV file not found: {{.CSV}}"
-          }
-          Write-Host "💾 Committing import from: {{.CSV}}" -ForegroundColor Green
-          Write-Host ""
-          $response = Invoke-WebRequest -Uri "http://localhost:8080/api/v1/imports/commit" `
-            -Method POST `
-            -Form @{ file = Get-Item "{{.CSV}}" } `
-            -UseBasicParsing
-          $json = $response.Content | ConvertFrom-Json | ConvertTo-Json -Depth 10
-          Write-Host $json
+      - cmd: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/import-commit.ps1 -CsvPath "{{.CSV}}" -Confirm "{{.CONFIRM}}"
         platforms: [windows]
-      - cmd: |
-          if [ "{{.CONFIRM}}" != "yes" ]; then
-            echo "⚠️  WARNING: This will write devices to the database."
-            echo "   Run with CONFIRM=yes to proceed:"
-            echo "   task import:commit CONFIRM=yes"
-            exit 1
-          fi
-          if [ ! -f "{{.CSV}}" ]; then
-            echo "CSV file not found: {{.CSV}}" >&2
-            exit 1
-          fi
-          echo "💾 Committing import from: {{.CSV}}"
-          echo ""
-          curl -f -X POST http://localhost:8080/api/v1/imports/commit \
-            -F "file=@{{.CSV}}" \
-            | jq .
+      - cmd: bash scripts/import-commit.sh "{{.CSV}}" "{{.CONFIRM}}"
         platforms: [linux, darwin]
 
   validate:local:

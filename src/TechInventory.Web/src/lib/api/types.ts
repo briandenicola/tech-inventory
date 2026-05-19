@@ -21,3 +21,12 @@ export type TagResponse = Schemas['TagResponse'];
 export type OwnerRole = Schemas['OwnerRole'];
 export type LocationType = Schemas['LocationType'];
 export type DeviceStatus = Schemas['DeviceStatus'];
+
+// Import / Export DTOs
+export type PreviewImportResult = Schemas['PreviewImportResult'];
+export type CommitImportResult = Schemas['CommitImportResult'];
+export type ImportRowError = Schemas['ImportRowError'];
+export type ImportRowPreview = Schemas['ImportRowPreview'];
+export type ImportFieldError = Schemas['ImportFieldError'];
+export type MissingLookup = Schemas['MissingLookup'];
+export type ExportFormat = Schemas['ExportFormat'];

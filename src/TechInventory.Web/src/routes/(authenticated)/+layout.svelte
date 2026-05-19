@@ -27,7 +27,9 @@
 		{ href: '/admin/locations', key: 'navigation.adminLocations' },
 		{ href: '/admin/networks', key: 'navigation.adminNetworks' },
 		{ href: '/admin/owners', key: 'navigation.adminOwners' },
-		{ href: '/admin/tags', key: 'navigation.adminTags' }
+		{ href: '/admin/tags', key: 'navigation.adminTags' },
+		{ href: '/admin/import', key: 'navigation.imports' },
+		{ href: '/admin/export', key: 'navigation.exports' }
 	] as const;
 
 	// Derive auth state from store

@@ -410,10 +410,11 @@ export const imports = {
 			body: formData
 		}),
 
-	commit: async (body: PostRequestBody<paths['/api/v1/imports/commit']>) =>
+	commit: async (formData: FormData) =>
 		apiFetch<PostResponse<paths['/api/v1/imports/commit']>>(`/api/v1/imports/commit`, {
 			method: 'POST',
-			body: JSON.stringify(body)
+			headers: {}, // Let browser set Content-Type with boundary
+			body: formData
 		})
 };
 

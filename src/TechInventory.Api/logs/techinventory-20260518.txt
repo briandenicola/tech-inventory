@@ -168,3 +168,38 @@ SELECT EXISTS (
 2026-05-18 20:06:15.946 -05:00 [INF] Application started. Press Ctrl+C to shut down.
 2026-05-18 20:06:15.947 -05:00 [INF] Hosting environment: Development
 2026-05-18 20:06:15.947 -05:00 [INF] Content root path: C:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Api
+2026-05-18 20:14:35.756 -05:00 [INF] Acquiring an exclusive lock for migration application. See https://aka.ms/efcore-docs-migrations-lock for more information if this takes too long.
+2026-05-18 20:14:35.833 -05:00 [INF] Executed DbCommand (13ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT COUNT(*) FROM "sqlite_master" WHERE "name" = '__EFMigrationsLock' AND "type" = 'table';
+2026-05-18 20:14:35.850 -05:00 [INF] Executed DbCommand (5ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+INSERT OR IGNORE INTO "__EFMigrationsLock"("Id", "Timestamp") VALUES(1, '2026-05-19 01:14:35.8448221+00:00');
+SELECT changes();
+2026-05-18 20:14:35.933 -05:00 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
+    "MigrationId" TEXT NOT NULL CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY,
+    "ProductVersion" TEXT NOT NULL
+);
+2026-05-18 20:14:35.947 -05:00 [INF] Executed DbCommand (0ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT COUNT(*) FROM "sqlite_master" WHERE "name" = '__EFMigrationsHistory' AND "type" = 'table';
+2026-05-18 20:14:35.951 -05:00 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT "MigrationId", "ProductVersion"
+FROM "__EFMigrationsHistory"
+ORDER BY "MigrationId";
+2026-05-18 20:14:35.964 -05:00 [INF] No migrations were applied. The database is already up to date.
+2026-05-18 20:14:35.967 -05:00 [INF] Executed DbCommand (2ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+DELETE FROM "__EFMigrationsLock";
+2026-05-18 20:14:36.210 -05:00 [INF] Executed DbCommand (0ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT EXISTS (
+    SELECT 1
+    FROM "Households" AS "h")
+2026-05-18 20:14:36.215 -05:00 [WRN] ⚠️ Auth:DevBypass=true — all requests authenticated as 'dev-admin'. NEVER enable outside Development.
+2026-05-18 20:14:36.216 -05:00 [INF] Starting Tech Inventory API
+2026-05-18 20:14:36.231 -05:00 [INF] User profile is available. Using 'C:\Users\brian.denicolafamily\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+2026-05-18 20:14:36.402 -05:00 [INF] Now listening on: http://localhost:8080
+2026-05-18 20:14:36.402 -05:00 [INF] Application started. Press Ctrl+C to shut down.
+2026-05-18 20:14:36.403 -05:00 [INF] Hosting environment: Development
+2026-05-18 20:14:36.403 -05:00 [INF] Content root path: C:\Users\brian.denicolafamily\Code\tech-inventory\src\TechInventory.Api
+2026-05-18 20:18:23.681 -05:00 [INF] Request starting HTTP/1.1 OPTIONS http://localhost:8080/api/v1/owners/me - null null
+2026-05-18 20:18:23.797 -05:00 [INF] Executing endpoint '405 HTTP Method Not Supported'
+2026-05-18 20:18:23.798 -05:00 [INF] Executed endpoint '405 HTTP Method Not Supported'
+2026-05-18 20:18:23.884 -05:00 [INF] Request finished HTTP/1.1 OPTIONS http://localhost:8080/api/v1/owners/me - 405 null application/problem+json 206.3241ms

@@ -2760,6 +2760,163 @@ Both groups typed via `paths['/api/v1/{resource}']` OpenAPI extraction.
 
 ---
 
+### D-133: CORS Allowed Origins Configured for Local Dev Web → API
+
+**Author:** Hicks (Backend)
+**Date:** 2026-05-18 (Phase 2 Round 4 closeout)
+**Status:** ✅ Shipped (commit `908845a`)
+**Related:** D-130/D-131 (`task dev:up`), D-134 (Vasquez relative API base URL), D-135 (Hudson web reverse proxy), D-139 (prod proxy directive)
+
+**Root Cause:** `Program.cs` had no `AddCors()` / `UseCors()` at all. The browser blocked `http://localhost:5173 → http://localhost:8080/api/v1/owners/me` at preflight because no `Access-Control-Allow-Origin` header was emitted. Local `task dev:up` was unusable end-to-end.
+
+**Decision:** Config-driven CORS policy keyed off `Cors:AllowedOrigins` (string array). If the array is empty (production default), no policy is applied — only when explicit origins are configured does the policy take effect, and it uses `.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod().AllowCredentials()` (no `AllowAnyOrigin()` — incompatible with credentials and unsafe). `UseCors("ApiCorsPolicy")` sits in the pipeline *before* `UseAuthentication()` so OPTIONS preflights are answered before the auth handler rejects them.
+
+- **Dev** (`appsettings.Development.json`): `Cors:AllowedOrigins = ["http://localhost:5173"]`
+- **Prod** (`appsettings.json`): no `Cors` section by default — single-origin via D-135 reverse proxy means CORS doesn't fire in practice; D-135 added a defense-in-depth `https://inventory.denicolafamily.com` entry in `appsettings.Production.json`.
+
+**Consequences:** Local Web ↔ API flow works on `task dev:up`. Operators wanting cross-origin prod deploys whitelist explicit origins; no wildcard escape hatch exists. Verified: `dotnet build -c Release` ✅, `dotnet test -c Release` 377/383 (6 skipped) ✅.
+
+**Files:** `src/TechInventory.Api/Program.cs`, `src/TechInventory.Api/appsettings.Development.json`.
+
+---
+
+### D-134: Env-Aware API Client Base URL — Relative in Prod, Absolute in Dev
+
+**Author:** Vasquez (Frontend)
+**Date:** 2026-05-18 (Phase 2 Round 4 closeout)
+**Status:** ✅ Shipped (commit `8f67f03`)
+**Related:** D-133 (Hicks CORS for dev), D-135 (Hudson reverse proxy), D-139 (prod proxy directive)
+
+**Decision:** Frontend API client default base URL is environment-derived:
+
+- **Dev:** `http://localhost:8080` (absolute — Vite on `:5173`, API on `:8080`, true cross-origin so CORS must fire).
+- **Prod:** `''` (empty string — relative URLs like `/api/v1/devices` so the SvelteKit static bundle's host proxy at `https://inventory.denicolafamily.com` reverse-proxies to the API container on the internal docker network).
+- `VITE_API_BASE_URL` env var continues to override when set (per-environment knob).
+- Added `src/TechInventory.Web/.env.development` so the dev workflow is explicit.
+
+**Why:** Per D-139 the browser only ever sees a single origin in production; relative URLs are the cleanest way to honor that without conditional logic at call sites. Dev keeps absolute URLs because Vite and API run on different ports.
+
+**Consequences:** All API calls now portable across dev/prod without per-environment client code. Pairs with D-133 (CORS) and D-135 (reverse proxy) to complete the prod same-origin architecture.
+
+**Files:** `src/TechInventory.Web/src/lib/api/client.ts`, `src/TechInventory.Web/.env.development`.
+
+---
+
+### D-135: Web Container = nginx Reverse Proxy (SPA + `/api/*` → API on Internal Network)
+
+**Author:** Hudson (DevOps / Platform)
+**Date:** 2026-05-18 (Phase 2 Round 4 closeout)
+**Status:** ✅ Shipped (commit `293d1d6`)
+**Related:** D-133 (Hicks CORS for dev), D-134 (Vasquez relative API URL), D-139 (prod proxy directive)
+
+**Decision:** Web Dockerfile is now a two-stage build:
+
+1. **Build stage:** Node builds the SvelteKit `adapter-static` bundle.
+2. **Runtime stage:** `nginx:alpine` serves the static bundle on `:80` and reverse-proxies `/api/*` to `http://api:8080` on the `techinv-net` Docker network.
+
+Added `src/TechInventory.Web/nginx.conf` (SPA fallback for client routing + `/api/` proxy with header passthrough). `docker-compose.yml`: web service now `ports: 3000:80`, dropped broken `PUBLIC_API_URL` env var, removed deprecated top-level `version:` key. Added `appsettings.Production.json` with `Cors:AllowedOrigins: ["https://inventory.denicolafamily.com"]` as defense-in-depth.
+
+**Bug fixed in passing:** Previous Dockerfile used `node build` despite `adapter-static` — that runtime would never have started; `nginx:alpine` is the correct serve.
+
+**Consequences:** Production deploy is single-origin behind Brian's external TLS-terminating reverse proxy at `https://inventory.denicolafamily.com`. Browser sees one origin; CORS is defense-in-depth not gate. Pairs with D-133 and D-134 to complete prod architecture (D-139).
+
+**Follow-up (deferred):** Re-run `docker compose build` and `nginx -t` validation in an environment with Docker installed (current CLI session can't execute either binary).
+
+**Files:** `src/TechInventory.Web/Dockerfile`, `src/TechInventory.Web/nginx.conf`, `docker-compose.yml`, `src/TechInventory.Api/appsettings.Production.json`.
+
+---
+
+### D-136: Auto-Provision Owners on First Sign-In via `/api/v1/owners/me`
+
+**Author:** Bishop (Backend Auth)
+**Date:** 2026-05-18 (Phase 2 Round 4 closeout)
+**Status:** ✅ Shipped (commit `061bfe0`)
+**Related:** D-133 (CORS unblocked the call path), T11 (Phase 2 Round 1 — `/owners/me` endpoint — onboarding promise now fulfilled), T07 (first-login onboarding scope)
+
+**Root Cause:** `/api/v1/owners/me` 404'd for the dev bypass principal (and would 404 for every real Entra user on first sign-in) because nothing provisioned the `Owner` row. T07's "first-login onboarding: create `Owner` if not found" was specified but had been deferred during initial Phase 1 implementation; the gap surfaced as soon as Vasquez wired the Web UI sign-in flow.
+
+**Decision:** Added `EnsureCurrentOwnerProvisionedCommand` (Application layer) that upserts an `Owner` row keyed by `EntraObjectId` from claims and returns the existing-or-newly-created row. `OwnersController.GetCurrentOwner` now dispatches this command instead of the read-only query, so `/owners/me` always succeeds for any authenticated principal.
+
+- Display name derives from `ClaimTypes.Name`, role from `ClaimTypes.Role`; fallbacks `User {short}` / `Member`.
+- Extended `ICurrentUserService` (and both `HttpContextCurrentUserService` + `SystemCurrentUserService` implementations) with `GetDisplayName()` / `GetRoleClaim()` so claim-derived defaults stay behind the abstraction.
+- Test coverage: existing owner returned unchanged; missing owner auto-provisioned with claim defaults; dev-admin can hit `/owners/me` against a fresh DB. Backend summary post-fix: **388 total / 382 passed / 6 skipped / 0 failed.**
+- OpenAPI spec regenerated for `/owners/me` contract.
+
+**Follow-up (deferred to Brian):** First-user-as-Admin policy — should the first-ever sign-in be force-promoted to `Admin` regardless of role claim? Current behavior trusts the role claim. Defer.
+
+**Consequences:** First-time principals (dev bypass and real Entra users) auto-onboarded. Unblocks downstream UI work that assumes `/owners/me` succeeds. Fulfills the deferred T07 onboarding promise.
+
+**Files:** `src/TechInventory.Application/Owners/EnsureCurrentOwnerProvisionedCommand.cs`, `src/TechInventory.Api/Controllers/OwnersController.cs`, `src/TechInventory.Application/Common/ICurrentUserService.cs`, `src/TechInventory.Api/Authentication/HttpContextCurrentUserService.cs`, `src/TechInventory.Application/Common/SystemCurrentUserService.cs`, `openapi.yaml`, integration + unit test additions.
+
+---
+
+### D-137: Apple-Elegant Visual Language Is the Design Target (User Directive)
+
+**Author:** brian.denicolafamily (via Copilot)
+**Date:** 2026-05-18 (Phase 2 Round 4 closeout)
+**Status:** 📌 Captured directive — implementation pending (P1 for Round 5)
+**Related:** D-138 (no framework bragging), `src/TechInventory.Web/src/lib/tokens.css`, future theming round
+
+**Directive (verbatim):** *"Not a fan of how the left panel looks right now. Fonts too small. Pull downs too tight. Doesn't have the apple elegant look and feel."*
+
+**Decision:** "Apple elegant" — think macOS Settings, App Store, Apple Music — is the canonical reference aesthetic for all future UI/UX work in TechInventory. Polish trumps density because this is a single-household app Brian uses daily.
+
+**Implementation guidelines (apply to upcoming Round 5+ work):**
+
+- Default base font 16px → 17/18px body; generous heading scale.
+- Form controls: ≥44px touch target minimum (also iOS HIG); generous vertical padding/line-height on `<select>` and dropdowns.
+- Sidebar/nav: more padding, more whitespace, larger labels — let it breathe.
+- Prefer SF-Pro-like system fonts or Inter; round shapes; subtle shadows over hard borders.
+- Soft desaturated palette; restrained color use; high contrast on text.
+
+**Open items:** Scheduling of the visual overhaul — Brian asked whether to address now or defer to dedicated theming round. **Resolved at session close:** deferred to next session as **P1** (lint debt cleanup is **P0** ahead of it).
+
+**Consequences:** Future UI work must justify deviations from this baseline; theming pass on `src/lib/tokens.css` + nav/dropdown components is queued.
+
+---
+
+### D-138: No Framework Attribution in User-Facing UI (User Directive)
+
+**Author:** brian.denicolafamily (via Copilot)
+**Date:** 2026-05-18 (Phase 2 Round 4 closeout)
+**Status:** ✅ Implemented (commit `05e91d9` — footer cleanup)
+**Related:** D-137 (Apple aesthetic), `src/TechInventory.Web/src/lib/i18n/en.json`, `src/TechInventory.Web/src/routes/(authenticated)/+layout.svelte`
+
+**Directive (verbatim):** *"Don't put 'Built with SvelteKit'. No one cares."*
+
+**Decision:** Do NOT include "Built with X" / framework attribution strings (e.g., "Built with SvelteKit and ❤️") anywhere in user-facing UI — footers, about pages, splash screens, settings. Applies to all framework, language, library, and tool name-drops.
+
+**Implementation:** Removed `footer.builtWith` from `src/TechInventory.Web/src/lib/i18n/en.json` and the corresponding span from the authenticated layout footer in commit `05e91d9`.
+
+**Consequences:** Future copy must not reintroduce framework attribution. Tool/framework names belong in `package.json`, `README.md`, and ADRs — never in chrome.
+
+---
+
+### D-139: Production Architecture — Same-Origin via Web-Container Reverse Proxy (User Directive)
+
+**Author:** brian.denicolafamily (via Copilot)
+**Date:** 2026-05-18 (Phase 2 Round 4 closeout)
+**Status:** ✅ Implemented across D-133 (CORS), D-134 (relative API URL), D-135 (nginx reverse proxy)
+**Related:** D-133, D-134, D-135
+
+**Directive:** Brian set the production deployment shape that drove the entire Round 4 closeout proxy work:
+
+- Production web URL: `https://inventory.denicolafamily.com`.
+- API runs on the same Docker network and is **NOT** exposed externally.
+- Web container reverse-proxies `/api/*` requests to the API container internally.
+- Browser sees all API calls as **same-origin** in production — no CORS across origins in practice.
+- CORS in production is defense-in-depth only; the real wall is the proxy boundary.
+
+**Implementation map:**
+
+1. **D-133 (Hicks):** Config-driven CORS so dev origin `http://localhost:5173` is allowed and prod can list `https://inventory.denicolafamily.com` as belt-and-suspenders.
+2. **D-134 (Vasquez):** Frontend API client uses relative URLs in prod, absolute in dev.
+3. **D-135 (Hudson):** `docker-compose.yml` `web` service is `nginx:alpine` serving the SvelteKit static bundle and forwarding `/api/*` to `http://api:8080` on the internal `techinv-net` network.
+
+**Consequences:** All future prod-facing UI and infra work assumes a single origin. Any deviation (e.g., separate API host) requires a new ADR.
+
+---
+
 ## Governance
 
 - All meaningful changes require team consensus

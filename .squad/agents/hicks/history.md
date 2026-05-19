@@ -39,6 +39,55 @@ Phase 1 lands in `specs/001-core-api/`. Pattern references: **R1** for MediatR h
 **2026-05-18 (Phase 1 Round 4):** Infrastructure repositories + MediatR behaviors complete (T16–T19, commit `81f478d`). 10 concrete repositories implemented in `src/TechInventory.Infrastructure/Persistence/Repositories/` (`BrandRepository`, `CategoryRepository`, `DeviceRepository`, `HouseholdRepository`, `OwnerRepository`, `LocationRepository`, `NetworkRepository`, `TagRepository`, `AuditEventRepository`, `ImportBatchRepository`) with shared `Repository<TEntity, TKey>` base. `AuditSaveChangesInterceptor` stamps UTC audit columns. `ValidationBehavior` + `AuditBehavior` pipeline (D-020, D-021): validation first (returns `Result.Failure` cleanly), audit last (fires only on success). `IAuditContext` scoped strategy avoids second DB read. Exact-ID reads stay unit-of-work aware; list paths filter inactive/soft-deleted rows by default. Verify pipeline all green: `dotnet format`, `dotnet build -c Release`, `dotnet test -c Release` (151 tests ✅). Coverage snapshot: Domain 81.40%, Application 40.53%, Infrastructure 88.98%. Next: Coverage regression audit in Round 5; continue handler + controller wiring (T20–T42).
 
 
+## CORS fix for local dev (D-133)
+
+**Date:** 2026-05-18  
+**Commit:** 908845a
+
+### Diagnosis
+
+CORS was completely absent from `Program.cs`. No `AddCors()` service registration or `UseCors()` middleware call. Browser preflight requests from Vite dev server (`http://localhost:5173`) to API (`http://localhost:8080`) failed with missing `Access-Control-Allow-Origin` header.
+
+### Fix Pattern
+
+1. **Config-driven allowed origins**: Read from `Cors:AllowedOrigins` array in appsettings (empty array = no CORS policy applied)
+2. **Service registration** after `AddAuthorizationBuilder()`:
+   ```csharp
+   var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+   builder.Services.AddCors(options => {
+       options.AddPolicy("ApiCorsPolicy", policy => {
+           if (allowedOrigins.Length > 0) {
+               policy.WithOrigins(allowedOrigins)
+                   .AllowAnyHeader()
+                   .AllowAnyMethod()
+                   .AllowCredentials();
+           }
+       });
+   });
+   ```
+3. **Middleware placement**: `app.UseCors("ApiCorsPolicy")` **before** `UseAuthentication()` (preflight OPTIONS requests bypass auth)
+4. **Dev config**: Added `"Cors": { "AllowedOrigins": ["http://localhost:5173"] }` to `appsettings.Development.json`
+5. **Production safety**: Production appsettings unchanged; no origins configured by default; operators whitelist explicitly
+
+### Key Learnings
+
+- CORS middleware order matters: must come before `UseAuthentication()` so preflight OPTIONS requests (which have no auth) can succeed
+- `.AllowCredentials()` required for Entra bearer tokens + any cookies; incompatible with `AllowAnyOrigin()` (security by design)
+- Config-driven approach lets production operators add specific origins without code changes
+- Empty origins array = no-op policy (doesn't break startup if section missing)
+
+### Quality Gates
+
+- Build ✅ (16.1s)
+- Tests ✅ (377 passed / 6 skipped / 0 failed in 28.4s)
+- No behavior regressions
+
+### Handoff Note
+
+Brian must restart API (`Ctrl+C` then `task dev:up`) to pick up new config. After restart, Web sign-in flow should complete successfully.
+
+---
+
 ## Learnings
 
 ### 2026-05-18: Solution Scaffolding (Phase 0)

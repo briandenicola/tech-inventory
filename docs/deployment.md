@@ -19,7 +19,7 @@ On the deployment host:
   check with `docker compose version`).
 - **Nginx Proxy Manager** already deployed and reachable, with:
   - A proxy host for `inventory.denicolafamily.com` forwarding to the host
-    machine on port `3000` (see §8 below for the NPM cheat sheet).
+    machine on port `3000` (see §9 below for the NPM cheat sheet).
   - A valid TLS certificate (Let's Encrypt is fine — NPM handles renewals).
 - **Outbound network** to `ghcr.io` for image pulls.
 - **Optional:** an S3-compatible bucket for off-host backups (Backblaze B2,
@@ -248,7 +248,102 @@ Azure outage), use the local-admin fallback. Full procedure is in
 
 ---
 
-## 8. Nginx Proxy Manager (NPM) Cheat Sheet
+## 8. Signing-Key Rotation (`Auth__Local__SigningKey`)
+
+> Applies only to the local break-glass JWT issuer (F025 v1b, D-140).
+> Entra-issued tokens are signed by Microsoft and are not affected by
+> this procedure.
+
+The local issuer signs JWTs with HMAC-SHA256 keyed by
+`Auth__Local__SigningKey`. Rotating the key is a deliberate,
+session-invalidating operation — there is **no key-id (`kid`) header
+rotation** in v1b and **no refresh tokens**, so every outstanding local
+session becomes invalid the moment the API restarts with a new key.
+
+### When to rotate
+
+| Trigger | Urgency | Notes |
+| --- | --- | --- |
+| Suspected key compromise (host theft, `.env` leak, accidental commit) | **Immediate** | Treat the existing key as burned; rotate, then audit `AuditEvent` for unexpected local sign-ins. |
+| Operator turnover with `.env` access | Same-day | A departing operator who saw `.env` saw the key. |
+| Routine hygiene | Annual | Calendar it. Low-traffic stack, low risk, but free defense-in-depth. |
+| After break-glass use that involved sharing the seed credentials | At decommission | Pair with the seed-cleanup step in §7. |
+
+### Blast radius
+
+Rotating the signing key:
+
+- ✅ **Invalidates every outstanding local JWT immediately on API
+  restart.** Holders are sent back to the sign-in screen on their next
+  request (401, then the SvelteKit auth layer redirects to `/login`).
+- ✅ Does **not** affect Entra-authenticated sessions — those tokens are
+  signed by Microsoft and validated against the Entra JWKS endpoint.
+- ✅ Does **not** invalidate stored password hashes — operators sign in
+  again with the same credentials.
+- ❌ Does **not** require a database migration or volume change. The key
+  lives only in `.env` and process memory.
+- ❌ Does **not** require coordination with NPM, DNS, or Entra.
+
+### Zero-downtime procedure
+
+v1b has no refresh tokens — there is nothing to migrate forward, so a
+straight restart is the simplest correct path. The API process is
+single-replica, so "zero-downtime" here means "no DB or NPM work; just a
+container restart of seconds."
+
+```bash
+# 1. Generate the new key (do this on the host, not in shell history).
+NEW_KEY=$(openssl rand -base64 48)
+
+# 2. Edit .env and replace Auth__Local__SigningKey with $NEW_KEY.
+#    Keep a copy of the old value in a secret store ONLY if you have a
+#    compelling forensic reason — otherwise overwrite cleanly.
+$EDITOR .env
+
+# 3. Recreate the API container so the new env value is loaded.
+#    `up -d` is sufficient; Compose detects the env change and recreates.
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d api
+
+# 4. Confirm the new key is active (no log line prints the key itself —
+#    Serilog destructuring policy redacts it). A successful boot is the
+#    confirmation; failed JWT validation on the next local sign-in attempt
+#    would surface as a 401 with "IDX10503: Signature validation failed".
+docker compose -f docker-compose.yml -f docker-compose.prod.yml logs --tail=50 api \
+    | grep -iE 'starting tech inventory|application failed'
+```
+
+The web container and external NPM proxy are untouched; only the API
+process bounces. Browsers holding a now-invalid local JWT will see a 401
+on their next API call and the SvelteKit auth interceptor will redirect
+to the sign-in page. Operators sign in again with the same username +
+password — only the token is invalidated, not the account.
+
+### After rotation
+
+- Audit `AuditEvent` for any local-account activity around the rotation
+  window. If the rotation was triggered by suspected compromise, look for
+  sign-ins from unexpected IPs, password changes, or role changes.
+- Confirm the old key value is not present in `.env`, `.env.bak`, shell
+  history, or the secret manager unless you explicitly need to retain it
+  for forensic decryption of historical logs (you don't — JWTs are not
+  encrypted, only signed; the old key has no decryption value).
+- If the rotation was triggered by a leaked `.env`, also rotate
+  `Auth__Entra__ClientSecret` in the Entra portal (and any
+  `LITESTREAM_SECRET_ACCESS_KEY`) — assume everything in that file
+  shares the leak's blast radius.
+
+### What v1b deliberately does **not** do
+
+- No `kid` header on issued JWTs → no overlapping-key validation window.
+  A future v2 with key rotation tolerance would add a JWKS endpoint and
+  accept tokens signed by either the current or previous key for a grace
+  period. Out of scope for v1b.
+- No refresh tokens → no need to invalidate a separate refresh-token
+  store. Rotation = restart, full stop.
+
+---
+
+## 9. Nginx Proxy Manager (NPM) Cheat Sheet
 
 Configure a **Proxy Host** for `inventory.denicolafamily.com` with:
 
@@ -284,7 +379,7 @@ client_max_body_size 16m;
 
 ---
 
-## 9. Log Inspection
+## 10. Log Inspection
 
 ```bash
 # Tail everything
@@ -321,7 +416,7 @@ at a Seq or OpenTelemetry collector and consume traces there.
 
 ---
 
-## 10. Common Failure Modes
+## 11. Common Failure Modes
 
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
@@ -334,7 +429,7 @@ at a Seq or OpenTelemetry collector and consume traces there.
 
 ---
 
-## 11. Related Documents
+## 12. Related Documents
 
 - `docs/architecture.md` — system design + container topology
 - `docs/operations.md` — break-glass admin, password rotation

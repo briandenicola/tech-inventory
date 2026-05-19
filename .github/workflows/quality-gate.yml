@@ -36,14 +36,20 @@ jobs:
         with: { fetch-depth: 0 }
       - uses: gitleaks/gitleaks-action@v2
 
-  container-scan:
+  container-config-scan:
+    # Trivy CONFIG scan only — catches Dockerfile + Compose + IaC
+    # misconfigurations on PR. The previous `scan-type: fs` was largely
+    # redundant once we scan published images (see security-scan.yml,
+    # which Trivy-scans the actual GHCR images on every release). Keeping
+    # config-only here means Dockerfile regressions (e.g. running as root,
+    # missing healthcheck, exposed secrets via ENV) still block at PR time.
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
       - uses: aquasecurity/trivy-action@master
         with:
-          scan-type: fs
+          scan-type: config
           severity: HIGH,CRITICAL
           exit-code: '1'
 

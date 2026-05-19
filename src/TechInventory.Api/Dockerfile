@@ -52,8 +52,10 @@ EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
 
-# Healthcheck
+# Healthcheck — use /health/ready so the image's baked-in default matches
+# the compose override and any future DB-readiness gating added to the
+# readiness endpoint takes effect for standalone `docker run` consumers too.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health/ready || exit 1
 
 ENTRYPOINT ["dotnet", "TechInventory.Api.dll"]

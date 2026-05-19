@@ -1,6 +1,6 @@
 # F024: Multi-Select Devices For Bulk Actions
 
-**Status**: backlog
+**Status**: shipped (v1)
 **Priority**: P2
 **Effort**: L
 **Value**: high
@@ -128,3 +128,21 @@ When ≥1 row is selected, a sticky bottom bar appears with:
 ## History
 - 2026-05-19: created — captured during R10/R11 testing as a v1.1
   list-view ergonomics improvement
+- 2026-05-19: shipped (v1) — backend (`POST /api/v1/devices/bulk/update`,
+  `POST /api/v1/devices/bulk/delete`), DeviceTable selection column +
+  header tri-state checkbox + per-card mobile checkbox,
+  `BulkActionBar.svelte`, `BulkUpdateModal.svelte`, `BulkDeleteModal.svelte`
+  wired on `/devices`. Notable deviations vs. spec:
+  - **POST instead of PATCH/DELETE-with-body** to sidestep client/proxy
+    DELETE-body stripping and to keep one consistent verb across the pair.
+  - **Correlation id without schema change** — bulk audit payloads wrap the
+    snapshot in `BulkAuditEnvelope(correlationId, payload)` so the
+    append-only `AuditEvent` table stays as-is.
+  - **Atomic via unit of work** — handler mutates in memory + calls
+    `SaveChangesAsync` once at the end; any failure aborts the whole batch.
+  - **Hard cap: 500 ids/request** (FluentValidation `InclusiveBetween(1, 500)`).
+  - **Bulk delete is Admin-only**; bulk update permits any authenticated user
+    (matches single-device rules).
+  - Carved **F024b** for: Playwright E2E coverage, shift-click range select,
+    select-all-N-matching across pages, undo, group-level "select all in
+    group", and bulk owner-change via Claim/Release semantics.

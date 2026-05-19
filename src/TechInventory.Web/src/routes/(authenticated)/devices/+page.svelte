@@ -19,6 +19,10 @@
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import PaginationControls from '$lib/components/PaginationControls.svelte';
 	import AddDeviceModal from '$lib/components/AddDeviceModal.svelte';
+	import BulkActionBar from '$lib/components/BulkActionBar.svelte';
+	import BulkUpdateModal from '$lib/components/BulkUpdateModal.svelte';
+	import BulkDeleteModal from '$lib/components/BulkDeleteModal.svelte';
+	import { devices as devicesApi } from '$lib/api/client';
 	import { referenceDataStore } from '$lib/stores/referenceData';
 	import { groupDevices } from '$lib/utils/groupDevices';
 
@@ -180,6 +184,141 @@
 			t('devices.groups.unknown')
 		);
 	});
+
+	// F024 — multi-select bulk actions state.
+	// Selection is ephemeral (not URL-persisted); reset whenever filters/sort/grouping
+	// or pagination change so users never act on a stale, off-screen selection.
+	type BulkField = 'category' | 'owner' | 'brand' | 'location' | 'status';
+	const STATUS_OPTIONS: Array<{ id: string; name: string }> = [
+		{ id: 'Active', name: 'Active' },
+		{ id: 'Retired', name: 'Retired' },
+		{ id: 'Disposed', name: 'Disposed' },
+		{ id: 'InRepair', name: 'In Repair' },
+		{ id: 'Lent', name: 'Lent' }
+	];
+
+	let selectedIds = $state(new Set<string>());
+	let bulkUpdateField = $state<BulkField | null>(null);
+	let bulkDeleteOpen = $state(false);
+
+	// Clear selection on any meaningful query-key change.
+	$effect(() => {
+		// Touch each filter key so the effect re-runs when any of them changes.
+		void urlFilters.search;
+		void urlFilters.brandId;
+		void urlFilters.categoryId;
+		void urlFilters.ownerId;
+		void urlFilters.locationId;
+		void urlFilters.networkId;
+		void urlFilters.status;
+		void urlFilters.purchaseYearMin;
+		void urlFilters.purchaseYearMax;
+		void urlFilters.sort;
+		void urlFilters.sortDir;
+		void urlFilters.groupBy;
+		void urlFilters.page;
+		void urlFilters.pageSize;
+		selectedIds = new Set<string>();
+	});
+
+	const visibleDeviceIds = $derived(query.data?.items?.map((d) => d.id) ?? []);
+	const allVisibleSelected = $derived(
+		visibleDeviceIds.length > 0 && visibleDeviceIds.every((id) => selectedIds.has(id))
+	);
+	const someVisibleSelected = $derived(
+		!allVisibleSelected && visibleDeviceIds.some((id) => selectedIds.has(id))
+	);
+
+	function toggleSelect(id: string) {
+		const next = new Set(selectedIds);
+		if (next.has(id)) next.delete(id);
+		else next.add(id);
+		selectedIds = next;
+	}
+	function toggleSelectAllVisible() {
+		const next = new Set(selectedIds);
+		if (allVisibleSelected) {
+			visibleDeviceIds.forEach((id) => next.delete(id));
+		} else {
+			visibleDeviceIds.forEach((id) => next.add(id));
+		}
+		selectedIds = next;
+	}
+	function clearSelection() {
+		selectedIds = new Set<string>();
+	}
+
+	const bulkUpdateOptions = $derived.by(() => {
+		switch (bulkUpdateField) {
+			case 'category':
+				return refData.categories.map((c) => ({ id: c.id, name: c.name }));
+			case 'owner':
+				return refData.owners.map((o) => ({ id: o.id, name: o.name }));
+			case 'brand':
+				return refData.brands.map((b) => ({ id: b.id, name: b.name }));
+			case 'location':
+				return refData.locations.map((l) => ({ id: l.id, name: l.name }));
+			case 'status':
+				return STATUS_OPTIONS;
+			default:
+				return [];
+		}
+	});
+
+	async function handleBulkUpdate(value: string) {
+		if (!bulkUpdateField) return;
+		const ids = Array.from(selectedIds);
+		const changes: Record<string, string> = {};
+		switch (bulkUpdateField) {
+			case 'category':
+				changes.categoryId = value;
+				break;
+			case 'owner':
+				changes.ownerId = value;
+				break;
+			case 'brand':
+				changes.brandId = value;
+				break;
+			case 'location':
+				changes.locationId = value;
+				break;
+			case 'status':
+				changes.status = value;
+				break;
+		}
+		try {
+			const result = await devicesApi.bulkUpdate({ deviceIds: ids, changes });
+			showToast({
+				message: t('devices.bulk.successUpdate', { count: result?.affectedCount ?? ids.length }),
+				type: 'success'
+			});
+			bulkUpdateField = null;
+			clearSelection();
+			await query.refetch();
+		} catch (err) {
+			console.error('[devices] bulkUpdate failed:', err);
+			showToast({ message: t('devices.bulk.errorPartial'), type: 'error' });
+		}
+	}
+
+	async function handleBulkDelete(reason: string) {
+		const ids = Array.from(selectedIds);
+		try {
+			const result = await devicesApi.bulkDelete({ deviceIds: ids, reason });
+			showToast({
+				message: t('devices.bulk.successDelete', { count: result?.affectedCount ?? ids.length }),
+				type: 'success'
+			});
+			bulkDeleteOpen = false;
+			clearSelection();
+			await query.refetch();
+		} catch (err) {
+			console.error('[devices] bulkDelete failed:', err);
+			showToast({ message: t('devices.bulk.errorPartial'), type: 'error' });
+		}
+	}
+
+	const canBulkDelete = $derived(currentUser?.role === 'Admin');
 </script>
 
 <div class="flex min-h-screen">
@@ -259,6 +398,12 @@
 				currentSort={urlFilters.sort}
 				sortDir={urlFilters.sortDir}
 				onSort={handleSort}
+				selectable={true}
+				selectedIds={selectedIds}
+				onToggleSelect={toggleSelect}
+				onToggleSelectAll={toggleSelectAllVisible}
+				allVisibleSelected={allVisibleSelected}
+				someVisibleSelected={someVisibleSelected}
 			/>
 
 			<!-- Pagination (hidden while grouping is active; groups span the full page) -->
@@ -278,6 +423,31 @@
 	<AddDeviceModal
 		onClose={() => (createModalOpen = false)}
 		onCreated={() => query.refetch()}
+	/>
+{/if}
+
+<BulkActionBar
+	count={selectedIds.size}
+	onClear={clearSelection}
+	onChangeField={(field) => (bulkUpdateField = field)}
+	onDelete={canBulkDelete ? () => (bulkDeleteOpen = true) : undefined}
+/>
+
+{#if bulkUpdateField}
+	<BulkUpdateModal
+		field={bulkUpdateField}
+		count={selectedIds.size}
+		options={bulkUpdateOptions}
+		onConfirm={handleBulkUpdate}
+		onCancel={() => (bulkUpdateField = null)}
+	/>
+{/if}
+
+{#if bulkDeleteOpen}
+	<BulkDeleteModal
+		count={selectedIds.size}
+		onConfirm={handleBulkDelete}
+		onCancel={() => (bulkDeleteOpen = false)}
 	/>
 {/if}
 

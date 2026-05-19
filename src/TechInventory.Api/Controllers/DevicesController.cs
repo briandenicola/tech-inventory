@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TechInventory.Api.Authentication;
 using TechInventory.Api.Common;
 using TechInventory.Application.Common.Paging;
 using TechInventory.Application.Devices;
@@ -76,6 +77,53 @@ public sealed class DevicesController(ISender sender) : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> ClaimOwnership(Guid id, [FromBody] ClaimDeviceOwnershipRequest request, CancellationToken cancellationToken)
         => this.NoContentResult(await sender.Send(request.ToCommand(id), cancellationToken));
+
+    [HttpPost("bulk/update")]
+    [ProducesResponseType(typeof(BulkOperationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BulkOperationResponse>> BulkUpdateDevices(
+        [FromBody] BulkUpdateDevicesRequest request,
+        CancellationToken cancellationToken)
+        => this.OkResult(await sender.Send(request.ToCommand(), cancellationToken));
+
+    [HttpPost("bulk/delete")]
+    [Authorize(Policy = AuthorizationPolicies.Admin)]
+    [ProducesResponseType(typeof(BulkOperationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BulkOperationResponse>> BulkDeleteDevices(
+        [FromBody] BulkDeleteDevicesRequest request,
+        CancellationToken cancellationToken)
+        => this.OkResult(await sender.Send(request.ToCommand(), cancellationToken));
+
+    public sealed record BulkUpdateDevicesRequest(
+        IReadOnlyList<Guid> DeviceIds,
+        BulkUpdateDeviceChangesRequest Changes)
+    {
+        public BulkUpdateDevicesCommand ToCommand()
+            => new(DeviceIds ?? Array.Empty<Guid>(), Changes?.ToChanges() ?? new BulkUpdateDeviceChanges());
+    }
+
+    public sealed record BulkUpdateDeviceChangesRequest(
+        Guid? CategoryId = null,
+        Guid? OwnerId = null,
+        Guid? BrandId = null,
+        Guid? LocationId = null,
+        DeviceStatus? Status = null)
+    {
+        public BulkUpdateDeviceChanges ToChanges()
+            => new(CategoryId, OwnerId, BrandId, LocationId, Status);
+    }
+
+    public sealed record BulkDeleteDevicesRequest(IReadOnlyList<Guid> DeviceIds, string Reason)
+    {
+        public BulkDeleteDevicesCommand ToCommand()
+            => new(DeviceIds ?? Array.Empty<Guid>(), Reason ?? string.Empty);
+    }
 
     public sealed record ListDevicesRequest
     {

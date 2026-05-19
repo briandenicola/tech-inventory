@@ -23,12 +23,48 @@
 		currentSort?: 'name' | 'purchaseDate' | 'createdAt';
 		sortDir?: 'asc' | 'desc';
 		onSort: (column: 'name' | 'purchaseDate' | 'createdAt') => void;
+		/** F024: when true, renders selection checkboxes (column on desktop, leading on mobile cards). */
+		selectable?: boolean;
+		selectedIds?: Set<string>;
+		onToggleSelect?: (id: string) => void;
+		onToggleSelectAll?: () => void;
+		allVisibleSelected?: boolean;
+		someVisibleSelected?: boolean;
 	}
 
-	let { devices, groups, currentSort, sortDir, onSort }: Props = $props();
+	let {
+		devices,
+		groups,
+		currentSort,
+		sortDir,
+		onSort,
+		selectable = false,
+		selectedIds,
+		onToggleSelect,
+		onToggleSelectAll,
+		allVisibleSelected = false,
+		someVisibleSelected = false
+	}: Props = $props();
 
 	const refData = $derived($referenceDataStore);
 	const isGrouped = $derived(Array.isArray(groups) && groups.length > 0);
+	const groupColspan = $derived(selectable ? 7 : 6);
+
+	function isSelected(id: string): boolean {
+		return selectedIds?.has(id) ?? false;
+	}
+	function handleSelectToggle(event: Event, id: string) {
+		event.stopPropagation();
+		onToggleSelect?.(id);
+	}
+	function setIndeterminate(node: HTMLInputElement, value: boolean) {
+		node.indeterminate = value;
+		return {
+			update(next: boolean) {
+				node.indeterminate = next;
+			}
+		};
+	}
 
 	// Ephemeral collapse state — not URL-persisted per spec.
 	let collapsedKeys = $state(new Set<string>());
@@ -83,6 +119,21 @@
 		<caption class="sr-only">{t('devices.list.title')}</caption>
 		<thead class="bg-neutral-50 dark:bg-neutral-900">
 			<tr>
+				{#if selectable}
+					<th
+						scope="col"
+						class="w-12 px-4 py-3 text-left"
+					>
+						<input
+							type="checkbox"
+							class="h-4 w-4 cursor-pointer rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
+							checked={allVisibleSelected}
+							use:setIndeterminate={!allVisibleSelected && someVisibleSelected}
+							onchange={() => onToggleSelectAll?.()}
+							aria-label={t('devices.bulk.selectAllVisible')}
+						/>
+					</th>
+				{/if}
 				<!-- Name (sortable) -->
 				<th
 					scope="col"
@@ -230,8 +281,21 @@
 			{#snippet desktopRow(device: DeviceResponse)}
 				<tr
 					class="cursor-pointer transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-900"
+					class:bg-primary-50={selectable && isSelected(device.id)}
+					class:dark:bg-primary-950={selectable && isSelected(device.id)}
 					onclick={() => (window.location.href = `/devices/${device.id}`)}
 				>
+					{#if selectable}
+						<td class="w-12 px-4 py-4" onclick={(e) => e.stopPropagation()}>
+							<input
+								type="checkbox"
+								class="h-4 w-4 cursor-pointer rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
+								checked={isSelected(device.id)}
+								onchange={(e) => handleSelectToggle(e, device.id)}
+								aria-label={t('devices.bulk.selectRow', { name: device.name || device.id })}
+							/>
+						</td>
+					{/if}
 					<td class="px-4 py-4 text-sm font-medium text-neutral-900 dark:text-neutral-50">
 						{device.name || '—'}
 					</td>
@@ -261,7 +325,7 @@
 						data-testid="device-group-header"
 					>
 						<th
-							colspan="6"
+							colspan={groupColspan}
 							scope="colgroup"
 							class="px-4 py-2 text-left"
 						>
@@ -317,54 +381,72 @@
 <!-- Mobile card layout -->
 <div class="md:hidden space-y-4">
 	{#snippet mobileCard(device: DeviceResponse)}
-		<a
-			href="/devices/{device.id}"
-			class="block rounded-lg border border-neutral-200 bg-white p-4 transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:bg-neutral-900"
+		<div
+			class="relative rounded-lg border border-neutral-200 bg-white transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:bg-neutral-900"
+			class:ring-2={selectable && isSelected(device.id)}
+			class:ring-primary-500={selectable && isSelected(device.id)}
 		>
-			<div class="flex items-start justify-between">
-				<div class="flex-1">
-					<h3 class="text-base font-semibold text-neutral-900 dark:text-neutral-50">
-						{device.name || '—'}
-					</h3>
-					<dl class="mt-2 space-y-1 text-sm text-neutral-700 dark:text-neutral-300">
-						<div class="flex gap-2">
-							<dt class="font-medium">{t('devices.columns.brand')}:</dt>
-							<dd>{lookupName(refData.brands, device.brandId)}</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="font-medium">{t('devices.columns.category')}:</dt>
-							<dd>{lookupName(refData.categories, device.categoryId)}</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="font-medium">{t('devices.columns.owner')}:</dt>
-							<dd>{lookupName(refData.owners, device.ownerId)}</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="font-medium">{t('devices.columns.status')}:</dt>
-							<dd>{device.status || '—'}</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="font-medium">{t('devices.columns.purchaseDate')}:</dt>
-							<dd>{formatDate(device.purchaseDate)}</dd>
-						</div>
-					</dl>
-				</div>
-				<svg
-					class="h-5 w-5 flex-shrink-0 text-neutral-400"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-					aria-hidden="true"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M9 5l7 7-7 7"
+			{#if selectable}
+				<label class="absolute left-3 top-3 z-10 flex h-8 w-8 cursor-pointer items-center justify-center">
+					<input
+						type="checkbox"
+						class="h-5 w-5 cursor-pointer rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
+						checked={isSelected(device.id)}
+						onchange={(e) => handleSelectToggle(e, device.id)}
+						aria-label={t('devices.bulk.selectRow', { name: device.name || device.id })}
 					/>
-				</svg>
-			</div>
-		</a>
+				</label>
+			{/if}
+			<a
+				href="/devices/{device.id}"
+				class="block p-4"
+				class:pl-12={selectable}
+			>
+				<div class="flex items-start justify-between">
+					<div class="flex-1">
+						<h3 class="text-base font-semibold text-neutral-900 dark:text-neutral-50">
+							{device.name || '—'}
+						</h3>
+						<dl class="mt-2 space-y-1 text-sm text-neutral-700 dark:text-neutral-300">
+							<div class="flex gap-2">
+								<dt class="font-medium">{t('devices.columns.brand')}:</dt>
+								<dd>{lookupName(refData.brands, device.brandId)}</dd>
+							</div>
+							<div class="flex gap-2">
+								<dt class="font-medium">{t('devices.columns.category')}:</dt>
+								<dd>{lookupName(refData.categories, device.categoryId)}</dd>
+							</div>
+							<div class="flex gap-2">
+								<dt class="font-medium">{t('devices.columns.owner')}:</dt>
+								<dd>{lookupName(refData.owners, device.ownerId)}</dd>
+							</div>
+							<div class="flex gap-2">
+								<dt class="font-medium">{t('devices.columns.status')}:</dt>
+								<dd>{device.status || '—'}</dd>
+							</div>
+							<div class="flex gap-2">
+								<dt class="font-medium">{t('devices.columns.purchaseDate')}:</dt>
+								<dd>{formatDate(device.purchaseDate)}</dd>
+							</div>
+						</dl>
+					</div>
+					<svg
+						class="h-5 w-5 flex-shrink-0 text-neutral-400"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						aria-hidden="true"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M9 5l7 7-7 7"
+						/>
+					</svg>
+				</div>
+			</a>
+		</div>
 	{/snippet}
 
 	{#if isGrouped && groups}

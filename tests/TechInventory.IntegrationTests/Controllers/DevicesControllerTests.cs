@@ -288,4 +288,141 @@ public sealed class DevicesControllerTests(IntegrationTestFactory<DevicesControl
             auditEvent.BeforePayload.Should().Contain(device.OwnerId.ToString());
         });
     }
+
+    [Fact]
+    public async Task BulkUpdateDevices_WhenValid_UpdatesAllDevicesAndAuditsEachWithCorrelationId()
+    {
+        await ResetDatabaseAsync();
+        var references = await SeedDeviceReferenceDataAsync();
+        var targetCategory = new Category(Guid.NewGuid(), $"Category-{Guid.NewGuid():N}");
+        var targetOwner = new Owner(Guid.NewGuid(), $"Owner-{Guid.NewGuid():N}", OwnerRole.Member);
+        await SeedAsync(entities: [targetCategory, targetOwner]);
+        var first = CreateDevice(references, $"Device-{Guid.NewGuid():N}");
+        var second = CreateDevice(references, $"Device-{Guid.NewGuid():N}");
+        var third = CreateDevice(references, $"Device-{Guid.NewGuid():N}");
+        await SeedAsync(entities: [first, second, third]);
+        using var client = CreateClient();
+
+        var request = new
+        {
+            deviceIds = new[] { first.Id, second.Id, third.Id },
+            changes = new { categoryId = targetCategory.Id, ownerId = targetOwner.Id }
+        };
+
+        var response = await client.PostAsync("/api/v1/devices/bulk/update", CreateJsonContent(request));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await ReadJsonAsync<TechInventory.Application.Devices.Commands.BulkOperationResponse>(response);
+        result.AffectedCount.Should().Be(3);
+        result.CorrelationId.Should().NotBeEmpty();
+
+        await WithDbContextAsync(async dbContext =>
+        {
+            var devices = await dbContext.Devices
+                .Where(d => new[] { first.Id, second.Id, third.Id }.Contains(d.Id))
+                .ToListAsync();
+            devices.Should().AllSatisfy(d =>
+            {
+                d.CategoryId.Should().Be(targetCategory.Id);
+                d.OwnerId.Should().Be(targetOwner.Id);
+            });
+
+            var audits = await dbContext.AuditEvents
+                .Where(ae => ae.EntityType == nameof(Device) && ae.Action == AuditAction.Updated)
+                .ToListAsync();
+            audits.Should().HaveCount(3);
+            audits.Should().AllSatisfy(ae => ae.AfterPayload.Should().Contain(result.CorrelationId.ToString()));
+        });
+    }
+
+    [Fact]
+    public async Task BulkUpdateDevices_WhenChangesEmpty_Returns400()
+    {
+        await ResetDatabaseAsync();
+        var references = await SeedDeviceReferenceDataAsync();
+        var device = CreateDevice(references, $"Device-{Guid.NewGuid():N}");
+        await SeedAsync(entities: [device]);
+        using var client = CreateClient();
+
+        var request = new { deviceIds = new[] { device.Id }, changes = new { } };
+
+        var response = await client.PostAsync("/api/v1/devices/bulk/update", CreateJsonContent(request));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task BulkUpdateDevices_WhenDeviceIdsEmpty_Returns400()
+    {
+        await ResetDatabaseAsync();
+        var references = await SeedDeviceReferenceDataAsync();
+        using var client = CreateClient();
+
+        var request = new
+        {
+            deviceIds = Array.Empty<Guid>(),
+            changes = new { categoryId = references.Category.Id }
+        };
+
+        var response = await client.PostAsync("/api/v1/devices/bulk/update", CreateJsonContent(request));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task BulkDeleteDevices_WhenValid_DisposesAllDevicesAndAuditsEach()
+    {
+        await ResetDatabaseAsync();
+        var references = await SeedDeviceReferenceDataAsync();
+        var first = CreateDevice(references, $"Device-{Guid.NewGuid():N}");
+        var second = CreateDevice(references, $"Device-{Guid.NewGuid():N}");
+        await SeedAsync(entities: [first, second]);
+        using var client = CreateClient();
+
+        var request = new
+        {
+            deviceIds = new[] { first.Id, second.Id },
+            reason = "Duplicates from SharePoint export"
+        };
+
+        var response = await client.PostAsync("/api/v1/devices/bulk/delete", CreateJsonContent(request));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await ReadJsonAsync<TechInventory.Application.Devices.Commands.BulkOperationResponse>(response);
+        result.AffectedCount.Should().Be(2);
+
+        await WithDbContextAsync(async dbContext =>
+        {
+            var devices = await dbContext.Devices
+                .Where(d => new[] { first.Id, second.Id }.Contains(d.Id))
+                .ToListAsync();
+            devices.Should().AllSatisfy(d => d.Status.Should().Be(DeviceStatus.Disposed));
+
+            var audits = await dbContext.AuditEvents
+                .Where(ae => ae.EntityType == nameof(Device) && ae.Action == AuditAction.Deleted)
+                .ToListAsync();
+            audits.Should().HaveCount(2);
+            audits.Should().AllSatisfy(ae =>
+            {
+                ae.AfterPayload.Should().Contain(result.CorrelationId.ToString());
+                ae.AfterPayload.Should().Contain("Duplicates from SharePoint export");
+            });
+        });
+    }
+
+    [Fact]
+    public async Task BulkDeleteDevices_WhenReasonTooShort_Returns400()
+    {
+        await ResetDatabaseAsync();
+        var references = await SeedDeviceReferenceDataAsync();
+        var device = CreateDevice(references, $"Device-{Guid.NewGuid():N}");
+        await SeedAsync(entities: [device]);
+        using var client = CreateClient();
+
+        var request = new { deviceIds = new[] { device.Id }, reason = "short" };
+
+        var response = await client.PostAsync("/api/v1/devices/bulk/delete", CreateJsonContent(request));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
 }

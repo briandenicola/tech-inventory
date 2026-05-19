@@ -33,7 +33,8 @@
 			"clear": "Clear",
 			"download": "Download",
 			"upload": "Upload",
-			"retry": "Retry"
+			"retry": "Retry",
+			"select": "Select…"
 		},
 		"nouns": {
 			"device": "Device",
@@ -254,6 +255,35 @@
 			"countBadge": "{count}",
 			"expandGroup": "Expand {label}",
 			"collapseGroup": "Collapse {label}"
+		},
+		"bulk": {
+			"selectAllVisible": "Select all visible devices",
+			"selectRow": "Select {name}",
+			"countSelected": "{count} selected",
+			"clear": "Clear selection",
+			"actions": "Bulk actions",
+			"changeCategory": "Change category",
+			"changeOwner": "Change owner",
+			"changeBrand": "Change brand",
+			"changeLocation": "Change location",
+			"changeStatus": "Change status",
+			"delete": "Delete selected",
+			"update": {
+				"title": "Update {count} devices",
+				"fieldLabel": "New value",
+				"confirm": "Apply changes",
+				"keepCurrentValue": "— Keep current value —"
+			},
+			"deleteModal": {
+				"title": "Delete {count} devices",
+				"warning": "This will soft-delete {count} devices. Type the number to confirm.",
+				"confirmPrompt": "Type {count} to confirm",
+				"reasonLabel": "Reason",
+				"reasonPlaceholder": "Why are you deleting these devices? (min 10 chars)"
+			},
+			"successUpdate": "{count} devices updated",
+			"successDelete": "{count} devices deleted",
+			"errorPartial": "Bulk operation failed. No devices were changed."
 		}
 	},
 	"ownership": {

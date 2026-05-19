@@ -219,7 +219,31 @@ export const devices = {
 		apiFetch<void>(`/api/v1/devices/${encodeURIComponent(id)}/owner`, {
 			method: 'PATCH',
 			body: JSON.stringify({ ownerId })
-		})
+		}),
+
+	// F024 bulk operations — endpoints use POST (not PATCH/DELETE-with-body) to
+	// sidestep client/proxy stripping of DELETE bodies.
+	bulkUpdate: async (
+		body: PostRequestBody<paths['/api/v1/devices/bulk/update']>
+	) =>
+		apiFetch<PostResponse<paths['/api/v1/devices/bulk/update']>>(
+			`/api/v1/devices/bulk/update`,
+			{
+				method: 'POST',
+				body: JSON.stringify(body)
+			}
+		),
+
+	bulkDelete: async (
+		body: PostRequestBody<paths['/api/v1/devices/bulk/delete']>
+	) =>
+		apiFetch<PostResponse<paths['/api/v1/devices/bulk/delete']>>(
+			`/api/v1/devices/bulk/delete`,
+			{
+				method: 'POST',
+				body: JSON.stringify(body)
+			}
+		)
 };
 
 // Brands

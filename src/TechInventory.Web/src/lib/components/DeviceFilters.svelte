@@ -13,7 +13,7 @@
 	import { onMount } from 'svelte';
 	import { t } from '$lib/i18n';
 	import { referenceDataStore, fetchReferenceData } from '$lib/stores/referenceData';
-	import type { DeviceFilters, DeviceStatus } from '$lib/queries/devices';
+	import type { DeviceFilters, DeviceStatus } from '$lib/queries/devices.svelte';
 
 	interface Props {
 		filters: DeviceFilters;

@@ -6,13 +6,13 @@
 	import { referenceDataStore } from '$lib/stores/referenceData';
 	import { authStore } from '$lib/stores/auth';
 	import { showToast } from '$lib/stores/toast';
-	import { invalidateDevicesCache } from '$lib/queries/devices';
+	import { invalidateDevicesCache } from '$lib/queries/devices.svelte';
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import DeleteDeviceModal from '$lib/components/DeleteDeviceModal.svelte';
 	import ClaimOwnershipModal from '$lib/components/ClaimOwnershipModal.svelte';
 	import ReleaseOwnershipModal from '$lib/components/ReleaseOwnershipModal.svelte';
-	import type { DeviceResponse } from '$lib/queries/devices';
+	import type { DeviceResponse } from '$lib/queries/devices.svelte';
 
 	/**
 	 * T19: Device detail page — all fields, resolved references, breadcrumbs, role-aware Edit/Delete buttons

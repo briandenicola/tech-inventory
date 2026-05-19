@@ -3,7 +3,7 @@
 	import { page } from '$app/stores';
 	import { t } from '$lib/i18n';
 	import { authStore } from '$lib/stores/auth';
-	import { useDevices, type DeviceFilters as DeviceFiltersType } from '$lib/queries/devices';
+	import { useDevices, type DeviceFilters as DeviceFiltersType } from '$lib/queries/devices.svelte';
 	import DeviceTable from '$lib/components/DeviceTable.svelte';
 	import DeviceFilters from '$lib/components/DeviceFilters.svelte';
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';

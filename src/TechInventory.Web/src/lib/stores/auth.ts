@@ -12,12 +12,16 @@ import { z } from 'zod';
 
 /**
  * OwnerResponse schema (runtime validation mirror of OpenAPI)
- * Per T02 pattern: Zod schema mirrors server FluentValidation rules
+ * Mirrors src/TechInventory.Application/Owners/OwnerResponse.cs.
+ *
+ * Notes:
+ * - The API does not surface `email` (Owner domain entity has no email field).
+ * - `entraObjectId` is `Guid?` server-side; .NET Guids are not RFC-strict UUID v4,
+ *   so we validate as a plain string and let the backend remain authoritative on shape.
  */
 const OwnerResponseSchema = z.object({
-	id: z.string().uuid(),
-	entraObjectId: z.string().uuid(),
-	email: z.string().email(),
+	id: z.string(),
+	entraObjectId: z.string().nullable().optional(),
 	displayName: z.string(),
 	role: z.enum(['Admin', 'Member', 'Viewer']),
 	isActive: z.boolean()
@@ -28,8 +32,7 @@ const OwnerResponseSchema = z.object({
  */
 export interface CurrentUser {
 	id: string;
-	entraObjectId: string;
-	email: string;
+	entraObjectId: string | null;
 	displayName: string;
 	role: 'Admin' | 'Member' | 'Viewer';
 }
@@ -82,8 +85,7 @@ export async function fetchCurrentUser(): Promise<void> {
 		// Extract CurrentUser shape
 		const currentUser: CurrentUser = {
 			id: parsed.id,
-			entraObjectId: parsed.entraObjectId,
-			email: parsed.email,
+			entraObjectId: parsed.entraObjectId ?? null,
 			displayName: parsed.displayName,
 			role: parsed.role
 		};

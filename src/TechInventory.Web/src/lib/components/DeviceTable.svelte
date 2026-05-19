@@ -9,7 +9,7 @@
 -->
 <script lang="ts">
 	import { t } from '$lib/i18n';
-	import type { DeviceResponse } from '$lib/queries/devices';
+	import type { DeviceResponse } from '$lib/queries/devices.svelte';
 
 	interface Props {
 		devices: DeviceResponse[];

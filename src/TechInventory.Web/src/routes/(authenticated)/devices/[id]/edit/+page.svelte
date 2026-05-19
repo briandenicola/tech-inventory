@@ -4,11 +4,11 @@
 	import { t } from '$lib/i18n';
 	import { devices } from '$lib/api/client';
 	import { showToast } from '$lib/stores/toast';
-	import { invalidateDevicesCache } from '$lib/queries/devices';
+	import { invalidateDevicesCache } from '$lib/queries/devices.svelte';
 	import DeviceForm from '$lib/components/DeviceForm.svelte';
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
-	import type { DeviceResponse } from '$lib/queries/devices';
+	import type { DeviceResponse } from '$lib/queries/devices.svelte';
 	import type { DeviceUpdateInput } from '$lib/schemas/device';
 
 	/**

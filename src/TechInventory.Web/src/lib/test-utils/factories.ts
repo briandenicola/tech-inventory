@@ -5,7 +5,7 @@
  * These factories produce deterministic test data with unique IDs per call.
  */
 
-import type { DeviceResponse } from '$lib/queries/devices';
+import type { DeviceResponse } from '$lib/queries/devices.svelte';
 import type { ReferenceEntity } from '$lib/stores/referenceData';
 import type { DeviceCreateInput } from '$lib/schemas/device';
 

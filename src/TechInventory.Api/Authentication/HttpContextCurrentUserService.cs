@@ -8,8 +8,8 @@ public sealed class HttpContextCurrentUserService(IHttpContextAccessor httpConte
 {
     public string GetCurrentUserId()
     {
-        var user = httpContextAccessor.HttpContext?.User;
-        if (user?.Identity?.IsAuthenticated != true)
+        var user = GetAuthenticatedUser();
+        if (user is null)
         {
             return "system";
         }
@@ -19,5 +19,24 @@ public sealed class HttpContextCurrentUserService(IHttpContextAccessor httpConte
             ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value
             ?? user.Identity?.Name
             ?? "system";
+    }
+
+    public string? GetDisplayName()
+    {
+        var user = GetAuthenticatedUser();
+        return user?.FindFirst(ClaimTypes.Name)?.Value
+            ?? user?.Identity?.Name;
+    }
+
+    public string? GetRoleClaim()
+    {
+        var user = GetAuthenticatedUser();
+        return user?.FindFirst(ClaimTypes.Role)?.Value;
+    }
+
+    private ClaimsPrincipal? GetAuthenticatedUser()
+    {
+        var user = httpContextAccessor.HttpContext?.User;
+        return user?.Identity?.IsAuthenticated == true ? user : null;
     }
 }

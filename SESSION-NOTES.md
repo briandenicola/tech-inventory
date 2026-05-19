@@ -4,6 +4,16 @@ Append-only log. Newest entries at the top.
 
 ---
 
+## 2026-05-18 — Bishop D-136 owner auto-provision on first sign-in
+
+- Fixed `/api/v1/owners/me` so it no longer 404s for first-time principals: `OwnersController` now dispatches `EnsureCurrentOwnerProvisionedCommand`, which returns the existing owner by `EntraObjectId` or creates one on demand from the caller's claims.
+- Extended `ICurrentUserService` / `HttpContextCurrentUserService` / `SystemCurrentUserService` with display-name + role helpers so claim-derived defaults stay behind the current-user abstraction. Auto-provision defaults are `ClaimTypes.Name` / `ClaimTypes.Role`, with fallbacks to `User {short}` and `Member`.
+- Added unit coverage for the command (existing owner unchanged, missing owner provisioned, claim fallbacks, validator) plus integration coverage that `/api/v1/owners/me` auto-provisions on first call, returns the same owner on second call, and works for dev bypass with a fresh DB.
+- Refreshed `openapi.yaml` for the `/api/v1/owners/me` contract, then verified `dotnet format --verify-no-changes`, `dotnet build -c Release`, `dotnet test -c Release` (**388 total / 382 passed / 6 skipped / 0 failed**).
+- Manual smoke passed after resetting `src\TechInventory.Api\techinventory.db`: `task db:migrate`, `task dev:api`, `curl.exe -s http://localhost:8080/api/v1/owners/me | ConvertFrom-Json` returned 200 with `displayName=dev-admin`, `role=Admin`, and `entraObjectId=11111111-1111-1111-1111-111111111111`.
+
+---
+
 ## 2026-05-18 — Round 7 Phase 1 Close-Out (Scribe)
 
 Phase 1 complete: 48/48 tasks shipped. Merged 7 decision inbox files (Hudson's 2 collisions renumbered as D-028/D-029; Hicks's 5 import/export decisions as D-030–D-034) into `.squad/decisions.md`. Updated agent histories for Hicks (T29-T31, T39, T42, T48 import/export + OpenAPI), Apone (T45-T46 integration/contract suites), Hudson (T47 CI verify chain), and Scribe (close-out). Added "Phase 1 complete" banner to `specs/001-core-api/tasks.md` and marked T29, T30, T31, T39, T42, T45, T46, T47, T48 as ✅ (all remaining tasks done). Appended Phase 1 complete round to `.squad/session-log.md` with summary statistics (48/48, 369 tests, coverage 100%/91.58%/94.33%/91.63%), commit table (7 SHAs), deliverables summary, known gaps, and Phase 2 next steps. Updated `.copilot-state.md` to note Phase 1 complete and that dev auth bypass is active for local API access. Deleted all 7 inbox decision files. Staged only `.squad/`, `specs/001-core-api/tasks.md`, `.copilot-state.md`, `SESSION-NOTES.md` — no backend/frontend changes. Commit message references all 7 SHAs and Phase 1 closure.

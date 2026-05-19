@@ -1,5 +1,6 @@
 using System.Net;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using TechInventory.Application.Common.Paging;
 using TechInventory.Application.Owners;
 using TechInventory.Domain.Entities;
@@ -165,21 +166,39 @@ public sealed class OwnersControllerTests(IntegrationTestFactory<OwnersControlle
     }
 
     [Fact]
-    public async Task GetCurrentOwner_WithDevBypass_ReturnsCurrentUser()
+    public async Task GetCurrentOwner_WithDevBypass_AutoProvisionsOnFirstCall_AndReturnsSameOwnerOnSecondCall()
     {
         await ResetDatabaseAsync();
         var devEntraObjectId = Guid.Parse("11111111-1111-1111-1111-111111111111");
-        var owner = new Owner(devEntraObjectId, "dev-admin", OwnerRole.Admin, devEntraObjectId);
-        await SeedAsync(entities: [owner]);
         using var client = CreateClient();
 
-        var response = await client.GetAsync("/api/v1/owners/me");
+        var firstResponse = await client.GetAsync("/api/v1/owners/me");
+        var secondResponse = await client.GetAsync("/api/v1/owners/me");
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var payload = await ReadJsonAsync<OwnerResponse>(response);
-        payload.Should().NotBeNull();
-        payload.EntraObjectId.Should().Be(devEntraObjectId);
-        payload.DisplayName.Should().Be("dev-admin");
-        payload.Role.Should().Be(OwnerRole.Admin.ToString());
+        firstResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        secondResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var firstPayload = await ReadJsonAsync<OwnerResponse>(firstResponse);
+        var secondPayload = await ReadJsonAsync<OwnerResponse>(secondResponse);
+
+        firstPayload.EntraObjectId.Should().Be(devEntraObjectId);
+        firstPayload.DisplayName.Should().Be("dev-admin");
+        firstPayload.Role.Should().Be(OwnerRole.Admin.ToString());
+
+        secondPayload.Id.Should().Be(firstPayload.Id);
+        secondPayload.EntraObjectId.Should().Be(devEntraObjectId);
+        secondPayload.DisplayName.Should().Be("dev-admin");
+        secondPayload.Role.Should().Be(OwnerRole.Admin.ToString());
+
+        await WithDbContextAsync(async dbContext =>
+        {
+            var owners = await dbContext.Owners
+                .Where(owner => owner.EntraObjectId == devEntraObjectId)
+                .ToListAsync();
+
+            owners.Should().ContainSingle();
+            owners[0].Id.Should().Be(firstPayload.Id);
+            owners[0].Role.Should().Be(OwnerRole.Admin);
+        });
     }
 }

@@ -35,7 +35,6 @@ public sealed class OwnersController(ISender sender, ICurrentUserService current
     [HttpGet("me")]
     [ProducesResponseType(typeof(OwnerResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<OwnerResponse>> GetCurrentOwner(CancellationToken cancellationToken)
     {
         var oidString = currentUserService.GetCurrentUserId();
@@ -49,7 +48,12 @@ public sealed class OwnersController(ISender sender, ICurrentUserService current
             return Unauthorized();
         }
 
-        return this.OkResult(await sender.Send(new GetOwnerByEntraObjectIdQuery(entraObjectId), cancellationToken));
+        return this.OkResult(await sender.Send(
+            new EnsureCurrentOwnerProvisionedCommand(
+                entraObjectId,
+                currentUserService.GetDisplayName(),
+                currentUserService.GetRoleClaim()),
+            cancellationToken));
     }
 
     [HttpPost]

@@ -40,6 +40,16 @@ Open question resolved (PRD §14): "External ID vs. Workforce tenant — which i
 
 ## Learnings
 
+### 2026-05-18 (Phase 2 Round 3) — D-136: Owner auto-provision on first sign-in
+
+**Bug pattern:** 404-on-first-sign-in is a classic OIDC trap. Authenticating the principal is not enough; any endpoint that assumes a pre-existing local user row (`Owner`) will fail for a brand-new `oid` unless the app provisions that row on demand.
+
+**What shipped:** `/api/v1/owners/me` now routes through `EnsureCurrentOwnerProvisionedCommand`, which returns the existing owner when present or creates one keyed by `EntraObjectId` when missing. `DisplayName` and `Role` come from claims (`ClaimTypes.Name`, `ClaimTypes.Role`) with safe fallbacks (`User {short}` and `Member`), and `ICurrentUserService` now exposes claim helpers so controllers stay thin.
+
+**Why this shape is right:** In a single-household, Entra-authenticated app, every successfully authenticated principal is implicitly a household member. Auto-provisioning at the current-user endpoint keeps first sign-in idempotent, fixes dev bypass and real Entra flows with one code path, and preserves CQRS cleanliness by using a command rather than making a query write.
+
+**Remember next time:** whenever identity is external (OIDC/Entra/Auth0/etc.), audit every "current user" or "profile" read path for hidden local-row assumptions. If the app stores a local projection of the external user, the safe default is read-or-create on first authenticated access, with audit coverage and duplicate-claim fallbacks considered up front.
+
 ### 2026-05-19 (Phase 2 Round 2) — T11: `GET /api/v1/owners/me` Endpoint
 
 **Shipped:**

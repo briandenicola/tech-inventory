@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using TechInventory.Application.Owners;
 using TechInventory.Domain.Entities;
 
 namespace TechInventory.IntegrationTests.Controllers;
@@ -32,6 +33,21 @@ public sealed class DevAuthBypassTests(IntegrationTestFactory<DevAuthBypassTests
 
         protectedResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         adminRoleResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task OwnersMe_WhenBypassIdentityIsActive_AutoProvisionsDevAdmin()
+    {
+        await ResetDatabaseAsync();
+        using var client = CreateClient();
+
+        var response = await client.GetAsync("/api/v1/owners/me");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var payload = await ReadJsonAsync<OwnerResponse>(response);
+        payload.EntraObjectId.Should().Be(Guid.Parse(DevBypassUserId));
+        payload.DisplayName.Should().Be("dev-admin");
+        payload.Role.Should().Be("Admin");
     }
 
     [Fact]

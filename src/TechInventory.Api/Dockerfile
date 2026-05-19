@@ -7,7 +7,10 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Copy solution and project files (layer cache optimization)
-COPY TechInventory.sln ./
+# Note: repo uses the new XML solution format (`.slnx`). `dotnet restore`
+# below targets the csproj directly so the solution file is not strictly
+# required, but we copy it for parity with local `dotnet` workflows.
+COPY TechInventory.slnx ./
 COPY src/TechInventory.Domain/TechInventory.Domain.csproj ./src/TechInventory.Domain/
 COPY src/TechInventory.Application/TechInventory.Application.csproj ./src/TechInventory.Application/
 COPY src/TechInventory.Infrastructure/TechInventory.Infrastructure.csproj ./src/TechInventory.Infrastructure/

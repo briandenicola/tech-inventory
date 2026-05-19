@@ -1,0 +1,149 @@
+name: Release Container Images
+
+# Build + push API and Web images to GHCR.
+#
+# Triggers:
+#   - push to main           → tag :latest + :<short-sha>
+#   - push of a v* tag       → tag :latest + :vX.Y.Z + :vX.Y + :vX + :<short-sha>
+#   - workflow_dispatch      → tag :<short-sha>
+#
+# Image digests are exposed as job outputs so downstream scanning jobs
+# (Bishop's Trivy workflow) can `needs: [build-api, build-web]` and consume
+# `outputs.image-digest` without re-resolving the manifest.
+#
+# Job names `build-api` and `build-web` are part of the public surface — do
+# not rename without updating dependent workflows.
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write          # required to push to ghcr.io/<owner>/<image>
+  id-token: write          # reserved for future cosign keyless signing
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAMESPACE: ${{ github.repository_owner }}/tech-inventory
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────
+  # API image
+  # ─────────────────────────────────────────────────────────────────────────
+  build-api:
+    name: Build & push API image
+    runs-on: ubuntu-latest
+    outputs:
+      image-digest: ${{ steps.push.outputs.digest }}
+      image-tags:   ${{ steps.meta.outputs.tags }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}-api
+          tags: |
+            # `latest` only on main branch pushes (not on tag pushes, not on dispatch)
+            type=raw,value=latest,enable={{is_default_branch}}
+            # Short SHA for every build — the immutable handle for rollbacks
+            type=sha,format=short
+            # Semver tags only when a v* tag is pushed
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+          labels: |
+            org.opencontainers.image.title=Tech Inventory API
+            org.opencontainers.image.description=ASP.NET Core 10 Web API for Tech Inventory
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.licenses=MIT
+
+      - name: Build and push
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/TechInventory.Api/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # GitHub Actions cache backend — keeps subsequent builds warm
+          # without paying for an external registry cache.
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,scope=api,mode=max
+          provenance: false   # GHCR rejects provenance attestations for some plans
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Web image
+  # ─────────────────────────────────────────────────────────────────────────
+  build-web:
+    name: Build & push Web image
+    runs-on: ubuntu-latest
+    outputs:
+      image-digest: ${{ steps.push.outputs.digest }}
+      image-tags:   ${{ steps.meta.outputs.tags }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}-web
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,format=short
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+          labels: |
+            org.opencontainers.image.title=Tech Inventory Web
+            org.opencontainers.image.description=SvelteKit PWA + nginx reverse proxy for Tech Inventory
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.licenses=MIT
+
+      - name: Build and push
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/TechInventory.Web/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            # Production bundle: real MSAL flow, no DevBypass shim.
+            VITE_AUTH_DEV_BYPASS=false
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,scope=web,mode=max
+          provenance: false

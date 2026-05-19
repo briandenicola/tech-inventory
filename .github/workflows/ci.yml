@@ -69,6 +69,8 @@ jobs:
       - name: Run verification pipeline
         run: ./scripts/verify.sh
 
-      # TODO: Phase 3 — Add container build + push to GHCR
-      # TODO: Phase 3 — Add SBOM generation (Syft or dotnet sbom)
-      # TODO: Phase 3 — Add Trivy container security scan
+      # Container build + push lives in `.github/workflows/release-images.yml`
+      # (triggers on push-to-main, v* tags, and workflow_dispatch).
+      # SBOM generation + Trivy scanning are owned by Bishop in a follow-up
+      # workflow that `needs: [build-api, build-web]` from release-images.yml
+      # and consumes their `outputs.image-digest`.

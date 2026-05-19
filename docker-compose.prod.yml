@@ -1,0 +1,121 @@
+# Tech Inventory — Production overlay
+#
+# Apply ON TOP OF docker-compose.yml for production deploys behind Brian's
+# external Nginx Proxy Manager (NPM) at https://inventory.denicolafamily.com.
+# Per D-139: NPM terminates TLS and forwards plain HTTP to host port 3000 of
+# this stack; the web container reverse-proxies /api/* to the API container
+# over the internal techinv-net network.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Optional backup sidecar (Litestream, continuous WAL replica):
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+#       --profile backup up -d
+#
+# Image tag pinning for rollbacks:
+#   TECHINV_IMAGE_TAG=v1.2.2 docker compose -f docker-compose.yml \
+#       -f docker-compose.prod.yml up -d
+
+services:
+  api:
+    # Replace the dev `build:` with the published GHCR image. Tag defaults to
+    # `latest` (main HEAD); pin via TECHINV_IMAGE_TAG for reproducible deploys.
+    image: ghcr.io/briandenicola/tech-inventory-api:${TECHINV_IMAGE_TAG:-latest}
+    build: !reset null
+    # Drop the host port mapping — API is reachable only from inside
+    # techinv-net (web container proxies /api/*). Override the dev value with
+    # an empty list to publish nothing on the host.
+    ports: !reset []
+    environment:
+      # Force prod regardless of .env. The break-glass seed logic refuses to
+      # run unless SeedAllowInProd=true, which is correct.
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Default: "Data Source=/data/techinv.db"
+    env_file:
+      # Secrets and tenant-specific config live here (Auth__Entra__*,
+      # Auth__Local__SigningKey, OTEL endpoint, etc.). Never committed.
+      - .env
+    # Lock the writable root filesystem; the API only ever writes to /data
+    # (volume), /tmp (tmpfs), and /app/logs (tmpfs for the Serilog rolling
+    # file sink in Program.cs).
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,uid=1000,gid=1000,mode=1777
+      - /app/logs:size=128m,uid=1000,gid=1000,mode=0755
+    # Drop all Linux capabilities — the app doesn't bind privileged ports or
+    # need raw sockets. Prevents privilege escalation inside the container.
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  web:
+    image: ghcr.io/briandenicola/tech-inventory-web:${TECHINV_IMAGE_TAG:-latest}
+    build: !reset null
+    # Keep host port 3000 — NPM forwards inbound traffic here.
+    ports:
+      - "3000:80"
+    # nginx writes its pid (/var/run/nginx.pid), cache (/var/cache/nginx) and
+    # logs (/var/log/nginx) at runtime, so we can't blanket-lock the root FS
+    # without breaking the worker. We still drop capabilities + no-new-privs
+    # for defense-in-depth; the nginx:alpine base image is already minimal.
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  # ── Backups (opt-in via `--profile backup`) ────────────────────────────────
+  # Litestream continuously streams the SQLite WAL to a local file replica
+  # (mounted from BACKUP_PATH on the host) and optionally to an S3-compatible
+  # target when LITESTREAM_REPLICA_URL is set. The official image runs as
+  # non-root (uid 100). It reads `/data/techinv.db` directly from the shared
+  # volume — safe because Litestream uses SQLite's online WAL protocol, not a
+  # naive file copy.
+  #
+  # To enable:
+  #   docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+  #       --profile backup up -d backup
+  #
+  # To verify the last snapshot from the host:  `task backup:verify`
+  backup:
+    image: litestream/litestream:0.3.13
+    container_name: techinv-backup
+    profiles: ["backup"]
+    restart: unless-stopped
+    # Match the API's uid/gid so Litestream can read the live SQLite file +
+    # WAL/SHM sidecars from the shared volume. The API container (see its
+    # Dockerfile) creates appuser as 1000:1000 and chowns /data accordingly.
+    # The host BACKUP_PATH directory must also be writable by uid 1000.
+    user: "1000:1000"
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      # Surfaced into ops/litestream.yml via env-var substitution. Empty
+      # values are tolerated: the local file replica still runs unconditionally.
+      LITESTREAM_REPLICA_URL: ${LITESTREAM_REPLICA_URL:-}
+      LITESTREAM_ACCESS_KEY_ID: ${LITESTREAM_ACCESS_KEY_ID:-}
+      LITESTREAM_SECRET_ACCESS_KEY: ${LITESTREAM_SECRET_ACCESS_KEY:-}
+      LITESTREAM_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
+    volumes:
+      # Read the live database from the shared volume.
+      - techinv-data:/data
+      # Write replica generations to the host path BACKUP_PATH (default ./backups).
+      - ${BACKUP_PATH:-./backups}:/backups
+      # Config file — checked in at ops/litestream.yml.
+      - ./ops/litestream.yml:/etc/litestream.yml:ro
+    command: ["replicate", "-config", "/etc/litestream.yml"]
+    networks:
+      - techinv-net
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 32M

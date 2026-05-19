@@ -7,6 +7,7 @@
 	import { t } from '$lib/i18n';
 	import { goto } from '$app/navigation';
 	import ToastContainer from '$lib/components/ToastContainer.svelte';
+	import { fetchReferenceData, referenceDataStore } from '$lib/stores/referenceData';
 
 	let { children } = $props();
 
@@ -57,6 +58,27 @@
 		$page.url.pathname; // Trigger effect on route change
 		mobileMenuOpen = false;
 		userMenuOpen = false;
+	});
+
+	// Hydrate reference data (brands, categories, owners, locations, networks)
+	// once per authenticated session so any page (edit, new, table lookups)
+	// can render its dropdowns and name lookups without a hard refresh dance.
+	let refDataHydrated = false;
+	$effect(() => {
+		if (!currentUser || refDataHydrated) return;
+		const snapshot = $referenceDataStore;
+		if (
+			snapshot.brands.length === 0 &&
+			snapshot.categories.length === 0 &&
+			snapshot.owners.length === 0 &&
+			snapshot.locations.length === 0 &&
+			snapshot.networks.length === 0
+		) {
+			refDataHydrated = true;
+			void fetchReferenceData();
+		} else {
+			refDataHydrated = true;
+		}
 	});
 
 	// User dropdown: close on outside-click + Escape

@@ -9,6 +9,7 @@
 -->
 <script lang="ts">
 	import { t } from '$lib/i18n';
+	import { referenceDataStore } from '$lib/stores/referenceData';
 	import type { DeviceResponse } from '$lib/queries/devices.svelte';
 
 	interface Props {
@@ -19,6 +20,16 @@
 	}
 
 	let { devices, currentSort, sortDir, onSort }: Props = $props();
+
+	const refData = $derived($referenceDataStore);
+
+	function lookupName(
+		collection: { id: string; name: string }[],
+		id: string | null | undefined
+	): string {
+		if (!id) return '—';
+		return collection.find((entity) => entity.id === id)?.name ?? '—';
+	}
 
 	// Toggle sort: current asc → desc → asc (2-state cycle per D-052 choice)
 	function handleSort(column: 'name' | 'purchaseDate' | 'createdAt') {
@@ -206,13 +217,13 @@
 						{device.name || '—'}
 					</td>
 					<td class="px-4 py-4 text-sm text-neutral-700 dark:text-neutral-300">
-						{device.brandId ? 'Brand' : '—'}
+						{lookupName(refData.brands, device.brandId)}
 					</td>
 					<td class="px-4 py-4 text-sm text-neutral-700 dark:text-neutral-300">
-						{device.categoryId ? 'Category' : '—'}
+						{lookupName(refData.categories, device.categoryId)}
 					</td>
 					<td class="px-4 py-4 text-sm text-neutral-700 dark:text-neutral-300">
-						{device.ownerId ? 'Owner' : '—'}
+						{lookupName(refData.owners, device.ownerId)}
 					</td>
 					<td class="px-4 py-4 text-sm text-neutral-700 dark:text-neutral-300">
 						{device.status || '—'}
@@ -241,15 +252,15 @@
 					<dl class="mt-2 space-y-1 text-sm text-neutral-700 dark:text-neutral-300">
 						<div class="flex gap-2">
 							<dt class="font-medium">{t('devices.columns.brand')}:</dt>
-							<dd>{device.brandId ? 'Brand' : '—'}</dd>
+							<dd>{lookupName(refData.brands, device.brandId)}</dd>
 						</div>
 						<div class="flex gap-2">
 							<dt class="font-medium">{t('devices.columns.category')}:</dt>
-							<dd>{device.categoryId ? 'Category' : '—'}</dd>
+							<dd>{lookupName(refData.categories, device.categoryId)}</dd>
 						</div>
 						<div class="flex gap-2">
 							<dt class="font-medium">{t('devices.columns.owner')}:</dt>
-							<dd>{device.ownerId ? 'Owner' : '—'}</dd>
+							<dd>{lookupName(refData.owners, device.ownerId)}</dd>
 						</div>
 						<div class="flex gap-2">
 							<dt class="font-medium">{t('devices.columns.status')}:</dt>

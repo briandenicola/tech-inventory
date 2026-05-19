@@ -67,4 +67,89 @@ CI quality gate must be green to merge: tests, security scans, SBOM.
 - **Decisions D-028/D-029:** Pre-commit scope (lint+security, ~2-3s) and CI runner OS (ubuntu-latest) ratified.
 - **Commits:** `e20a1bb` (T47 full verify on PR), `402eceb` (T47 Hudson audit findings), `ca85041` (T47 pre-commit refinement), `65e1184` (T47 CI setup checklist).
 
+## Local validation Taskfile targets (post-Phase 2 R6b session)
+
+**Date:** 2026-05-18 (Phase 2 post-R6b, local validation automation)
+**Status:** Complete — 7 new Taskfile targets shipped
+**Related:** Taskfile.yml, D-130, `.squad/decisions/inbox/hudson-validation-tasks.md`
+
+**Context:** Brian's Phase 2 R6b session ended with manual validation steps: `dotnet ef database update`, `dotnet run --project src\TechInventory.Api`, `cd src\TechInventory.Web && pnpm run dev`, CSV import via cURL. Requested Taskfile automation for "one or two commands" fresh-checkout flow.
+
+**Targets Shipped:**
+
+1. **`task db:migrate`**: Apply EF Core migrations via `dotnet ef database update --project Infrastructure --startup-project Api`. SQLite file lives in repo root (dev) or Docker volume (compose).
+
+2. **`task dev:api`**: Run API in Development mode (foreground, `http://localhost:8080`). Sets `ASPNETCORE_ENVIRONMENT=Development` to enable auth bypass (`DevBypassAuthenticationHandler` — no JWT/token required).
+
+3. **`task dev:web`**: Run Web dev server (foreground, `http://localhost:5173`). Platform-specific `cd` to `src/TechInventory.Web` + `pnpm run dev`.
+
+4. **`task dev`**: Print-only target. Displays instructions: "Run `dev:api` in Terminal 1, `dev:web` in Terminal 2." No automatic backgrounding (D-130: two-terminal pattern chosen for cross-platform reliability + log visibility).
+
+5. **`task import:preview CSV=path/to/file.csv`**: POST CSV to `/api/v1/imports/preview` (multipart/form-data). Default: `data/Devices.csv` (Brian's 551-device file, gitignored). Pretty-prints `PreviewImportResult` JSON (Windows: `Invoke-WebRequest` + `ConvertTo-Json`, Linux/macOS: `curl` + `jq`).
+
+6. **`task import:commit CSV=path/to/file.csv CONFIRM=yes`**: POST CSV to `/api/v1/imports/commit`. Destructive-op gate: requires `CONFIRM=yes` variable or prints warning and exits. Pretty-prints `CommitImportResult` (BatchId, ImportedRows, InvalidRows).
+
+7. **`task validate:local`**: Headline target. Runs `restore` → `db:migrate` → prints success + next-step instructions (where to run `dev:api`/`dev:web`, health check URL, import commands, auth bypass reminder).
+
+**Backgrounding Decision (D-130):**
+- **Chosen:** Two-terminal pattern (no automatic backgrounding).
+- **Why:** Cross-platform Taskfile backgrounding (Windows `Start-Process`, Linux `nohup &`) is fragile. Health-check loops add complexity. Explicit two-terminal pattern matches Brian's manual workflow, keeps logs visible in dedicated terminals, and works reliably on Windows/Linux/macOS.
+- **Rejected:** `concurrently` npm package (adds dependency), `deps:` parallel (both block, logs interleaved), PowerShell background jobs / bash `&` (cleanup fragile, logs hidden).
+
+**Auth Bypass Mechanism:**
+- `appsettings.Development.json` line 3: `"Auth:DevBypass": true`
+- `Program.cs` lines 45-62: `DevBypassAuthenticationHandler` registers when `Auth:DevBypass=true` and `ASPNETCORE_ENVIRONMENT=Development`
+- Handler authenticates all requests as `dev-admin` (no JWT, no Entra, no header required)
+- Import endpoints (`/api/v1/imports/*`) require `[Authorize]` (ImportsController.cs line 15); dev bypass satisfies this
+- Guard: throws `InvalidOperationException` if `Auth:DevBypass=true` outside Development environment
+
+**CSV Default Path:**
+- `data/Devices.csv` (Brian's 551-device real data)
+- `.gitignore` line 2 excludes this file from version control
+- Both `import:preview` and `import:commit` accept `CSV=path/to/file.csv` override via Taskfile variables (`{{default "data/Devices.csv" .CSV}}`)
+
+**Destructive-Op UX:**
+- `import:commit` requires `CONFIRM=yes` variable
+- Prints warning + exit if not set: "⚠️ WARNING: This will write devices to the database. Run with CONFIRM=yes to proceed: task import:commit CONFIRM=yes"
+- Rationale: Explicit opt-in for destructive operation; protects against accidental data writes during experimentation
+
+**Ports:**
+- API: `http://localhost:8080` (launchSettings.json line 8)
+- Web: `http://localhost:5173` (Vite default; package.json line 7 `vite dev` has no port override)
+
+**Cross-Platform Implementation:**
+- All targets with shell-specific commands use `platforms: [windows]` / `platforms: [linux, darwin]` pattern
+- Windows: PowerShell (`Write-Host`, `Invoke-WebRequest`, `Get-Item`, `Test-Path`)
+- Linux/macOS: bash (`echo`, `curl -F`, `jq`, `[ -f ]`)
+- Multi-line string blocks (`cmd: |`) for instructional targets (dev, validate:local)
+
+**Taskfile Header Update:**
+- Added section documenting local validation targets:
+  ```yaml
+  # Local validation:
+  #   task validate:local  — Fresh checkout → working dev environment with DB migrations applied
+  #   task dev:api         — Run API (foreground, http://localhost:8080)
+  #   task dev:web         — Run Web dev server (foreground, http://localhost:5173)
+  #   task import:preview  — Preview CSV import (default: data/Devices.csv)
+  #   task import:commit   — Commit CSV import to database (destructive)
+  ```
+- Rationale: Discoverability for new contributors; validation targets visible alongside existing `up`/`down`/`test`/`verify`
+
+**Validation:**
+- ✅ `task --list` shows all 7 new targets (plus 3 internal targets: `test:e2e:run`)
+- ✅ Taskfile YAML syntax valid (no parse errors)
+- ✅ All existing targets preserved (`up`, `down`, `test`, `verify`, `build`, `lint`, `openapi:export`, `logs`, `ps`, `clean`)
+- ✅ Cross-platform cmd blocks for all interactive targets
+- ✅ Default CSV path does NOT cause gitignored file to be tracked (`.gitignore` line 2 still in effect)
+
+**Consequences:**
+- Fresh checkouts: `task validate:local` → two terminals → `task import:commit CONFIRM=yes` → working dev environment with Brian's 551 devices imported
+- No breakage: all Phase 1 R7 CI pipeline targets still work (`task verify` unchanged)
+- Future: If docker-compose dev stack adds auth bypass, `import:*` targets can target compose API (`http://localhost:8080` from compose) instead of bare `dotnet run`
+
+**Decision ID:** D-130 (local validation Taskfile targets)
+**Decision Inbox:** `.squad/decisions/inbox/hudson-validation-tasks.md` (full rationale, auth bypass confirmation, backgrounding alternatives, open questions)
+
+**Commit:** Will commit as `feat(taskfile): local validation + CSV import targets (db:migrate, dev, import:preview/commit, validate:local)` with body listing targets and D-130 reference.
+
 <!-- Append new learnings below. Each entry is something lasting about the project. -->

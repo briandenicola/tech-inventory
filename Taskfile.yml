@@ -5,10 +5,17 @@ version: '3'
 # TODO: Task must be installed locally. Install via: `choco install go-task` (Windows) or `brew install go-task/tap/go-task` (macOS/Linux)
 #
 # Core commands:
-#   task up      — Bring up the full dev stack (API, Web, DB)
-#   task test    — Run all tests against the running stack
-#   task down    — Tear down the stack
-#   task verify  — Run the constitution-blessed verification pipeline
+#   task up              — Bring up the full dev stack (API, Web, DB)
+#   task test            — Run all tests against the running stack
+#   task down            — Tear down the stack
+#   task verify          — Run the constitution-blessed verification pipeline
+#
+# Local validation:
+#   task validate:local  — Fresh checkout → working dev environment with DB migrations applied
+#   task dev:api         — Run API (foreground, http://localhost:8080)
+#   task dev:web         — Run Web dev server (foreground, http://localhost:5173)
+#   task import:preview  — Preview CSV import (default: data/Devices.csv)
+#   task import:commit   — Commit CSV import to database (destructive)
 
 silent: false
 method: timestamp
@@ -141,3 +148,153 @@ tasks:
       - cmd: rm -rf src/TechInventory.Web/build src/TechInventory.Web/.svelte-kit
         platforms: [linux, darwin]
       - docker compose down -v
+
+  db:migrate:
+    desc: Apply EF Core migrations to the local database
+    cmds:
+      - dotnet ef database update --project src\TechInventory.Infrastructure\TechInventory.Infrastructure.csproj --startup-project src\TechInventory.Api\TechInventory.Api.csproj
+
+  dev:api:
+    desc: Run the API in Development mode (foreground, http://localhost:8080)
+    cmds:
+      - cmd: set "ASPNETCORE_ENVIRONMENT=Development" && dotnet run --project src\TechInventory.Api\TechInventory.Api.csproj
+        platforms: [windows]
+      - cmd: ASPNETCORE_ENVIRONMENT=Development dotnet run --project src/TechInventory.Api/TechInventory.Api.csproj
+        platforms: [linux, darwin]
+
+  dev:web:
+    desc: Run the Web dev server (foreground, http://localhost:5173)
+    cmds:
+      - cmd: cd src\TechInventory.Web && pnpm run dev
+        platforms: [windows]
+      - cmd: cd src/TechInventory.Web && pnpm run dev
+        platforms: [linux, darwin]
+
+  dev:
+    desc: Run API and Web dev servers (see task validate:local for full flow)
+    cmds:
+      - cmd: |
+          Write-Host "⚠️  Run these commands in separate terminals:" -ForegroundColor Yellow
+          Write-Host "   Terminal 1: task dev:api" -ForegroundColor Cyan
+          Write-Host "   Terminal 2: task dev:web" -ForegroundColor Cyan
+          Write-Host ""
+          Write-Host "API will be at http://localhost:8080 (auth bypass enabled)" -ForegroundColor Green
+          Write-Host "Web will be at http://localhost:5173" -ForegroundColor Green
+        platforms: [windows]
+      - cmd: |
+          echo "⚠️  Run these commands in separate terminals:"
+          echo "   Terminal 1: task dev:api"
+          echo "   Terminal 2: task dev:web"
+          echo ""
+          echo "API will be at http://localhost:8080 (auth bypass enabled)"
+          echo "Web will be at http://localhost:5173"
+        platforms: [linux, darwin]
+
+  import:preview:
+    desc: Preview a CSV import (multipart/form-data POST to /api/v1/imports/preview)
+    vars:
+      CSV: '{{default "data/Devices.csv" .CSV}}'
+    cmds:
+      - cmd: |
+          if (-Not (Test-Path "{{.CSV}}")) {
+            throw "CSV file not found: {{.CSV}}"
+          }
+          Write-Host "📄 Previewing import from: {{.CSV}}" -ForegroundColor Cyan
+          Write-Host ""
+          $response = Invoke-WebRequest -Uri "http://localhost:8080/api/v1/imports/preview" `
+            -Method POST `
+            -Form @{ file = Get-Item "{{.CSV}}" } `
+            -UseBasicParsing
+          $json = $response.Content | ConvertFrom-Json | ConvertTo-Json -Depth 10
+          Write-Host $json
+        platforms: [windows]
+      - cmd: |
+          if [ ! -f "{{.CSV}}" ]; then
+            echo "CSV file not found: {{.CSV}}" >&2
+            exit 1
+          fi
+          echo "📄 Previewing import from: {{.CSV}}"
+          echo ""
+          curl -f -X POST http://localhost:8080/api/v1/imports/preview \
+            -F "file=@{{.CSV}}" \
+            | jq .
+        platforms: [linux, darwin]
+
+  import:commit:
+    desc: Commit a CSV import to the database (DESTRUCTIVE - will write to DB)
+    vars:
+      CSV: '{{default "data/Devices.csv" .CSV}}'
+      CONFIRM: '{{default "no" .CONFIRM}}'
+    cmds:
+      - cmd: |
+          if ("{{.CONFIRM}}" -ne "yes") {
+            Write-Host "⚠️  WARNING: This will write devices to the database." -ForegroundColor Yellow
+            Write-Host "   Run with CONFIRM=yes to proceed:" -ForegroundColor Yellow
+            Write-Host "   task import:commit CONFIRM=yes" -ForegroundColor Cyan
+            exit 1
+          }
+          if (-Not (Test-Path "{{.CSV}}")) {
+            throw "CSV file not found: {{.CSV}}"
+          }
+          Write-Host "💾 Committing import from: {{.CSV}}" -ForegroundColor Green
+          Write-Host ""
+          $response = Invoke-WebRequest -Uri "http://localhost:8080/api/v1/imports/commit" `
+            -Method POST `
+            -Form @{ file = Get-Item "{{.CSV}}" } `
+            -UseBasicParsing
+          $json = $response.Content | ConvertFrom-Json | ConvertTo-Json -Depth 10
+          Write-Host $json
+        platforms: [windows]
+      - cmd: |
+          if [ "{{.CONFIRM}}" != "yes" ]; then
+            echo "⚠️  WARNING: This will write devices to the database."
+            echo "   Run with CONFIRM=yes to proceed:"
+            echo "   task import:commit CONFIRM=yes"
+            exit 1
+          fi
+          if [ ! -f "{{.CSV}}" ]; then
+            echo "CSV file not found: {{.CSV}}" >&2
+            exit 1
+          fi
+          echo "💾 Committing import from: {{.CSV}}"
+          echo ""
+          curl -f -X POST http://localhost:8080/api/v1/imports/commit \
+            -F "file=@{{.CSV}}" \
+            | jq .
+        platforms: [linux, darwin]
+
+  validate:local:
+    desc: Full local validation flow (restore → migrate → instructions)
+    cmds:
+      - task: restore
+      - task: db:migrate
+      - cmd: |
+          Write-Host ""
+          Write-Host "✅ Dependencies restored and database migrated." -ForegroundColor Green
+          Write-Host ""
+          Write-Host "🚀 Next steps:" -ForegroundColor Cyan
+          Write-Host "   1. Open Terminal 1 and run: task dev:api"
+          Write-Host "   2. Open Terminal 2 and run: task dev:web"
+          Write-Host "   3. Wait for both to start, then:"
+          Write-Host "      • API health: http://localhost:8080/health/ready"
+          Write-Host "      • Web UI: http://localhost:5173"
+          Write-Host "   4. Preview your CSV: task import:preview"
+          Write-Host "   5. Commit to DB: task import:commit CONFIRM=yes"
+          Write-Host ""
+          Write-Host "💡 Auth bypass is enabled in Development mode (no token required)." -ForegroundColor Yellow
+        platforms: [windows]
+      - cmd: |
+          echo ""
+          echo "✅ Dependencies restored and database migrated."
+          echo ""
+          echo "🚀 Next steps:"
+          echo "   1. Open Terminal 1 and run: task dev:api"
+          echo "   2. Open Terminal 2 and run: task dev:web"
+          echo "   3. Wait for both to start, then:"
+          echo "      • API health: http://localhost:8080/health/ready"
+          echo "      • Web UI: http://localhost:5173"
+          echo "   4. Preview your CSV: task import:preview"
+          echo "   5. Commit to DB: task import:commit CONFIRM=yes"
+          echo ""
+          echo "💡 Auth bypass is enabled in Development mode (no token required)."
+        platforms: [linux, darwin]

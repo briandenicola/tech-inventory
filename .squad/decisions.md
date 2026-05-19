@@ -2703,6 +2703,35 @@ Both groups typed via `paths['/api/v1/{resource}']` OpenAPI extraction.
 
 ---
 
+### D-130: Local Validation Taskfile Targets
+
+**Author:** Hudson (DevOps / Platform)
+**Date:** 2026-05-18 (Phase 2 post-R6b, local validation automation)
+**Status:** Decided & implemented
+**Related:** Taskfile.yml, `appsettings.Development.json`, launchSettings.json, D-039 (gitleaks bypass pattern), `.squad/decisions/inbox/hudson-validation-tasks.md`
+
+**Decision:** Add Taskfile targets for local validation workflow: **`db:migrate`**, **`dev:api`**, **`dev:web`**, **`dev`**, **`import:preview`**, **`import:commit`**, and **`validate:local`**.
+
+**Rationale:** Brian's manual validation steps (`dotnet ef database update`, `dotnet run`, `pnpm run dev`, CSV import via cURL) should be **one or two commands** for fresh checkouts. Taskfile is the local automation contract (Constitution §2); adding these targets fulfills PRD §7.5.5 ergonomics.
+
+**Key Decisions:**
+
+1. **Backgrounding Strategy:** Two-terminal pattern (no automatic backgrounding). `dev:api` and `dev:web` run foreground. `validate:local` prints instructions. Cross-platform backgrounding in Taskfile is fragile; explicit two-terminal pattern matches Brian's manual workflow, keeps logs visible, and works reliably on Windows/Linux/macOS.
+
+2. **Auth Bypass:** `appsettings.Development.json` has `"Auth:DevBypass": true`. `DevBypassAuthenticationHandler` authenticates all requests as `dev-admin` when `ASPNETCORE_ENVIRONMENT=Development`. No JWT, no header required. Import endpoints work without authentication setup.
+
+3. **CSV Default:** `data/Devices.csv` (Brian's 551-device file, gitignored per `.gitignore` line 2). Both `import:preview` and `import:commit` accept `CSV=path/to/file.csv` override via Taskfile variables.
+
+4. **Destructive-Op UX:** `import:commit` requires `CONFIRM=yes` variable. Prints warning and exits if not set. Protects against accidental data writes.
+
+5. **Ports:** API `http://localhost:8080` (launchSettings.json), Web `http://localhost:5173` (Vite default).
+
+**Implementation:** 7 new Taskfile targets with platform-specific commands (PowerShell for Windows, bash for Linux/macOS). All targets validate cleanly (`task --list` shows all). Header comment block updated to document local validation targets alongside existing `up`/`down`/`test`/`verify`.
+
+**Full decision rationale:** `.squad/decisions/inbox/hudson-validation-tasks.md`
+
+---
+
 ## Governance
 
 - All meaningful changes require team consensus

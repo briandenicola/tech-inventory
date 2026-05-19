@@ -11,6 +11,14 @@ useDefault = true
 [allowlist]
 description = "Documentation references to non-secret config knobs."
 regexTarget = "match"
+paths = [
+  # .env.e2e contains stub Entra GUIDs + a base64 placeholder signing
+  # key used ONLY by CI to satisfy compose `${VAR:?}` interpolation
+  # guards. ASPNETCORE_ENVIRONMENT=Development short-circuits to
+  # DevBypass auth so the stubs are never consulted at request time.
+  # Documented inline in .env.e2e.
+  '''\.env\.e2e$''',
+]
 regexes = [
   '''Auth:DevBypass\s*=\s*true''',
   '''Auth__Local__SeedEnabled\s*=\s*true''',

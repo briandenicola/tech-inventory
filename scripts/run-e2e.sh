@@ -6,9 +6,17 @@ repo_root="$(cd "$script_dir/.." && pwd)"
 base_url="${BASE_URL:-http://localhost:3000}"
 ready_url="${READY_URL:-http://localhost:8080/health/ready}"
 
+# Combined compose invocation: prod compose + e2e override + stub env file.
+# The env file satisfies docker-compose.yml's `${VAR:?}` required-var guards
+# (which abort interpolation before any service starts); the override file
+# swaps GHCR images for local builds and forces Development env / DevBypass.
+compose=(docker compose --env-file "$repo_root/.env.e2e"
+  -f "$repo_root/docker-compose.yml"
+  -f "$repo_root/docker-compose.e2e.yml")
+
 cleanup() {
   cd "$repo_root"
-  docker compose down -v
+  "${compose[@]}" down -v
 }
 
 trap cleanup EXIT
@@ -17,7 +25,7 @@ cd "$repo_root"
 # E2E tests rely on the dev-bypass shim (no MSAL bounce off Microsoft).
 # Compose forwards this as a build ARG to the web Dockerfile.
 export VITE_AUTH_DEV_BYPASS=true
-docker compose up -d --build
+"${compose[@]}" up -d --build
 
 for attempt in $(seq 1 60); do
   if curl --fail --silent "$ready_url" >/dev/null; then

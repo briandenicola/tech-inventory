@@ -6,6 +6,18 @@ $e2eLocationPushed = $false
 $originalBaseUrl = $env:BASE_URL
 $originalDevBypass = $env:VITE_AUTH_DEV_BYPASS
 
+# Combined compose invocation: prod compose + e2e override + stub env file.
+# The env file satisfies docker-compose.yml's `${VAR:?}` required-var guards
+# (which abort interpolation before any service starts); the override file
+# swaps GHCR images for local builds and forces Development env / DevBypass.
+# Hoisted to script scope so the `finally` cleanup block can reuse it.
+$composeArgs = @(
+    "compose",
+    "--env-file", (Join-Path $repoRoot ".env.e2e"),
+    "-f", (Join-Path $repoRoot "docker-compose.yml"),
+    "-f", (Join-Path $repoRoot "docker-compose.e2e.yml")
+)
+
 function Wait-ForReady {
     param(
         [string]$ReadyUrl,
@@ -39,7 +51,7 @@ try {
     # Compose forwards this as a build ARG to the web Dockerfile.
     $env:VITE_AUTH_DEV_BYPASS = "true"
 
-    docker compose up -d --build
+    docker @composeArgs up -d --build
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
     }
@@ -80,6 +92,6 @@ finally {
     }
 
     Set-Location $repoRoot
-    docker compose down -v
+    docker @composeArgs down -v
     Set-Location $originalLocation
 }

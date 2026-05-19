@@ -1,0 +1,31 @@
+# E2E override for the prod docker-compose.yml.
+#
+# - Builds api + web from local source (we want to test what's in the
+#   tree, not whatever stale image is on GHCR).
+# - Forces ASPNETCORE_ENVIRONMENT=Development so the api activates
+#   DevBypassAuthenticationHandler (no real MSAL bounce to Microsoft).
+# - Forwards VITE_AUTH_DEV_BYPASS=true to the web build so the
+#   SvelteKit bundle ships the dev-bypass shim.
+#
+# Used by scripts/run-e2e.{sh,ps1} together with `--env-file .env.e2e`.
+# Combined invocation:
+#   docker compose --env-file .env.e2e \
+#     -f docker-compose.yml -f docker-compose.e2e.yml up -d --build
+
+services:
+  api:
+    image: tech-inventory-api:e2e
+    build:
+      context: .
+      dockerfile: src/TechInventory.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Auth__DevBypass: "true"
+
+  web:
+    image: tech-inventory-web:e2e
+    build:
+      context: .
+      dockerfile: src/TechInventory.Web/Dockerfile
+      args:
+        VITE_AUTH_DEV_BYPASS: "true"

@@ -54,9 +54,10 @@ services:
   web:
     image: ghcr.io/briandenicola/tech-inventory-web:${TECHINV_IMAGE_TAG:-latest}
     build: !reset null
-    # Keep host port 3000 — NPM forwards inbound traffic here.
+    # Keep host port 3000 — NPM forwards inbound traffic here. The web
+    # container listens on 8080 inside (non-root nginx-unprivileged image).
     ports:
-      - "3000:80"
+      - "3000:8080"
     # nginx writes its pid (/var/run/nginx.pid), cache (/var/cache/nginx) and
     # logs (/var/log/nginx) at runtime, so we can't blanket-lock the root FS
     # without breaking the worker. We still drop capabilities + no-new-privs

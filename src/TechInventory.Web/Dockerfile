@@ -20,16 +20,21 @@ COPY src/TechInventory.Web/ ./
 RUN pnpm run build
 
 # --- Runtime stage ---
-FROM nginx:1.27.5-alpine AS runtime
+# nginx-unprivileged: runs as uid 101, listens on 8080, /var/cache/nginx +
+# /var/log/nginx + /tmp are writable by 101. Satisfies Trivy DS-0002 (no
+# root execution) without sacrificing the official nginx image.
+FROM nginxinc/nginx-unprivileged:1.27.5-alpine AS runtime
 
+USER root
 RUN apk add --no-cache wget
+USER 101
 
 COPY src/TechInventory.Web/nginx.conf /etc/nginx/nginx.conf
 COPY --from=build /app/build/ /usr/share/nginx/html/
 
-EXPOSE 80
+EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]

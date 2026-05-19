@@ -34,6 +34,7 @@ pnpm install --frozen-lockfile
 
 echo ""
 echo "🔍 [7/9] Checking frontend (tsc + svelte-check)..."
+pnpm run generate:client
 pnpm run check
 
 echo ""

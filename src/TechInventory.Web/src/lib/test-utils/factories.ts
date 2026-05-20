@@ -6,8 +6,8 @@
  */
 
 import type { DeviceResponse } from '$lib/queries/devices.svelte';
-import type { ReferenceEntity } from '$lib/stores/referenceData';
-import type { DeviceCreateInput } from '$lib/schemas/device';
+import type { ReferenceEntity, ReferenceTag } from '$lib/stores/referenceData';
+import type { DeviceFormInput } from '$lib/schemas/device';
 
 let deviceIdCounter = 0;
 let brandIdCounter = 0;
@@ -15,6 +15,7 @@ let categoryIdCounter = 0;
 let ownerIdCounter = 0;
 let locationIdCounter = 0;
 let networkIdCounter = 0;
+let tagIdCounter = 0;
 
 /**
  * Create a DeviceResponse fixture for tests
@@ -38,6 +39,12 @@ export function createDeviceResponse(overrides?: Partial<DeviceResponse>): Devic
 		notes: null,
 		retiredDate: null,
 		disposalMethod: null,
+		purpose: null,
+		operatingSystem: null,
+		ipAddress: null,
+		macAddress: null,
+		productUrl: null,
+		version: null,
 		createdAt: '2024-01-15T10:30:00Z',
 		createdBy: 'test-user@example.com',
 		modifiedAt: '2024-01-15T10:30:00Z',
@@ -114,11 +121,24 @@ export function createNetwork(overrides?: Partial<ReferenceEntity>): ReferenceEn
 }
 
 /**
- * Create a DeviceCreateInput payload for tests
+ * Create a tag reference entity for tests
+ */
+export function createTag(overrides?: Partial<ReferenceTag>): ReferenceTag {
+	const id = tagIdCounter++;
+	return {
+		id: `00000000-0000-4000-8000-${id.toString().padStart(12, '0')}`,
+		name: `Tag ${id}`,
+		color: '#64748b',
+		...overrides
+	};
+}
+
+/**
+ * Create a DeviceFormInput payload for tests
  */
 export function createDeviceCreateInput(
-	overrides?: Partial<DeviceCreateInput>
-): DeviceCreateInput {
+	overrides?: Partial<DeviceFormInput>
+): DeviceFormInput {
 	return {
 		name: 'Test Device',
 		model: '',
@@ -128,6 +148,7 @@ export function createDeviceCreateInput(
 		ownerId: '',
 		locationId: '',
 		networkId: '',
+		tagIds: [],
 		purchaseDate: '',
 		purchasePrice: null,
 		currencyCode: 'USD',
@@ -152,4 +173,5 @@ export function resetFactories() {
 	ownerIdCounter = 0;
 	locationIdCounter = 0;
 	networkIdCounter = 0;
+	tagIdCounter = 0;
 }

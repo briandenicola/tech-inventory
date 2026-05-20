@@ -181,7 +181,14 @@
 			"editButton": "Edit Device",
 			"deleteButton": "Delete Device",
 			"claimButton": "Claim Ownership",
-			"releaseButton": "Release Ownership"
+			"releaseButton": "Release Ownership",
+			"tagsEmpty": "No tags assigned",
+			"audit": {
+				"title": "Audit Trail",
+				"created": "Created",
+				"lastModified": "Last Modified",
+				"by": "by {actor}"
+			}
 		},
 		"claim": {
 			"button": "Claim Ownership",
@@ -249,6 +256,9 @@
 			"version": "Version"
 		},
 		"form": {
+			"tags": "Tags",
+			"tagsHint": "Choose all tags that apply to this device.",
+			"tagsEmpty": "Create tags in Admin before assigning them to devices.",
 			"additionalDetails": "Additional details (optional)",
 			"modelPlaceholder": "e.g., A2483, GA02768-US, RF28JBEDBSG/AA",
 			"purpose": "Purpose",
@@ -279,6 +289,12 @@
 			"previous": "Previous Page",
 			"next": "Next Page",
 			"showing": "Showing {start} to {end} of {total} devices"
+		},
+		"infiniteScroll": {
+			"loadingMore": "Loading more devices…",
+			"complete": "You’ve reached the end of the device list.",
+			"backToTop": "Back to top",
+			"loadError": "Could not load more devices."
 		},
 		"filters": {
 			"title": "Filters",

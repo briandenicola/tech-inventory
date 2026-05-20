@@ -14,29 +14,30 @@
 	Related: specs/002-frontend-mvp/spec.md J5-J7, Constitution §4.3
 -->
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { t } from '$lib/i18n';
-	import { referenceDataStore } from '$lib/stores/referenceData';
-	import { deviceCreateSchema, type DeviceCreateInput } from '$lib/schemas/device';
+	import { fetchReferenceData, referenceDataStore } from '$lib/stores/referenceData';
+	import DeviceTagSelector from '$lib/components/DeviceTagSelector.svelte';
+	import { deviceFormSchema, type DeviceFormInput } from '$lib/schemas/device';
 	import type { ZodError } from 'zod';
 
 	interface Props {
 		mode: 'create' | 'edit';
-		initialData?: Partial<DeviceCreateInput>;
+		initialData?: Partial<DeviceFormInput>;
 		disabledFields?: string[];
-		onSubmit: (data: DeviceCreateInput) => Promise<void>;
+		onSubmit: (data: DeviceFormInput) => Promise<void>;
 		onCancel: () => void;
 	}
 
 	let { mode, initialData = {}, disabledFields = [], onSubmit, onCancel }: Props = $props();
 
-	// Reference data from store
 	const refData = $derived($referenceDataStore);
 
-	// Form state — capture initial values once when the form mounts and intentionally
-	// ignore future prop changes. `untrack` makes the snapshot intent explicit so the
-	// Svelte compiler stops warning about `state_referenced_locally`.
-	let formData = $state<Record<string, unknown>>(
+	onMount(() => {
+		void fetchReferenceData();
+	});
+
+	let formData = $state<DeviceFormInput>(
 		untrack(() => ({
 			name: initialData.name ?? '',
 			model: initialData.model ?? '',
@@ -46,9 +47,10 @@
 			ownerId: initialData.ownerId ?? '',
 			locationId: initialData.locationId ?? '',
 			networkId: initialData.networkId ?? '',
+			tagIds: initialData.tagIds ?? [],
 			purchaseDate: initialData.purchaseDate ?? '',
 			purchasePrice: initialData.purchasePrice ?? null,
-			currencyCode: initialData.currencyCode ?? 'USD', // TODO D-070: Household default currency
+			currencyCode: initialData.currencyCode ?? 'USD',
 			notes: initialData.notes ?? '',
 			purpose: initialData.purpose ?? '',
 			operatingSystem: initialData.operatingSystem ?? '',
@@ -63,54 +65,71 @@
 	let touched = $state<Record<string, boolean>>({});
 	let isSubmitting = $state(false);
 
-	// Dirty flag (any field modified from initial)
+	function areValuesEqual(initial: unknown, current: unknown): boolean {
+		if (Array.isArray(initial) && Array.isArray(current)) {
+			return (
+				initial.length === current.length &&
+				initial.every((value, index) => value === current[index])
+			);
+		}
+
+		return initial === current;
+	}
+
+	function getInitialValue(formKey: keyof DeviceFormInput): unknown {
+		const initialValue = initialData[formKey];
+		if (initialValue !== undefined) {
+			return initialValue;
+		}
+
+		if (formKey === 'tagIds') {
+			return [];
+		}
+
+		if (formKey === 'purchasePrice') {
+			return null;
+		}
+
+		return '';
+	}
+
 	const isDirty = $derived(
 		Object.keys(formData).some((key) => {
-			const initial = initialData[key as keyof DeviceCreateInput];
-			const current = formData[key];
-			return initial !== current;
+			const formKey = key as keyof DeviceFormInput;
+			const initial = getInitialValue(formKey);
+			const current = formData[formKey];
+			return !areValuesEqual(initial, current);
 		})
 	);
 
-	// Validate single field
 	function validateField(name: string) {
 		try {
-			deviceCreateSchema.parse(formData);
-			// If parse succeeds, clear error for this field
+			deviceFormSchema.parse(formData);
 			errors = { ...errors, [name]: '' };
 		} catch (err) {
 			if (err instanceof Error && 'issues' in err) {
 				const zodError = err as ZodError;
 				const fieldError = zodError.issues.find((issue) => issue.path[0] === name);
-				if (fieldError) {
-					errors = { ...errors, [name]: fieldError.message };
-				} else {
-					errors = { ...errors, [name]: '' };
-				}
+				errors = { ...errors, [name]: fieldError?.message ?? '' };
 			}
 		}
 	}
 
-	// Handle blur (trigger validation)
 	function handleBlur(name: string) {
 		touched = { ...touched, [name]: true };
 		validateField(name);
 	}
 
-	// Handle submit
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
 		isSubmitting = true;
-
-		// Mark all fields as touched
 		touched = Object.keys(formData).reduce(
 			(acc, key) => ({ ...acc, [key]: true }),
-			{}
+			{} as Record<string, boolean>
 		);
 
 		try {
-			// Validate entire form
-			const validatedData = deviceCreateSchema.parse(formData);
+			const validatedData = deviceFormSchema.parse(formData);
 			await onSubmit(validatedData);
 		} catch (err) {
 			if (err instanceof Error && 'issues' in err) {
@@ -129,12 +148,10 @@
 		}
 	}
 
-	// Check if field is disabled
 	function isDisabled(field: string): boolean {
 		return disabledFields.includes(field);
 	}
 
-	// Format currency options (hardcoded for v1; TODO: fetch from settings)
 	const currencyOptions = [
 		{ code: 'USD', name: 'USD' },
 		{ code: 'EUR', name: 'EUR' },
@@ -167,7 +184,10 @@
 
 	<!-- Serial Number -->
 	<div>
-		<label for="serialNumber" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+		<label
+			for="serialNumber"
+			class="block text-sm font-medium text-neutral-900 dark:text-neutral-100"
+		>
 			{t('devices.columns.serial')}
 		</label>
 		<input
@@ -234,7 +254,10 @@
 
 	<!-- Category -->
 	<div>
-		<label for="categoryId" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+		<label
+			for="categoryId"
+			class="block text-sm font-medium text-neutral-900 dark:text-neutral-100"
+		>
 			{t('devices.columns.category')} <span class="text-danger-600">*</span>
 		</label>
 		<select
@@ -278,7 +301,10 @@
 
 	<!-- Location -->
 	<div>
-		<label for="locationId" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+		<label
+			for="locationId"
+			class="block text-sm font-medium text-neutral-900 dark:text-neutral-100"
+		>
 			{t('devices.columns.location')}
 		</label>
 		<select
@@ -320,9 +346,19 @@
 		{/if}
 	</div>
 
+	<!-- Tags -->
+	<DeviceTagSelector
+		options={refData.tags}
+		bind:selectedTagIds={formData.tagIds}
+		disabled={isDisabled('tagIds')}
+	/>
+
 	<!-- Purchase Date -->
 	<div>
-		<label for="purchaseDate" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+		<label
+			for="purchaseDate"
+			class="block text-sm font-medium text-neutral-900 dark:text-neutral-100"
+		>
 			{t('devices.columns.purchaseDate')}
 		</label>
 		<input
@@ -341,7 +377,10 @@
 	<!-- Purchase Price + Currency (two-column on desktop) -->
 	<div class="grid gap-4 sm:grid-cols-2">
 		<div>
-			<label for="purchasePrice" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+			<label
+				for="purchasePrice"
+				class="block text-sm font-medium text-neutral-900 dark:text-neutral-100"
+			>
 				{t('devices.columns.purchasePrice')}
 			</label>
 			<input
@@ -361,7 +400,10 @@
 		</div>
 
 		<div>
-			<label for="currencyCode" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+			<label
+				for="currencyCode"
+				class="block text-sm font-medium text-neutral-900 dark:text-neutral-100"
+			>
 				{t('devices.columns.currency')}
 			</label>
 			<select
@@ -402,7 +444,9 @@
 
 	<!-- Additional Details (collapsible) -->
 	<details class="group">
-		<summary class="cursor-pointer list-none text-sm font-medium text-neutral-900 dark:text-neutral-100">
+		<summary
+			class="cursor-pointer list-none text-sm font-medium text-neutral-900 dark:text-neutral-100"
+		>
 			<span class="inline-flex items-center gap-2">
 				<svg
 					class="h-4 w-4 transition-transform group-open:rotate-90"
@@ -420,7 +464,10 @@
 		<div class="mt-4 space-y-6 border-l-2 border-neutral-200 pl-4 dark:border-neutral-800">
 			<!-- Purpose -->
 			<div>
-				<label for="purpose" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+				<label
+					for="purpose"
+					class="block text-sm font-medium text-neutral-900 dark:text-neutral-100"
+				>
 					{t('devices.form.purpose')}
 				</label>
 				<textarea
@@ -439,7 +486,10 @@
 
 			<!-- Operating System -->
 			<div>
-				<label for="operatingSystem" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+				<label
+					for="operatingSystem"
+					class="block text-sm font-medium text-neutral-900 dark:text-neutral-100"
+				>
 					{t('devices.form.operatingSystem')}
 				</label>
 				<input
@@ -458,7 +508,10 @@
 
 			<!-- IP Address -->
 			<div>
-				<label for="ipAddress" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+				<label
+					for="ipAddress"
+					class="block text-sm font-medium text-neutral-900 dark:text-neutral-100"
+				>
 					{t('devices.form.ipAddress')}
 				</label>
 				<input
@@ -477,7 +530,10 @@
 
 			<!-- MAC Address -->
 			<div>
-				<label for="macAddress" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+				<label
+					for="macAddress"
+					class="block text-sm font-medium text-neutral-900 dark:text-neutral-100"
+				>
 					{t('devices.form.macAddress')}
 				</label>
 				<input
@@ -496,7 +552,10 @@
 
 			<!-- Product URL -->
 			<div>
-				<label for="productUrl" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+				<label
+					for="productUrl"
+					class="block text-sm font-medium text-neutral-900 dark:text-neutral-100"
+				>
 					{t('devices.form.productUrl')}
 				</label>
 				<input
@@ -515,7 +574,10 @@
 
 			<!-- Version -->
 			<div>
-				<label for="version" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+				<label
+					for="version"
+					class="block text-sm font-medium text-neutral-900 dark:text-neutral-100"
+				>
 					{t('devices.form.version')}
 				</label>
 				<input
@@ -551,13 +613,9 @@
 			class="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-primary-500 dark:hover:bg-primary-600"
 		>
 			{#if isSubmitting}
-				<svg
-					class="h-4 w-4 animate-spin"
-					fill="none"
-					viewBox="0 0 24 24"
-					aria-hidden="true"
-				>
-					<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+				<svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+					<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"
+					></circle>
 					<path
 						class="opacity-75"
 						fill="currentColor"

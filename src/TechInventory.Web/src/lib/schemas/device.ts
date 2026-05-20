@@ -28,10 +28,7 @@
 
 import { z } from 'zod';
 
-/**
- * Device create schema (all fields except ID)
- */
-export const deviceCreateSchema = z.object({
+const deviceBaseSchema = z.object({
 	name: z
 		.string()
 		.min(1, 'Device name is required')
@@ -61,21 +58,40 @@ export const deviceCreateSchema = z.object({
 		.nonnegative('Purchase price must be 0 or greater')
 		.optional()
 		.or(z.literal(null)),
-	currencyCode: z.string().length(3, 'Currency code must be 3 characters (e.g., USD)').optional().or(z.literal('')),
+	currencyCode: z
+		.string()
+		.length(3, 'Currency code must be 3 characters (e.g., USD)')
+		.optional()
+		.or(z.literal('')),
 	notes: z.string().max(2000, 'Notes must be 2000 characters or less').optional().or(z.literal('')),
 	purpose: z.string().max(500, 'Purpose must be 500 characters or less').optional().or(z.literal('')),
-	operatingSystem: z.string().max(100, 'Operating system must be 100 characters or less').optional().or(z.literal('')),
+	operatingSystem: z
+		.string()
+		.max(100, 'Operating system must be 100 characters or less')
+		.optional()
+		.or(z.literal('')),
 	ipAddress: z.string().max(45, 'IP address must be 45 characters or less').optional().or(z.literal('')),
 	macAddress: z.string().max(17, 'MAC address must be 17 characters or less').optional().or(z.literal('')),
 	productUrl: z.string().max(500, 'Product URL must be 500 characters or less').optional().or(z.literal('')),
 	version: z.string().max(50, 'Version must be 50 characters or less').optional().or(z.literal(''))
 });
 
+/**
+ * Device create schema (matches API payload)
+ */
+export const deviceCreateSchema = deviceBaseSchema;
 export type DeviceCreateInput = z.infer<typeof deviceCreateSchema>;
+
+/**
+ * Device form schema (includes client-side-only tag selection state)
+ */
+export const deviceFormSchema = deviceBaseSchema.extend({
+	tagIds: z.array(z.string()).default([])
+});
+export type DeviceFormInput = z.infer<typeof deviceFormSchema>;
 
 /**
  * Device update schema (same as create for now; retired-device logic is in UI, not schema)
  */
 export const deviceUpdateSchema = deviceCreateSchema;
-
 export type DeviceUpdateInput = z.infer<typeof deviceUpdateSchema>;

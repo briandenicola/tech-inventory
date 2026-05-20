@@ -28,6 +28,8 @@ public sealed class DeviceConfiguration : IEntityTypeConfiguration<Device>
         builder.Property(entity => entity.PurchasePrice)
             .HasPrecision(18, 2);
 
+        builder.Property(entity => entity.WarrantyExpiry);
+
         builder.Property(entity => entity.Currency)
             .HasConversion(currency => currency.Code, code => Currency.From(code))
             .HasMaxLength(3)

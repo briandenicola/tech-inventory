@@ -1,9 +1,10 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { t } from '$lib/i18n';
 	import { devices } from '$lib/api/client';
-	import { referenceDataStore } from '$lib/stores/referenceData';
+	import { fetchReferenceData, referenceDataStore } from '$lib/stores/referenceData';
 	import { authStore } from '$lib/stores/auth';
 	import { showToast } from '$lib/stores/toast';
 	import { invalidateDevicesCache } from '$lib/queries/devices.svelte';
@@ -12,20 +13,21 @@
 	import DeleteDeviceModal from '$lib/components/DeleteDeviceModal.svelte';
 	import ClaimOwnershipModal from '$lib/components/ClaimOwnershipModal.svelte';
 	import ReleaseOwnershipModal from '$lib/components/ReleaseOwnershipModal.svelte';
+	import DeviceAuditTrail from '$lib/components/DeviceAuditTrail.svelte';
 	import type { DeviceResponse } from '$lib/queries/devices.svelte';
 
 	/**
 	 * T19: Device detail page — all fields, resolved references, breadcrumbs, role-aware Edit/Delete buttons
 	 * T24: Claim Ownership button + modal (visible if device unowned or owned by another)
 	 * T25: Release Ownership button + modal (visible if current user IS owner)
-	 * 
+	 *
 	 * States: loading → success/error/notFound
 	 * Breadcrumbs: Home > Devices > {Device Name}
 	 * Edit button: visible to Admin + Member
 	 * Delete button: visible to Admin only
 	 * Claim button: visible when device.ownerId !== currentUser.id
 	 * Release button: visible when device.ownerId === currentUser.id
-	 * 
+	 *
 	 * Related: specs/002-frontend-mvp/spec.md J5, J9
 	 */
 
@@ -35,6 +37,7 @@
 
 	// Device state
 	let device = $state<DeviceResponse | null>(null);
+	let deviceTags = $state<Array<{ id: string; name: string; color: string | null }>>([]);
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
 	let notFound = $state(false);
@@ -45,35 +48,46 @@
 	let showReleaseModal = $state(false);
 
 	// Role checks
-	const canEdit = $derived(
-		currentUser?.role === 'Admin' || currentUser?.role === 'Member'
-	);
+	const canEdit = $derived(currentUser?.role === 'Admin' || currentUser?.role === 'Member');
 	const canDelete = $derived(currentUser?.role === 'Admin');
 
 	// Ownership checks (T24, T25)
 	// Claim: visible when device unowned OR owned by another user
-	const canClaim = $derived(
-		device && currentUser && device.ownerId !== currentUser.id
-	);
+	const canClaim = $derived(device && currentUser && device.ownerId !== currentUser.id);
 	// Release: visible when current user IS the owner
-	const canRelease = $derived(
-		device && currentUser && device.ownerId === currentUser.id
-	);
+	const canRelease = $derived(device && currentUser && device.ownerId === currentUser.id);
 
 	// Fetch device
 	async function fetchDevice() {
-		if (!deviceId) return; // Guard against undefined
+		if (!deviceId) return;
 
 		isLoading = true;
 		error = null;
 		notFound = false;
 
 		try {
-			const result = await devices.get(deviceId);
-			device = result as DeviceResponse;
+			const [deviceResult, tagResults] = await Promise.all([
+				devices.get(deviceId),
+				devices.listTags(deviceId)
+			]);
+			device = deviceResult as DeviceResponse;
+			deviceTags = tagResults
+				.filter(
+					(tag): tag is { id: string; name: string; color?: string | null } =>
+						!!tag.id && !!tag.name
+				)
+				.map((tag) => ({
+					id: tag.id,
+					name: tag.name,
+					color: tag.color ?? null
+				}));
 		} catch (err) {
 			console.error('[device-detail] Fetch failed:', err);
-			if (err instanceof Error && 'status' in err && (err as unknown as { status: number }).status === 404) {
+			if (
+				err instanceof Error &&
+				'status' in err &&
+				(err as unknown as { status: number }).status === 404
+			) {
 				notFound = true;
 			} else {
 				error = err instanceof Error ? err.message : 'Failed to load device';
@@ -83,31 +97,38 @@
 		}
 	}
 
-	// Load device on mount
+	onMount(() => {
+		void fetchReferenceData();
+	});
+
 	$effect(() => {
 		void fetchDevice();
 	});
 
 	// Resolve reference data (brand, category, owner, location, network names)
 	const brandName = $derived(
-		device?.brandId ? refData.brands.find((b) => b.id === device!.brandId)?.name ?? 'Unknown' : '—'
+		device?.brandId
+			? (refData.brands.find((b) => b.id === device!.brandId)?.name ?? 'Unknown')
+			: '—'
 	);
 	const categoryName = $derived(
 		device?.categoryId
-			? refData.categories.find((c) => c.id === device!.categoryId)?.name ?? 'Unknown'
+			? (refData.categories.find((c) => c.id === device!.categoryId)?.name ?? 'Unknown')
 			: '—'
 	);
 	const ownerName = $derived(
-		device?.ownerId ? refData.owners.find((o) => o.id === device!.ownerId)?.name ?? 'Unknown' : '—'
+		device?.ownerId
+			? (refData.owners.find((o) => o.id === device!.ownerId)?.name ?? 'Unknown')
+			: '—'
 	);
 	const locationName = $derived(
 		device?.locationId
-			? refData.locations.find((l) => l.id === device!.locationId)?.name ?? 'Unknown'
+			? (refData.locations.find((l) => l.id === device!.locationId)?.name ?? 'Unknown')
 			: '—'
 	);
 	const networkName = $derived(
 		device?.networkId
-			? refData.networks.find((n) => n.id === device!.networkId)?.name ?? 'Unknown'
+			? (refData.networks.find((n) => n.id === device!.networkId)?.name ?? 'Unknown')
 			: '—'
 	);
 
@@ -133,18 +154,6 @@
 			year: 'numeric',
 			month: 'short',
 			day: 'numeric'
-		});
-	}
-
-	function formatDateTime(dateStr: string | null): string {
-		if (!dateStr) return '—';
-		const date = new Date(dateStr);
-		return date.toLocaleString('en-US', {
-			year: 'numeric',
-			month: 'short',
-			day: 'numeric',
-			hour: '2-digit',
-			minute: '2-digit'
 		});
 	}
 
@@ -334,7 +343,7 @@
 
 			{#if canEdit}
 				<a
-					href="/devices/{device.id}/edit"
+					href={`/devices/${device.id}/edit`}
 					class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-primary-600 bg-white px-4 py-2 text-sm font-medium text-primary-600 transition-colors hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-primary-500 dark:bg-neutral-900 dark:text-primary-400 dark:hover:bg-neutral-800"
 				>
 					<svg
@@ -386,7 +395,9 @@
 {#if isLoading}
 	<LoadingSkeleton rows={5} />
 {:else if notFound}
-	<div class="rounded-lg border border-warning-200 bg-warning-50 p-12 text-center dark:border-warning-900 dark:bg-warning-950">
+	<div
+		class="rounded-lg border border-warning-200 bg-warning-50 p-12 text-center dark:border-warning-900 dark:bg-warning-950"
+	>
 		<svg
 			class="mx-auto h-16 w-16 text-warning-600 dark:text-warning-400"
 			fill="none"
@@ -536,7 +547,9 @@
 					<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
 						{t('devices.columns.operatingSystem')}
 					</dt>
-					<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">{device.operatingSystem}</dd>
+					<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">
+						{device.operatingSystem}
+					</dd>
 				</div>
 			{/if}
 
@@ -554,7 +567,9 @@
 					<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
 						{t('devices.columns.ipAddress')}
 					</dt>
-					<dd class="mt-1 font-mono text-base text-neutral-900 dark:text-neutral-100">{device.ipAddress}</dd>
+					<dd class="mt-1 font-mono text-base text-neutral-900 dark:text-neutral-100">
+						{device.ipAddress}
+					</dd>
 				</div>
 			{/if}
 
@@ -563,7 +578,9 @@
 					<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
 						{t('devices.columns.macAddress')}
 					</dt>
-					<dd class="mt-1 font-mono text-base text-neutral-900 dark:text-neutral-100">{device.macAddress}</dd>
+					<dd class="mt-1 font-mono text-base text-neutral-900 dark:text-neutral-100">
+						{device.macAddress}
+					</dd>
 				</div>
 			{/if}
 
@@ -601,12 +618,42 @@
 					<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
 						{t('devices.columns.disposalMethod')}
 					</dt>
-					<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">{device.disposalMethod}</dd>
+					<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">
+						{device.disposalMethod}
+					</dd>
 				</div>
 			{/if}
 		</div>
 
-		<!-- F034: long-form prose fields render full-width below the grid. -->
+		<!-- Tags -->
+		<div>
+			<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+				{t('common.nouns.tags')}
+			</dt>
+			<dd class="mt-2">
+				{#if deviceTags.length > 0}
+					<ul class="flex flex-wrap gap-2">
+						{#each deviceTags as tag (tag.id)}
+							<li
+								class="inline-flex items-center gap-2 rounded-full border border-neutral-300 bg-neutral-50 px-3 py-1 text-sm text-neutral-700 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200"
+							>
+								<span
+									class="h-2.5 w-2.5 rounded-full bg-neutral-400"
+									style:background-color={tag.color ?? undefined}
+									aria-hidden="true"
+								></span>
+								{tag.name}
+							</li>
+						{/each}
+					</ul>
+				{:else}
+					<p class="text-base text-neutral-900 dark:text-neutral-100">
+						{t('devices.detail.tagsEmpty')}
+					</p>
+				{/if}
+			</dd>
+		</div>
+
 		{#if device.purpose}
 			<div>
 				<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
@@ -630,30 +677,12 @@
 			</div>
 		{/if}
 
-		<!-- Audit trail (created/modified timestamps) -->
-		<div class="border-t border-neutral-200 pt-6 dark:border-neutral-800">
-			<h3 class="text-sm font-medium text-neutral-600 dark:text-neutral-400">Audit Trail</h3>
-			<dl class="mt-2 space-y-1 text-sm text-neutral-600 dark:text-neutral-400">
-				<div>
-					<span class="font-medium">Created:</span>
-					<time datetime={device.createdAt} title={formatDateTime(device.createdAt)}>
-						{formatDateTime(device.createdAt)}
-					</time>
-					{#if device.createdBy}
-						<span> by {device.createdBy}</span>
-					{/if}
-				</div>
-				<div>
-					<span class="font-medium">Last Modified:</span>
-					<time datetime={device.modifiedAt} title={formatDateTime(device.modifiedAt)}>
-						{formatDateTime(device.modifiedAt)}
-					</time>
-					{#if device.modifiedBy}
-						<span> by {device.modifiedBy}</span>
-					{/if}
-				</div>
-			</dl>
-		</div>
+		<DeviceAuditTrail
+			createdAt={device.createdAt}
+			createdBy={device.createdBy}
+			modifiedAt={device.modifiedAt}
+			modifiedBy={device.modifiedBy}
+		/>
 	</div>
 {/if}
 

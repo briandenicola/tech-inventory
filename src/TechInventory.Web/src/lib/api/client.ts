@@ -264,7 +264,27 @@ export const devices = {
 		apiFetch<void>(
 			`/api/v1/devices/${encodeURIComponent(id)}/tags/${encodeURIComponent(tagId)}`,
 			{ method: 'DELETE' }
-		)
+		),
+
+	syncTags: async (id: string, nextTagIds: string[]) => {
+		const uniqueNextTagIds = Array.from(
+			new Set(nextTagIds.filter((candidate): candidate is string => candidate.length > 0))
+		);
+		const currentTags = await devices.listTags(id);
+		const currentTagIds = currentTags
+			.map((tag) => tag.id)
+			.filter((tagId): tagId is string => typeof tagId === 'string' && tagId.length > 0);
+
+		const tagsToAdd = uniqueNextTagIds.filter((tagId) => !currentTagIds.includes(tagId));
+		const tagsToRemove = currentTagIds.filter((tagId) => !uniqueNextTagIds.includes(tagId));
+
+		await Promise.all([
+			...tagsToAdd.map((tagId) => devices.addTag(id, tagId)),
+			...tagsToRemove.map((tagId) => devices.removeTag(id, tagId))
+		]);
+
+		return devices.listTags(id);
+	}
 };
 
 // Brands

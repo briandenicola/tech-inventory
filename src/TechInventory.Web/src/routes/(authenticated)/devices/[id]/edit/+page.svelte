@@ -1,17 +1,16 @@
 <script lang="ts">
-	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { t } from '$lib/i18n';
 	import { devices } from '$lib/api/client';
-	import { showToast } from '$lib/stores/toast';
-	import { invalidateDevicesCache } from '$lib/queries/devices.svelte';
-	import { referenceDataStore } from '$lib/stores/referenceData';
 	import DeviceForm from '$lib/components/DeviceForm.svelte';
-	import TagPicker from '$lib/components/TagPicker.svelte';
-	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
-	import type { DeviceResponse } from '$lib/queries/devices.svelte';
-	import type { DeviceUpdateInput } from '$lib/schemas/device';
+	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
+	import { invalidateDevicesCache, type DeviceResponse } from '$lib/queries/devices.svelte';
+	import type { DeviceFormInput } from '$lib/schemas/device';
+	import { registerPullToRefresh } from '$lib/stores/pullToRefresh';
+	import { fetchReferenceData } from '$lib/stores/referenceData';
+	import { showToast } from '$lib/stores/toast';
 
 	/**
 	 * T21: Device edit page — /devices/[id]/edit
@@ -19,40 +18,33 @@
 	 * Pre-populate form with existing device data. Retired devices show badge;
 	 * only notes editable when retired. Submit → PUT /api/v1/devices/{id} → toast → redirect.
 	 *
-	 * Related: specs/002-frontend-mvp/spec.md J7, F030 (tag picker)
+	 * Related: specs/002-frontend-mvp/spec.md J7
 	 */
 
 	const deviceId = $derived($page.params.id);
 
-	// Device state
 	let device = $state<DeviceResponse | null>(null);
+	let deviceTagIds = $state<string[]>([]);
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
 
-	// F030: tag picker state — load current tags on device fetch and diff
-	// against `selectedTagIds` on submit so we POST/DELETE only what changed.
-	let originalTagIds = $state<string[]>([]);
-	let selectedTagIds = $state<string[]>([]);
-	const availableTags = $derived($referenceDataStore.tags);
-
-	// Fetch device + tags
 	async function fetchDevice() {
-		if (!deviceId) return; // Guard against undefined
+		if (!deviceId) {
+			return;
+		}
 
 		isLoading = true;
 		error = null;
 
 		try {
-			const [deviceResult, tagsResult] = await Promise.all([
+			const [deviceResult, tagResults] = await Promise.all([
 				devices.get(deviceId),
 				devices.listTags(deviceId)
 			]);
 			device = deviceResult as DeviceResponse;
-			const currentTagIds = (tagsResult ?? [])
+			deviceTagIds = tagResults
 				.map((tag) => tag.id)
-				.filter((id): id is string => !!id);
-			originalTagIds = currentTagIds;
-			selectedTagIds = [...currentTagIds];
+				.filter((tagId): tagId is string => typeof tagId === 'string' && tagId.length > 0);
 		} catch (err) {
 			console.error('[device-edit] Fetch failed:', err);
 			error = err instanceof Error ? err.message : 'Failed to load device';
@@ -61,20 +53,21 @@
 		}
 	}
 
-	// Load device on mount
 	$effect(() => {
 		void fetchDevice();
 	});
 
-	// Retired device logic: disable all fields except notes
+	$effect(() => {
+		const unregister = registerPullToRefresh($page.url.pathname, async () => {
+			await Promise.all([fetchReferenceData(), fetchDevice()]);
+		});
+		return unregister;
+	});
+
 	const isRetired = $derived(device?.status === 'Retired');
-	// F030: AddTagToDeviceCommand rejects Disposed devices, and Retired devices
-	// are semantically locked too — hide tag mutations in either state.
-	const tagsLocked = $derived(
-		device?.status === 'Retired' || device?.status === 'Disposed'
-	);
-	const disabledFields = $derived(
-		isRetired
+	const tagsLocked = $derived(device?.status === 'Retired' || device?.status === 'Disposed');
+	const disabledFields = $derived.by(() => {
+		const fields = isRetired
 			? [
 					'name',
 					'serialNumber',
@@ -87,17 +80,24 @@
 					'purchasePrice',
 					'currencyCode'
 				]
-			: []
-	);
+			: [];
 
-	// Handle submit
-	async function handleSubmit(data: DeviceUpdateInput) {
-		if (!device) return;
+		if (tagsLocked && !fields.includes('tagIds')) {
+			fields.push('tagIds');
+		}
+
+		return fields;
+	});
+
+	async function handleSubmit(data: DeviceFormInput) {
+		if (!device) {
+			return;
+		}
 
 		try {
-			// Transform empty strings to undefined for optional UUID fields
+			const { tagIds, ...deviceData } = data;
 			const payload = {
-				...data,
+				...deviceData,
 				model: data.model || undefined,
 				ownerId: data.ownerId || undefined,
 				locationId: data.locationId || undefined,
@@ -111,39 +111,36 @@
 
 			await devices.update(device.id, payload);
 
-			// F030: apply tag diff. Skip entirely on locked devices (Retired/Disposed)
-			// because the picker is hidden and selectedTagIds === originalTagIds.
 			let tagFailures = 0;
 			if (!tagsLocked) {
-				const originalSet = new Set(originalTagIds);
-				const selectedSet = new Set(selectedTagIds);
-				const toAdd = selectedTagIds.filter((id) => !originalSet.has(id));
-				const toRemove = originalTagIds.filter((id) => !selectedSet.has(id));
+				const currentDeviceId = device.id;
+				const nextTagIds = Array.from(new Set(tagIds.filter((tagId) => tagId.length > 0)));
+				const tagsToAdd = nextTagIds.filter((tagId) => !deviceTagIds.includes(tagId));
+				const tagsToRemove = deviceTagIds.filter((tagId) => !nextTagIds.includes(tagId));
 
-				if (toAdd.length > 0 || toRemove.length > 0) {
+				if (tagsToAdd.length > 0 || tagsToRemove.length > 0) {
 					const results = await Promise.allSettled([
-						...toAdd.map((id) => devices.addTag(device!.id, id)),
-						...toRemove.map((id) => devices.removeTag(device!.id, id))
+						...tagsToAdd.map((tagId) => devices.addTag(currentDeviceId, tagId)),
+						...tagsToRemove.map((tagId) => devices.removeTag(currentDeviceId, tagId))
 					]);
-					tagFailures = results.filter((r) => r.status === 'rejected').length;
+					tagFailures = results.filter((result) => result.status === 'rejected').length;
+				}
+
+				if (tagFailures === 0) {
+					deviceTagIds = nextTagIds;
 				}
 			}
 
 			invalidateDevicesCache();
 
-			if (tagFailures > 0) {
-				showToast({
-					type: 'error',
-					message: t('devices.tags.updateErrorSome', { count: tagFailures })
-				});
-			} else {
-				showToast({
-					type: 'success',
-					message: `Device "${data.name}" updated successfully`
-				});
-			}
+			showToast({
+				type: tagFailures > 0 ? 'error' : 'success',
+				message:
+					tagFailures > 0
+						? t('devices.tags.updateErrorSome', { count: tagFailures })
+						: `Device "${data.name}" updated successfully`
+			});
 
-			// Navigate back to detail page
 			goto(`/devices/${device.id}`);
 		} catch (err) {
 			console.error('[device-edit] Submit failed:', err);
@@ -152,7 +149,7 @@
 					? (err as unknown as { detail: string }).detail
 					: 'Failed to update device';
 			showToast({ type: 'error', message: errorMsg });
-			throw err; // Re-throw to keep form in submitting state
+			throw err;
 		}
 	}
 
@@ -197,10 +194,7 @@
 			</svg>
 		</li>
 		<li>
-			<a
-				href="/devices/{deviceId}"
-				class="hover:text-primary-600 dark:hover:text-primary-400"
-			>
+			<a href={`/devices/${deviceId}`} class="hover:text-primary-600 dark:hover:text-primary-400">
 				{device?.name ?? 'Device'}
 			</a>
 		</li>
@@ -259,29 +253,9 @@
 	<ErrorState {error} onRetry={fetchDevice} />
 {:else if device}
 	<!-- Form -->
-	<div class="rounded-lg border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
-		{#if !tagsLocked}
-			<!--
-				F030: edit-mode tag picker. Hidden on Retired/Disposed devices
-				because AddTagToDeviceCommand will reject mutations and there's
-				no point letting the user dirty the selection.
-			-->
-			<div class="mb-6">
-				<label
-					for="edit-device-tag-picker"
-					class="mb-1.5 block text-sm font-medium text-neutral-900 dark:text-neutral-100"
-				>
-					{t('devices.tags.sectionLabel')}
-				</label>
-				<TagPicker
-					id="edit-device-tag-picker"
-					selectedIds={selectedTagIds}
-					{availableTags}
-					onChange={(ids) => (selectedTagIds = ids)}
-				/>
-			</div>
-		{/if}
-
+	<div
+		class="rounded-lg border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-950"
+	>
 		<DeviceForm
 			mode="edit"
 			initialData={{
@@ -293,10 +267,17 @@
 				ownerId: device.ownerId ?? '',
 				locationId: device.locationId ?? '',
 				networkId: device.networkId ?? '',
+				tagIds: deviceTagIds,
 				purchaseDate: device.purchaseDate ?? '',
 				purchasePrice: device.purchasePrice ?? null,
 				currencyCode: device.currencyCode ?? 'USD',
-				notes: device.notes ?? ''
+				notes: device.notes ?? '',
+				purpose: device.purpose ?? '',
+				operatingSystem: device.operatingSystem ?? '',
+				ipAddress: device.ipAddress ?? '',
+				macAddress: device.macAddress ?? '',
+				productUrl: device.productUrl ?? '',
+				version: device.version ?? ''
 			}}
 			{disabledFields}
 			onSubmit={handleSubmit}

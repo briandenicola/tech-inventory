@@ -31,7 +31,8 @@ public sealed record UpdateDeviceCommand(
     string? IpAddress = null,
     string? MacAddress = null,
     string? ProductUrl = null,
-    string? Version = null) : IRequest<Result<DeviceResponse>>, IAuditable;
+    string? Version = null,
+    DateOnly? WarrantyExpiry = null) : IRequest<Result<DeviceResponse>>, IAuditable;
 
 public sealed class UpdateDeviceCommandHandler(
     IDeviceRepository deviceRepository,
@@ -189,7 +190,8 @@ public sealed class UpdateDeviceCommandHandler(
             request.IpAddress,
             request.MacAddress,
             request.ProductUrl,
-            request.Version);
+            request.Version,
+            request.WarrantyExpiry);
 
         if (request.Status != device.Status || request.RetiredDate != device.RetiredDate || NormalizeOptional(request.DisposalMethod) != device.DisposalMethod)
         {
@@ -216,6 +218,7 @@ public sealed class UpdateDeviceCommandHandler(
             || !string.Equals(device.SerialNumber, NormalizeOptional(request.SerialNumber), StringComparison.Ordinal)
             || device.NetworkId != request.NetworkId
             || device.PurchaseDate != request.PurchaseDate
+            || device.WarrantyExpiry != request.WarrantyExpiry
             || device.PurchasePrice != request.PurchasePrice
             || device.RetiredDate != request.RetiredDate;
 

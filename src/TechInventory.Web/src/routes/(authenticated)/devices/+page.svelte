@@ -4,7 +4,16 @@
 	import { onMount } from 'svelte';
 	import { t } from '$lib/i18n';
 	import { authStore } from '$lib/stores/auth';
-	import { useDevices, type DeviceFilters as DeviceFiltersType } from '$lib/queries/devices.svelte';
+	import {
+		fetchDevicesPage,
+		invalidateDevicesCache,
+		serializeDeviceFilters,
+		useDevices,
+		type DeviceFilters as DeviceFiltersType,
+		type DeviceResponse
+	} from '$lib/queries/devices.svelte';
+	import { registerPullToRefresh } from '$lib/stores/pullToRefresh';
+	import BackToTopFab from '$lib/components/BackToTopFab.svelte';
 	import {
 		getDevicesDefaultView,
 		setDevicesDefaultView,
@@ -31,15 +40,27 @@
 
 	/**
 	 * T15: Devices list page — paginated table with filters, sort, and pagination.
-	 * 
+	 *
 	 * States: loading → success/empty/error
 	 * Mobile: stack columns as cards (360px+)
 	 * URL-backed: page, pageSize, search, filters, sort via $page.url.searchParams
-	 * 
+	 *
 	 * Related: specs/002-frontend-mvp/spec.md §5, J4
 	 */
 
 	const currentUser = $derived($authStore.currentUser);
+	const initialReducedMotion =
+		typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+	let prefersReducedMotion = $state(initialReducedMotion);
+	let showBackToTop = $state(false);
+	let infiniteItems = $state<DeviceResponse[]>([]);
+	let infinitePage = $state(0);
+	let totalCount = $state(0);
+	let isLoadingMore = $state(false);
+	let loadMoreError = $state<string | null>(null);
+	let activeInfiniteKey = $state('');
+	let sentinel = $state<HTMLDivElement | null>(null);
 
 	// F026: Active-default status filter.
 	//
@@ -104,18 +125,33 @@
 		$page.url.searchParams.get('status') === STATUS_ALL_SENTINEL
 	);
 
-	// Devices query (reactive — pass a getter so filter changes propagate)
-	// When grouping is active we fetch the max page size (200, capped by the
-	// API's ListDevicesQueryValidator) so groups span the largest practical
-	// result set. For households with >200 devices, grouping a filtered
-	// subset still works; a future enhancement could loop pages.
-	const effectiveFilters = $derived.by(() => {
+	// Devices query (reactive — pass a getter so filter changes propagate).
+	// Infinite scroll keeps the API on page 1 and progressively appends pages on
+	// the client unless grouping is active or reduced motion requests the classic
+	// pagination fallback.
+	const queryFilters = $derived.by(() => {
 		if (urlFilters.groupBy) {
 			return { ...urlFilters, page: 1, pageSize: 200 };
 		}
-		return urlFilters;
+
+		return prefersReducedMotion ? urlFilters : { ...urlFilters, page: 1 };
 	});
-	const query = useDevices(() => effectiveFilters);
+	const query = useDevices(() => queryFilters);
+	const infiniteBaseFilters = $derived.by(() => ({ ...urlFilters, page: 1 }));
+	const infiniteFiltersKey = $derived(serializeDeviceFilters(infiniteBaseFilters));
+	const displayedDevices = $derived.by(() => {
+		if (urlFilters.groupBy || prefersReducedMotion) {
+			return query.data?.items ?? [];
+		}
+
+		return infiniteItems.length > 0 ? infiniteItems : (query.data?.items ?? []);
+	});
+	const hasMorePages = $derived(
+		!urlFilters.groupBy &&
+			!prefersReducedMotion &&
+			displayedDevices.length > 0 &&
+			displayedDevices.length < totalCount
+	);
 
 	// Mobile drawer state
 	let filtersOpen = $state(false);
@@ -217,11 +253,29 @@
 		if (bareEntry && storedDefault) {
 			void goto(`?${storedDefault}`, { replaceState: true, keepFocus: true, noScroll: true });
 		}
-		// Load mobile view mode preference
+
 		const savedViewMode = getDevicesViewMode(currentUser?.id);
 		if (savedViewMode) {
 			mobileViewMode = savedViewMode;
 		}
+
+		const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+		const updateMotionPreference = () => {
+			prefersReducedMotion = mediaQuery.matches;
+		};
+		const updateBackToTopVisibility = () => {
+			showBackToTop = window.scrollY > window.innerHeight;
+		};
+
+		updateMotionPreference();
+		updateBackToTopVisibility();
+		mediaQuery.addEventListener('change', updateMotionPreference);
+		window.addEventListener('scroll', updateBackToTopVisibility, { passive: true });
+
+		return () => {
+			mediaQuery.removeEventListener('change', updateMotionPreference);
+			window.removeEventListener('scroll', updateBackToTopVisibility);
+		};
 	});
 
 	const currentQueryNormalized = $derived(normalizeQueryString($page.url.search));
@@ -263,6 +317,114 @@
 		);
 	});
 
+	async function loadNextPage() {
+		if (prefersReducedMotion || urlFilters.groupBy || isLoadingMore || !hasMorePages) {
+			return;
+		}
+
+		isLoadingMore = true;
+		loadMoreError = null;
+
+		try {
+			const nextPage = await fetchDevicesPage({
+				...infiniteBaseFilters,
+				page: infinitePage + 1
+			});
+			const nextItems = nextPage.items ?? [];
+
+			infiniteItems = [...infiniteItems, ...nextItems];
+			infinitePage = nextPage.page;
+			totalCount = nextPage.totalCount;
+		} catch (err) {
+			loadMoreError = err instanceof Error ? err.message : t('devices.infiniteScroll.loadError');
+		} finally {
+			isLoadingMore = false;
+		}
+	}
+
+	async function refreshDevicesList() {
+		invalidateDevicesCache();
+		loadMoreError = null;
+
+		if (!prefersReducedMotion && !urlFilters.groupBy) {
+			activeInfiniteKey = '';
+			infiniteItems = [];
+			infinitePage = 0;
+			totalCount = 0;
+		}
+
+		await query.refetch();
+	}
+
+	function scrollToTop() {
+		if (typeof window === 'undefined') {
+			return;
+		}
+
+		window.scrollTo({
+			top: 0,
+			behavior: prefersReducedMotion ? 'auto' : 'smooth'
+		});
+	}
+
+	$effect(() => {
+		const unregister = registerPullToRefresh($page.url.pathname, refreshDevicesList);
+		return unregister;
+	});
+
+	$effect(() => {
+		if (prefersReducedMotion || urlFilters.groupBy) {
+			return;
+		}
+
+		const key = infiniteFiltersKey;
+		if (key === activeInfiniteKey) {
+			return;
+		}
+
+		activeInfiniteKey = key;
+		infiniteItems = [];
+		infinitePage = 0;
+		totalCount = 0;
+		loadMoreError = null;
+	});
+
+	$effect(() => {
+		if (prefersReducedMotion || urlFilters.groupBy || !query.data) {
+			return;
+		}
+
+		const key = infiniteFiltersKey;
+		if (activeInfiniteKey !== key || query.data.page !== 1) {
+			return;
+		}
+
+		infiniteItems = query.data.items ?? [];
+		infinitePage = query.data.page;
+		totalCount = query.data.totalCount;
+		loadMoreError = null;
+	});
+
+	$effect(() => {
+		if (prefersReducedMotion || urlFilters.groupBy || !sentinel || !hasMorePages || loadMoreError) {
+			return;
+		}
+
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries.some((entry) => entry.isIntersecting)) {
+					void loadNextPage();
+				}
+			},
+			{ rootMargin: '200px 0px' }
+		);
+
+		observer.observe(sentinel);
+		return () => {
+			observer.disconnect();
+		};
+	});
+
 	// F024 — multi-select bulk actions state.
 	// Selection is ephemeral (not URL-persisted); reset whenever filters/sort/grouping
 	// or pagination change so users never act on a stale, off-screen selection.
@@ -299,7 +461,7 @@
 		selectedIds = new Set<string>();
 	});
 
-	const visibleDeviceIds = $derived(query.data?.items?.map((d) => d.id) ?? []);
+	const visibleDeviceIds = $derived(displayedDevices.map((device) => device.id));
 	const allVisibleSelected = $derived(
 		visibleDeviceIds.length > 0 && visibleDeviceIds.every((id) => selectedIds.has(id))
 	);
@@ -372,7 +534,7 @@
 			});
 			bulkUpdateField = null;
 			clearSelection();
-			await query.refetch();
+			await refreshDevicesList();
 		} catch (err) {
 			console.error('[devices] bulkUpdate failed:', err);
 			showToast({ message: t('devices.bulk.errorPartial'), type: 'error' });
@@ -389,7 +551,7 @@
 			});
 			bulkDeleteOpen = false;
 			clearSelection();
-			await query.refetch();
+			await refreshDevicesList();
 		} catch (err) {
 			console.error('[devices] bulkDelete failed:', err);
 			showToast({ message: t('devices.bulk.errorPartial'), type: 'error' });
@@ -557,13 +719,12 @@
 		{#if query.isLoading}
 			<LoadingSkeleton rows={7} />
 		{:else if query.error}
-			<ErrorState error={query.error} onRetry={query.refetch} />
-		{:else if !query.data || !query.data.items || query.data.items.length === 0}
+			<ErrorState error={query.error} onRetry={refreshDevicesList} />
+		{:else if displayedDevices.length === 0}
 			<EmptyState filtered={hasActiveFilters} onAdd={() => (createModalOpen = true)} />
 		{:else}
-			<!-- Table -->
 			<DeviceTable
-				devices={query.data.items}
+				devices={displayedDevices}
 				groups={groupedView}
 				currentSort={urlFilters.sort}
 				sortDir={urlFilters.sortDir}
@@ -577,14 +738,46 @@
 				mobileViewMode={mobileViewMode}
 			/>
 
-			<!-- Pagination (hidden while grouping is active; groups span the full page) -->
-			{#if !urlFilters.groupBy}
+			{#if urlFilters.groupBy}
+				<!-- Grouped mode renders a single expanded page. -->
+			{:else if prefersReducedMotion}
 				<PaginationControls
-					currentPage={query.data.page}
-					pageSize={query.data.pageSize}
-					totalCount={query.data.totalCount}
+					currentPage={query.data?.page ?? urlFilters.page ?? 1}
+					pageSize={query.data?.pageSize ?? urlFilters.pageSize ?? 25}
+					totalCount={query.data?.totalCount ?? totalCount}
 					onPageChange={handlePageChange}
 				/>
+			{:else}
+				<div class="mt-6" aria-live="polite" aria-atomic="true">
+					{#if hasMorePages}
+						<div bind:this={sentinel} class="h-px w-full" aria-hidden="true"></div>
+					{/if}
+
+					{#if isLoadingMore}
+						<div class="flex items-center justify-center gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-700 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300">
+							<svg class="h-5 w-5 animate-spin text-primary-600 dark:text-primary-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+								<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+								<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+							</svg>
+							<span>{t('devices.infiniteScroll.loadingMore')}</span>
+						</div>
+					{:else if loadMoreError}
+						<div class="flex flex-col items-start gap-3 rounded-lg border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-700 dark:border-danger-900 dark:bg-danger-900/30 dark:text-danger-100 sm:flex-row sm:items-center sm:justify-between">
+							<span>{loadMoreError}</span>
+							<button
+								type="button"
+								onclick={() => void loadNextPage()}
+								class="rounded-lg border border-danger-300 px-3 py-2 font-medium transition-colors hover:bg-danger-100 focus:outline-none focus:ring-2 focus:ring-danger-500 dark:border-danger-700 dark:hover:bg-danger-900/60"
+							>
+								{t('common.actions.retry')}
+							</button>
+						</div>
+					{:else if !hasMorePages}
+						<p class="text-center text-sm text-neutral-600 dark:text-neutral-400">
+							{t('devices.infiniteScroll.complete')}
+						</p>
+					{/if}
+				</div>
 			{/if}
 		{/if}
 	</div>
@@ -592,7 +785,7 @@
 {#if createModalOpen}
 	<AddDeviceModal
 		onClose={() => (createModalOpen = false)}
-		onCreated={() => query.refetch()}
+		onCreated={() => void refreshDevicesList()}
 	/>
 {/if}
 
@@ -630,7 +823,7 @@
 	<button
 		type="button"
 		onclick={() => (createModalOpen = true)}
-		class="md:hidden fixed bottom-6 right-6 z-30 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary-600 text-white shadow-lg transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600"
+		class="md:hidden fixed right-6 z-30 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary-600 text-white shadow-lg transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600 {showBackToTop ? 'bottom-24' : 'bottom-6'}"
 		aria-label={t('devices.list.addFab')}
 	>
 		<svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -639,3 +832,8 @@
 	</button>
 {/if}
 
+<BackToTopFab
+	visible={showBackToTop}
+	label={t('devices.infiniteScroll.backToTop')}
+	onClick={scrollToTop}
+/>

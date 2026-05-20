@@ -450,7 +450,7 @@
 				</label>
 			{/if}
 			<a
-				href="/devices/{device.id}"
+				href={`/devices/${device.id}`}
 				class="block p-3"
 				class:pr-10={selectable}
 			>

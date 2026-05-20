@@ -13,10 +13,12 @@ public sealed class CreateDeviceCommandValidator : AbstractValidator<CreateDevic
             command => command.CurrencyCode,
             command => command.Model,
             command => command.SerialNumber,
+            command => command.PurchaseDate,
             command => command.PurchasePrice,
             command => command.Notes,
             command => command.DisposalMethod,
             command => command.RetiredDate,
+            command => command.WarrantyExpiry,
             command => command.Status);
 
         DeviceValidationRules.ApplyOptionalBrandRule(this, command => command.BrandId);

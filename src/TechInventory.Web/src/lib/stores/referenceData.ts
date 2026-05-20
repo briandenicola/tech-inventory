@@ -22,6 +22,12 @@ export type ReferenceEntity = {
 	name: string;
 };
 
+export type ReferenceTag = TagResponse & {
+	id: string;
+	name: string;
+	color: string | null;
+};
+
 /**
  * Reference data state
  */
@@ -31,7 +37,7 @@ export interface ReferenceDataState {
 	owners: ReferenceEntity[];
 	locations: ReferenceEntity[];
 	networks: ReferenceEntity[];
-	tags: TagResponse[];
+	tags: ReferenceTag[];
 	isLoading: boolean;
 	error: string | null;
 }
@@ -104,12 +110,16 @@ export async function fetchReferenceData(): Promise<void> {
 					.filter((n): n is { id: string; name: string } => !!n.id && !!n.name)
 					.map((n) => ({ id: n.id, name: n.name }))
 			: [];
-		// Tags keep the full TagResponse shape (id + name + color + isActive +
-		// timestamps) so the TagPicker can render color swatches without a
-		// second round-trip.
-		const tagsData: TagResponse[] = (tagsRes.items ?? []).filter(
-			(tag): tag is TagResponse => !!tag.id && !!tag.name
-		);
+		// Tags keep the generated TagResponse fields while narrowing id/name/color
+		// for components that require non-null swatches and labels.
+		const tagsData: ReferenceTag[] = (tagsRes.items ?? [])
+			.filter((tag): tag is TagResponse & { id: string; name: string } => !!tag.id && !!tag.name)
+			.map((tag) => ({
+				...tag,
+				id: tag.id,
+				name: tag.name,
+				color: tag.color ?? null
+			}));
 
 		referenceDataStore.set({
 			brands: brandsData,

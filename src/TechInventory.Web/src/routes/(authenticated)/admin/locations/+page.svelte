@@ -14,6 +14,7 @@
 	import PaginationControls from '$lib/components/PaginationControls.svelte';
 	import MergeEntityModal from '$lib/components/MergeEntityModal.svelte';
 	import DeactivateConfirmModal from '$lib/components/admin/DeactivateConfirmModal.svelte';
+	import ResponsiveAdminList from '$lib/components/admin/ResponsiveAdminList.svelte';
 	import {
 		buildMergeTargetOptions,
 		fetchMergeDeviceCount,
@@ -262,15 +263,22 @@
 		else params.delete('pageSize');
 		goto(`?${params.toString()}`, { replaceState: true, keepFocus: true, noScroll: true });
 	}
+
+	const primaryActionButtonClass =
+		'inline-flex min-h-11 items-center rounded-full border border-primary-300 px-4 py-2 text-sm font-medium text-primary-700 transition-colors hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-primary-800 dark:text-primary-300 dark:hover:bg-primary-950';
+	const warningActionButtonClass =
+		'inline-flex min-h-11 items-center rounded-full border border-warning-300 px-4 py-2 text-sm font-medium text-warning-700 transition-colors hover:bg-warning-50 focus:outline-none focus:ring-2 focus:ring-warning-500 dark:border-warning-800 dark:text-warning-300 dark:hover:bg-warning-950';
+	const primarySolidButtonClass =
+		'inline-flex min-h-11 items-center justify-center rounded-full bg-primary-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-700 dark:hover:bg-primary-800';
 </script>
 
 <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-	<div class="mb-6 flex items-center justify-between">
+	<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 		<h1 class="text-2xl font-bold text-neutral-900 dark:text-neutral-50">
 			{t('locations.list.title')}
 		</h1>
-		<div class="flex items-center gap-3">
-			<label class="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
+		<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+			<label class="flex min-h-11 items-center gap-3 text-sm text-neutral-700 dark:text-neutral-300">
 				<input
 					type="checkbox"
 					checked={urlParams.includeInactive}
@@ -279,11 +287,7 @@
 				/>
 				{t('locations.list.showInactive')}
 			</label>
-			<button
-				type="button"
-				onclick={openAddModal}
-				class="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-700 dark:hover:bg-primary-800"
-			>
+			<button type="button" onclick={openAddModal} class={primarySolidButtonClass}>
 				{t('locations.list.addButton')}
 			</button>
 		</div>
@@ -316,84 +320,55 @@
 			</p>
 		</div>
 	{:else}
-		<div
-			class="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow dark:border-neutral-800 dark:bg-neutral-950"
+		<ResponsiveAdminList
+			items={locations}
+			tableLabel={t('locations.list.title')}
+			cardsLabel={t('locations.list.title')}
+			keyExtractor={(location) => location.id ?? location.name ?? ''}
 		>
-			<table class="min-w-full divide-y divide-neutral-200 dark:divide-neutral-800">
-				<thead class="bg-neutral-50 dark:bg-neutral-900">
-					<tr>
-						<th
-							scope="col"
-							class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
-						>
-							{t('locations.columns.name')}
-						</th>
-						<th
-							scope="col"
-							class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
-						>
-							{t('locations.columns.type')}
-						</th>
-						<th
-							scope="col"
-							class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
-						>
-							{t('locations.columns.description')}
-						</th>
-						<th
-							scope="col"
-							class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
-						>
-							{t('common.labels.actions')}
-						</th>
-					</tr>
-				</thead>
-				<tbody class="divide-y divide-neutral-200 dark:divide-neutral-800">
-					{#each locations as location (location.id)}
-						<tr class="hover:bg-neutral-50 dark:hover:bg-neutral-900">
-							<td
-								class="whitespace-nowrap px-4 py-3 text-sm font-medium text-neutral-900 dark:text-neutral-50"
-							>
-								{location.name}
-							</td>
-							<td
-								class="whitespace-nowrap px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300"
-							>
+			{#snippet tableHead()}
+				<th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">{t('locations.columns.name')}</th>
+				<th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">{t('locations.columns.type')}</th>
+				<th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">{t('locations.columns.description')}</th>
+				<th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">{t('common.labels.actions')}</th>
+			{/snippet}
+
+			{#snippet desktopRow(location: LocationResponse)}
+				<tr class="hover:bg-neutral-50 dark:hover:bg-neutral-900">
+					<td class="whitespace-nowrap px-4 py-3 text-sm font-medium text-neutral-900 dark:text-neutral-50">{location.name}</td>
+					<td class="whitespace-nowrap px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300">{t(`locations.types.${(location.type ?? 'Home').toLowerCase()}`)}</td>
+					<td class="px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300">{(location as LocationResponse & { notes?: string | null }).notes || '—'}</td>
+					<td class="px-4 py-3 text-right">
+						<div class="flex flex-wrap justify-end gap-2">
+							{@render locationActionButtons(location)}
+						</div>
+					</td>
+				</tr>
+			{/snippet}
+
+			{#snippet mobileCard(location: LocationResponse)}
+				<article class="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+					<div class="flex items-start justify-between gap-3">
+						<div class="min-w-0">
+							<h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-50">{location.name}</h2>
+							<p class="mt-2 text-sm text-neutral-700 dark:text-neutral-300">
+								<span class="font-medium text-neutral-500 dark:text-neutral-400">{t('locations.columns.type')}:</span>
 								{t(`locations.types.${(location.type ?? 'Home').toLowerCase()}`)}
-							</td>
-							<td class="px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300">
-								{(location as LocationResponse & { notes?: string | null }).notes || '—'}
-							</td>
-							<td class="whitespace-nowrap px-4 py-3 text-right text-sm">
-								<button
-									type="button"
-									onclick={() => openEditModal(location)}
-									class="mr-3 text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-								>
-									{t('common.actions.edit')}
-								</button>
-								{#if location.isActive}
-									<button
-										type="button"
-										onclick={() => openMergeModal(location)}
-										class="mr-3 text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-									>
-										{t('common.actions.merge')}
-									</button>
-									<button
-										type="button"
-										onclick={() => openDeactivateModal(location)}
-										class="text-warning-600 hover:text-warning-700 dark:text-warning-400 dark:hover:text-warning-300"
-									>
-										{t('common.actions.deactivate')}
-									</button>
-								{/if}
-							</td>
-						</tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
+							</p>
+						</div>
+						{#if !location.isActive}
+							<span class="inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200">{t('common.states.inactive')}</span>
+						{/if}
+					</div>
+					{#if (location as LocationResponse & { notes?: string | null }).notes}
+						<p class="mt-3 break-words text-sm text-neutral-700 dark:text-neutral-300">{(location as LocationResponse & { notes?: string | null }).notes}</p>
+					{/if}
+					<div class="mt-4 flex flex-wrap gap-2">
+						{@render locationActionButtons(location)}
+					</div>
+				</article>
+			{/snippet}
+		</ResponsiveAdminList>
 
 		<div class="mt-6">
 			<PaginationControls
@@ -405,6 +380,20 @@
 		</div>
 	{/if}
 </div>
+
+{#snippet locationActionButtons(location: LocationResponse)}
+	<button type="button" onclick={() => openEditModal(location)} class={primaryActionButtonClass}>
+		{t('common.actions.edit')}
+	</button>
+	{#if location.isActive}
+		<button type="button" onclick={() => openMergeModal(location)} class={primaryActionButtonClass}>
+			{t('common.actions.merge')}
+		</button>
+		<button type="button" onclick={() => openDeactivateModal(location)} class={warningActionButtonClass}>
+			{t('common.actions.deactivate')}
+		</button>
+	{/if}
+{/snippet}
 
 {#if mergeModalOpen && mergingLocation}
 	<MergeEntityModal
@@ -448,7 +437,7 @@
 						type="text"
 						bind:value={formData.name}
 						placeholder={t('locations.fields.namePlaceholder')}
-						class="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
+						class="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
 						class:border-error-600={formErrors.name}
 					/>
 					{#if formErrors.name}
@@ -466,7 +455,7 @@
 					<select
 						id="location-type"
 						bind:value={formData.type}
-						class="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
+						class="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
 						class:border-error-600={formErrors.type}
 					>
 						<option value="Home">{t('locations.types.home')}</option>
@@ -490,7 +479,7 @@
 						bind:value={formData.notes}
 						placeholder={t('locations.fields.notesPlaceholder')}
 						rows="3"
-						class="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
+						class="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
 						class:border-error-600={formErrors.notes}
 					></textarea>
 					{#if formErrors.notes}
@@ -503,14 +492,14 @@
 						type="button"
 						onclick={closeFormModal}
 						disabled={formSubmitting}
-						class="rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-600 dark:text-neutral-300 dark:hover:bg-neutral-800"
+						class="inline-flex min-h-11 items-center justify-center rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-600 dark:text-neutral-300 dark:hover:bg-neutral-800"
 					>
 						{t('common.actions.cancel')}
 					</button>
 					<button
 						type="submit"
 						disabled={formSubmitting}
-						class="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-primary-700 dark:hover:bg-primary-800"
+						class="inline-flex min-h-11 items-center justify-center rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-primary-700 dark:hover:bg-primary-800"
 					>
 						{formSubmitting ? t('common.states.loading') : t('common.actions.save')}
 					</button>

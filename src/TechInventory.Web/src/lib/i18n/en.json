@@ -88,7 +88,9 @@
 		"signIn": {
 			"button": "Sign In",
 			"title": "Sign In to Tech Inventory",
-			"description": "Sign in with your household account"
+			"description": "Sign in with your household account",
+			"checkingTitle": "Checking your household session…",
+			"checkingDescription": "If you still have a valid Entra session, we'll bring you straight into your devices."
 		},
 		"signOut": {
 			"button": "Sign Out",

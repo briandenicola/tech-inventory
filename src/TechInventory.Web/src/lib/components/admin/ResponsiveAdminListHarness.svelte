@@ -1,0 +1,67 @@
+<script lang="ts">
+	import ResponsiveAdminList from './ResponsiveAdminList.svelte';
+
+	type HarnessItem = {
+		id: string;
+		name: string;
+		description: string;
+	};
+
+	const items: HarnessItem[] = [
+		{ id: 'item-1', name: 'Alpha', description: 'First item description' },
+		{ id: 'item-2', name: 'Bravo', description: 'Second item description' }
+	];
+
+	const primaryButtonClass =
+		'inline-flex min-h-11 items-center rounded-full border border-primary-300 px-4 py-2 text-sm font-medium text-primary-700 transition-colors hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-primary-800 dark:text-primary-300 dark:hover:bg-primary-950';
+</script>
+
+<ResponsiveAdminList
+	{items}
+	tableLabel="Harness admin table"
+	cardsLabel="Harness admin cards"
+	keyExtractor={(item) => item.id}
+>
+	{#snippet tableHead()}
+		<th
+			scope="col"
+			class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
+		>
+			Name
+		</th>
+		<th
+			scope="col"
+			class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
+		>
+			Description
+		</th>
+		<th
+			scope="col"
+			class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
+		>
+			Actions
+		</th>
+	{/snippet}
+
+	{#snippet desktopRow(item: HarnessItem)}
+		<tr class="hover:bg-neutral-50 dark:hover:bg-neutral-900">
+			<td class="px-4 py-3 text-sm font-medium text-neutral-900 dark:text-neutral-50">{item.name}</td>
+			<td class="px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300">{item.description}</td>
+			<td class="px-4 py-3 text-right">
+				<div class="flex flex-wrap justify-end gap-2">
+					<button type="button" class={primaryButtonClass}>Edit</button>
+				</div>
+			</td>
+		</tr>
+	{/snippet}
+
+	{#snippet mobileCard(item: HarnessItem)}
+		<article class="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+			<h2 class="text-sm font-semibold text-neutral-900 dark:text-neutral-50">{item.name}</h2>
+			<p class="mt-2 text-sm text-neutral-700 dark:text-neutral-300">{item.description}</p>
+			<div class="mt-4 flex flex-wrap gap-2">
+				<button type="button" class={primaryButtonClass}>Edit</button>
+			</div>
+		</article>
+	{/snippet}
+</ResponsiveAdminList>

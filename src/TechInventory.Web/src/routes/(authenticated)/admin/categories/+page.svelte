@@ -342,19 +342,33 @@
 	function hasChildren(categoryId: string) {
 		return displayedCategories.some((c) => c.parentId === categoryId);
 	}
+
+	function getParentName(parentId: string | null | undefined) {
+		if (!parentId) {
+			return null;
+		}
+
+		return categories.find((category) => category.id === parentId)?.name ?? null;
+	}
+
+	const primaryActionButtonClass =
+		'inline-flex min-h-11 items-center rounded-full border border-primary-300 px-4 py-2 text-sm font-medium text-primary-700 transition-colors hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-primary-800 dark:text-primary-300 dark:hover:bg-primary-950';
+	const warningActionButtonClass =
+		'inline-flex min-h-11 items-center rounded-full border border-warning-300 px-4 py-2 text-sm font-medium text-warning-700 transition-colors hover:bg-warning-50 focus:outline-none focus:ring-2 focus:ring-warning-500 dark:border-warning-800 dark:text-warning-300 dark:hover:bg-warning-950';
+	const primarySolidButtonClass =
+		'inline-flex min-h-11 items-center justify-center rounded-full bg-primary-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-700 dark:hover:bg-primary-800';
 </script>
 
 <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
 	<!-- Header -->
-	<div class="mb-6 flex items-center justify-between">
+	<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 		<div>
 			<h1 class="text-2xl font-bold text-neutral-900 dark:text-neutral-50">
 				{t('admin.categories.list.title')}
 			</h1>
 		</div>
-		<div class="flex items-center gap-3">
-			<!-- Show Inactive Toggle -->
-			<label class="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
+		<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+			<label class="flex min-h-11 items-center gap-3 text-sm text-neutral-700 dark:text-neutral-300">
 				<input
 					type="checkbox"
 					checked={urlParams.includeInactive}
@@ -363,12 +377,7 @@
 				/>
 				{t('admin.categories.list.showInactive')}
 			</label>
-			<!-- Add Button -->
-			<button
-				type="button"
-				onclick={openAddModal}
-				class="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-700 dark:hover:bg-primary-800"
-			>
+			<button type="button" onclick={openAddModal} class={primarySolidButtonClass}>
 				{t('admin.categories.list.addButton')}
 			</button>
 		</div>
@@ -380,7 +389,7 @@
 			type="text"
 			bind:value={searchQuery}
 			placeholder={t('admin.categories.list.searchPlaceholder')}
-			class="block w-full rounded-md border border-neutral-300 px-4 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
+			class="block min-h-11 w-full rounded-md border border-neutral-300 px-4 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
 		/>
 	</div>
 
@@ -412,10 +421,38 @@
 			</p>
 		</div>
 	{:else}
-		<!-- Tree View -->
-		<div
-			class="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow dark:border-neutral-800 dark:bg-neutral-950"
-		>
+		<div class="grid gap-3 md:hidden" role="list" aria-label={t('admin.categories.list.title')}>
+			{#each displayedCategories as category (category.id)}
+				<div role="listitem">
+					<article class="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+						<div class="flex items-start justify-between gap-3">
+							<div class="min-w-0">
+								<div class="flex items-center gap-2">
+									{#if category.icon}
+										<span class="text-lg" aria-hidden="true">{category.icon}</span>
+									{/if}
+									<h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-50">{category.name}</h2>
+								</div>
+								{#if getParentName(category.parentId)}
+									<p class="mt-2 text-sm text-neutral-700 dark:text-neutral-300">
+										<span class="font-medium text-neutral-500 dark:text-neutral-400">{t('categories.columns.parent')}:</span>
+										{getParentName(category.parentId)}
+									</p>
+								{/if}
+							</div>
+							{#if !category.isActive}
+								<span class="inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200">{t('common.states.inactive')}</span>
+							{/if}
+						</div>
+						<div class="mt-4 flex flex-wrap gap-2">
+							{@render categoryActionButtons(category)}
+						</div>
+					</article>
+				</div>
+			{/each}
+		</div>
+
+		<div class="hidden overflow-hidden rounded-lg border border-neutral-200 bg-white shadow dark:border-neutral-800 dark:bg-neutral-950 md:block">
 			<div class="divide-y divide-neutral-200 dark:divide-neutral-800">
 				{#each displayedCategories.filter((c) => c.parentId === null) as category (category.id)}
 					{@render categoryRow(category, 0)}
@@ -434,6 +471,20 @@
 		</div>
 	{/if}
 </div>
+
+{#snippet categoryActionButtons(category: CategoryResponse)}
+	<button type="button" onclick={() => openEditModal(category)} class={primaryActionButtonClass}>
+		{t('common.actions.edit')}
+	</button>
+	{#if category.isActive}
+		<button type="button" onclick={() => openMergeModal(category)} class={primaryActionButtonClass}>
+			{t('common.actions.merge')}
+		</button>
+		<button type="button" onclick={() => openDeactivateModal(category)} class={warningActionButtonClass}>
+			{t('common.actions.deactivate')}
+		</button>
+	{/if}
+{/snippet}
 
 {#if mergeModalOpen && mergingCategory}
 	<MergeEntityModal
@@ -479,7 +530,7 @@
 						type="text"
 						bind:value={formData.name}
 						placeholder={t('admin.categories.fields.namePlaceholder')}
-						class="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
+						class="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
 						class:border-error-600={formErrors.name}
 					/>
 					{#if formErrors.name}
@@ -499,7 +550,7 @@
 						id="category-parent"
 						value={formData.parentId}
 						onchange={handleParentChange}
-						class="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
+						class="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
 						class:border-error-600={formErrors.parentId}
 					>
 						<option value="">{t('admin.categories.fields.parentNone')}</option>
@@ -528,7 +579,7 @@
 						bind:value={formData.icon}
 						placeholder={t('admin.categories.fields.iconPlaceholder')}
 						maxlength="100"
-						class="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
+						class="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
 						class:border-error-600={formErrors.icon}
 					/>
 					{#if formErrors.icon}
@@ -542,14 +593,14 @@
 						type="button"
 						onclick={closeFormModal}
 						disabled={formSubmitting}
-						class="rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-600 dark:text-neutral-300 dark:hover:bg-neutral-800"
+						class="inline-flex min-h-11 items-center justify-center rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-600 dark:text-neutral-300 dark:hover:bg-neutral-800"
 					>
 						{t('common.actions.cancel')}
 					</button>
 					<button
 						type="submit"
 						disabled={formSubmitting}
-						class="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-primary-700 dark:hover:bg-primary-800"
+						class="inline-flex min-h-11 items-center justify-center rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-primary-700 dark:hover:bg-primary-800"
 					>
 						{formSubmitting ? t('common.states.loading') : t('common.actions.save')}
 					</button>
@@ -571,13 +622,13 @@
 
 {#snippet categoryRow(category: CategoryResponse, level: number)}
 	{@const categoryId = category.id ?? ''}
-	<div class="flex items-center justify-between px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-900">
-		<div class="flex items-center gap-2" style="padding-left: {level * 2}rem;">
+	<div class="flex items-center justify-between gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-900">
+		<div class="flex min-w-0 items-center gap-2" style="padding-left: {level * 2}rem;">
 			{#if hasChildren(categoryId)}
 				<button
 					type="button"
 					onclick={() => toggleExpanded(categoryId)}
-					class="flex h-6 w-6 items-center justify-center text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
+					class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200 lg:h-6 lg:w-6"
 					aria-label={expandedIds.has(categoryId) ? 'Collapse' : 'Expand'}
 				>
 					{#if expandedIds.has(categoryId)}
@@ -601,46 +652,24 @@
 					{/if}
 				</button>
 			{:else}
-				<span class="w-6"></span>
+				<span class="w-11 flex-shrink-0 lg:w-6"></span>
 			{/if}
 			{#if category.icon}
 				<span class="text-lg">{category.icon}</span>
 			{/if}
-			<span class="text-sm font-medium text-neutral-900 dark:text-neutral-50">
+			<span class="truncate text-sm font-medium text-neutral-900 dark:text-neutral-50">
 				{category.name}
 			</span>
 			{#if !category.isActive}
 				<span
-					class="ml-2 inline-flex rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200"
+					class="ml-2 inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200"
 				>
 					{t('common.states.inactive')}
 				</span>
 			{/if}
 		</div>
-		<div class="flex items-center gap-3">
-			<button
-				type="button"
-				onclick={() => openEditModal(category)}
-				class="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-			>
-				{t('common.actions.edit')}
-			</button>
-			{#if category.isActive}
-				<button
-					type="button"
-					onclick={() => openMergeModal(category)}
-					class="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-				>
-					{t('common.actions.merge')}
-				</button>
-				<button
-					type="button"
-					onclick={() => openDeactivateModal(category)}
-					class="text-sm text-warning-600 hover:text-warning-700 dark:text-warning-400 dark:hover:text-warning-300"
-				>
-					{t('common.actions.deactivate')}
-				</button>
-			{/if}
+		<div class="flex flex-wrap justify-end gap-2">
+			{@render categoryActionButtons(category)}
 		</div>
 	</div>
 {/snippet}

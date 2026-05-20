@@ -12,6 +12,7 @@
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import PaginationControls from '$lib/components/PaginationControls.svelte';
 	import DeactivateConfirmModal from '$lib/components/admin/DeactivateConfirmModal.svelte';
+	import ResponsiveAdminList from '$lib/components/admin/ResponsiveAdminList.svelte';
 
 	/**
 	 * T29: Owners Admin — list with role badge + deactivate 409 guard
@@ -228,19 +229,25 @@
 		}
 		return 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200';
 	}
+
+	const primaryActionButtonClass =
+		'inline-flex min-h-11 items-center rounded-full border border-primary-300 px-4 py-2 text-sm font-medium text-primary-700 transition-colors hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-primary-800 dark:text-primary-300 dark:hover:bg-primary-950';
+	const warningActionButtonClass =
+		'inline-flex min-h-11 items-center rounded-full border border-warning-300 px-4 py-2 text-sm font-medium text-warning-700 transition-colors hover:bg-warning-50 focus:outline-none focus:ring-2 focus:ring-warning-500 dark:border-warning-800 dark:text-warning-300 dark:hover:bg-warning-950';
+	const primarySolidButtonClass =
+		'inline-flex min-h-11 items-center justify-center rounded-full bg-primary-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-700 dark:hover:bg-primary-800';
 </script>
 
 <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
 	<!-- Header -->
-	<div class="mb-6 flex items-center justify-between">
+	<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 		<div>
 			<h1 class="text-2xl font-bold text-neutral-900 dark:text-neutral-50">
 				{t('admin.owners.list.title')}
 			</h1>
 		</div>
-		<div class="flex items-center gap-3">
-			<!-- Show Inactive Toggle -->
-			<label class="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
+		<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+			<label class="flex min-h-11 items-center gap-3 text-sm text-neutral-700 dark:text-neutral-300">
 				<input
 					type="checkbox"
 					checked={urlParams.includeInactive}
@@ -249,12 +256,7 @@
 				/>
 				{t('admin.owners.list.showInactive')}
 			</label>
-			<!-- Add Button -->
-			<button
-				type="button"
-				onclick={openAddModal}
-				class="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-700 dark:hover:bg-primary-800"
-			>
+			<button type="button" onclick={openAddModal} class={primarySolidButtonClass}>
 				{t('admin.owners.list.addButton')}
 			</button>
 		</div>
@@ -288,87 +290,65 @@
 			</p>
 		</div>
 	{:else}
-		<!-- Table -->
-		<div
-			class="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow dark:border-neutral-800 dark:bg-neutral-950"
+		<ResponsiveAdminList
+			items={owners}
+			tableLabel={t('admin.owners.list.title')}
+			cardsLabel={t('admin.owners.list.title')}
+			keyExtractor={(owner) => owner.id ?? owner.displayName ?? ''}
 		>
-			<table class="min-w-full divide-y divide-neutral-200 dark:divide-neutral-800">
-				<thead class="bg-neutral-50 dark:bg-neutral-900">
-					<tr>
-						<th
-							scope="col"
-							class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
-						>
-							{t('admin.owners.columns.name')}
-						</th>
-						<th
-							scope="col"
-							class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
-						>
-							{t('admin.owners.columns.role')}
-						</th>
-						<th
-							scope="col"
-							class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
-						>
-							{t('admin.owners.columns.entraObjectId')}
-						</th>
-						<th
-							scope="col"
-							class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
-						>
-							Actions
-						</th>
-					</tr>
-				</thead>
-				<tbody class="divide-y divide-neutral-200 dark:divide-neutral-800">
-					{#each owners as owner (owner.id)}
-						<tr class="hover:bg-neutral-50 dark:hover:bg-neutral-900">
-							<td
-								class="whitespace-nowrap px-4 py-3 text-sm font-medium text-neutral-900 dark:text-neutral-50"
-							>
-								{owner.displayName}
-								{#if !owner.isActive}
-									<span
-										class="ml-2 inline-flex rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200"
-									>
-										Inactive
-									</span>
-								{/if}
-							</td>
-							<td class="px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300">
-								<span class="inline-flex rounded-full px-2 py-1 text-xs font-semibold {getRoleBadgeClass(owner.role)}">
-									{t(`admin.owners.roles.${(owner.role ?? 'Member').toLowerCase()}`)}
-								</span>
-							</td>
-							<td class="px-4 py-3 text-sm font-mono text-neutral-700 dark:text-neutral-300">
-								{owner.entraObjectId || '—'}
-							</td>
-							<td class="whitespace-nowrap px-4 py-3 text-right text-sm">
-								<button
-									type="button"
-									onclick={() => openEditModal(owner)}
-									class="mr-3 text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-								>
-									{t('common.actions.edit')}
-								</button>
-								{#if owner.isActive}
-									<button
-										type="button"
-										onclick={() => openDeactivateModal(owner)}
-										class="text-warning-600 hover:text-warning-700 dark:text-warning-400 dark:hover:text-warning-300"
-									>
-										Deactivate
-									</button>
-								{/if}
-							</td>
-						</tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
+			{#snippet tableHead()}
+				<th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">{t('admin.owners.columns.name')}</th>
+				<th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">{t('admin.owners.columns.role')}</th>
+				<th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">{t('admin.owners.columns.entraObjectId')}</th>
+				<th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">{t('common.labels.actions')}</th>
+			{/snippet}
 
-		<!-- Pagination -->
+			{#snippet desktopRow(owner: OwnerResponse)}
+				<tr class="hover:bg-neutral-50 dark:hover:bg-neutral-900">
+					<td class="whitespace-nowrap px-4 py-3 text-sm font-medium text-neutral-900 dark:text-neutral-50">
+						{owner.displayName}
+						{#if !owner.isActive}
+							<span class="ml-2 inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200">{t('common.states.inactive')}</span>
+						{/if}
+					</td>
+					<td class="px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300">
+						<span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold {getRoleBadgeClass(owner.role)}">
+							{t(`admin.owners.roles.${(owner.role ?? 'Member').toLowerCase()}`)}
+						</span>
+					</td>
+					<td class="break-all px-4 py-3 text-sm font-mono text-neutral-700 dark:text-neutral-300">{owner.entraObjectId || '—'}</td>
+					<td class="px-4 py-3 text-right">
+						<div class="flex flex-wrap justify-end gap-2">
+							{@render ownerActionButtons(owner)}
+						</div>
+					</td>
+				</tr>
+			{/snippet}
+
+			{#snippet mobileCard(owner: OwnerResponse)}
+				<article class="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+					<div class="flex items-start justify-between gap-3">
+						<div class="min-w-0">
+							<h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-50">{owner.displayName}</h2>
+							<div class="mt-2 flex flex-wrap items-center gap-2">
+								<span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold {getRoleBadgeClass(owner.role)}">{t(`admin.owners.roles.${(owner.role ?? 'Member').toLowerCase()}`)}</span>
+								{#if !owner.isActive}
+									<span class="inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200">{t('common.states.inactive')}</span>
+								{/if}
+							</div>
+						</div>
+					</div>
+					<p class="mt-3 break-all text-sm text-neutral-700 dark:text-neutral-300">
+						<span class="font-medium text-neutral-500 dark:text-neutral-400">{t('admin.owners.columns.entraObjectId')}:</span>
+						{owner.entraObjectId || '—'}
+					</p>
+					<div class="mt-4 flex flex-wrap gap-2">
+						{@render ownerActionButtons(owner)}
+					</div>
+				</article>
+			{/snippet}
+		</ResponsiveAdminList>
+
 		<div class="mt-6">
 			<PaginationControls
 				currentPage={urlParams.page}
@@ -379,6 +359,17 @@
 		</div>
 	{/if}
 </div>
+
+{#snippet ownerActionButtons(owner: OwnerResponse)}
+	<button type="button" onclick={() => openEditModal(owner)} class={primaryActionButtonClass}>
+		{t('common.actions.edit')}
+	</button>
+	{#if owner.isActive}
+		<button type="button" onclick={() => openDeactivateModal(owner)} class={warningActionButtonClass}>
+			{t('common.actions.deactivate')}
+		</button>
+	{/if}
+{/snippet}
 
 <!-- Form Modal -->
 {#if formModalOpen}
@@ -411,7 +402,7 @@
 						type="text"
 						bind:value={formData.displayName}
 						placeholder={t('admin.owners.fields.displayNamePlaceholder')}
-						class="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
+						class="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
 						class:border-error-600={formErrors.displayName}
 					/>
 					{#if formErrors.displayName}
@@ -430,7 +421,7 @@
 					<select
 						id="owner-role"
 						bind:value={formData.role}
-						class="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
+						class="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
 						class:border-error-600={formErrors.role}
 					>
 						<option value="Admin">{t('admin.owners.roles.admin')}</option>
@@ -455,7 +446,7 @@
 						type="text"
 						bind:value={formData.entraObjectId}
 						placeholder={t('admin.owners.fields.entraObjectIdPlaceholder')}
-						class="mt-1 block w-full rounded-md border border-neutral-300 px-3 py-2 font-mono text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
+						class="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-3 py-2 font-mono text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
 						class:border-error-600={formErrors.entraObjectId}
 					/>
 					{#if formErrors.entraObjectId}
@@ -471,14 +462,14 @@
 						type="button"
 						onclick={closeFormModal}
 						disabled={formSubmitting}
-						class="rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-600 dark:text-neutral-300 dark:hover:bg-neutral-800"
+						class="inline-flex min-h-11 items-center justify-center rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-600 dark:text-neutral-300 dark:hover:bg-neutral-800"
 					>
 						{t('common.actions.cancel')}
 					</button>
 					<button
 						type="submit"
 						disabled={formSubmitting}
-						class="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-primary-700 dark:hover:bg-primary-800"
+						class="inline-flex min-h-11 items-center justify-center rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-primary-700 dark:hover:bg-primary-800"
 					>
 						{formSubmitting ? t('common.states.loading') : t('common.actions.save')}
 					</button>

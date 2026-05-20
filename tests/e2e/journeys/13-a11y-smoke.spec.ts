@@ -10,7 +10,7 @@ import { runAxe } from '../fixtures/axe';
 
 const routes: Array<{ name: string; path: string }> = [
   { name: 'Devices list', path: '/devices' },
-  { name: 'Admin landing', path: '/admin' },
+  { name: 'Admin audit log', path: '/admin/audit' },
   { name: 'Admin brands', path: '/admin/brands' },
   { name: 'Admin categories', path: '/admin/categories' },
   { name: 'Admin owners', path: '/admin/owners' },

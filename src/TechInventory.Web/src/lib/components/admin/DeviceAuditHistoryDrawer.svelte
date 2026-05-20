@@ -105,7 +105,7 @@
 
 <!-- Backdrop -->
 <div
-	class="fixed inset-0 z-40 bg-neutral-900/50 backdrop-blur-sm"
+	class="ti-modal-backdrop fixed inset-0 z-40"
 	onclick={onClose}
 	role="presentation"
 ></div>
@@ -117,7 +117,7 @@
 	aria-modal="true"
 	aria-labelledby="device-audit-history-title"
 	tabindex="-1"
-	class="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col overflow-hidden border-l border-neutral-200 bg-white shadow-xl outline-none dark:border-neutral-800 dark:bg-neutral-950"
+	class="ti-modal-surface fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col overflow-hidden border-l border-neutral-200 bg-white shadow-xl outline-none dark:border-neutral-800 dark:bg-neutral-950"
 >
 	<div class="flex items-start justify-between gap-3 border-b border-neutral-200 px-6 py-4 dark:border-neutral-800">
 		<div>

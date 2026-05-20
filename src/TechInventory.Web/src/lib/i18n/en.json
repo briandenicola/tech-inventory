@@ -34,8 +34,8 @@
 			"download": "Download",
 			"upload": "Upload",
 			"retry": "Retry",
-			"merge": "Merge",
 			"deactivate": "Deactivate",
+			"moreActions": "More actions",
 			"select": "Select…"
 		},
 		"nouns": {
@@ -938,7 +938,6 @@
 			"confirmation": "This will move {count} devices from {source} to {target} and deactivate {source}.",
 			"bulkConfirmation": "This will merge {count} selected {entityPlural} into {target} and move {devices} device references.",
 			"selectTargetPrompt": "Select a target {entity} to review the impact.",
-			"success": "Merged {source} into {target}. {count} devices moved.",
 			"error": "The merge could not be completed. Review the details and try again."
 		},
 		"bulk": {

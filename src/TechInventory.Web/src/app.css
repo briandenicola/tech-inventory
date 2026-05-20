@@ -2,3 +2,17 @@
 @import 'tailwindcss';
 
 @custom-variant dark (&:where(.dark, .dark *));
+
+@layer components {
+	.ti-modal-backdrop {
+		background: rgb(10 10 10 / 0.6);
+		-webkit-backdrop-filter: blur(6px);
+		backdrop-filter: blur(6px);
+	}
+
+	.ti-modal-surface {
+		isolation: isolate;
+		-webkit-backface-visibility: hidden;
+		backface-visibility: hidden;
+	}
+}

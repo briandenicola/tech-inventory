@@ -289,7 +289,7 @@
 	<button
 		type="button"
 		aria-label={t('common.actions.close')}
-		class="absolute inset-0 h-full w-full cursor-default bg-black/60 backdrop-blur-sm"
+		class="ti-modal-backdrop absolute inset-0 h-full w-full cursor-default"
 		onclick={onClose}
 	></button>
 
@@ -299,7 +299,7 @@
 		<div
 			bind:this={dialogElement}
 			transition:fly|local={{ y: 32, duration: 180 }}
-			class="pointer-events-auto relative flex w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl dark:bg-neutral-950 sm:max-w-4xl sm:rounded-2xl"
+			class="ti-modal-surface pointer-events-auto relative flex w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl dark:bg-neutral-950 sm:max-w-4xl sm:rounded-2xl"
 			role="dialog"
 			aria-modal="true"
 			aria-labelledby="device-detail-modal-title"

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import ResponsiveAdminList from './ResponsiveAdminList.svelte';
+	import ResponsiveListCard from '$lib/components/ResponsiveListCard.svelte';
 
 	type HarnessItem = {
 		id: string;
@@ -12,9 +13,7 @@
 		{ id: 'item-2', name: 'Bravo', description: 'Second item description' }
 	];
 
-	const primaryButtonClass =
-		'inline-flex min-h-11 items-center rounded-full border border-primary-300 px-4 py-2 text-sm font-medium text-primary-700 transition-colors hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-primary-800 dark:text-primary-300 dark:hover:bg-primary-950';
-</script>
+	</script>
 
 <ResponsiveAdminList
 	{items}
@@ -49,19 +48,25 @@
 			<td class="px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300">{item.description}</td>
 			<td class="px-4 py-3 text-right">
 				<div class="flex flex-wrap justify-end gap-2">
-					<button type="button" class={primaryButtonClass}>Edit</button>
+					<button
+						type="button"
+						class="inline-flex min-h-11 items-center rounded-full border border-primary-300 px-4 py-2 text-sm font-medium text-primary-700 transition-colors hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-primary-800 dark:text-primary-300 dark:hover:bg-primary-950"
+					>
+						Edit
+					</button>
 				</div>
 			</td>
 		</tr>
 	{/snippet}
 
 	{#snippet mobileCard(item: HarnessItem)}
-		<article class="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
-			<h2 class="text-sm font-semibold text-neutral-900 dark:text-neutral-50">{item.name}</h2>
-			<p class="mt-2 text-sm text-neutral-700 dark:text-neutral-300">{item.description}</p>
-			<div class="mt-4 flex flex-wrap gap-2">
-				<button type="button" class={primaryButtonClass}>Edit</button>
-			</div>
-		</article>
+		<ResponsiveListCard
+			title={item.name}
+			titleId={`harness-card-${item.id}`}
+			fields={[{ key: 'description', label: 'Description', value: item.description }]}
+			actionItems={[{ id: `edit-${item.id}`, label: 'Edit', onSelect: () => undefined, tone: 'primary' }]}
+			actionMenuLabel="More actions"
+			actionMenuTitle="Actions"
+		/>
 	{/snippet}
 </ResponsiveAdminList>

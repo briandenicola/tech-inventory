@@ -170,7 +170,7 @@
 <svelte:window onkeydown={handleKeydown} />
 
 {#if isOpen}
-	<div class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" aria-hidden="true"></div>
+	<div class="ti-modal-backdrop fixed inset-0 z-40" aria-hidden="true"></div>
 
 	<div
 		bind:this={modalElement}
@@ -180,7 +180,7 @@
 		aria-describedby="reference-bulk-delete-description"
 		aria-modal="true"
 	>
-		<div class="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-neutral-900">
+		<div class="ti-modal-surface w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-neutral-900">
 			<div class="border-b border-neutral-200 px-6 py-4 dark:border-neutral-800">
 				<h2
 					id="reference-bulk-delete-title"

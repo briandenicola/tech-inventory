@@ -230,7 +230,7 @@
 
 <dialog
 	bind:this={dialogElement}
-	class="audit-log-modal w-full max-w-5xl overflow-hidden rounded-2xl border border-neutral-200 bg-white p-0 text-left shadow-2xl dark:border-neutral-800 dark:bg-neutral-950"
+	class="audit-log-modal ti-modal-surface w-full max-w-5xl overflow-hidden rounded-2xl border border-neutral-200 bg-white p-0 text-left shadow-2xl dark:border-neutral-800 dark:bg-neutral-950"
 	oncancel={handleCancel}
 	onclick={handleDialogClick}
 	aria-labelledby="audit-log-modal-title"
@@ -381,6 +381,7 @@
 
 	.audit-log-modal::backdrop {
 		background: rgb(10 10 10 / 0.6);
+		-webkit-backdrop-filter: blur(6px);
 		backdrop-filter: blur(6px);
 	}
 </style>

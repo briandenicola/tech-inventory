@@ -42,6 +42,13 @@ describe('EmptyState', () => {
 			const results = await axe(container);
 			expect(results).toHaveNoViolations();
 		});
+
+		it('does not render add device CTA when creation is unavailable', () => {
+			render(EmptyState, { props: { filtered: false, showAddAction: false } });
+
+			expect(screen.queryByRole('link', { name: /Add Device/i })).not.toBeInTheDocument();
+			expect(screen.queryByRole('button', { name: /Add Device/i })).not.toBeInTheDocument();
+		});
 	});
 
 	describe('filtered (no matches)', () => {

@@ -38,6 +38,7 @@
 	--color-primary-700: var(--app-color-primary-700);
 	--color-primary-800: var(--app-color-primary-800);
 	--color-primary-900: var(--app-color-primary-900);
+	--color-primary-950: var(--app-color-primary-950);
 
 	--color-neutral-50: var(--app-color-neutral-50);
 	--color-neutral-100: var(--app-color-neutral-100);
@@ -61,6 +62,7 @@
 	--color-success-700: var(--app-color-success-700);
 	--color-success-800: var(--app-color-success-800);
 	--color-success-900: var(--app-color-success-900);
+	--color-success-950: var(--app-color-success-950);
 
 	--color-warning-50: var(--app-color-warning-50);
 	--color-warning-100: var(--app-color-warning-100);
@@ -72,6 +74,7 @@
 	--color-warning-700: var(--app-color-warning-700);
 	--color-warning-800: var(--app-color-warning-800);
 	--color-warning-900: var(--app-color-warning-900);
+	--color-warning-950: var(--app-color-warning-950);
 
 	--color-danger-50: var(--app-color-danger-50);
 	--color-danger-100: var(--app-color-danger-100);
@@ -83,6 +86,7 @@
 	--color-danger-700: var(--app-color-danger-700);
 	--color-danger-800: var(--app-color-danger-800);
 	--color-danger-900: var(--app-color-danger-900);
+	--color-danger-950: var(--app-color-danger-950);
 
 	--color-info-50: var(--app-color-info-50);
 	--color-info-100: var(--app-color-info-100);
@@ -94,6 +98,7 @@
 	--color-info-700: var(--app-color-info-700);
 	--color-info-800: var(--app-color-info-800);
 	--color-info-900: var(--app-color-info-900);
+	--color-info-950: var(--app-color-info-950);
 
 	/* F029: Semantic diff tokens for JSON audit diffs (Drake, WCAG AA verified) */
 	--color-diff-add-fg: var(--app-color-diff-add-fg);
@@ -191,6 +196,7 @@
 		--app-color-primary-700: #005bb5;
 		--app-color-primary-800: #00509e;
 		--app-color-primary-900: #003d7a;
+		--app-color-primary-950: #002b59;
 
 		/* Neutral (text, borders, backgrounds) */
 		--app-color-neutral-50: #fafafa;
@@ -216,6 +222,7 @@
 		--app-color-success-700: #2e7d32;
 		--app-color-success-800: #1b5e20;
 		--app-color-success-900: #104d16;
+		--app-color-success-950: #0b3312;
 
 		/* Warning (yellow/orange) */
 		--app-color-warning-50: #fff8e1;
@@ -228,6 +235,7 @@
 		--app-color-warning-700: #f57c00;
 		--app-color-warning-800: #ef6c00;
 		--app-color-warning-900: #e65100;
+		--app-color-warning-950: #7a3e00;
 
 		/* Danger (red) */
 		--app-color-danger-50: #ffebee;
@@ -240,6 +248,7 @@
 		--app-color-danger-700: #b71c1c;
 		--app-color-danger-800: #a01010;
 		--app-color-danger-900: #7f0000;
+		--app-color-danger-950: #5c0000;
 
 		/* Info (teal) */
 		--app-color-info-50: #e0f2f1;
@@ -252,6 +261,7 @@
 		--app-color-info-700: #00796b;
 		--app-color-info-800: #00695c;
 		--app-color-info-900: #004d40;
+		--app-color-info-950: #003228;
 
 		/* F029: Semantic diff tokens — light theme (Drake, WCAG AA verified) */
 		--app-color-diff-add-fg: #1b5e20; /* Success-700: rich forest green */
@@ -391,7 +401,7 @@
 			 */
 
 			/* Primary — slightly brighter shades for dark surfaces, same
-			   ordering as light (50 lightest, 900 darkest). */
+			   ordering as light (50 lightest, 950 darkest). */
 			--app-color-primary-50: #e8f3ff;
 			--app-color-primary-100: #d1e6ff;
 			--app-color-primary-200: #a3cdff;
@@ -402,6 +412,7 @@
 			--app-color-primary-700: #006adc;
 			--app-color-primary-800: #005bb5;
 			--app-color-primary-900: #00509e;
+			--app-color-primary-950: #061a2b;
 
 			/* Neutral — retuned for dark mode but ordering preserved.
 			   Top shades (50/100) are kept slightly off-white so subtle
@@ -422,21 +433,25 @@
 			--app-color-success-400: #81c784;
 			--app-color-success-500: #66bb6a;
 			--app-color-success-600: #4caf50;
+			--app-color-success-950: #0c1f0f;
 
 			/* Warning (lighter orange/yellow) */
 			--app-color-warning-400: #ffd54f;
 			--app-color-warning-500: #ffb74d;
 			--app-color-warning-600: #ffa726;
+			--app-color-warning-950: #2b1906;
 
 			/* Danger (lighter red) */
 			--app-color-danger-400: #ef5350;
 			--app-color-danger-500: #ef5350;
 			--app-color-danger-600: #e57373;
+			--app-color-danger-950: #2a0c10;
 
 			/* Info (lighter teal) */
 			--app-color-info-400: #4db6ac;
 			--app-color-info-500: #26a69a;
 			--app-color-info-600: #4db6ac;
+			--app-color-info-950: #08201d;
 
 			/* F029: Semantic diff tokens — dark theme (Drake, WCAG AA verified) */
 			--app-color-diff-add-fg: #a5d6a7; /* Success-200: bright mint */
@@ -487,7 +502,7 @@
 			 */
 
 			/* Primary — slightly brighter shades for dark surfaces, same
-			   ordering as light (50 lightest, 900 darkest). */
+			   ordering as light (50 lightest, 950 darkest). */
 			--app-color-primary-50: #e8f3ff;
 			--app-color-primary-100: #d1e6ff;
 			--app-color-primary-200: #a3cdff;
@@ -498,6 +513,7 @@
 			--app-color-primary-700: #006adc;
 			--app-color-primary-800: #005bb5;
 			--app-color-primary-900: #00509e;
+			--app-color-primary-950: #061a2b;
 
 			/* Neutral — retuned for dark mode but ordering preserved.
 			   Top shades (50/100) are kept slightly off-white so subtle
@@ -518,21 +534,25 @@
 			--app-color-success-400: #81c784;
 			--app-color-success-500: #66bb6a;
 			--app-color-success-600: #4caf50;
+			--app-color-success-950: #0c1f0f;
 
 			/* Warning (lighter orange/yellow) */
 			--app-color-warning-400: #ffd54f;
 			--app-color-warning-500: #ffb74d;
 			--app-color-warning-600: #ffa726;
+			--app-color-warning-950: #2b1906;
 
 			/* Danger (lighter red) */
 			--app-color-danger-400: #ef5350;
 			--app-color-danger-500: #ef5350;
 			--app-color-danger-600: #e57373;
+			--app-color-danger-950: #2a0c10;
 
 			/* Info (lighter teal) */
 			--app-color-info-400: #4db6ac;
 			--app-color-info-500: #26a69a;
 			--app-color-info-600: #4db6ac;
+			--app-color-info-950: #08201d;
 
 			/* F029: Semantic diff tokens — dark theme (Drake, WCAG AA verified) */
 			--app-color-diff-add-fg: #a5d6a7; /* Success-200: bright mint */

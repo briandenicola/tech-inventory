@@ -10,9 +10,16 @@
 	interface Props {
 		filtered?: boolean;
 		onAdd?: () => void;
+		showAddAction?: boolean;
+		addHref?: string;
 	}
 
-	let { filtered = false, onAdd }: Props = $props();
+	let {
+		filtered = false,
+		onAdd,
+		showAddAction = true,
+		addHref = '/devices/new'
+	}: Props = $props();
 </script>
 
 <div
@@ -39,8 +46,8 @@
 		{filtered ? t('devices.list.emptyFiltered') : t('devices.list.emptyState')}
 	</h2>
 
-	<!-- CTA (only show if not filtered) -->
-	{#if !filtered}
+	<!-- CTA (only show if not filtered and the user can create devices) -->
+	{#if !filtered && showAddAction}
 		{#if onAdd}
 			<button
 				type="button"
@@ -60,7 +67,7 @@
 			</button>
 		{:else}
 			<a
-				href="/devices/new"
+				href={addHref}
 				class="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600"
 			>
 				<svg

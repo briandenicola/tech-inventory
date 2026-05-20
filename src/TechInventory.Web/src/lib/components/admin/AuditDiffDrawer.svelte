@@ -99,13 +99,13 @@
 		<button
 			type="button"
 			aria-label={t('common.actions.close')}
-			class="absolute inset-0 h-full w-full cursor-default bg-black/60 backdrop-blur-sm"
+			class="ti-modal-backdrop absolute inset-0 h-full w-full cursor-default"
 			onclick={onClose}
 		></button>
 
 		<div
 			bind:this={dialogElement}
-			class="absolute right-0 top-0 flex h-full w-full max-w-2xl flex-col overflow-hidden bg-white shadow-2xl dark:bg-neutral-900"
+			class="ti-modal-surface absolute right-0 top-0 flex h-full w-full max-w-2xl flex-col overflow-hidden bg-white shadow-2xl dark:bg-neutral-900"
 			role="dialog"
 			aria-modal="true"
 			aria-labelledby="audit-diff-title"

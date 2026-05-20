@@ -60,6 +60,25 @@ describe('MergeEntityModal', () => {
 		expect(onConfirm).toHaveBeenCalledWith('network-2');
 	});
 
+	it('renders the blurred backdrop separately from the modal surface', () => {
+		const { container } = render(MergeEntityModal, {
+			props: {
+				entityType: 'brand',
+				sourceEntity: { id: 'source-id', name: 'Source Brand', deviceCount: 3 },
+				entities: [
+					{ id: 'source-id', name: 'Source Brand' },
+					{ id: 'target-id', name: 'Target Brand' }
+				],
+				isOpen: true,
+				onConfirm: vi.fn().mockResolvedValue(undefined),
+				onCancel: vi.fn()
+			}
+		});
+
+		expect(container.querySelector('.ti-modal-backdrop')).toBeInTheDocument();
+		expect(container.querySelector('.ti-modal-surface')).toBeInTheDocument();
+	});
+
 	it('has no accessibility violations', async () => {
 		const { container } = render(MergeEntityModal, {
 			props: {

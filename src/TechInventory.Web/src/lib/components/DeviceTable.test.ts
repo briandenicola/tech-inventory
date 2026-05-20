@@ -6,10 +6,11 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
+import { render, screen, within } from '@testing-library/svelte';
 import { axe } from 'vitest-axe';
 import userEvent from '@testing-library/user-event';
 import DeviceTable from './DeviceTable.svelte';
+import DeviceTableHarness from './DeviceTableHarness.svelte';
 import { createDeviceList, resetFactories } from '$lib/test-utils/factories';
 
 describe('DeviceTable', () => {
@@ -197,9 +198,59 @@ describe('DeviceTable', () => {
 		});
 	});
 
+	describe('responsive mobile cards', () => {
+		it('renders stacked cards for mobile and keeps the desktop table wrapper', () => {
+			const { container } = render(DeviceTableHarness);
+
+			const mobileList = screen.getByRole('list', { name: 'Devices' });
+			const table = screen.getByRole('table');
+			const tableWrapper = container.querySelector('.hidden.md\\:block');
+
+			expect(mobileList).toBeInTheDocument();
+			expect(mobileList).toHaveClass('md:hidden');
+			expect(mobileList).not.toHaveClass('hidden');
+			expect(tableWrapper).not.toBeNull();
+			expect(tableWrapper).toContainElement(table);
+			expect(screen.getByRole('heading', { name: 'Kitchen Hub' })).toBeInTheDocument();
+			expect(container.querySelector('.md\\:hidden dl')).not.toBeNull();
+		});
+
+		it('renders device details as definition-list pairs inside the mobile card', () => {
+			render(DeviceTableHarness);
+
+			const mobileList = screen.getByRole('list', { name: 'Devices' });
+			const definitionList = mobileList.querySelector('dl');
+			expect(definitionList).not.toBeNull();
+			const scoped = within(definitionList as HTMLElement);
+
+			expect(scoped.getByText('Brand')).toBeInTheDocument();
+			expect(scoped.getByText('Google')).toBeInTheDocument();
+			expect(scoped.getByText('Category')).toBeInTheDocument();
+			expect(scoped.getByText('Smart Display')).toBeInTheDocument();
+			expect(scoped.getByText('Owner')).toBeInTheDocument();
+			expect(scoped.getByText('Brian')).toBeInTheDocument();
+			expect(scoped.getByText('Status')).toBeInTheDocument();
+			expect(scoped.getByText('Active')).toBeInTheDocument();
+			expect(scoped.getByText('Purchase Date')).toBeInTheDocument();
+		});
+
+		it('keeps mobile and desktop checkboxes in sync through the shared row selection state', async () => {
+			const user = userEvent.setup();
+			render(DeviceTableHarness);
+
+			const mobileList = screen.getByRole('list', { name: 'Devices' });
+			await user.click(within(mobileList).getByRole('checkbox', { name: 'Select Kitchen Hub' }));
+
+			const rowCheckboxes = screen.getAllByRole('checkbox', { name: 'Select Kitchen Hub' });
+			rowCheckboxes.forEach((checkbox) => {
+				expect(checkbox).toBeChecked();
+			});
+		});
+	});
+
 	describe('accessibility', () => {
 		it('has no accessibility violations', async () => {
-			const { container } = render(DeviceTable, { props: defaultProps });
+			const { container } = render(DeviceTableHarness);
 
 			const results = await axe(container);
 			expect(results).toHaveNoViolations();

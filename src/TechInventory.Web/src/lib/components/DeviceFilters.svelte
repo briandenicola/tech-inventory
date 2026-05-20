@@ -38,6 +38,12 @@
 	}: Props = $props();
 
 	const refData = $derived($referenceDataStore);
+	const panelOpen = $derived(isOpen && Boolean(onClose));
+	const headerPaddingTop = 'calc(env(safe-area-inset-top, 0px) + var(--space-4))';
+	const footerPaddingBottom = 'calc(env(safe-area-inset-bottom, 0px) + var(--space-4))';
+
+	let dialogElement = $state<HTMLElement | null>(null);
+	let previousFocusedElement: HTMLElement | null = null;
 
 	// Define status options with proper typing
 	const statusOptions: DeviceStatus[] = ['Active', 'Retired', 'Disposed', 'InRepair', 'Lent'];
@@ -68,6 +74,41 @@
 		onFiltersChange({ page: 1, pageSize: filters.pageSize || 25, groupBy: filters.groupBy });
 	}
 
+	function trapFocus(event: KeyboardEvent) {
+		if (event.key !== 'Tab' || !dialogElement) {
+			return;
+		}
+
+		const focusableElements = Array.from(
+			dialogElement.querySelectorAll<HTMLElement>(
+				'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+			)
+		).filter((element) => !element.hasAttribute('disabled'));
+
+		const firstElement = focusableElements[0];
+		const lastElement = focusableElements[focusableElements.length - 1];
+
+		if (!firstElement || !lastElement) {
+			return;
+		}
+
+		if (event.shiftKey && document.activeElement === firstElement) {
+			event.preventDefault();
+			lastElement.focus();
+		} else if (!event.shiftKey && document.activeElement === lastElement) {
+			event.preventDefault();
+			firstElement.focus();
+		}
+	}
+
+	function focusInitialControl() {
+		dialogElement
+			?.querySelector<HTMLElement>(
+				'[data-dialog-initial-focus], button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+			)
+			?.focus();
+	}
+
 	// Fetch reference data on mount
 	onMount(() => {
 		if (!refData.brands.length && !refData.isLoading) {
@@ -75,19 +116,33 @@
 		}
 	});
 
-	// Escape-to-close when drawer is open
 	$effect(() => {
-		if (!isOpen || !onClose) return;
+		if (!panelOpen || !dialogElement) {
+			return;
+		}
+
+		const previousOverflow = document.body.style.overflow;
+		previousFocusedElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+		document.body.style.overflow = 'hidden';
 
 		function handleKeydown(event: KeyboardEvent) {
 			if (event.key === 'Escape') {
+				event.preventDefault();
 				onClose?.();
+				return;
 			}
+
+			trapFocus(event);
 		}
 
-		document.addEventListener('keydown', handleKeydown);
+		dialogElement.addEventListener('keydown', handleKeydown);
+		focusInitialControl();
+
 		return () => {
-			document.removeEventListener('keydown', handleKeydown);
+			document.body.style.overflow = previousOverflow;
+			dialogElement?.removeEventListener('keydown', handleKeydown);
+			previousFocusedElement?.focus();
+			previousFocusedElement = null;
 		};
 	});
 
@@ -104,46 +159,57 @@
 	in front of devices" symptom Brian reported during field testing. Backdrop
 	must only render when the drawer is actually open.
 -->
-{#if isOpen && onClose}
+{#if panelOpen}
 	<div
-		class="fixed inset-0 z-40 bg-neutral-900/50"
+		class="fixed inset-0 bg-neutral-900/50"
+		style="z-index: var(--z-modal-backdrop);"
 		onclick={onClose}
 		role="presentation"
 	></div>
 {/if}
 
 <!-- Filters sidebar/drawer -->
-<aside
-	class="fixed inset-y-0 left-0 z-50 w-[22rem] md:w-96 transform overflow-y-auto border-r border-neutral-200/70 bg-white p-7 transition-transform dark:border-neutral-800/70 dark:bg-neutral-950"
+<div
+	bind:this={dialogElement}
+	id="device-filters-panel"
+	class="fixed left-0 top-0 flex h-dvh w-[22rem] max-w-full transform flex-col overflow-hidden border-r border-neutral-200/70 bg-white transition-transform dark:border-neutral-800/70 dark:bg-neutral-950 md:w-96"
 	class:translate-x-0={isOpen}
 	class:-translate-x-full={!isOpen}
-	aria-label={t('devices.filters.title')}
+	role={panelOpen ? 'dialog' : undefined}
+	aria-modal={panelOpen ? 'true' : undefined}
+	aria-labelledby={panelOpen ? 'device-filters-title' : undefined}
+	aria-hidden={!panelOpen ? 'true' : undefined}
+	style="z-index: var(--z-modal);"
 >
 	<!-- Header -->
-	<div class="mb-7 flex items-center justify-between">
-		<h2 class="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-50">
-			{t('devices.filters.title')}
-		</h2>
-		{#if onClose}
-			<button
-				type="button"
-				onclick={onClose}
-				class="inline-flex h-11 w-11 items-center justify-center rounded-full text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
-				aria-label={t('devices.filters.closeFilters')}
-			>
-				<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M6 18L18 6M6 6l12 12"
-					/>
-				</svg>
-			</button>
-		{/if}
+	<div class="sticky top-0 z-10 shrink-0 border-b border-neutral-200/70 bg-white/95 backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-950/95">
+		<div class="flex items-center justify-between gap-3 px-7 pb-4" style={`padding-top: ${headerPaddingTop};`}>
+			<h2 id="device-filters-title" class="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-50">
+				{t('devices.filters.title')}
+			</h2>
+			{#if onClose}
+				<button
+					type="button"
+					onclick={onClose}
+					class="inline-flex h-11 w-11 items-center justify-center rounded-full text-neutral-600 transition-colors hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-neutral-300 dark:hover:bg-neutral-800"
+					aria-label={t('devices.filters.closeFilters')}
+					data-dialog-initial-focus
+				>
+					<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M6 18L18 6M6 6l12 12"
+						/>
+					</svg>
+				</button>
+			{/if}
+		</div>
 	</div>
 
-	<!-- Search -->
+	<div class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-7 py-6">
+		<!-- Search -->
 	<div class="mb-6">
 		<label for="groupBy" class="mb-2 block text-base font-medium text-neutral-800 dark:text-neutral-200">
 			{t('devices.filters.groupByLabel')}
@@ -323,41 +389,45 @@
 		</div>
 	</fieldset>
 
-	<!-- Clear all button -->
-	<button
-		type="button"
-		onclick={clearAll}
-		class="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-neutral-300 px-5 py-2.5 text-base font-medium text-neutral-700 transition-colors hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-	>
-		{t('devices.filters.clearAll')}
-	</button>
+		<!-- ARIA live region for results announcement -->
+		<div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
+			<!-- Will be populated by parent component with result count -->
+		</div>
+	</div>
 
-	{#if onSaveDefault || onClearDefault}
-		<div class="mt-3 flex flex-col gap-2">
-			{#if onSaveDefault}
-				<button
-					type="button"
-					onclick={onSaveDefault}
-					disabled={!canSaveDefault}
-					class="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-primary-600 px-5 py-2.5 text-base font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-primary-500 dark:hover:bg-primary-600"
-				>
-					{t('devices.filters.saveDefault')}
-				</button>
-			{/if}
-			{#if onClearDefault && hasStoredDefault}
-				<button
-					type="button"
-					onclick={onClearDefault}
-					class="inline-flex min-h-11 w-full items-center justify-center rounded-full px-5 py-2.5 text-sm font-medium text-neutral-600 underline-offset-4 transition-colors hover:underline focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:text-neutral-400"
-				>
-					{t('devices.filters.clearDefault')}
-				</button>
+	<div class="sticky bottom-0 z-10 shrink-0 border-t border-neutral-200/70 bg-white/95 backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-950/95">
+		<div class="flex flex-col gap-2 px-7 pt-4" style={`padding-bottom: ${footerPaddingBottom};`}>
+			<button
+				type="button"
+				onclick={clearAll}
+				class="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-neutral-300 px-5 py-2.5 text-base font-medium text-neutral-700 transition-colors hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+			>
+				{t('devices.filters.clearAll')}
+			</button>
+
+			{#if onSaveDefault || onClearDefault}
+				<div class="flex flex-col gap-2">
+					{#if onSaveDefault}
+						<button
+							type="button"
+							onclick={onSaveDefault}
+							disabled={!canSaveDefault}
+							class="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-primary-600 px-5 py-2.5 text-base font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-primary-500 dark:hover:bg-primary-600"
+						>
+							{t('devices.filters.saveDefault')}
+						</button>
+					{/if}
+					{#if onClearDefault && hasStoredDefault}
+						<button
+							type="button"
+							onclick={onClearDefault}
+							class="inline-flex min-h-11 w-full items-center justify-center rounded-full px-5 py-2.5 text-sm font-medium text-neutral-600 underline-offset-4 transition-colors hover:underline focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:text-neutral-400"
+						>
+							{t('devices.filters.clearDefault')}
+						</button>
+					{/if}
+				</div>
 			{/if}
 		</div>
-	{/if}
-
-	<!-- ARIA live region for results announcement -->
-	<div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
-		<!-- Will be populated by parent component with result count -->
 	</div>
-</aside>
+</div>

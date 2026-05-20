@@ -13,6 +13,7 @@
 	import PaginationControls from '$lib/components/PaginationControls.svelte';
 	import DeactivateConfirmModal from '$lib/components/admin/DeactivateConfirmModal.svelte';
 	import ResponsiveAdminList from '$lib/components/admin/ResponsiveAdminList.svelte';
+	import ResponsiveListCard from '$lib/components/ResponsiveListCard.svelte';
 
 	/**
 	 * T32: Tags Admin — paginated list with Add/Edit/Deactivate
@@ -175,6 +176,52 @@
 		goto(`?${params.toString()}`, { replaceState: true, keepFocus: true, noScroll: true });
 	}
 
+	const inactiveBadge = {
+		text: t('common.states.inactive'),
+		className:
+			'inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200'
+	};
+
+	function getTagCardFields(tag: TagResponse) {
+		return [
+			{
+				key: 'color',
+				label: t('tags.columns.color'),
+				chipText: tag.name ?? t('tags.columns.color'),
+				chipClass: 'inline-flex items-center rounded-full px-3 py-1 text-xs font-medium text-white',
+				chipStyle: `background-color: ${tag.color};`
+			}
+		];
+	}
+
+	function getTagActionItems(tag: TagResponse) {
+		const actionKey = tag.id ?? tag.name ?? 'tag';
+		const items: Array<{
+			id: string;
+			label: string;
+			onSelect: () => void;
+			tone: 'primary' | 'warning';
+		}> = [
+			{
+				id: `edit-${actionKey}`,
+				label: t('common.actions.edit'),
+				onSelect: () => openEditModal(tag),
+				tone: 'primary' as const
+			}
+		];
+
+		if (tag.isActive) {
+			items.push({
+				id: `deactivate-${actionKey}`,
+				label: t('common.actions.deactivate'),
+				onSelect: () => openDeactivateModal(tag),
+				tone: 'warning' as const
+			});
+		}
+
+		return items;
+	}
+
 	const primaryActionButtonClass =
 		'inline-flex min-h-11 items-center rounded-full border border-primary-300 px-4 py-2 text-sm font-medium text-primary-700 transition-colors hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-primary-800 dark:text-primary-300 dark:hover:bg-primary-950';
 	const warningActionButtonClass =
@@ -260,23 +307,15 @@
 			{/snippet}
 
 			{#snippet mobileCard(tag: TagResponse)}
-				<article class="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
-					<div class="flex items-start justify-between gap-3">
-						<div class="min-w-0">
-							<h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-50">{tag.name}</h2>
-							<div class="mt-2 flex items-center gap-2">
-								<span class="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t('tags.columns.color')}:</span>
-								<span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium text-white" style="background-color: {tag.color}">{tag.name}</span>
-							</div>
-						</div>
-						{#if !tag.isActive}
-							<span class="inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200">{t('common.states.inactive')}</span>
-						{/if}
-					</div>
-					<div class="mt-4 flex flex-wrap gap-2">
-						{@render tagActionButtons(tag)}
-					</div>
-				</article>
+				<ResponsiveListCard
+					title={tag.name ?? '—'}
+					titleId={`tag-card-${tag.id ?? 'item'}`}
+					badge={!tag.isActive ? inactiveBadge : null}
+					fields={getTagCardFields(tag)}
+					actionItems={getTagActionItems(tag)}
+					actionMenuLabel={t('common.actions.moreActions')}
+					actionMenuTitle={t('common.labels.actions')}
+				/>
 			{/snippet}
 		</ResponsiveAdminList>
 

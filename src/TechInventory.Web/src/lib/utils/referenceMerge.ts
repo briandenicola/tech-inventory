@@ -1,12 +1,5 @@
 import api from '$lib/api/client';
-import type {
-	BrandResponse,
-	CategoryResponse,
-	LocationResponse,
-	MergeEntityRequest,
-	MergeEntityResponse,
-	NetworkResponse
-} from '$lib/api/types';
+import type { MergeEntityRequest, MergeEntityResponse } from '$lib/api/types';
 import type { ReferenceEntity } from '$lib/stores/referenceData';
 
 export type MergeEntityType = 'brand' | 'category' | 'location' | 'network';
@@ -14,8 +7,6 @@ export type MergeEntityType = 'brand' | 'category' | 'location' | 'network';
 export interface MergeEntityOption extends ReferenceEntity {
 	deviceCount?: number | null;
 }
-
-type MergeSourceResponse = BrandResponse | CategoryResponse | LocationResponse | NetworkResponse;
 
 type DeviceCountQuery = {
 	Page: number;
@@ -25,17 +16,6 @@ type DeviceCountQuery = {
 	LocationId?: string;
 	NetworkId?: string;
 };
-
-export function toMergeEntityOption(entity: MergeSourceResponse): MergeEntityOption | null {
-	if (!entity.id || !entity.name) {
-		return null;
-	}
-
-	return {
-		id: entity.id,
-		name: entity.name
-	};
-}
 
 export function buildMergeTargetOptions(
 	entities: ReferenceEntity[],

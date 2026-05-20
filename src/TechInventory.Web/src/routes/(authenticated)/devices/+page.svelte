@@ -13,16 +13,13 @@
 		type DeviceResponse
 	} from '$lib/queries/devices.svelte';
 	import { registerPullToRefresh } from '$lib/stores/pullToRefresh';
-	import AddDeviceFab from '$lib/components/AddDeviceFab.svelte';
 	import BackToTopFab from '$lib/components/BackToTopFab.svelte';
+	import DeviceListAddActions from '$lib/components/DeviceListAddActions.svelte';
 	import {
 		getDevicesDefaultView,
 		setDevicesDefaultView,
 		clearDevicesDefaultView,
-		normalizeQueryString,
-		getDevicesViewMode,
-		setDevicesViewMode,
-		type DevicesViewMode
+		normalizeQueryString
 	} from '$lib/stores/userPrefs';
 	import { showToast } from '$lib/stores/toast';
 	import DeviceTable from '$lib/components/DeviceTable.svelte';
@@ -31,7 +28,6 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import PaginationControls from '$lib/components/PaginationControls.svelte';
-	import AddDeviceModal from '$lib/components/AddDeviceModal.svelte';
 	import DeviceDetailModal from '$lib/components/DeviceDetailModal.svelte';
 	import BulkActionBar from '$lib/components/BulkActionBar.svelte';
 	import BulkUpdateModal from '$lib/components/BulkUpdateModal.svelte';
@@ -51,6 +47,9 @@
 	 */
 
 	const currentUser = $derived($authStore.currentUser);
+	const canCreateDevice = $derived(
+		currentUser?.role === 'Admin' || currentUser?.role === 'Member'
+	);
 	const initialReducedMotion =
 		typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -152,11 +151,7 @@
 	// Search debounce timeout
 	let searchTimeout: ReturnType<typeof setTimeout> | null = $state(null);
 
-	// Mobile view mode (cards or table)
-	let mobileViewMode = $state<DevicesViewMode>('cards');
-
-	// Add Device modal state (D-137 — Apple-elegant modal replaces /devices/new flow)
-	let createModalOpen = $state(false);
+	// Device detail modal state (selected via ?device= URL param)
 	const selectedDeviceId = $derived($page.url.searchParams.get('device'));
 
 	// Update URL when filters change
@@ -268,10 +263,6 @@
 			void goto(`?${storedDefault}`, { replaceState: true, keepFocus: true, noScroll: true });
 		}
 
-		const savedViewMode = getDevicesViewMode(currentUser?.id);
-		if (savedViewMode) {
-			mobileViewMode = savedViewMode;
-		}
 
 		const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 		const updateMotionPreference = () => {
@@ -310,13 +301,6 @@
 		showToast({ message: t('devices.filters.defaultCleared'), type: 'success' });
 	}
 
-	// F031: mobile view mode toggle handler.
-	function setViewMode(mode: DevicesViewMode) {
-		mobileViewMode = mode;
-		if (currentUser?.id) {
-			setDevicesViewMode(currentUser.id, mode);
-		}
-	}
 
 	// F023: group devices client-side when a groupBy dimension is active.
 	// Pulls reference data for human-readable labels (Category/Owner names).
@@ -606,68 +590,14 @@
 
 		<!-- Right-side actions -->
 		<div class="flex items-center gap-2">
-			<!-- Mobile view-mode toggle (cards vs table) -->
-			<div
-				class="md:hidden inline-flex items-center rounded-full bg-neutral-100 p-1 dark:bg-neutral-800"
-				role="group"
-				aria-label={t('devices.viewMode.toggleLabel')}
-			>
-				<button
-					type="button"
-					onclick={() => setViewMode('cards')}
-					aria-pressed={mobileViewMode === 'cards'}
-					class="min-h-11 px-3 rounded-full transition-colors {mobileViewMode === 'cards'
-						? 'bg-white shadow-sm text-neutral-900 dark:bg-neutral-700 dark:text-neutral-50'
-						: 'text-neutral-600 dark:text-neutral-400'}"
-				>
-					<svg
-						class="h-5 w-5"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-						aria-hidden="true"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M4 6h6v6H4zM14 6h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"
-						/>
-					</svg>
-					<span class="sr-only">{t('devices.viewMode.cards')}</span>
-				</button>
-				<button
-					type="button"
-					onclick={() => setViewMode('table')}
-					aria-pressed={mobileViewMode === 'table'}
-					class="min-h-11 px-3 rounded-full transition-colors {mobileViewMode === 'table'
-						? 'bg-white shadow-sm text-neutral-900 dark:bg-neutral-700 dark:text-neutral-50'
-						: 'text-neutral-600 dark:text-neutral-400'}"
-				>
-					<svg
-						class="h-5 w-5"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-						aria-hidden="true"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M3 5h18M3 12h18M3 19h18"
-						/>
-					</svg>
-					<span class="sr-only">{t('devices.viewMode.table')}</span>
-				</button>
-			</div>
-
 			<!-- Mobile filter button -->
 			<button
 				type="button"
 				onclick={() => (filtersOpen = !filtersOpen)}
 				class="inline-flex items-center gap-2 rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-200 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
 				aria-expanded={filtersOpen}
+				aria-controls="device-filters-panel"
+				aria-haspopup="dialog"
 			>
 				<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 					<path
@@ -681,27 +611,7 @@
 			</button>
 
 			<!-- Add Device CTA (desktop only; mobile uses the FAB below) -->
-			<button
-				type="button"
-				onclick={() => (createModalOpen = true)}
-				class="hidden md:inline-flex min-h-11 items-center gap-2 rounded-full bg-primary-600 px-5 py-2.5 text-base font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600"
-			>
-				<svg
-					class="h-5 w-5"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-					aria-hidden="true"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M12 4v16m8-8H4"
-					/>
-				</svg>
-				{t('devices.list.addButton')}
-			</button>
+			<DeviceListAddActions selectedCount={selectedIds.size} detailOpen={!!selectedDeviceId} />
 		</div>
 	</div>
 
@@ -785,7 +695,7 @@
 	{:else if query.error}
 		<ErrorState error={query.error} onRetry={refreshDevicesList} />
 	{:else if displayedDevices.length === 0}
-		<EmptyState filtered={hasActiveFilters} onAdd={() => (createModalOpen = true)} />
+		<EmptyState filtered={hasActiveFilters} showAddAction={canCreateDevice} />
 	{:else}
 		<DeviceTable
 			devices={displayedDevices}
@@ -799,7 +709,6 @@
 			onToggleSelectAll={toggleSelectAllVisible}
 			{allVisibleSelected}
 			{someVisibleSelected}
-			{mobileViewMode}
 			onOpenDevice={openDeviceDetail}
 		/>
 
@@ -864,13 +773,6 @@
 	{/if}
 </div>
 
-{#if createModalOpen}
-	<AddDeviceModal
-		onClose={() => (createModalOpen = false)}
-		onCreated={() => void refreshDevicesList()}
-	/>
-{/if}
-
 {#if selectedDeviceId}
 	<DeviceDetailModal
 		deviceId={selectedDeviceId}
@@ -903,13 +805,6 @@
 		onCancel={() => (bulkDeleteOpen = false)}
 	/>
 {/if}
-
-<AddDeviceFab
-	visible={selectedIds.size === 0 && !createModalOpen && !selectedDeviceId}
-	label={t('devices.list.addFab')}
-	onClick={() => (createModalOpen = true)}
-	raised={showBackToTop}
-/>
 
 <BackToTopFab
 	visible={showBackToTop}

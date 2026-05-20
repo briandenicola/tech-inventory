@@ -1,37 +1,33 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
-import userEvent from '@testing-library/user-event';
 import { axe } from 'vitest-axe';
 import AddDeviceFab from './AddDeviceFab.svelte';
 
 describe('AddDeviceFab', () => {
-	it('renders a plus-button when visible', () => {
+	it('renders an add-device link when visible', () => {
 		render(AddDeviceFab, {
 			props: {
 				visible: true,
 				label: 'Add device',
-				onClick: vi.fn()
+				href: '/devices/new'
 			}
 		});
 
-		expect(screen.getByRole('button', { name: /add device/i })).toBeInTheDocument();
+		const fab = screen.getByRole('link', { name: /add device/i });
+		expect(fab).toBeInTheDocument();
+		expect(fab).toHaveAttribute('href', '/devices/new');
 	});
 
-	it('calls onClick when tapped', async () => {
-		const user = userEvent.setup();
-		const onClick = vi.fn();
-
+	it('does not render when hidden', () => {
 		render(AddDeviceFab, {
 			props: {
-				visible: true,
+				visible: false,
 				label: 'Add device',
-				onClick
+				href: '/devices/new'
 			}
 		});
 
-		await user.click(screen.getByRole('button', { name: /add device/i }));
-
-		expect(onClick).toHaveBeenCalledOnce();
+		expect(screen.queryByRole('link', { name: /add device/i })).not.toBeInTheDocument();
 	});
 
 	it('has no accessibility violations', async () => {
@@ -39,7 +35,7 @@ describe('AddDeviceFab', () => {
 			props: {
 				visible: true,
 				label: 'Add device',
-				onClick: vi.fn()
+				href: '/devices/new'
 			}
 		});
 

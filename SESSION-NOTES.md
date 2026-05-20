@@ -4,6 +4,51 @@ Append-only log. Newest entries at the top.
 
 ---
 
+## 2026-05-20 — Vasquez device add FAB regression fix
+
+- Restored the `/devices` create entry point as a route-linked pattern: new `src\TechInventory.Web\src\lib\components\DeviceListAddActions.svelte` now pairs the desktop header link with the mobile `AddDeviceFab.svelte`, and the FAB itself is an anchor to `/devices/new` pinned bottom-left with safe-area-aware offsets.
+- Updated `src\TechInventory.Web\src\routes\(authenticated)\devices\+page.svelte` plus `src\TechInventory.Web\src\lib\components\EmptyState.svelte` so Admin/Member users see the add affordance, Viewer users do not, and the empty-state CTA follows the same role gate instead of drifting from the main list header/FAB behavior.
+- Added focused coverage in `src\TechInventory.Web\src\lib\components\AddDeviceFab.test.ts`, `DeviceListAddActions.test.ts`, and `EmptyState.test.ts`; validation: `pnpm run lint` ✅, `pnpm run check` ✅, full `pnpm exec vitest run` ✅, `pnpm run build` ✅.
+- Logged the shared pattern in `.squad\agents\vasquez\history.md`, created `.squad\decisions\inbox\vasquez-fab-convention.md`, and added `.squad\skills\mobile-fab-pattern\SKILL.md` so the same bottom-left safe-area-aware anchor FAB can be applied on future list pages.
+
+---
+
+## 2026-05-20 — Vasquez mobile list card redesign
+
+- Added `src\TechInventory.Web\src\lib\components\ActionOverflowMenu.svelte`, `ResponsiveListCard.svelte`, and `DeviceTableHarness.svelte`, then refactored `/devices` plus the Brands/Categories/Locations/Networks/Owners/Tags admin pages so `md+` keeps the existing table/tree layout while mobile renders heading-first stacked cards with `<dl>` fields and preserved row actions.
+- `src\TechInventory.Web\src\lib\components\DeviceTable.svelte` now owns a dedicated mobile card renderer (including grouped sections, status badges, and shared selection state), `src\TechInventory.Web\src\routes\(authenticated)\devices\+page.svelte` drops the old mobile table-mode toggle, and admin cards now share the new overflow-action + responsive-card primitives.
+- Added responsive coverage in `ActionOverflowMenu.test.ts`, `ResponsiveListCard.test.ts`, `DeviceTable.test.ts`, and the admin harness/tests; fixed the remaining `DeviceTable` wrapper assertion so the focused responsive suite is green.
+- Validation: `pnpm run lint` ✅, `pnpm run check` ✅, focused responsive `pnpm exec vitest run ...` ✅, full `pnpm exec vitest run` ✅ (**400 passed / 1 skipped**), `pnpm run build` ✅ after clearing stale `src\TechInventory.Web\.svelte-kit` output when an initial manifest/prerender artifact caused a transient build failure.
+
+---
+
+## 2026-05-20 — Vasquez admin hub retirement + audit-log nav
+
+- Repointed the top-level admin nav item in `src\TechInventory.Web\src\lib\navigation\appNav.ts` from `/admin` to `/admin/audit` and reused `navigation.adminAudit` so the visible label is now **Audit Log** while the existing `ADMIN` subsection keeps Brands/Categories/Locations/Networks/Owners/Tags unchanged.
+- Retired the redundant admin hub by deleting `src\TechInventory.Web\src\routes\(authenticated)\admin\+page.svelte` and replacing it with `src\TechInventory.Web\src\routes\(authenticated)\admin\+page.ts`, which immediately redirects `/admin` to `/admin/audit`; `src\TechInventory.Web\src\routes\(authenticated)\admin\admin-page.test.ts` locks that redirect target.
+- Added `src\TechInventory.Web\src\lib\navigation\AppNavMenuHarness.svelte` plus `appNav.render.test.ts` so nav rendering now verifies Audit Log is visible only for Admin, hidden for Member/Viewer, points at `/admin/audit`, and stays axe-clean. Updated `tests\e2e\journeys\13-a11y-smoke.spec.ts` to hit `/admin/audit` directly.
+- Validation: `pnpm run lint` ✅, `pnpm run check` ✅, focused `pnpm exec vitest run src/lib/navigation/appNav.test.ts src/lib/navigation/appNav.render.test.ts` ✅, focused `pnpm exec vitest run 'src/routes/(authenticated)/admin/admin-page.test.ts' --reporter=verbose` ✅. Full `pnpm exec vitest run` still fails on unrelated pre-existing `DeleteDeviceModal.test.ts`, `DeviceTable.test.ts`, and `devices-page.test.ts` issues; `pnpm run build` still fails on the existing vite-plugin-pwa/workbox `sw.js` ENOENT in this environment.
+
+---
+
+## 2026-05-20 — Vasquez devices filter mobile sheet fix
+
+- Reworked `src\TechInventory.Web\src\lib\components\DeviceFilters.svelte` into a proper mobile sheet: `h-dvh` container, sticky/non-scrolling header + footer, `min-h-0 flex-1 overflow-y-auto` body, safe-area padding via `env(safe-area-inset-top/bottom)`, body scroll lock, Escape-to-close, focus trap, and initial focus on the close button so the close affordance stays reachable in iPhone PWA mode.
+- Updated `src\TechInventory.Web\src\routes\(authenticated)\devices\+page.svelte` so the filter trigger advertises the dialog relationship (`aria-controls` + `aria-haspopup="dialog"`), and added `src\TechInventory.Web\src\lib\components\DeviceFilters.test.ts` to cover sticky sheet chrome, Escape close, and axe-clean dialog semantics.
+- Checked sibling filter surfaces while investigating: the only same-pattern mobile drawer is `DeviceFilters.svelte`; `src\TechInventory.Web\src\routes\(authenticated)\admin\audit\+page.svelte` uses an inline collapsible form, not a full-height sheet. Relevant Playwright coverage for Apone lives in `tests\e2e\journeys\06-browse-filter.spec.ts` and `tests\e2e\journeys\13-a11y-smoke.spec.ts`.
+- Validation: `pnpm run lint` ✅, `pnpm run check` ✅, `pnpm exec vitest run src/lib/components/DeviceFilters.test.ts` ✅, `pnpm run build` ✅. Full `pnpm exec vitest run` still fails on the pre-existing `src\lib\components\DeviceTable.test.ts` mobile-card assertion (`tableWrapper` missing expected `hidden` class), which is outside this drawer fix.
+
+---
+
+## 2026-05-20 — Vasquez admin lookup merge cleanup
+
+- Removed the per-item `Merge` action from the Brands, Categories, Locations, and Networks admin rows/cards in `src\TechInventory.Web\src\routes\(authenticated)\admin\{brands,categories,locations,networks}\+page.svelte`; bulk `Merge Selected` remains the only merge entry point.
+- Pruned the now-dead single-source page code (`openSingleMergeModal`, single-item success toast branches, `sourceEntity` prop wiring) and removed the unused `common.actions.merge` / `admin.merge.success` strings plus the dead `toMergeEntityOption(...)` helper from `src\TechInventory.Web\src\lib\utils\referenceMerge.ts`.
+- Added `src\TechInventory.Web\src\routes\(authenticated)\admin\lookup-actions.test.ts` to verify each lookup row/card now exposes Edit + Deactivate only (no Merge). No admin E2E specs referenced the per-item merge button.
+- Validation: baseline `pnpm run lint && pnpm run check && pnpm exec vitest run && pnpm run build` ✅ before edits; final `pnpm run lint` ✅, `pnpm run check` ✅, `pnpm exec vitest run` ✅, `pnpm run build` ✅. Repo `scripts\verify.ps1` was also run and still exits on pre-existing admin `ResponsiveListCard` typing issues (`tone: 'warning'`, `onToggleSelect` narrowing) outside this cleanup's intent.
+
+---
+
 ## 2026-05-20 — Vasquez F039 reference bulk admin UI
 
 - Added `src\TechInventory.Web\src\lib\components\ReferenceDataBulkBar.svelte`, `BulkDeleteReferenceModal.svelte`, and `src\TechInventory.Web\src\lib\utils\referenceSelection.ts` so Brands, Categories, Locations, and Networks can share Set-based checkbox selection, a sticky bulk action bar, and guarded bulk-delete confirmation UX.

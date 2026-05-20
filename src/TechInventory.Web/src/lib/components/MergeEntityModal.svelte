@@ -106,13 +106,15 @@
 <svelte:window onkeydown={handleKeydown} />
 
 {#if isOpen && activeSourceEntities.length > 0}
+	<div class="ti-modal-backdrop fixed inset-0 z-40" aria-hidden="true"></div>
+
 	<div
-		class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
+		class="fixed inset-0 z-50 flex items-center justify-center px-4"
 		role="dialog"
 		aria-modal="true"
 		aria-labelledby="merge-entity-title"
 	>
-		<div class="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl dark:bg-neutral-900">
+		<div class="ti-modal-surface w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl dark:bg-neutral-900">
 			<div class="space-y-2">
 				<h2
 					id="merge-entity-title"

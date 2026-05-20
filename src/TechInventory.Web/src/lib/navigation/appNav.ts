@@ -7,8 +7,6 @@ export interface AppNavItem {
 	labelKey: string;
 	activePaths: readonly string[];
 	roles?: readonly AppNavRole[];
-	descriptionKey?: string;
-	icon?: string;
 }
 
 const adminRoles = ['Admin'] as const satisfies readonly AppNavRole[];
@@ -37,9 +35,9 @@ export const primaryNavItems = [
 		activePaths: ['/export']
 	},
 	{
-		href: '/admin',
-		labelKey: 'navigation.admin',
-		activePaths: ['/admin'],
+		href: '/admin/audit',
+		labelKey: 'navigation.adminAudit',
+		activePaths: ['/admin/audit'],
 		roles: adminRoles
 	}
 ] as const satisfies readonly AppNavItem[];
@@ -49,49 +47,37 @@ export const adminNavItems = [
 		href: '/admin/brands',
 		labelKey: 'navigation.adminBrands',
 		activePaths: ['/admin/brands'],
-		roles: adminRoles,
-		descriptionKey: 'admin.hub.brandsDescription',
-		icon: '🏷️'
+		roles: adminRoles
 	},
 	{
 		href: '/admin/categories',
 		labelKey: 'navigation.adminCategories',
 		activePaths: ['/admin/categories'],
-		roles: adminRoles,
-		descriptionKey: 'admin.hub.categoriesDescription',
-		icon: '🗂️'
+		roles: adminRoles
 	},
 	{
 		href: '/admin/locations',
 		labelKey: 'navigation.adminLocations',
 		activePaths: ['/admin/locations'],
-		roles: adminRoles,
-		descriptionKey: 'admin.hub.locationsDescription',
-		icon: '📍'
+		roles: adminRoles
 	},
 	{
 		href: '/admin/networks',
 		labelKey: 'navigation.adminNetworks',
 		activePaths: ['/admin/networks'],
-		roles: adminRoles,
-		descriptionKey: 'admin.hub.networksDescription',
-		icon: '🌐'
+		roles: adminRoles
 	},
 	{
 		href: '/admin/owners',
 		labelKey: 'navigation.adminOwners',
 		activePaths: ['/admin/owners'],
-		roles: adminRoles,
-		descriptionKey: 'admin.hub.ownersDescription',
-		icon: '👥'
+		roles: adminRoles
 	},
 	{
 		href: '/admin/tags',
 		labelKey: 'navigation.adminTags',
 		activePaths: ['/admin/tags'],
-		roles: adminRoles,
-		descriptionKey: 'admin.hub.tagsDescription',
-		icon: '🏳️'
+		roles: adminRoles
 	}
 ] as const satisfies readonly AppNavItem[];
 

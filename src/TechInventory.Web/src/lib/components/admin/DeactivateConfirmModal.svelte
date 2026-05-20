@@ -60,8 +60,10 @@
 <svelte:window onkeydown={handleKeydown} />
 
 <!-- Backdrop (fixed overlay) -->
+<div class="ti-modal-backdrop fixed inset-0 z-40" aria-hidden="true"></div>
+
 <div
-	class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+	class="fixed inset-0 z-50 flex items-center justify-center"
 	role="dialog"
 	aria-modal="true"
 	aria-labelledby="deactivate-modal-title"
@@ -69,7 +71,7 @@
 >
 	<!-- Modal Card -->
 	<div
-		class="relative mx-4 w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-neutral-900"
+		class="ti-modal-surface relative mx-4 w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-neutral-900"
 	>
 		<!-- Title -->
 		<h2

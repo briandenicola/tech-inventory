@@ -96,7 +96,7 @@
 
 <!-- Modal backdrop -->
 <div
-	class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+	class="ti-modal-backdrop fixed inset-0 z-40"
 	aria-hidden="true"
 ></div>
 
@@ -109,7 +109,7 @@
 	aria-modal="true"
 >
 	<div
-		class="w-full max-w-md overflow-hidden rounded-lg bg-white shadow-xl dark:bg-neutral-900"
+		class="ti-modal-surface w-full max-w-md overflow-hidden rounded-lg bg-white shadow-xl dark:bg-neutral-900"
 	>
 		<!-- Header -->
 		<div class="border-b border-neutral-200 px-6 py-4 dark:border-neutral-800">

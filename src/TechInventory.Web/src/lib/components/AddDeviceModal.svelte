@@ -133,7 +133,7 @@
 	<button
 		type="button"
 		aria-label={t('common.actions.cancel')}
-		class="absolute inset-0 h-full w-full cursor-default bg-black/60 backdrop-blur-sm"
+		class="ti-modal-backdrop absolute inset-0 h-full w-full cursor-default"
 		onclick={onClose}
 	></button>
 
@@ -141,7 +141,7 @@
 		<div class="flex min-h-full items-start justify-center px-4 py-10 sm:py-16">
 			<div
 				bind:this={dialogElement}
-				class="pointer-events-auto relative w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-neutral-900"
+				class="ti-modal-surface pointer-events-auto relative w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-neutral-900"
 				role="dialog"
 				aria-modal="true"
 				aria-labelledby="add-device-modal-title"

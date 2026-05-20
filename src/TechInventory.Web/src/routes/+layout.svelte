@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { initializeMsal, handleRedirectPromise, getActiveAccount } from '$lib/auth';
+	import { initializeMsal, handleRedirectPromise, tryAcquireApiTokenSilent } from '$lib/auth';
 	import { fetchCurrentUser, authStore, hydrateLocalSession } from '$lib/stores/auth';
 	import { initializeTheme } from '$lib/stores/theme.svelte';
 	import '$lib/api'; // Wire MSAL token provider into API client
@@ -12,12 +12,26 @@
 
 	let { children } = $props();
 
-	// T05 + T10: Bootstrap MSAL.js + populate auth store
-	// - initializeMsal() must be called before any other MSAL operation (v3+ requirement)
-	// - handleRedirectPromise() processes auth code from Entra redirect (if user just signed in)
-	// - If MSAL has active account, fetch /api/v1/owners/me to populate auth store (T10)
-	// F025 — local-account session (if any) is hydrated BEFORE we touch MSAL so
-	// a break-glass admin doesn't get bounced through Entra on page reload.
+	function setUnauthenticatedState(error: string | null = null) {
+		authStore.set({
+			currentUser: null,
+			isAuthenticated: false,
+			isLoading: false,
+			error,
+			authMethod: null,
+			mustChangePassword: false
+		});
+	}
+
+	function shouldRedirectToDevices(pathname: string) {
+		return pathname === '/' || pathname === '/auth/login';
+	}
+
+	// T05 + T10: Bootstrap MSAL.js + populate auth store.
+	// F025 local-account sessions hydrate first so the break-glass flow stays in
+	// sessionStorage only. For Entra sessions, attempt a silent token refresh
+	// before revealing the login page; if that fails with interaction_required,
+	// we fall back to the existing login button instead of flashing the page.
 	onMount(async () => {
 		initializeTheme();
 
@@ -28,41 +42,26 @@
 
 			await initializeMsal();
 			const authResult = await handleRedirectPromise();
+			const silentResult = authResult ?? (await tryAcquireApiTokenSilent());
 
-			// If user just signed in via redirect, navigate to devices list
-			if (authResult && authResult.account) {
-				console.log('[auth] Sign-in successful, redirecting to /devices');
-				await fetchCurrentUser(); // Populate auth store
-				goto('/devices');
-			} else {
-				// Check if user is already authenticated (page reload, direct navigation)
-				const account = getActiveAccount();
-				if (account) {
-					// User has active MSAL session; fetch current user from API
-					await fetchCurrentUser();
-				} else {
-					// No active account — mark auth store as not loading
-					authStore.set({
-						currentUser: null,
-						isAuthenticated: false,
-						isLoading: false,
-						error: null,
-						authMethod: null,
-						mustChangePassword: false
-					});
+			if (silentResult?.account) {
+				await fetchCurrentUser();
+				const authState = $authStore;
+				if (
+					authState.isAuthenticated &&
+					authState.currentUser &&
+					shouldRedirectToDevices(window.location.pathname)
+				) {
+					await goto('/devices');
 				}
+				return;
 			}
+
+			setUnauthenticatedState();
 		} catch (error) {
 			console.error('[auth] MSAL bootstrap failed:', error);
 			// Don't block app render — auth errors will surface when user tries to access protected routes
-			authStore.set({
-				currentUser: null,
-				isAuthenticated: false,
-				isLoading: false,
-				error: error instanceof Error ? error.message : 'Auth bootstrap failed',
-				authMethod: null,
-				mustChangePassword: false
-			});
+			setUnauthenticatedState(error instanceof Error ? error.message : 'Auth bootstrap failed');
 		}
 	});
 

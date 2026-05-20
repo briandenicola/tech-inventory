@@ -1,3 +1,4 @@
+using System.Text;
 using FluentAssertions;
 using NSubstitute;
 using TechInventory.Application.Abstractions.Repositories;
@@ -83,6 +84,49 @@ public sealed class ReportingQueryHandlerTests
     }
 
     [Fact]
+    public async Task GetInsuranceReportQueryHandler_WhenCalled_ReturnsCsvWithHeaderAndFooter()
+    {
+        var repository = Substitute.For<IReportingRepository>();
+        var now = new DateTimeOffset(2026, 5, 20, 14, 30, 0, TimeSpan.Zero);
+        repository.GetInsuranceReportItemsAsync(Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), Arg.Any<CancellationToken>())
+            .Returns(
+            [
+                new InsuranceReportItem("Laptop", "Lenovo", "Computers", "SN-001", new DateOnly(2024, 1, 15), 1200m, "Office", new DateOnly(2027, 1, 15)),
+                new InsuranceReportItem("Speaker", null, "Audio", null, null, null, "Living Room", null)
+            ]);
+        var handler = new GetInsuranceReportQueryHandler(
+            repository,
+            new FixedTimeProvider(now));
+        var query = new GetInsuranceReportQuery(Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"));
+
+        var result = await handler.Handle(query, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.FileName.Should().Be("insurance-report-2026-05-20.csv");
+        var csv = Encoding.UTF8.GetString(result.Value.Content);
+        csv.Should().Contain("# Insurance Inventory Report - Generated 2026-05-20 14:30:00 UTC");
+        csv.Should().Contain("Name,Brand,Category,Serial Number,Purchase Date,Price,Location,Warranty Expiry");
+        csv.Should().Contain("Laptop,Lenovo,Computers,SN-001,2024-01-15,1200.00,Office,2027-01-15");
+        csv.Should().Contain("Speaker,,Audio,,,,Living Room,");
+        csv.Should().Contain("TOTAL,,,,,1200.00,,");
+        await repository.Received(1).GetInsuranceReportItemsAsync(query.LocationId, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetInsuranceReportQuery_WhenLocationIdEmpty_ReturnsValidationFailure()
+    {
+        var query = new GetInsuranceReportQuery(Guid.Empty);
+
+        var result = await DeviceHandlerTestSupport.ValidateAsync(
+            query,
+            new GetInsuranceReportQueryValidator(),
+            new InsuranceReportFileResponse("insurance-report-2026-05-20.csv", []));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("Validation");
+    }
+
+    [Fact]
     public async Task GetSpendingReportQuery_WhenDateRangeInvalid_ReturnsValidationFailure()
     {
         var query = new GetSpendingReportQuery(SpendingGroupBy.Year, new DateOnly(2025, 1, 1), new DateOnly(2024, 12, 31));
@@ -94,5 +138,10 @@ public sealed class ReportingQueryHandlerTests
 
         result.IsFailure.Should().BeTrue();
         result.Error!.Code.Should().Be("Validation");
+    }
+
+    private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => utcNow;
     }
 }

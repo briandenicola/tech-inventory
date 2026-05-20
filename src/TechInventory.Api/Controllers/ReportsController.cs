@@ -29,6 +29,16 @@ public sealed class ReportsController(ISender sender) : ControllerBase
     public async Task<ActionResult<SpendingReportResponse>> GetSpending([FromQuery] GetSpendingReportRequest request, CancellationToken cancellationToken)
         => this.OkResult(await sender.Send(request.ToQuery(), cancellationToken));
 
+    [HttpGet("insurance")]
+    [Produces("text/csv")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetInsurance([FromQuery] GetInsuranceReportRequest request, CancellationToken cancellationToken)
+    {
+        var report = (await sender.Send(request.ToQuery(), cancellationToken).ConfigureAwait(false)).GetValueOrThrow();
+        return File(report.Content, "text/csv", report.FileName);
+    }
+
     public sealed record GetWarrantyReportRequest
     {
         public int ExpiringWithinDays { get; init; } = 30;
@@ -45,5 +55,12 @@ public sealed class ReportsController(ISender sender) : ControllerBase
         public DateOnly? ToDate { get; init; }
 
         public GetSpendingReportQuery ToQuery() => new(GroupBy, FromDate, ToDate);
+    }
+
+    public sealed record GetInsuranceReportRequest
+    {
+        public Guid? LocationId { get; init; }
+
+        public GetInsuranceReportQuery ToQuery() => new(LocationId);
     }
 }

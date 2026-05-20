@@ -21,6 +21,18 @@ public sealed record WarrantyReportResponse(
     int ExpiringWithinDays,
     IReadOnlyList<WarrantyReportItem> Devices);
 
+public sealed record InsuranceReportItem(
+    string Name,
+    string? Brand,
+    string Category,
+    string? SerialNumber,
+    DateOnly? PurchaseDate,
+    decimal? Price,
+    string Location,
+    DateOnly? WarrantyExpiry);
+
+public sealed record InsuranceReportFileResponse(string FileName, byte[] Content);
+
 public enum SpendingGroupBy
 {
     Month = 1,

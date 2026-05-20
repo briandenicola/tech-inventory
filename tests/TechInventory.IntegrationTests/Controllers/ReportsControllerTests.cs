@@ -142,6 +142,51 @@ public sealed class ReportsControllerTests(IntegrationTestFactory<ReportsControl
             ]);
     }
 
+    [Fact]
+    public async Task GetInsurance_WhenFilteredByLocation_ReturnsCsvAttachmentForActiveDevicesOnly()
+    {
+        await ResetDatabaseAsync();
+        var references = await SeedDeviceReferenceDataAsync();
+        var secondLocation = new Location(Guid.NewGuid(), "Workshop", LocationType.Home);
+        await SeedAsync(
+            entities:
+            [
+                secondLocation,
+                CreateReportDevice(references.Household, references.Brand.Id, references.Category.Id, references.Owner.Id, references.Location.Id, references.Network.Id, "Covered", DeviceStatus.Active, 500m, purchaseDate: new DateOnly(2024, 2, 1), warrantyExpiry: new DateOnly(2026, 2, 1)),
+                CreateReportDevice(references.Household, references.Brand.Id, references.Category.Id, references.Owner.Id, secondLocation.Id, references.Network.Id, "Other Location", DeviceStatus.Active, 250m, purchaseDate: new DateOnly(2024, 3, 1)),
+                CreateReportDevice(references.Household, references.Brand.Id, references.Category.Id, references.Owner.Id, references.Location.Id, references.Network.Id, "Retired", DeviceStatus.Retired, 999m, purchaseDate: new DateOnly(2024, 4, 1))
+            ]);
+        using var client = CreateClient();
+
+        var response = await client.GetAsync($"/api/v1/reports/insurance?locationId={references.Location.Id}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentType!.MediaType.Should().Be("text/csv");
+        response.Content.Headers.ContentDisposition.Should().NotBeNull();
+        response.Content.Headers.ContentDisposition!.DispositionType.Should().Be("attachment");
+        response.Content.Headers.ContentDisposition.FileName.Should().Contain("insurance-report-");
+        var csv = await response.Content.ReadAsStringAsync();
+        csv.Should().Contain("# Insurance Inventory Report - Generated ");
+        csv.Should().Contain("Name,Brand,Category,Serial Number,Purchase Date,Price,Location,Warranty Expiry");
+        csv.Should().Contain("Covered,");
+        csv.Should().NotContain("Other Location");
+        csv.Should().NotContain("Retired,");
+        csv.Should().Contain("TOTAL,,,,,500.00,,");
+    }
+
+    [Fact]
+    public async Task GetInsurance_WhenLocationIdEmpty_Returns400ValidationProblemDetails()
+    {
+        await ResetDatabaseAsync();
+        using var client = CreateClient();
+
+        var response = await client.GetAsync("/api/v1/reports/insurance?locationId=00000000-0000-0000-0000-000000000000");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problem = await ReadValidationProblemDetailsAsync(response);
+        problem.Errors.Keys.Should().Contain(key => string.Equals(key, "LocationId", StringComparison.OrdinalIgnoreCase));
+    }
+
     private static Device CreateReportDevice(
         Household household,
         Guid? brandId,

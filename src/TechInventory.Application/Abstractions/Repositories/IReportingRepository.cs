@@ -8,5 +8,7 @@ public interface IReportingRepository
 
     Task<IReadOnlyList<WarrantyReportItem>> GetExpiringWarrantiesAsync(DateOnly asOfDate, int expiringWithinDays, CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<InsuranceReportItem>> GetInsuranceReportItemsAsync(Guid? locationId, CancellationToken cancellationToken);
+
     Task<IReadOnlyList<SpendingReportPoint>> GetSpendingAsync(SpendingGroupBy groupBy, DateOnly? fromDate, DateOnly? toDate, CancellationToken cancellationToken);
 }

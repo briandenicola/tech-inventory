@@ -91,7 +91,7 @@ the per-file header wins.
 
 - **Shipped (v1 or v1b)**: F020, F021, F022, F023, F024, F025 — **6 items**.
 - **Carved follow-ups still in backlog**: F020b, F021b, F024b, F025b — **4 items**.
-- **Untouched ideas**: F018, F019, F026, F027, F028, F029, F030, F031, F032, F033 — **10 items**.
+- **Untouched ideas**: F018, F019, F027, F028, F031, F032, F033 — **7 items**.
 - **Total backlog files**: 20.
 
 ### 2026-05-19 PWA field-test batch (F026–F033)

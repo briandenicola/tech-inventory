@@ -30,6 +30,7 @@
 	import DeleteDeviceModal from '$lib/components/DeleteDeviceModal.svelte';
 	import ClaimOwnershipModal from '$lib/components/ClaimOwnershipModal.svelte';
 	import ReleaseOwnershipModal from '$lib/components/ReleaseOwnershipModal.svelte';
+	import DeviceAuditHistoryDrawer from '$lib/components/admin/DeviceAuditHistoryDrawer.svelte';
 	import type { DeviceResponse } from '$lib/queries/devices.svelte';
 
 	interface Props {
@@ -51,6 +52,7 @@
 	let showDeleteModal = $state(false);
 	let showClaimModal = $state(false);
 	let showReleaseModal = $state(false);
+	let showHistoryDrawer = $state(false);
 
 	let dialogElement = $state<HTMLDivElement | undefined>(undefined);
 
@@ -222,14 +224,24 @@
 	}
 
 	function handleViewHistory() {
+		// F026: keep the audit history inside the device context. Brian's PWA
+		// field test (2026-05-19) flagged the old "navigate to /admin/audit"
+		// behaviour as a context-loss bug; the standalone admin route is still
+		// available for cross-entity browsing.
 		if (device) {
-			goto(`/admin/audit?entityType=Device&entityId=${device.id}`);
+			showHistoryDrawer = true;
 		}
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
 		// Don't swallow Escape when a nested modal is open — let them close first.
-		if (e.key === 'Escape' && !showDeleteModal && !showClaimModal && !showReleaseModal) {
+		if (
+			e.key === 'Escape' &&
+			!showDeleteModal &&
+			!showClaimModal &&
+			!showReleaseModal &&
+			!showHistoryDrawer
+		) {
 			onClose();
 		}
 	}
@@ -512,5 +524,12 @@
 		deviceName={device.name ?? 'Device'}
 		onConfirm={handleReleaseOwnership}
 		onCancel={() => (showReleaseModal = false)}
+	/>
+{/if}
+
+{#if showHistoryDrawer && device}
+	<DeviceAuditHistoryDrawer
+		deviceId={device.id}
+		onClose={() => (showHistoryDrawer = false)}
 	/>
 {/if}

@@ -111,6 +111,25 @@
 			return dateStr;
 		}
 	}
+
+	// F026: status pill colors for mobile cards. Mirrors the AuditDiffDrawer
+	// palette pattern so the visual language stays consistent across the app.
+	function statusBadgeClass(status: string | null | undefined): string {
+		switch (status) {
+			case 'Active':
+				return 'bg-success-100 text-success-800 dark:bg-success-900 dark:text-success-100';
+			case 'Retired':
+				return 'bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300';
+			case 'Disposed':
+				return 'bg-danger-100 text-danger-800 dark:bg-danger-900 dark:text-danger-100';
+			case 'InRepair':
+				return 'bg-warning-100 text-warning-800 dark:bg-warning-900 dark:text-warning-100';
+			case 'Lent':
+				return 'bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200';
+			default:
+				return 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300';
+		}
+	}
 </script>
 
 <!-- Desktop table (hidden on mobile) -->
@@ -380,15 +399,23 @@
 	</table>
 </div>
 
-<!-- Mobile card layout -->
-<div class="md:hidden space-y-4">
+<!--
+	Mobile card layout.
+
+	F026: 2-up grid at mobile widths to roughly double the device density per
+	screen. Cards drop secondary metadata (owner, purchase date) and show only
+	name + status badge + brand + category so two cards fit comfortably at the
+	360 px breakpoint we target. The full record is still one tap away in the
+	detail modal.
+-->
+<div class="md:hidden grid grid-cols-2 gap-3">
 	{#snippet mobileCard(device: DeviceResponse)}
 		{@const selected = selectable && isSelected(device.id)}
 		<div
 			class="relative rounded-lg border border-neutral-200 bg-white transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:bg-neutral-900 {selected ? 'ring-2 ring-primary-500 bg-primary-500/5' : ''}"
 		>
 			{#if selectable}
-				<label class="absolute left-3 top-3 z-10 flex h-8 w-8 cursor-pointer items-center justify-center">
+				<label class="absolute right-2 top-2 z-10 flex h-8 w-8 cursor-pointer items-center justify-center">
 					<input
 						type="checkbox"
 						class="h-5 w-5 cursor-pointer rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
@@ -400,52 +427,27 @@
 			{/if}
 			<a
 				href="/devices/{device.id}"
-				class="block p-4"
-				class:pl-12={selectable}
+				class="block p-3"
+				class:pr-10={selectable}
 			>
-				<div class="flex items-start justify-between">
-					<div class="flex-1">
-						<h3 class="text-base font-semibold text-neutral-900 dark:text-neutral-50">
-							{device.name || '—'}
-						</h3>
-						<dl class="mt-2 space-y-1 text-sm text-neutral-700 dark:text-neutral-300">
-							<div class="flex gap-2">
-								<dt class="font-medium">{t('devices.columns.brand')}:</dt>
-								<dd>{lookupName(refData.brands, device.brandId)}</dd>
-							</div>
-							<div class="flex gap-2">
-								<dt class="font-medium">{t('devices.columns.category')}:</dt>
-								<dd>{lookupName(refData.categories, device.categoryId)}</dd>
-							</div>
-							<div class="flex gap-2">
-								<dt class="font-medium">{t('devices.columns.owner')}:</dt>
-								<dd>{lookupName(refData.owners, device.ownerId)}</dd>
-							</div>
-							<div class="flex gap-2">
-								<dt class="font-medium">{t('devices.columns.status')}:</dt>
-								<dd>{device.status || '—'}</dd>
-							</div>
-							<div class="flex gap-2">
-								<dt class="font-medium">{t('devices.columns.purchaseDate')}:</dt>
-								<dd>{formatDate(device.purchaseDate)}</dd>
-							</div>
-						</dl>
+				<h3 class="text-sm font-semibold leading-tight text-neutral-900 dark:text-neutral-50">
+					{device.name || '—'}
+				</h3>
+				<span
+					class="mt-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {statusBadgeClass(device.status)}"
+				>
+					{device.status || '—'}
+				</span>
+				<dl class="mt-2 space-y-0.5 text-xs text-neutral-700 dark:text-neutral-300">
+					<div class="flex gap-1 truncate">
+						<dt class="font-medium text-neutral-500 dark:text-neutral-400">{t('devices.columns.brand')}:</dt>
+						<dd class="truncate">{lookupName(refData.brands, device.brandId)}</dd>
 					</div>
-					<svg
-						class="h-5 w-5 flex-shrink-0 text-neutral-400"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-						aria-hidden="true"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M9 5l7 7-7 7"
-						/>
-					</svg>
-				</div>
+					<div class="flex gap-1 truncate">
+						<dt class="font-medium text-neutral-500 dark:text-neutral-400">{t('devices.columns.category')}:</dt>
+						<dd class="truncate">{lookupName(refData.categories, device.categoryId)}</dd>
+					</div>
+				</dl>
 			</a>
 		</div>
 	{/snippet}
@@ -453,7 +455,7 @@
 	{#if isGrouped && groups}
 		{#each groups as group (group.key)}
 			{@const collapsed = isCollapsed(group.key)}
-			<section aria-label={group.label} data-testid="device-group-section-mobile">
+			<section aria-label={group.label} data-testid="device-group-section-mobile" class="col-span-2">
 				<button
 					type="button"
 					onclick={() => toggleGroup(group.key)}
@@ -476,7 +478,7 @@
 					</span>
 				</button>
 				{#if !collapsed}
-					<div class="space-y-3">
+					<div class="grid grid-cols-2 gap-3">
 						{#each group.devices as device (device.id)}
 							{@render mobileCard(device)}
 						{/each}

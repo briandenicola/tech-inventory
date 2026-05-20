@@ -91,8 +91,16 @@
 	const currentYear = new Date().getFullYear();
 </script>
 
-<!-- Mobile drawer backdrop -->
-{#if !isOpen && onClose}
+<!--
+	Mobile drawer backdrop.
+
+	F026: the previous condition was inverted (`!isOpen && onClose`), which
+	rendered a full-screen z-40 overlay *whenever the drawer was closed* — that
+	intercepted every tap on the devices list and gave the "transparent element
+	in front of devices" symptom Brian reported during field testing. Backdrop
+	must only render when the drawer is actually open.
+-->
+{#if isOpen && onClose}
 	<div
 		class="md:hidden fixed inset-0 z-40 bg-neutral-900/50"
 		onclick={onClose}

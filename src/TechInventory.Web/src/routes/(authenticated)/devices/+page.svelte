@@ -38,9 +38,36 @@
 
 	const currentUser = $derived($authStore.currentUser);
 
+	// F026: Active-default status filter.
+	//
+	// Behaviour:
+	//   - no `status` URL param        → status = ['Active']  (the new default)
+	//   - `status=all`                 → status = undefined   (show everything)
+	//   - `status=<DeviceStatus>`      → status = [that one]  (explicit pick)
+	//
+	// The `all` sentinel is required so we can distinguish "user explicitly
+	// asked for every status" from "user has not chosen anything yet"; without
+	// it the bare URL would always be re-coerced to Active and there would be
+	// no way to opt back out.
+	const STATUS_ALL_SENTINEL = 'all';
+	type DeviceStatus = NonNullable<DeviceFiltersType['status']>[number];
+	const KNOWN_STATUSES: DeviceStatus[] = ['Active', 'Retired', 'Disposed', 'InRepair', 'Lent'];
+	function isDeviceStatus(value: string): value is DeviceStatus {
+		return (KNOWN_STATUSES as string[]).includes(value);
+	}
+
 	// Parse filters from URL searchParams (reactive)
 	const urlFilters = $derived.by(() => {
 		const params = $page.url.searchParams;
+		const rawStatus = params.get('status');
+		let status: DeviceStatus[] | undefined;
+		if (rawStatus === STATUS_ALL_SENTINEL) {
+			status = undefined;
+		} else if (rawStatus && isDeviceStatus(rawStatus)) {
+			status = [rawStatus];
+		} else {
+			status = ['Active'];
+		}
 		const filters: DeviceFiltersType = {
 			page: parseInt(params.get('page') || '1', 10),
 			pageSize: parseInt(params.get('pageSize') || '25', 10),
@@ -50,9 +77,7 @@
 			ownerId: params.get('ownerId') || undefined,
 			locationId: params.get('locationId') || undefined,
 			networkId: params.get('networkId') || undefined,
-			status: params.get('status')
-				? [params.get('status')! as 'Active' | 'Retired' | 'Disposed' | 'InRepair' | 'Lent']
-				: undefined,
+			status,
 			purchaseYearMin: params.get('yearMin')
 				? parseInt(params.get('yearMin')!, 10)
 				: undefined,
@@ -66,6 +91,15 @@
 		};
 		return filters;
 	});
+
+	// F026: did the user explicitly opt out of the Active default this session?
+	// Stays true only inside the bare-URL → Active-default branch.
+	const statusIsImplicitActive = $derived(
+		$page.url.searchParams.get('status') === null
+	);
+	const showingAllStatuses = $derived(
+		$page.url.searchParams.get('status') === STATUS_ALL_SENTINEL
+	);
 
 	// Devices query (reactive — pass a getter so filter changes propagate)
 	// When grouping is active we fetch the max page size (200, capped by the
@@ -99,8 +133,17 @@
 		if (newFilters.ownerId) params.set('ownerId', newFilters.ownerId);
 		if (newFilters.locationId) params.set('locationId', newFilters.locationId);
 		if (newFilters.networkId) params.set('networkId', newFilters.networkId);
-		if (newFilters.status && newFilters.status.length > 0)
+		// F026: status round-trip rules.
+		//   undefined or []           → user cleared status → STATUS_ALL_SENTINEL
+		//   ['Active']                → matches implicit default → omit
+		//   any other single value    → write as-is
+		if (!newFilters.status || newFilters.status.length === 0) {
+			params.set('status', STATUS_ALL_SENTINEL);
+		} else if (newFilters.status.length === 1 && newFilters.status[0] === 'Active') {
+			// omit — implicit default
+		} else {
 			params.set('status', newFilters.status[0]);
+		}
 		if (newFilters.purchaseYearMin) params.set('yearMin', newFilters.purchaseYearMin.toString());
 		if (newFilters.purchaseYearMax) params.set('yearMax', newFilters.purchaseYearMax.toString());
 		if (newFilters.sort) params.set('sort', newFilters.sort);
@@ -124,7 +167,10 @@
 		updateFilters({ ...urlFilters, page, pageSize });
 	}
 
-	// Determine if filters are active (for empty state logic)
+	// Determine if filters are active (for empty state logic).
+	// F026: the implicit Active default is *not* a user-set filter, so it
+	// doesn't count toward "filters are active" — otherwise the empty state
+	// would always say "no devices match your filters" even on a clean URL.
 	const hasActiveFilters = $derived(
 		!!(
 			urlFilters.search ||
@@ -133,11 +179,21 @@
 			urlFilters.ownerId ||
 			urlFilters.locationId ||
 			urlFilters.networkId ||
-			(urlFilters.status && urlFilters.status.length > 0) ||
+			(!statusIsImplicitActive && urlFilters.status && urlFilters.status.length > 0) ||
+			showingAllStatuses ||
 			urlFilters.purchaseYearMin ||
 			urlFilters.purchaseYearMax
 		)
 	);
+
+	// F026: toggle between the implicit-Active default and the explicit
+	// show-all sentinel from the header chip.
+	function showAllStatuses() {
+		updateFilters({ ...urlFilters, status: undefined, page: 1 });
+	}
+	function restoreActiveDefault() {
+		updateFilters({ ...urlFilters, status: ['Active'], page: 1 });
+	}
 
 	// F022: per-user default view persistence (localStorage).
 	// Apply a stored default exactly once on first mount when the URL is bare;
@@ -369,11 +425,11 @@
 					{t('devices.filters.filterButton')}
 				</button>
 
-				<!-- Add Device CTA -->
+				<!-- Add Device CTA (desktop only; mobile uses the FAB below) -->
 				<button
 					type="button"
 					onclick={() => (createModalOpen = true)}
-					class="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary-600 px-5 py-2.5 text-base font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600"
+					class="hidden md:inline-flex min-h-11 items-center gap-2 rounded-full bg-primary-600 px-5 py-2.5 text-base font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600"
 				>
 					<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -382,6 +438,43 @@
 				</button>
 			</div>
 		</div>
+
+		<!--
+			F026: status-filter chip. The implicit Active default is invisible by
+			itself, so we surface it as a chip with a one-tap escape hatch. When the
+			user has opted into "all", the chip flips to offer the reverse action.
+		-->
+		{#if statusIsImplicitActive}
+			<div class="mb-4 flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
+				<span
+					class="inline-flex items-center rounded-full bg-success-100 px-3 py-1 text-xs font-medium text-success-800 dark:bg-success-900 dark:text-success-100"
+				>
+					{t('devices.statusChip.showingActive')}
+				</span>
+				<button
+					type="button"
+					onclick={showAllStatuses}
+					class="rounded-full px-2 py-1 text-sm font-medium text-primary-700 underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-primary-300"
+				>
+					{t('devices.statusChip.showAll')}
+				</button>
+			</div>
+		{:else if showingAllStatuses}
+			<div class="mb-4 flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
+				<span
+					class="inline-flex items-center rounded-full bg-neutral-200 px-3 py-1 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200"
+				>
+					{t('devices.statusChip.showingAll')}
+				</span>
+				<button
+					type="button"
+					onclick={restoreActiveDefault}
+					class="rounded-full px-2 py-1 text-sm font-medium text-primary-700 underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-primary-300"
+				>
+					{t('devices.statusChip.activeOnly')}
+				</button>
+			</div>
+		{/if}
 
 		<!-- Content: loading / error / empty / success -->
 		{#if query.isLoading}
@@ -449,5 +542,23 @@
 		onConfirm={handleBulkDelete}
 		onCancel={() => (bulkDeleteOpen = false)}
 	/>
+{/if}
+
+<!--
+	F026: mobile-only Add-Device FAB. Hidden when a bulk selection is active
+	so it doesn't sit on top of the BulkActionBar's `fixed inset-x-0 bottom-0`
+	dock. The desktop header keeps the labeled CTA above.
+-->
+{#if selectedIds.size === 0}
+	<button
+		type="button"
+		onclick={() => (createModalOpen = true)}
+		class="md:hidden fixed bottom-6 right-6 z-30 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary-600 text-white shadow-lg transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600"
+		aria-label={t('devices.list.addFab')}
+	>
+		<svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+		</svg>
+	</button>
 {/if}
 

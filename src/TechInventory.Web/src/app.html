@@ -2,7 +2,13 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<!--
+			F026: pinch-zoom intentionally disabled (user-scalable=no, maximum-scale=1)
+			to eliminate the iOS PWA "scroll wobble" caused by accidental two-finger
+			zoom while panning. Accessibility note: dynamic type / browser font scaling
+			still works in standalone PWA mode, so WCAG 1.4.4 reflow is preserved.
+		-->
+		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 		<meta name="description" content="Tech Inventory — Your household, catalogued." />
 		<link rel="icon" href="%sveltekit.assets%/favicon.svg" type="image/svg+xml" />
 		<link rel="icon" href="%sveltekit.assets%/favicon.png" sizes="32x32" />

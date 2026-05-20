@@ -145,8 +145,20 @@
 		"list": {
 			"title": "Devices",
 			"addButton": "Add Device",
+			"addFab": "Add device",
 			"emptyState": "No devices yet. Add your first device to get started.",
 			"emptyFiltered": "No devices match your filters."
+		},
+		"statusChip": {
+			"showingActive": "Showing Active only",
+			"showAll": "Show all statuses",
+			"showingAll": "Showing all statuses",
+			"activeOnly": "Show Active only"
+		},
+		"history": {
+			"title": "Change history",
+			"subtitle": "Most recent audit events for this device.",
+			"empty": "No changes recorded for this device yet."
 		},
 		"detail": {
 			"title": "Device Details",

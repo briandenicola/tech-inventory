@@ -2,6 +2,7 @@ using MediatR;
 using TechInventory.Application.Abstractions.Persistence;
 using TechInventory.Application.Abstractions.Repositories;
 using TechInventory.Application.Auditing;
+using TechInventory.Application.BulkOperations;
 using TechInventory.Application.Common.Results;
 using TechInventory.Domain.Entities;
 using TechInventory.Domain.Enums;

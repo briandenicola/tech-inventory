@@ -1,8 +1,11 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TechInventory.Api.Authentication;
 using TechInventory.Api.Common;
+using TechInventory.Application.BulkOperations;
 using TechInventory.Application.Common.Paging;
+using TechInventory.Application.Merges;
 using TechInventory.Application.Networks;
 using TechInventory.Application.Networks.Commands;
 using TechInventory.Application.Networks.Queries;
@@ -55,6 +58,25 @@ public sealed class NetworksController(ISender sender) : ControllerBase
     public async Task<IActionResult> DeleteNetwork(Guid id, CancellationToken cancellationToken)
         => this.NoContentResult(await sender.Send(new DeleteNetworkCommand(id), cancellationToken));
 
+    [HttpPost("merge")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(MergeReferenceEntityResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<MergeReferenceEntityResponse>> MergeNetworks([FromBody] MergeNetworkRequest request, CancellationToken cancellationToken)
+        => this.OkResult(await sender.Send(request.ToCommand(), cancellationToken));
+
+    [HttpPost("bulk/delete")]
+    [Authorize(Policy = AuthorizationPolicies.Admin)]
+    [ProducesResponseType(typeof(BulkOperationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BulkOperationResponse>> BulkDeleteNetworks([FromBody] BulkDeleteNetworksRequest request, CancellationToken cancellationToken)
+        => this.OkResult(await sender.Send(request.ToCommand(), cancellationToken));
+
     public sealed record CreateNetworkRequest(string Name, string? Description = null)
     {
         public CreateNetworkCommand ToCommand() => new(Name, Description);
@@ -63,5 +85,15 @@ public sealed class NetworksController(ISender sender) : ControllerBase
     public sealed record UpdateNetworkRequest(string Name, string? Description = null)
     {
         public UpdateNetworkCommand ToCommand(Guid id) => new(id, Name, Description);
+    }
+
+    public sealed record MergeNetworkRequest(Guid SourceId, Guid TargetId)
+    {
+        public MergeNetworkCommand ToCommand() => new(SourceId, TargetId);
+    }
+
+    public sealed record BulkDeleteNetworksRequest(IReadOnlyList<Guid> NetworkIds)
+    {
+        public BulkDeleteNetworksCommand ToCommand() => new(NetworkIds ?? Array.Empty<Guid>());
     }
 }

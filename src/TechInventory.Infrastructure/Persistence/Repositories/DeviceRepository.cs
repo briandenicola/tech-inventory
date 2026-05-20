@@ -47,6 +47,9 @@ public sealed class DeviceRepository(AppDbContext dbContext) : Repository<Device
     public Task<Result<int>> ReassignLocationReferencesAsync(Guid sourceId, Guid targetId, CancellationToken cancellationToken)
         => ReassignReferencesAsync(device => device.LocationId == sourceId, device => device.ReassignLocation(targetId), cancellationToken);
 
+    public Task<Result<int>> ReassignNetworkReferencesAsync(Guid sourceId, Guid targetId, CancellationToken cancellationToken)
+        => ReassignReferencesAsync(device => device.NetworkId == sourceId, device => device.ReassignNetwork(targetId), cancellationToken);
+
     public async IAsyncEnumerable<DeviceExportRow> StreamExportAsync(DeviceListCriteria criteria)
     {
         ArgumentNullException.ThrowIfNull(criteria);

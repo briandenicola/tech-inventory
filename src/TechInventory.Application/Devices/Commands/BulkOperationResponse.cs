@@ -1,4 +1,4 @@
-namespace TechInventory.Application.Devices.Commands;
+namespace TechInventory.Application.BulkOperations;
 
 /// <summary>
 /// Response returned by bulk endpoints (PATCH/DELETE /api/v1/devices/bulk*).

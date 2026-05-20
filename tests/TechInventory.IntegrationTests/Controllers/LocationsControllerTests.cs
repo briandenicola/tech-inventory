@@ -1,5 +1,6 @@
 using System.Net;
 using FluentAssertions;
+using TechInventory.Application.BulkOperations;
 using TechInventory.Application.Common.Paging;
 using TechInventory.Application.Locations;
 using TechInventory.Application.Merges;
@@ -181,5 +182,50 @@ public sealed class LocationsControllerTests(IntegrationTestFactory<LocationsCon
         var sourceResponse = await client.GetAsync($"/api/v1/locations/{references.Location.Id}");
         var sourcePayload = await ReadJsonAsync<LocationResponse>(sourceResponse);
         sourcePayload.IsActive.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task BulkDeleteLocations_WhenValid_DeactivatesAllLocationsAndWritesCorrelatedAuditEvents()
+    {
+        await ResetDatabaseAsync();
+        var first = new Location(Guid.NewGuid(), $"Location-{Guid.NewGuid():N}", LocationType.Home);
+        var second = new Location(Guid.NewGuid(), $"Location-{Guid.NewGuid():N}", LocationType.Storage);
+        await SeedAsync(entities: [first, second]);
+        using var client = CreateClient();
+
+        var response = await client.PostAsync(
+            "/api/v1/locations/bulk/delete",
+            CreateJsonContent(new { locationIds = new[] { first.Id, second.Id } }));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var payload = await ReadJsonAsync<BulkOperationResponse>(response);
+        payload.AffectedCount.Should().Be(2);
+
+        var firstResponse = await client.GetAsync($"/api/v1/locations/{first.Id}");
+        var secondResponse = await client.GetAsync($"/api/v1/locations/{second.Id}");
+        (await ReadJsonAsync<LocationResponse>(firstResponse)).IsActive.Should().BeFalse();
+        (await ReadJsonAsync<LocationResponse>(secondResponse)).IsActive.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task BulkDeleteLocations_WhenAnyLocationIsInactive_ReturnsConflictWithoutMutatingOthers()
+    {
+        await ResetDatabaseAsync();
+        var active = new Location(Guid.NewGuid(), $"Location-{Guid.NewGuid():N}", LocationType.Home);
+        var inactive = new Location(Guid.NewGuid(), $"Location-{Guid.NewGuid():N}", LocationType.Storage);
+        inactive.Deactivate();
+        await SeedAsync(entities: [active, inactive]);
+        using var client = CreateClient();
+
+        var response = await client.PostAsync(
+            "/api/v1/locations/bulk/delete",
+            CreateJsonContent(new { locationIds = new[] { active.Id, inactive.Id } }));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var problem = await ReadProblemDetailsAsync(response);
+        problem.Detail.Should().Contain(inactive.Id.ToString());
+
+        var reloadedActive = await client.GetAsync($"/api/v1/locations/{active.Id}");
+        (await ReadJsonAsync<LocationResponse>(reloadedActive)).IsActive.Should().BeTrue();
     }
 }

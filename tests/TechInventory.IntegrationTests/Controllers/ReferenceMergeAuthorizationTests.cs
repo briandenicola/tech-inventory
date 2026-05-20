@@ -14,6 +14,7 @@ public sealed class ReferenceMergeAuthorizationTests(MemberRoleIntegrationTestFa
     [InlineData("/api/v1/brands/merge")]
     [InlineData("/api/v1/categories/merge")]
     [InlineData("/api/v1/locations/merge")]
+    [InlineData("/api/v1/networks/merge")]
     public async Task MergeEndpoint_WhenCallerIsMember_ReturnsForbidden(string route)
     {
         using var client = Factory.CreateClient();

@@ -1,8 +1,10 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TechInventory.Api.Authentication;
 using TechInventory.Api.Common;
 using TechInventory.Api.Features.Categories;
+using TechInventory.Application.BulkOperations;
 using TechInventory.Application.Categories;
 using TechInventory.Application.Categories.Commands;
 using TechInventory.Application.Categories.Queries;
@@ -75,6 +77,16 @@ public sealed class CategoriesController(ISender sender) : ControllerBase
     public async Task<ActionResult<MergeReferenceEntityResponse>> MergeCategories([FromBody] MergeCategoryRequest request, CancellationToken cancellationToken)
         => this.OkResult(await sender.Send(request.ToCommand(), cancellationToken));
 
+    [HttpPost("bulk/delete")]
+    [Authorize(Policy = AuthorizationPolicies.Admin)]
+    [ProducesResponseType(typeof(BulkOperationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BulkOperationResponse>> BulkDeleteCategories([FromBody] BulkDeleteCategoriesRequest request, CancellationToken cancellationToken)
+        => this.OkResult(await sender.Send(request.ToCommand(), cancellationToken));
+
     public sealed record CreateCategoryRequest(string Name, Guid? ParentId = null, string? Icon = null)
     {
         public CreateCategoryCommand ToCommand() => new(Name, ParentId, Icon);
@@ -88,5 +100,10 @@ public sealed class CategoriesController(ISender sender) : ControllerBase
     public sealed record MergeCategoryRequest(Guid SourceId, Guid TargetId)
     {
         public MergeCategoryCommand ToCommand() => new(SourceId, TargetId);
+    }
+
+    public sealed record BulkDeleteCategoriesRequest(IReadOnlyList<Guid> CategoryIds)
+    {
+        public BulkDeleteCategoriesCommand ToCommand() => new(CategoryIds ?? Array.Empty<Guid>());
     }
 }

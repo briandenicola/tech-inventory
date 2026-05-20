@@ -98,6 +98,7 @@
 			// Transform empty strings to undefined for optional UUID fields
 			const payload = {
 				...data,
+				model: data.model || undefined,
 				ownerId: data.ownerId || undefined,
 				locationId: data.locationId || undefined,
 				networkId: data.networkId || undefined,
@@ -285,6 +286,7 @@
 			mode="edit"
 			initialData={{
 				name: device.name ?? '',
+				model: device.model ?? '',
 				serialNumber: device.serialNumber ?? '',
 				brandId: device.brandId ?? '',
 				categoryId: device.categoryId,

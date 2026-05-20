@@ -21,6 +21,7 @@
 			// Transform empty strings to undefined for optional UUID fields
 			const payload = {
 				...data,
+				model: data.model || undefined,
 				ownerId: data.ownerId || undefined,
 				locationId: data.locationId || undefined,
 				networkId: data.networkId || undefined,

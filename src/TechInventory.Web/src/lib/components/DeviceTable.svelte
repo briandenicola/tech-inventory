@@ -320,7 +320,16 @@
 						</td>
 					{/if}
 					<td class="px-4 py-4 text-sm font-medium text-neutral-900 dark:text-neutral-50">
-						{device.name || '—'}
+						<div class="flex flex-col">
+							<span>{device.name || '—'}</span>
+							{#if device.model}
+								<!-- F034: surface model under the device name so the desktop
+								     table reveals it without forcing a click into detail. -->
+								<span class="mt-0.5 text-xs font-normal text-neutral-500 dark:text-neutral-400 truncate">
+									{device.model}
+								</span>
+							{/if}
+						</div>
 					</td>
 					<td class="px-4 py-4 text-sm text-neutral-700 dark:text-neutral-300">
 						{lookupName(refData.brands, device.brandId)}
@@ -448,6 +457,12 @@
 				<h3 class="text-sm font-semibold leading-tight text-neutral-900 dark:text-neutral-50">
 					{device.name || '—'}
 				</h3>
+				{#if device.model}
+					<!-- F034: model is the most-asked secondary identifier on the cards. -->
+					<p class="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400 truncate">
+						{device.model}
+					</p>
+				{/if}
 				<span
 					class="mt-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {statusBadgeClass(device.status)}"
 				>

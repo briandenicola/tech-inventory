@@ -236,12 +236,21 @@
 			"acquiredOn": "Acquired On",
 			"purchaseDate": "Purchase Date",
 			"retiredOn": "Retired On",
+			"retiredDate": "Retired Date",
+			"disposalMethod": "Disposal Method",
 			"purchasePrice": "Purchase Price",
 			"currency": "Currency",
-			"notes": "Notes"
+			"notes": "Notes",
+			"purpose": "Purpose",
+			"operatingSystem": "Operating System",
+			"ipAddress": "IP Address",
+			"macAddress": "MAC Address",
+			"productUrl": "Product URL",
+			"version": "Version"
 		},
 		"form": {
 			"additionalDetails": "Additional details (optional)",
+			"modelPlaceholder": "e.g., A2483, GA02768-US, RF28JBEDBSG/AA",
 			"purpose": "Purpose",
 			"purposePlaceholder": "What is this device used for?",
 			"operatingSystem": "Operating System",
@@ -371,7 +380,10 @@
 			"validRows": "{count} valid rows",
 			"invalidRows": "{count} invalid rows",
 			"missingLookups": "Missing reference data",
-			"validationErrors": "Validation Errors"
+			"validationErrors": "Validation Errors",
+			"previewRowsTitle": "Preview rows",
+			"previewRowsHint": "First {count} valid rows — verify columns landed in the right fields before committing.",
+			"previewRowsEmpty": "No valid rows to preview."
 		},
 		"commit": {
 			"title": "Commit Import",

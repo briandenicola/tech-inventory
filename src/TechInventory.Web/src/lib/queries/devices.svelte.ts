@@ -37,6 +37,15 @@ export const DeviceResponseSchema = z.object({
 	notes: z.string().nullable(),
 	retiredDate: z.string().nullable(),
 	disposalMethod: z.string().nullable(),
+	// F034: server has always returned these fields; the Zod mirror was missing
+	// them, so the UI silently dropped Purpose/OS/IP/MAC/URL/Version even when
+	// imports populated them. Adding them lets the detail page render them.
+	purpose: z.string().nullable().optional(),
+	operatingSystem: z.string().nullable().optional(),
+	ipAddress: z.string().nullable().optional(),
+	macAddress: z.string().nullable().optional(),
+	productUrl: z.string().nullable().optional(),
+	version: z.string().nullable().optional(),
 	createdAt: z.string(), // ISO datetime
 	createdBy: z.string().nullable(),
 	modifiedAt: z.string(),

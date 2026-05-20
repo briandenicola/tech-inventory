@@ -452,6 +452,20 @@
 				</dd>
 			</div>
 
+			<!--
+				F034: surface every persisted device field that was previously
+				invisible on the detail page. Each row is gated on truthy value
+				so hand-entered devices with sparse data stay scannable.
+			-->
+			{#if device.model}
+				<div>
+					<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+						{t('devices.columns.model')}
+					</dt>
+					<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">{device.model}</dd>
+				</div>
+			{/if}
+
 			<!-- Brand -->
 			<div>
 				<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
@@ -515,7 +529,94 @@
 					{/if}
 				</dd>
 			</div>
+
+			<!-- F034: secondary identification + networking fields, all truthy-gated -->
+			{#if device.operatingSystem}
+				<div>
+					<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+						{t('devices.columns.operatingSystem')}
+					</dt>
+					<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">{device.operatingSystem}</dd>
+				</div>
+			{/if}
+
+			{#if device.version}
+				<div>
+					<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+						{t('devices.columns.version')}
+					</dt>
+					<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">{device.version}</dd>
+				</div>
+			{/if}
+
+			{#if device.ipAddress}
+				<div>
+					<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+						{t('devices.columns.ipAddress')}
+					</dt>
+					<dd class="mt-1 font-mono text-base text-neutral-900 dark:text-neutral-100">{device.ipAddress}</dd>
+				</div>
+			{/if}
+
+			{#if device.macAddress}
+				<div>
+					<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+						{t('devices.columns.macAddress')}
+					</dt>
+					<dd class="mt-1 font-mono text-base text-neutral-900 dark:text-neutral-100">{device.macAddress}</dd>
+				</div>
+			{/if}
+
+			{#if device.productUrl}
+				<div class="sm:col-span-2">
+					<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+						{t('devices.columns.productUrl')}
+					</dt>
+					<dd class="mt-1 truncate text-base text-neutral-900 dark:text-neutral-100">
+						<a
+							href={device.productUrl}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="text-primary-600 hover:text-primary-500 hover:underline dark:text-primary-400 dark:hover:text-primary-300"
+						>
+							{device.productUrl}
+						</a>
+					</dd>
+				</div>
+			{/if}
+
+			{#if device.retiredDate}
+				<div>
+					<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+						{t('devices.columns.retiredDate')}
+					</dt>
+					<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">
+						{formatDate(device.retiredDate)}
+					</dd>
+				</div>
+			{/if}
+
+			{#if device.disposalMethod}
+				<div>
+					<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+						{t('devices.columns.disposalMethod')}
+					</dt>
+					<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">{device.disposalMethod}</dd>
+				</div>
+			{/if}
 		</div>
+
+		<!-- F034: long-form prose fields render full-width below the grid. -->
+		{#if device.purpose}
+			<div>
+				<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+					{t('devices.columns.purpose')}
+				</dt>
+				<dd class="mt-1 whitespace-pre-wrap text-base text-neutral-900 dark:text-neutral-100">
+					{device.purpose}
+				</dd>
+			</div>
+		{/if}
 
 		<!-- Notes (full-width) -->
 		{#if device.notes}

@@ -42,6 +42,7 @@
 		// (matches /devices/new page logic)
 		const payload = {
 			...data,
+			model: data.model || undefined,
 			ownerId: data.ownerId || undefined,
 			locationId: data.locationId || undefined,
 			networkId: data.networkId || undefined,

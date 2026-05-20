@@ -82,6 +82,10 @@ describe('DeviceForm', () => {
 
 			// Optional fields
 			expect(screen.getByLabelText(/devices.columns.serial/i)).toBeInTheDocument();
+			// F034: model is rendered as a top-level optional field so imported devices
+			// surface their model number without burying it inside the collapsible
+			// "Additional details" section.
+			expect(screen.getByLabelText(/devices.columns.model/i)).toBeInTheDocument();
 			expect(screen.getByLabelText(/devices.columns.owner/i)).toBeInTheDocument();
 			expect(screen.getByLabelText(/devices.columns.location/i)).toBeInTheDocument();
 			expect(screen.getByLabelText(/devices.columns.network/i)).toBeInTheDocument();

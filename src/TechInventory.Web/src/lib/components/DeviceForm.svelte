@@ -39,6 +39,7 @@
 	let formData = $state<Record<string, unknown>>(
 		untrack(() => ({
 			name: initialData.name ?? '',
+			model: initialData.model ?? '',
 			serialNumber: initialData.serialNumber ?? '',
 			brandId: initialData.brandId ?? '',
 			categoryId: initialData.categoryId ?? '',
@@ -180,6 +181,32 @@
 		/>
 		{#if touched.serialNumber && errors.serialNumber}
 			<p class="mt-1 text-sm text-danger-600 dark:text-danger-400">{errors.serialNumber}</p>
+		{/if}
+	</div>
+
+	<!--
+		Model (F034) — sits between Serial Number and Brand because the
+		spec-sheet ordering "Serial → Model → Brand" matches how users read
+		device labels. The field is optional and gated on truthy values
+		everywhere it displays so hand-entered devices without a model
+		don't show a blank row.
+	-->
+	<div>
+		<label for="model" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+			{t('devices.columns.model')}
+		</label>
+		<input
+			id="model"
+			type="text"
+			bind:value={formData.model}
+			onblur={() => handleBlur('model')}
+			disabled={isDisabled('model')}
+			maxlength="200"
+			class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus:border-primary-500 dark:disabled:bg-neutral-900"
+			placeholder={t('devices.form.modelPlaceholder')}
+		/>
+		{#if touched.model && errors.model}
+			<p class="mt-1 text-sm text-danger-600 dark:text-danger-400">{errors.model}</p>
 		{/if}
 	</div>
 

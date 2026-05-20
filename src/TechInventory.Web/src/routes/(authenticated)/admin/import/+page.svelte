@@ -449,6 +449,69 @@
 				</div>
 			</div>
 
+			<!--
+				F034: per-row preview table so admins can confirm Model / Purpose /
+				Notes (and every other field) landed in the right column BEFORE
+				committing. Collapsed by default since most imports don't need
+				row-level inspection; expanded reveals up to the first 10 rows.
+			-->
+			{#if previewResult.validRows && previewResult.validRows.length > 0}
+				<details
+					class="rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900"
+					data-testid="import-preview-rows"
+				>
+					<summary
+						class="cursor-pointer rounded-2xl px-6 py-4 text-base font-semibold text-neutral-900 hover:bg-neutral-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-neutral-50 dark:hover:bg-neutral-800/40"
+					>
+						{t('import.preview.previewRowsTitle')}
+					</summary>
+					<div class="px-6 pb-6">
+						<p class="mb-3 text-sm text-neutral-600 dark:text-neutral-400">
+							{t('import.preview.previewRowsHint', {
+								count: String(Math.min(previewResult.validRows.length, 10))
+							})}
+						</p>
+						<div class="overflow-x-auto">
+							<table class="min-w-full divide-y divide-neutral-200 text-sm dark:divide-neutral-800">
+								<thead class="bg-neutral-50 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
+									<tr>
+										<th scope="col" class="px-3 py-2">{t('devices.columns.name')}</th>
+										<th scope="col" class="px-3 py-2">{t('devices.columns.brand')}</th>
+										<th scope="col" class="px-3 py-2">{t('devices.columns.category')}</th>
+										<th scope="col" class="px-3 py-2">{t('devices.columns.model')}</th>
+										<th scope="col" class="px-3 py-2">{t('devices.columns.purpose')}</th>
+										<th scope="col" class="px-3 py-2">{t('devices.columns.notes')}</th>
+										<th scope="col" class="px-3 py-2">{t('devices.columns.owner')}</th>
+										<th scope="col" class="px-3 py-2">{t('devices.columns.location')}</th>
+										<th scope="col" class="px-3 py-2">{t('devices.columns.status')}</th>
+									</tr>
+								</thead>
+								<tbody class="divide-y divide-neutral-100 dark:divide-neutral-800">
+									{#each previewResult.validRows.slice(0, 10) as row, idx (row.rowNumber ?? idx)}
+										{@const dev = row.device}
+										<tr class="text-neutral-800 dark:text-neutral-200">
+											<td class="px-3 py-2 font-medium">{dev?.name ?? '—'}</td>
+											<td class="px-3 py-2">{dev?.brand ?? '—'}</td>
+											<td class="px-3 py-2">{dev?.category ?? '—'}</td>
+											<td class="px-3 py-2">{dev?.model ?? '—'}</td>
+											<td class="px-3 py-2 max-w-xs truncate" title={dev?.purpose ?? ''}>
+												{dev?.purpose ?? '—'}
+											</td>
+											<td class="px-3 py-2 max-w-xs truncate" title={dev?.notes ?? ''}>
+												{dev?.notes ?? '—'}
+											</td>
+											<td class="px-3 py-2">{dev?.owner ?? '—'}</td>
+											<td class="px-3 py-2">{dev?.location ?? '—'}</td>
+											<td class="px-3 py-2">{dev?.status ?? '—'}</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</details>
+			{/if}
+
 			<!-- Missing lookups -->
 			{#if previewResult.lookupsToCreate && previewResult.lookupsToCreate.length > 0}
 				<div

@@ -3257,6 +3257,136 @@ The base `IntegrationTestFactory<TMarker>` installs an in-memory `TestAuthHandle
 
 ---
 
+---
+
+### D-122: Admin Lookup Merge is Bulk-Only
+
+**Date:** 2026-05-20  
+**Proposed by:** Vasquez (Frontend)  
+**Status:** Decided  
+**Related:** PWA Bug Bash (Vasquez × 6), `.squad/orchestration-log/2026-05-20T22-30-00Z-vasquez-remove-merge.md`
+
+**Decision:** Remove the per-item `Merge` action from admin lookup rows/cards for Brands, Categories, Locations, and Networks. The bulk-selection bar already provides `Merge Selected`, making the per-row button redundant.
+
+**Rationale:** The bulk bar is now the canonical merge entry point; the row-level button adds no unique capability. Consolidating the action reduces visual noise, keeps responsive card/table action sets to Edit + Deactivate, and lets the shared bulk modal orchestration stay untouched.
+
+**Consequences:** Future merge UX changes should start from `ReferenceDataBulkBar.svelte` + `MergeEntityModal.svelte`, not by reintroducing per-row merge buttons on individual admin pages.
+
+**Implementation:** Removed `Merge` from action sets; pruned `common.actions.merge` / `admin.merge.success` i18n keys; preserved `Bulk Merge Selected` workflow.
+
+---
+
+### D-123: Modal Dark-Mode Fix Pattern
+
+**Date:** 2026-05-20  
+**Proposed by:** Vasquez (Frontend)  
+**Status:** Decided  
+**Related:** PWA Bug Bash (Vasquez × 6), `.squad/orchestration-log/2026-05-20T22-30-01Z-vasquez-modal-render.md`, `.squad/skills/modal-rendering/SKILL.md`
+
+**Problem:** Dark-mode dialogs looked ghosted because:
+1. Modal callout surfaces used `dark:bg-*-950` / `dark:border-*-900` utilities whose token names were not registered via Tailwind v4 `@theme inline`, so those utilities emitted no CSS
+2. Modal backdrops/panels had drifted into inconsistent layering, making blur/compositing issues hard to reason about
+
+**Decision:**
+- Register the 950 semantic accent shades (`primary`, `success`, `warning`, `danger`, `info`) in `src/lib/tokens.css` with light + dark values
+- Standardize modal layering around a dedicated blurred backdrop + isolated modal surface using shared classes in `src/app.css`
+
+**Why:** Tailwind v4 only emits utility classes for tokens declared in `@theme inline`; missing registrations silently produce transparent or missing dark-mode surfaces. Pairing that with a shared backdrop/surface pattern removes the class-placement ambiguity that makes ghosted dialogs easy to reintroduce.
+
+**Reuse:** When a future dialog/sheet/drawer looks washed out in dark mode, check token registration first, then confirm the blur lives on the backdrop and the panel uses the shared isolated surface class.
+
+---
+
+### D-124: Mobile Sheet Pattern for Filters & Dialogs
+
+**Date:** 2026-05-20  
+**Proposed by:** Vasquez (Frontend)  
+**Status:** Decided  
+**Related:** PWA Bug Bash (Vasquez × 6), `.squad/orchestration-log/2026-05-20T22-30-02Z-vasquez-filter-close.md`
+
+**Problem:** The `/devices` filter drawer's close button could scroll off-screen on iPhone PWA installs because the whole panel was one overflow container with no persistent chrome.
+
+**Decision:** Standardize full-height mobile sheets on a dialog-style `div` shell with:
+- `h-dvh` for full-height viewport
+- flex column layout
+- `min-h-0 flex-1 overflow-y-auto` body region
+- sticky/non-scrolling header + footer chrome padded by `env(safe-area-inset-top/bottom)`
+
+**Why:** This keeps Close / Apply / Clear affordances reachable from any scroll position, avoids `100vh` iOS viewport bugs, respects PWA safe areas, and gives the sheet proper accessibility hooks (`role="dialog"`, `aria-modal`, Escape close, focus trap, initial focus).
+
+**Consequences:** Future filter drawers, action sheets, and mobile admin side panels should reuse this structure. Note that axe does not allow `role="dialog"` on `<aside>`, so the dialog surface should be a neutral container such as `<div>`.
+
+---
+
+### D-125: Mobile List FAB Convention
+
+**Date:** 2026-05-20  
+**Proposed by:** Vasquez (Frontend)  
+**Status:** Decided  
+**Related:** PWA Bug Bash (Vasquez × 6), `.squad/orchestration-log/2026-05-20T22-30-03Z-vasquez-add-device-fab.md`
+
+**Context:** The add-device entry point disappeared in installed/mobile PWA use. The app still had a working create route, but the list page had drifted to a button-driven modal affordance and the floating action pattern no longer matched expected mobile behavior.
+
+**Decision:** Use one consistent list-page create pattern:
+1. **Desktop/tablet (`md+`)** — a single inline header link to the create route
+2. **Mobile/PWA (`< md`)** — a single fixed FAB rendered as an anchor to the same create route
+3. **Placement** — bottom-left, offset with `env(safe-area-inset-left/bottom)` plus `var(--space-6)`
+4. **Authorization** — show create affordances only for `Admin` and `Member`; hide for `Viewer` everywhere
+5. **Accessibility** — icon-only FAB must expose an i18n-backed `aria-label`; do not rely on glyph alone
+
+**Rationale:** The route stays canonical and deep-linkable (`/devices/new`), which is safer and more predictable than a button-only modal. Bottom-left placement avoids competing with back-to-top FAB on the right. A shared component keeps mobile and desktop affordances in sync.
+
+**Implementation:** `AddDeviceFab.svelte` is now an anchor-based mobile FAB; `DeviceListAddActions.svelte` pairs desktop header link with mobile FAB for `/devices`.
+
+---
+
+### D-126: Mobile List Rendering Pattern (Split Responsive)
+
+**Date:** 2026-05-20  
+**Proposed by:** Vasquez (Frontend)  
+**Status:** Decided  
+**Related:** PWA Bug Bash (Vasquez × 6), `.squad/orchestration-log/2026-05-20T22-30-04Z-vasquez-mobile-stack-cards.md`, `.squad/skills/responsive-list-rendering/SKILL.md`
+
+**Context:** The `/devices` list and admin pages (Brands, Categories, Locations, Networks, Owners, Tags) still depended on wide tabular layouts that forced horizontal scrolling on phone-sized screens.
+
+**Decision:** Adopt a split responsive pattern for list-like management surfaces:
+- **below `md`:** render stacked cards with the primary identifier in a heading and secondary data as `<dl>` label/value pairs
+- **`md+`:** keep the existing semantic table/tree layout unchanged
+- **shared primitives:** use mobile card/action components for admin lookup pages, but keep `/devices` on route-local mobile markup because device grouping, badges, and detail-open behavior are specialized
+
+**Rationale:** Trying to make one DOM structure serve both breakpoints makes accessibility, selection-state parity, and tests brittle. Separate mobile cards keep the most important identifier visible without sideways scrolling, while desktop tables continue to optimize for dense scanning.
+
+**Implementation notes:**
+- Shared seams: `ResponsiveListCard.svelte` and `ActionOverflowMenu.svelte`
+- Device-specific: `DeviceTable.svelte` with specialized renderers
+- Secondary fields built as label/value arrays, filtered before render so empty optionals disappear cleanly
+- Mobile action triggers + selection affordances stay at `h-11`/`w-11` for 44px touch targets
+
+---
+
+### D-127: Navigation Should Target Leaf Pages, Not Hubs
+
+**Date:** 2026-05-20  
+**Proposed by:** Vasquez (Frontend)  
+**Status:** Decided  
+**Related:** PWA Bug Bash (Vasquez × 6), `.squad/orchestration-log/2026-05-20T22-30-05Z-vasquez-admin-to-audit-log.md`
+
+**Problem:** The old top-level `/admin` page mostly repeated the same destinations (Brands, Categories, Locations, Networks, Owners, Tags) already present in the authenticated shell's `ADMIN` subsection. This created an extra click, duplicated navigation structure, and masked stale i18n coverage.
+
+**Decision:** Prefer nav items that point directly at the most useful leaf page. Avoid hub/index pages when they only duplicate links already present in the surrounding navigation.
+
+**Rationale:**
+- Reduces click depth on mobile and desktop
+- Keeps top-level navigation honest: label matches destination users actually reach
+- Prevents duplicated information architecture where menus and landing cards drift apart
+- Makes stale i18n easier to notice because hub-only copy no longer lingers in the route tree
+
+**Implementation:** Top-level Admin nav now routes straight to `/admin/audit` (Admin-only role gate). Old `/admin` hub deleted; replaced with `+page.ts` 307 redirect. Removed all `admin.hub.*` i18n references.
+
+**Notes:** Section headers can still group related admin leaf routes (e.g., `ADMIN`) without needing a separate landing page. If a future hub gains unique workflow value beyond repeated links, it can be reintroduced intentionally.
+
+---
+
 ## Governance
 
 - All meaningful changes require team consensus

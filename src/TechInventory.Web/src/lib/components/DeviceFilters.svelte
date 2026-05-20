@@ -42,18 +42,6 @@
 	// Define status options with proper typing
 	const statusOptions: DeviceStatus[] = ['Active', 'Retired', 'Disposed', 'InRepair', 'Lent'];
 
-	// Debounced search
-	let searchTimeout: ReturnType<typeof setTimeout> | null = null;
-	function handleSearchChange(e: Event) {
-		const target = e.target as HTMLInputElement;
-		const value = target.value;
-
-		if (searchTimeout) clearTimeout(searchTimeout);
-		searchTimeout = setTimeout(() => {
-			onFiltersChange({ ...filters, search: value || undefined, page: 1 });
-		}, 300);
-	}
-
 	// Filter change handlers
 	function handleFilterChange(
 		key: keyof DeviceFilters,
@@ -87,6 +75,22 @@
 		}
 	});
 
+	// Escape-to-close when drawer is open
+	$effect(() => {
+		if (!isOpen || !onClose) return;
+
+		function handleKeydown(event: KeyboardEvent) {
+			if (event.key === 'Escape') {
+				onClose?.();
+			}
+		}
+
+		document.addEventListener('keydown', handleKeydown);
+		return () => {
+			document.removeEventListener('keydown', handleKeydown);
+		};
+	});
+
 	// Current year for year range max
 	const currentYear = new Date().getFullYear();
 </script>
@@ -102,7 +106,7 @@
 -->
 {#if isOpen && onClose}
 	<div
-		class="md:hidden fixed inset-0 z-40 bg-neutral-900/50"
+		class="fixed inset-0 z-40 bg-neutral-900/50"
 		onclick={onClose}
 		role="presentation"
 	></div>
@@ -110,7 +114,7 @@
 
 <!-- Filters sidebar/drawer -->
 <aside
-	class="fixed inset-y-0 left-0 z-50 w-[22rem] transform overflow-y-auto border-r border-neutral-200/70 bg-white p-7 transition-transform dark:border-neutral-800/70 dark:bg-neutral-950 md:sticky md:top-0 md:z-auto md:h-screen md:w-80 md:translate-x-0"
+	class="fixed inset-y-0 left-0 z-50 w-[22rem] md:w-96 transform overflow-y-auto border-r border-neutral-200/70 bg-white p-7 transition-transform dark:border-neutral-800/70 dark:bg-neutral-950"
 	class:translate-x-0={isOpen}
 	class:-translate-x-full={!isOpen}
 	aria-label={t('devices.filters.title')}
@@ -124,7 +128,7 @@
 			<button
 				type="button"
 				onclick={onClose}
-				class="md:hidden inline-flex h-11 w-11 items-center justify-center rounded-full text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+				class="inline-flex h-11 w-11 items-center justify-center rounded-full text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
 				aria-label={t('devices.filters.closeFilters')}
 			>
 				<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -162,21 +166,6 @@
 			<option value="owner">{t('devices.filters.groupByOwner')}</option>
 			<option value="year">{t('devices.filters.groupByYear')}</option>
 		</select>
-	</div>
-
-	<!-- Search -->
-	<div class="mb-6">
-		<label for="search" class="mb-2 block text-base font-medium text-neutral-800 dark:text-neutral-200">
-			{t('devices.filters.searchPlaceholder')}
-		</label>
-		<input
-			type="search"
-			id="search"
-			value={filters.search || ''}
-			oninput={handleSearchChange}
-			placeholder={t('devices.filters.searchPlaceholder')}
-			class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 placeholder:text-neutral-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-400 dark:focus:bg-neutral-900"
-		/>
 	</div>
 
 	<!-- Brand -->

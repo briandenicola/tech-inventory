@@ -261,19 +261,34 @@
 </nav>
 
 <!-- Page header -->
-<div class="mb-6 flex items-center justify-between">
-	<h1 class="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
-		{t('devices.detail.title')}
-	</h1>
+<div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+	<div class="min-w-0">
+		<!--
+			Mobile: large "Device Details" wrapped under the action row and felt
+			cramped. Use the device name as the title (truncating gracefully) with
+			a small "Device details" eyebrow, so the page identifies itself even
+			before the device loads.
+		-->
+		<p class="text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+			{t('devices.detail.title')}
+		</p>
+		<h1
+			class="mt-1 text-xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 sm:text-2xl"
+		>
+			{device?.name ?? '—'}
+		</h1>
+	</div>
 
-	<!-- Action buttons (role-aware) -->
+	<!-- Action buttons (role-aware). Mobile: horizontal scroll if overflowing. -->
 	{#if device && !isLoading}
-		<div class="flex gap-3">
+		<div
+			class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:justify-end sm:overflow-visible sm:px-0 sm:pb-0"
+		>
 			{#if canClaim}
 				<button
 					type="button"
 					onclick={() => (showClaimModal = true)}
-					class="inline-flex items-center gap-2 rounded-lg border border-primary-600 bg-white px-4 py-2 text-sm font-medium text-primary-600 transition-colors hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-primary-500 dark:bg-neutral-900 dark:text-primary-400 dark:hover:bg-neutral-800"
+					class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-primary-600 bg-white px-4 py-2 text-sm font-medium text-primary-600 transition-colors hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-primary-500 dark:bg-neutral-900 dark:text-primary-400 dark:hover:bg-neutral-800"
 				>
 					<svg
 						class="h-4 w-4"
@@ -297,7 +312,7 @@
 				<button
 					type="button"
 					onclick={() => (showReleaseModal = true)}
-					class="inline-flex items-center gap-2 rounded-lg border border-warning-600 bg-white px-4 py-2 text-sm font-medium text-warning-600 transition-colors hover:bg-warning-50 focus:outline-none focus:ring-2 focus:ring-warning-500 focus:ring-offset-2 dark:border-warning-500 dark:bg-neutral-900 dark:text-warning-400 dark:hover:bg-neutral-800"
+					class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-warning-600 bg-white px-4 py-2 text-sm font-medium text-warning-600 transition-colors hover:bg-warning-50 focus:outline-none focus:ring-2 focus:ring-warning-500 focus:ring-offset-2 dark:border-warning-500 dark:bg-neutral-900 dark:text-warning-400 dark:hover:bg-neutral-800"
 				>
 					<svg
 						class="h-4 w-4"
@@ -320,7 +335,7 @@
 			{#if canEdit}
 				<a
 					href="/devices/{device.id}/edit"
-					class="inline-flex items-center gap-2 rounded-lg border border-primary-600 bg-white px-4 py-2 text-sm font-medium text-primary-600 transition-colors hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-primary-500 dark:bg-neutral-900 dark:text-primary-400 dark:hover:bg-neutral-800"
+					class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-primary-600 bg-white px-4 py-2 text-sm font-medium text-primary-600 transition-colors hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-primary-500 dark:bg-neutral-900 dark:text-primary-400 dark:hover:bg-neutral-800"
 				>
 					<svg
 						class="h-4 w-4"
@@ -344,7 +359,7 @@
 				<button
 					type="button"
 					onclick={() => (showDeleteModal = true)}
-					class="inline-flex items-center gap-2 rounded-lg border border-danger-600 bg-white px-4 py-2 text-sm font-medium text-danger-600 transition-colors hover:bg-danger-50 focus:outline-none focus:ring-2 focus:ring-danger-500 focus:ring-offset-2 dark:border-danger-500 dark:bg-neutral-900 dark:text-danger-400 dark:hover:bg-neutral-800"
+					class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-danger-600 bg-white px-4 py-2 text-sm font-medium text-danger-600 transition-colors hover:bg-danger-50 focus:outline-none focus:ring-2 focus:ring-danger-500 focus:ring-offset-2 dark:border-danger-500 dark:bg-neutral-900 dark:text-danger-400 dark:hover:bg-neutral-800"
 				>
 					<svg
 						class="h-4 w-4"

@@ -155,6 +155,11 @@
 			"showingAll": "Showing all statuses",
 			"activeOnly": "Show Active only"
 		},
+		"viewMode": {
+			"cards": "Cards",
+			"table": "Table",
+			"toggleLabel": "Device list view mode"
+		},
 		"tags": {
 			"label": "Tags",
 			"sectionLabel": "Tags (optional)",

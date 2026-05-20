@@ -99,10 +99,23 @@ export interface DevicesQueryResult {
 }
 
 /**
- * Simple in-memory cache by serialized filter key
- * Round 4 (CRUD mutations) will invalidate cache entries; for now, cache lives per filter set.
+ * Simple in-memory cache by serialized filter key.
+ *
+ * Entries carry a fetch timestamp and are treated as stale after CACHE_TTL_MS.
+ * Without a TTL, a transiently-empty result (e.g. before the user added
+ * matching devices) would stick for the entire SPA session — Brian hit this
+ * with the F026 Active-default filter showing "No devices yet" indefinitely
+ * after a state where no Active devices existed.
+ *
+ * Mutations (create/update/delete/bulk) also clear the cache via
+ * `invalidateDevicesCache()`.
  */
-const cache = new Map<string, PaginatedResponse<DeviceResponse>>();
+const CACHE_TTL_MS = 30_000;
+interface CacheEntry {
+	value: PaginatedResponse<DeviceResponse>;
+	fetchedAt: number;
+}
+const cache = new Map<string, CacheEntry>();
 
 /**
  * Serialize filters to cache key (stable sort keys)
@@ -173,10 +186,11 @@ export function useDevices(getFilters: () => DeviceFilters): DevicesQueryResult 
 		// cacheKey that triggered it.
 		const filters = getFilters();
 
-		// Check cache first
+		// Check cache first; honour TTL so transient empty results don't pin
+		// the UI to "No devices yet" for the rest of the session.
 		const cached = cache.get(cacheKey);
-		if (cached) {
-			data = cached;
+		if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+			data = cached.value;
 			isLoading = false;
 			return;
 		}
@@ -216,7 +230,7 @@ export function useDevices(getFilters: () => DeviceFilters): DevicesQueryResult 
 			const validated = PaginatedResponseSchema(DeviceResponseSchema).parse(response);
 
 			// Cache result
-			cache.set(cacheKey, validated);
+			cache.set(cacheKey, { value: validated, fetchedAt: Date.now() });
 			data = validated;
 		} catch (err) {
 			console.error('[devices] Fetch error:', err);

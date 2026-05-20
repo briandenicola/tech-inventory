@@ -20,10 +20,12 @@ const KEY_PREFIX = 'ti.userPrefs.v1';
 
 const UserPrefsSchema = z.object({
 	version: z.literal(STORAGE_VERSION),
-	devicesDefaultView: z.string().nullable().optional()
+	devicesDefaultView: z.string().nullable().optional(),
+	devicesViewMode: z.enum(['cards', 'table']).nullable().optional()
 });
 
 export type UserPrefs = z.infer<typeof UserPrefsSchema>;
+export type DevicesViewMode = 'cards' | 'table';
 
 const EMPTY_PREFS: UserPrefs = { version: STORAGE_VERSION };
 
@@ -96,6 +98,22 @@ export function clearDevicesDefaultView(userId: string | null | undefined): void
 	const prefs = readPrefs(userId);
 	if (prefs.devicesDefaultView == null) return;
 	delete prefs.devicesDefaultView;
+	writePrefs(userId, prefs);
+}
+
+export function getDevicesViewMode(userId: string | null | undefined): DevicesViewMode | null {
+	if (!userId) return null;
+	const prefs = readPrefs(userId);
+	return prefs.devicesViewMode ?? null;
+}
+
+export function setDevicesViewMode(
+	userId: string | null | undefined,
+	mode: DevicesViewMode
+): void {
+	if (!userId) return;
+	const prefs = readPrefs(userId);
+	prefs.devicesViewMode = mode;
 	writePrefs(userId, prefs);
 }
 

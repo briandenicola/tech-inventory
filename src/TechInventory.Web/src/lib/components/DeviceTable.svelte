@@ -30,6 +30,8 @@
 		onToggleSelectAll?: () => void;
 		allVisibleSelected?: boolean;
 		someVisibleSelected?: boolean;
+		/** F031: mobile view mode — cards (default) or table (horizontally scrollable). */
+		mobileViewMode?: 'cards' | 'table';
 	}
 
 	let {
@@ -43,7 +45,8 @@
 		onToggleSelect,
 		onToggleSelectAll,
 		allVisibleSelected = false,
-		someVisibleSelected = false
+		someVisibleSelected = false,
+		mobileViewMode = 'cards'
 	}: Props = $props();
 
 	const refData = $derived($referenceDataStore);
@@ -132,8 +135,7 @@
 	}
 </script>
 
-<!-- Desktop table (hidden on mobile) -->
-<div class="hidden md:block overflow-x-auto">
+{#snippet tableMarkup()}
 	<table class="min-w-full divide-y divide-neutral-200 dark:divide-neutral-800">
 		<caption class="sr-only">{t('devices.list.title')}</caption>
 		<thead class="bg-neutral-50 dark:bg-neutral-900">
@@ -397,10 +399,22 @@
 			{/if}
 		</tbody>
 	</table>
+{/snippet}
+
+<!-- Desktop table (hidden on mobile) -->
+<div class="hidden md:block overflow-x-auto">
+	{@render tableMarkup()}
 </div>
 
+<!-- Mobile table mode (horizontally scrollable, only when mobileViewMode === 'table') -->
+{#if mobileViewMode === 'table'}
+	<div class="md:hidden overflow-x-auto">
+		{@render tableMarkup()}
+	</div>
+{/if}
+
 <!--
-	Mobile card layout.
+	Mobile card layout (only when mobileViewMode === 'cards').
 
 	F026: 2-up grid at mobile widths to roughly double the device density per
 	screen. Cards drop secondary metadata (owner, purchase date) and show only
@@ -408,6 +422,7 @@
 	360 px breakpoint we target. The full record is still one tap away in the
 	detail modal.
 -->
+{#if mobileViewMode === 'cards'}
 <div class="md:hidden grid grid-cols-2 gap-3">
 	{#snippet mobileCard(device: DeviceResponse)}
 		{@const selected = selectable && isSelected(device.id)}
@@ -492,3 +507,4 @@
 		{/each}
 	{/if}
 </div>
+{/if}

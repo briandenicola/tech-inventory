@@ -88,6 +88,20 @@
 
 	let selectedEvent = $state<AuditEvent | null>(null);
 
+	// Brian's PWA feedback: the inline filter form pushed the actual log rows
+	// off-screen and made the page feel "filter-first". Hide the form behind
+	// a toggle so the focus is the audit table; surface the active-filter
+	// count on the toggle so users still know whether a filter is on.
+	let filtersOpen = $state(false);
+	const activeFilterCount = $derived(
+		(urlFilters.entityType ? 1 : 0) +
+			(urlFilters.entityId ? 1 : 0) +
+			(urlFilters.action ? 1 : 0) +
+			(urlFilters.actor ? 1 : 0) +
+			(urlFilters.from ? 1 : 0) +
+			(urlFilters.to ? 1 : 0)
+	);
+
 	$effect(() => {
 		void urlFilters;
 		void loadEvents();
@@ -129,6 +143,8 @@
 		// Reset to page 1 on any filter change
 		const qs = params.toString();
 		goto(qs ? `?${qs}` : '?', { replaceState: true, keepFocus: true, noScroll: true });
+		// Auto-collapse after apply so the table comes back into focus.
+		filtersOpen = false;
 	}
 
 	function clearFilters() {
@@ -141,6 +157,7 @@
 			to: ''
 		};
 		goto('?', { replaceState: true, keepFocus: true, noScroll: true });
+		filtersOpen = false;
 	}
 
 	function handlePageChange(newPage: number, newPageSize: number) {
@@ -195,8 +212,8 @@
 </svelte:head>
 
 <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-	<div class="mb-6 flex items-center justify-between">
-		<div>
+	<div class="mb-6 flex items-start justify-between gap-3">
+		<div class="min-w-0">
 			<h1 class="text-2xl font-bold text-neutral-900 dark:text-neutral-50">
 				{t('admin.audit.list.title')}
 			</h1>
@@ -204,13 +221,45 @@
 				{t('admin.audit.list.subtitle')}
 			</p>
 		</div>
+		<!--
+			Filters toggle. Default-collapsed so the audit rows are the first
+			thing the user sees on mobile. Active-count badge gives a quick
+			read on whether the table is filtered.
+		-->
+		<button
+			type="button"
+			onclick={() => (filtersOpen = !filtersOpen)}
+			aria-expanded={filtersOpen}
+			aria-controls="audit-filters-panel"
+			class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+		>
+			<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="2"
+					d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+				/>
+			</svg>
+			{t('admin.audit.filters.toggle')}
+			{#if activeFilterCount > 0}
+				<span
+					class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-600 px-1.5 text-xs font-semibold text-white"
+					aria-label={t('admin.audit.filters.activeCount', { count: activeFilterCount })}
+				>
+					{activeFilterCount}
+				</span>
+			{/if}
+		</button>
 	</div>
 
-	<!-- Filters -->
-	<form
-		onsubmit={applyFilters}
-		class="mb-6 rounded-lg border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950"
-	>
+	<!-- Filters (collapsed by default; toggled by the chip above) -->
+	{#if filtersOpen}
+		<form
+			id="audit-filters-panel"
+			onsubmit={applyFilters}
+			class="mb-6 rounded-lg border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950"
+		>
 		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 			<label class="block">
 				<span class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
@@ -296,6 +345,7 @@
 			</button>
 		</div>
 	</form>
+	{/if}
 
 	{#if loading}
 		<LoadingSkeleton />

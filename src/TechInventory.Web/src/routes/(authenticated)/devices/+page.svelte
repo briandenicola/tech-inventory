@@ -9,7 +9,10 @@
 		getDevicesDefaultView,
 		setDevicesDefaultView,
 		clearDevicesDefaultView,
-		normalizeQueryString
+		normalizeQueryString,
+		getDevicesViewMode,
+		setDevicesViewMode,
+		type DevicesViewMode
 	} from '$lib/stores/userPrefs';
 	import { showToast } from '$lib/stores/toast';
 	import DeviceTable from '$lib/components/DeviceTable.svelte';
@@ -117,6 +120,12 @@
 	// Mobile drawer state
 	let filtersOpen = $state(false);
 
+	// Search debounce timeout
+	let searchTimeout: ReturnType<typeof setTimeout> | null = $state(null);
+
+	// Mobile view mode (cards or table)
+	let mobileViewMode = $state<DevicesViewMode>('cards');
+
 	// Add Device modal state (D-137 — Apple-elegant modal replaces /devices/new flow)
 	let createModalOpen = $state(false);
 
@@ -208,6 +217,11 @@
 		if (bareEntry && storedDefault) {
 			void goto(`?${storedDefault}`, { replaceState: true, keepFocus: true, noScroll: true });
 		}
+		// Load mobile view mode preference
+		const savedViewMode = getDevicesViewMode(currentUser?.id);
+		if (savedViewMode) {
+			mobileViewMode = savedViewMode;
+		}
 	});
 
 	const currentQueryNormalized = $derived(normalizeQueryString($page.url.search));
@@ -226,6 +240,14 @@
 		clearDevicesDefaultView(currentUser.id);
 		refreshStoredDefault();
 		showToast({ message: t('devices.filters.defaultCleared'), type: 'success' });
+	}
+
+	// F031: mobile view mode toggle handler.
+	function setViewMode(mode: DevicesViewMode) {
+		mobileViewMode = mode;
+		if (currentUser?.id) {
+			setDevicesViewMode(currentUser.id, mode);
+		}
 	}
 
 	// F023: group devices client-side when a groupBy dimension is active.
@@ -377,23 +399,22 @@
 	const canBulkDelete = $derived(currentUser?.role === 'Admin');
 </script>
 
-<div class="flex min-h-screen">
-	<!-- Filters sidebar (desktop: sticky, mobile: drawer) -->
-	<DeviceFilters
-		filters={urlFilters}
-		onFiltersChange={updateFilters}
-		isOpen={filtersOpen}
-		onClose={() => (filtersOpen = false)}
-		onSaveDefault={handleSaveDefault}
-		onClearDefault={handleClearDefault}
-		hasStoredDefault={hasStoredDefault}
-		canSaveDefault={canSaveDefault}
-	/>
+<!-- Filters sidebar (floats over as drawer on all breakpoints) -->
+<DeviceFilters
+	filters={urlFilters}
+	onFiltersChange={updateFilters}
+	isOpen={filtersOpen}
+	onClose={() => (filtersOpen = false)}
+	onSaveDefault={handleSaveDefault}
+	onClearDefault={handleClearDefault}
+	hasStoredDefault={hasStoredDefault}
+	canSaveDefault={canSaveDefault}
+/>
 
-	<!-- Main content -->
-	<div class="flex-1 p-6">
+<!-- Main content -->
+<div class="p-6">
 		<!-- Header -->
-		<div class="mb-6 flex items-center justify-between border-b border-neutral-200 pb-4 dark:border-neutral-800">
+		<div class="mb-6 flex items-start justify-between gap-4 border-b border-neutral-200 pb-4 dark:border-neutral-800">
 			<div>
 				<h1 class="text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-50">
 					{t('devices.list.title')}
@@ -407,11 +428,41 @@
 
 			<!-- Right-side actions -->
 			<div class="flex items-center gap-2">
+				<!-- Mobile view-mode toggle (cards vs table) -->
+				<div
+					class="md:hidden inline-flex items-center rounded-full bg-neutral-100 p-1 dark:bg-neutral-800"
+					role="group"
+					aria-label={t('devices.viewMode.toggleLabel')}
+				>
+					<button
+						type="button"
+						onclick={() => setViewMode('cards')}
+						aria-pressed={mobileViewMode === 'cards'}
+						class="min-h-11 px-3 rounded-full transition-colors {mobileViewMode === 'cards' ? 'bg-white shadow-sm text-neutral-900 dark:bg-neutral-700 dark:text-neutral-50' : 'text-neutral-600 dark:text-neutral-400'}"
+					>
+						<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h6v6H4zM14 6h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" />
+						</svg>
+						<span class="sr-only">{t('devices.viewMode.cards')}</span>
+					</button>
+					<button
+						type="button"
+						onclick={() => setViewMode('table')}
+						aria-pressed={mobileViewMode === 'table'}
+						class="min-h-11 px-3 rounded-full transition-colors {mobileViewMode === 'table' ? 'bg-white shadow-sm text-neutral-900 dark:bg-neutral-700 dark:text-neutral-50' : 'text-neutral-600 dark:text-neutral-400'}"
+					>
+						<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h18M3 12h18M3 19h18" />
+						</svg>
+						<span class="sr-only">{t('devices.viewMode.table')}</span>
+					</button>
+				</div>
+
 				<!-- Mobile filter button -->
 				<button
 					type="button"
 					onclick={() => (filtersOpen = !filtersOpen)}
-					class="md:hidden inline-flex items-center gap-2 rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-200 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
+					class="inline-flex items-center gap-2 rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-200 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
 					aria-expanded={filtersOpen}
 				>
 					<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -436,6 +487,32 @@
 					</svg>
 					{t('devices.list.addButton')}
 				</button>
+			</div>
+		</div>
+
+		<!-- Search input -->
+		<div class="mb-4 w-full md:max-w-lg">
+			<div class="relative">
+				<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+					<svg class="h-5 w-5 text-neutral-400 dark:text-neutral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+					</svg>
+				</div>
+				<input
+					type="search"
+					value={urlFilters.search || ''}
+					oninput={(e) => {
+						const target = e.target as HTMLInputElement;
+						const value = target.value;
+						if (searchTimeout) clearTimeout(searchTimeout);
+						searchTimeout = setTimeout(() => {
+							updateFilters({ ...urlFilters, search: value || undefined, page: 1 });
+						}, 300);
+					}}
+					placeholder={t('devices.filters.searchPlaceholder')}
+					aria-label={t('devices.filters.searchPlaceholder')}
+					class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 pl-11 pr-4 py-2.5 text-base text-neutral-900 placeholder:text-neutral-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-400 dark:focus:bg-neutral-900"
+				/>
 			</div>
 		</div>
 
@@ -497,6 +574,7 @@
 				onToggleSelectAll={toggleSelectAllVisible}
 				allVisibleSelected={allVisibleSelected}
 				someVisibleSelected={someVisibleSelected}
+				mobileViewMode={mobileViewMode}
 			/>
 
 			<!-- Pagination (hidden while grouping is active; groups span the full page) -->
@@ -510,7 +588,6 @@
 			{/if}
 		{/if}
 	</div>
-</div>
 
 {#if createModalOpen}
 	<AddDeviceModal

@@ -7,6 +7,7 @@ using TechInventory.Application.Categories;
 using TechInventory.Application.Categories.Commands;
 using TechInventory.Application.Categories.Queries;
 using TechInventory.Application.Common.Paging;
+using TechInventory.Application.Merges;
 
 namespace TechInventory.Api.Controllers;
 
@@ -65,6 +66,15 @@ public sealed class CategoriesController(ISender sender) : ControllerBase
     public async Task<IActionResult> DeleteCategory(Guid id, CancellationToken cancellationToken)
         => this.NoContentResult(await sender.Send(new DeleteCategoryCommand(id), cancellationToken));
 
+    [HttpPost("merge")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(MergeReferenceEntityResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<MergeReferenceEntityResponse>> MergeCategories([FromBody] MergeCategoryRequest request, CancellationToken cancellationToken)
+        => this.OkResult(await sender.Send(request.ToCommand(), cancellationToken));
+
     public sealed record CreateCategoryRequest(string Name, Guid? ParentId = null, string? Icon = null)
     {
         public CreateCategoryCommand ToCommand() => new(Name, ParentId, Icon);
@@ -73,5 +83,10 @@ public sealed class CategoriesController(ISender sender) : ControllerBase
     public sealed record UpdateCategoryRequest(string Name, Guid? ParentId = null, string? Icon = null)
     {
         public UpdateCategoryCommand ToCommand(Guid id) => new(id, Name, ParentId, Icon);
+    }
+
+    public sealed record MergeCategoryRequest(Guid SourceId, Guid TargetId)
+    {
+        public MergeCategoryCommand ToCommand() => new(SourceId, TargetId);
     }
 }

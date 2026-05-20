@@ -4,6 +4,33 @@ Append-only log. Newest entries at the top.
 
 ---
 
+## 2026-05-20 — Hicks P003-T09/T10 merge + insurance backend alignment
+
+- Finalized the backend half of `P003-T09` and `P003-T10`: `POST /api/v1/brands/merge`, `/api/v1/categories/merge`, and `/api/v1/locations/merge` are admin-only MediatR flows that validate distinct IDs, reassign device foreign keys, deactivate the source record, and append paired `AuditEvent` entries; category merge also reparents descendants and blocks descendant/depth conflicts.
+- Added `GET /api/v1/reports/insurance` through `GetInsuranceReportQuery`, `IReportingRepository.GetInsuranceReportItemsAsync(...)`, and `ReportsController`, returning a dated CSV attachment with a generated-at comment line, active-device rows, optional `locationId` filter, and a `TOTAL` footer row.
+- Regenerated repo-root `openapi.yaml` from the runtime document and changed the `IDeviceRepository` reassignment helpers to return `Result<int>` so the repository contract suite stays consistent with the Application-layer result-pattern rules.
+- Validation: `dotnet format --verify-no-changes` ✅, `dotnet build -c Release` ✅, `dotnet test -c Release` ✅ (**431 total / 426 passed / 5 skipped / 0 failed**). `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify.ps1` now gets through format/build/test/vulnerability/frontend checks and fails only when Playwright tries to call unavailable `docker` in this environment.
+
+---
+
+## 2026-05-20 — Vasquez P003-T09/T12/T13 merge UI + reports
+
+- Added `src\TechInventory.Web\src\lib\components\MergeEntityModal.svelte` plus `src\TechInventory.Web\src\lib\utils\referenceMerge.ts`, then wired merge actions into `admin/brands`, `admin/categories`, and `admin/locations` with admin-only buttons, live device-count confirmation text, toast success feedback, and reference-data refresh after a successful merge.
+- Added `src\TechInventory.Web\src\routes\(authenticated)\reports\+page.svelte`, `ReportMetricCard.svelte`, `ReportBreakdownCard.svelte`, `WarrantyExpiryPanel.svelte`, and `src\TechInventory.Web\src\lib\utils\reports.ts` so `/reports` now shows summary cards, responsive breakdown bars, 30/60/90-day warranty filters, sortable expiry rows, and a new Reports nav item.
+- Frontend-side reporting contracts are normalized to tolerate both Hicks's current backend field names (`totalActiveDeviceCount`, `devices`, `daysRemaining`) and the planned API contract (`totalDevices`, `items`, `daysUntilExpiry`) while the generated OpenAPI client catches up; merge/report endpoint wrappers live in `src\TechInventory.Web\src\lib\api\client.ts` with local type aliases in `api/types.ts` because `pnpm run generate:client` currently fails on unresolved report schema refs in `openapi.yaml`.
+- Validation: `pnpm run check` ✅, `pnpm run lint` ✅, `pnpm exec vitest run src/lib/components/MergeEntityModal.test.ts src/lib/utils/reports.test.ts src/lib/navigation/appNav.test.ts` ✅ (**10 passed**), follow-up `pnpm exec vitest run src/lib/components/WarrantyExpiryPanel.test.ts` ✅ (**2 passed**, including `vitest-axe` coverage), full `pnpm exec vitest run` ✅ (**329 passed / 1 skipped**), `pnpm run build` ✅. Repo `scripts\verify.ps1` still fails on pre-existing backend issues: a locked `TechInventory.Api.exe` during build retries and `RepositoryInterfaceContractTests` failing on `IDeviceRepository`.
+
+---
+
+## 2026-05-20 — Vasquez P003-T07 audit modal + P003-T08 dark mode toggle
+
+- Added `src\TechInventory.Web\src\lib\components\AuditLogModal.svelte` and wired it into `devices/[id]/+page.svelte`, `DeviceDetailModal.svelte`, and `admin/+page.svelte`, so Admin users can open paginated audit history in-place from device detail or the admin hub without losing context; device-scoped opens include the existing `DeviceAuditTrail.svelte` summary, and global admin opens include an entity-type filter.
+- Added `src\TechInventory.Web\src\lib\stores\theme.svelte.ts`, updated `app.html` pre-hydration theme bootstrapping plus `app.css` dark-variant handling, and rewired `ThemeToggle.svelte` so Light / Dark / System now persist under `localStorage['theme-preference']`, apply both `data-theme` and `.dark` on `<html>`, and appear in the authenticated header menus as well as Settings.
+- Added/updated i18n strings in `src\TechInventory.Web\src\lib\i18n\en.json`, plus focused theme tests in `src\TechInventory.Web\src\lib\stores\theme.svelte.test.ts` and `src\TechInventory.Web\src\lib\components\ThemeToggle.test.ts`.
+- Validation: `pnpm exec vitest run src/lib/stores/theme.svelte.test.ts src/lib/components/ThemeToggle.test.ts` ✅ (**7 passed**); `pnpm run build` ✅. `pnpm run check` ended on workspace-wide frontend type-resolution issues in this shared environment before settling to the pre-existing `MergeEntityModal.svelte` warning only, and `pnpm run lint` likewise reports the existing `MergeEntityModal.svelte` warning with no new errors from T07/T08 changes.
+
+---
+
 ## 2026-05-20 — Vasquez P003-T04 pull-to-refresh
 
 - Added `src\TechInventory.Web\src\lib\components\PullToRefresh.svelte` plus `src\TechInventory.Web\src\lib\stores\pullToRefresh.ts`, then wrapped `src\TechInventory.Web\src\routes\(authenticated)\+layout.svelte` so authenticated routes get one shared touch gesture, spinner, `overscroll-behavior-y: contain`, and coarse-pointer gating.

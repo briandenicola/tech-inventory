@@ -30,7 +30,7 @@
 	import DeleteDeviceModal from '$lib/components/DeleteDeviceModal.svelte';
 	import ClaimOwnershipModal from '$lib/components/ClaimOwnershipModal.svelte';
 	import ReleaseOwnershipModal from '$lib/components/ReleaseOwnershipModal.svelte';
-	import DeviceAuditHistoryDrawer from '$lib/components/admin/DeviceAuditHistoryDrawer.svelte';
+	import AuditLogModal from '$lib/components/AuditLogModal.svelte';
 	import type { DeviceResponse } from '$lib/queries/devices.svelte';
 	import type { components } from '$lib/api/generated/types';
 
@@ -670,8 +670,16 @@
 {/if}
 
 {#if showHistoryDrawer && device}
-	<DeviceAuditHistoryDrawer
-		deviceId={device.id}
+	<AuditLogModal
+		isOpen={showHistoryDrawer}
 		onClose={() => (showHistoryDrawer = false)}
+		entityId={device.id}
+		entityType="Device"
+		auditSummary={{
+			createdAt: device.createdAt,
+			createdBy: device.createdBy,
+			modifiedAt: device.modifiedAt,
+			modifiedBy: device.modifiedBy
+		}}
 	/>
 {/if}

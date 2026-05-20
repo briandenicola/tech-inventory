@@ -38,6 +38,15 @@ public sealed class DeviceRepository(AppDbContext dbContext) : Repository<Device
             cancellationToken).ConfigureAwait(false);
     }
 
+    public Task<Result<int>> ReassignBrandReferencesAsync(Guid sourceId, Guid targetId, CancellationToken cancellationToken)
+        => ReassignReferencesAsync(device => device.BrandId == sourceId, device => device.ReassignBrand(targetId), cancellationToken);
+
+    public Task<Result<int>> ReassignCategoryReferencesAsync(Guid sourceId, Guid targetId, CancellationToken cancellationToken)
+        => ReassignReferencesAsync(device => device.CategoryId == sourceId, device => device.ReassignCategory(targetId), cancellationToken);
+
+    public Task<Result<int>> ReassignLocationReferencesAsync(Guid sourceId, Guid targetId, CancellationToken cancellationToken)
+        => ReassignReferencesAsync(device => device.LocationId == sourceId, device => device.ReassignLocation(targetId), cancellationToken);
+
     public async IAsyncEnumerable<DeviceExportRow> StreamExportAsync(DeviceListCriteria criteria)
     {
         ArgumentNullException.ThrowIfNull(criteria);
@@ -243,6 +252,27 @@ public sealed class DeviceRepository(AppDbContext dbContext) : Repository<Device
         }
 
         return query;
+    }
+
+    private async Task<Result<int>> ReassignReferencesAsync(
+        System.Linq.Expressions.Expression<Func<Device, bool>> predicate,
+        Action<Device> applyChange,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(applyChange);
+
+        var devices = await DbContext.Devices
+            .Where(predicate)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        foreach (var device in devices)
+        {
+            applyChange(device);
+        }
+
+        return Result<int>.Success(devices.Count);
     }
 
     private static IOrderedEnumerable<Device> ApplyEnumerableOrdering(IEnumerable<Device> devices, string? sortBy, bool sortDescending)

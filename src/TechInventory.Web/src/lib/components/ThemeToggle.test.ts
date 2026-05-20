@@ -1,48 +1,29 @@
-/**
- * ThemeToggle.test.ts — Vitest + Testing Library + axe-core unit test for F029.
- *
- * Verifies:
- * - Contrast on the theme toggle itself (≥4.5:1 AA)
- * - No accessibility violations in the component
- */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import userEvent from '@testing-library/user-event';
 import { render, screen } from '@testing-library/svelte';
 import { axe } from 'vitest-axe';
 import ThemeToggle from './ThemeToggle.svelte';
+import { resetThemeStoreForTests, THEME_STORAGE_KEY } from '$lib/stores/theme.svelte';
 
-// Mock i18n
-vi.mock('$lib/i18n', () => ({
-	t: (key: string) => {
-		const translations: Record<string, string> = {
-			'settings.theme.toggleLabel': 'Theme preference',
-			'settings.theme.light': 'Light',
-			'settings.theme.dark': 'Dark',
-			'settings.theme.system': 'System'
-		};
-		return translations[key] || key;
-	}
-}));
-
-// Mock authStore
-vi.mock('$lib/stores/auth', () => ({
-	authStore: {
-		subscribe: (fn: (v: { currentUser: { id: string } | null }) => void) => {
-			fn({ currentUser: { id: 'test-user' } });
-			return () => {};
-		}
-	}
-}));
-
-// Mock userPrefs
-vi.mock('$lib/stores/userPrefs', () => ({
-	getThemePreference: vi.fn(() => 'system'),
-	setThemePreference: vi.fn()
-}));
+let systemPrefersDark = false;
 
 describe('ThemeToggle', () => {
 	beforeEach(() => {
-		// Reset document.documentElement.dataset
-		delete document.documentElement.dataset.theme;
+		systemPrefersDark = false;
+		window.localStorage.clear();
+		resetThemeStoreForTests();
+
+		Object.defineProperty(window, 'matchMedia', {
+			writable: true,
+			value: vi.fn().mockImplementation(() => ({
+				get matches() {
+					return systemPrefersDark;
+				},
+				media: '(prefers-color-scheme: dark)',
+				addEventListener: vi.fn(),
+				removeEventListener: vi.fn()
+			}))
+		});
 	});
 
 	it('renders without accessibility violations', async () => {
@@ -60,7 +41,17 @@ describe('ThemeToggle', () => {
 
 	it('marks the system option as pressed by default', () => {
 		render(ThemeToggle);
-		const systemButton = screen.getByRole('button', { name: /system/i });
-		expect(systemButton).toHaveAttribute('aria-pressed', 'true');
+		expect(screen.getByRole('button', { name: /system/i })).toHaveAttribute('aria-pressed', 'true');
+	});
+
+	it('persists a new preference when clicked', async () => {
+		const user = userEvent.setup();
+		render(ThemeToggle);
+
+		await user.click(screen.getByRole('button', { name: /dark/i }));
+
+		expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark');
+		expect(document.documentElement.dataset.theme).toBe('dark');
+		expect(document.documentElement.classList.contains('dark')).toBe(true);
 	});
 });

@@ -102,6 +102,37 @@ public sealed class ReportingRepository(AppDbContext dbContext) : IReportingRepo
             .ToArray();
     }
 
+    public async Task<IReadOnlyList<InsuranceReportItem>> GetInsuranceReportItemsAsync(Guid? locationId, CancellationToken cancellationToken)
+    {
+        var activeDevices = _dbContext.Devices
+            .AsNoTracking()
+            .Where(device => device.Status != DeviceStatus.Retired && device.Status != DeviceStatus.Disposed);
+
+        if (locationId.HasValue)
+        {
+            activeDevices = activeDevices.Where(device => device.LocationId == locationId.Value);
+        }
+
+        return await (
+                from device in activeDevices
+                join category in _dbContext.Categories.AsNoTracking() on device.CategoryId equals category.Id
+                join location in _dbContext.Locations.AsNoTracking() on device.LocationId equals location.Id
+                join brand in _dbContext.Brands.AsNoTracking() on device.BrandId equals brand.Id into brandGroup
+                from brand in brandGroup.DefaultIfEmpty()
+                orderby location.Name, device.Name
+                select new InsuranceReportItem(
+                    device.Name,
+                    brand != null ? brand.Name : null,
+                    category.Name,
+                    device.SerialNumber,
+                    device.PurchaseDate,
+                    device.PurchasePrice,
+                    location.Name,
+                    device.WarrantyExpiry))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     public async Task<IReadOnlyList<SpendingReportPoint>> GetSpendingAsync(SpendingGroupBy groupBy, DateOnly? fromDate, DateOnly? toDate, CancellationToken cancellationToken)
     {
         var query = _dbContext.Devices

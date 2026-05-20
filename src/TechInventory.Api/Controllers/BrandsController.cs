@@ -6,6 +6,7 @@ using TechInventory.Application.Brands;
 using TechInventory.Application.Brands.Commands;
 using TechInventory.Application.Brands.Queries;
 using TechInventory.Application.Common.Paging;
+using TechInventory.Application.Merges;
 
 namespace TechInventory.Api.Controllers;
 
@@ -55,6 +56,15 @@ public sealed class BrandsController(ISender sender) : ControllerBase
     public async Task<IActionResult> DeleteBrand(Guid id, CancellationToken cancellationToken)
         => this.NoContentResult(await sender.Send(new DeleteBrandCommand(id), cancellationToken));
 
+    [HttpPost("merge")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(MergeReferenceEntityResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<MergeReferenceEntityResponse>> MergeBrands([FromBody] MergeBrandRequest request, CancellationToken cancellationToken)
+        => this.OkResult(await sender.Send(request.ToCommand(), cancellationToken));
+
     public sealed record CreateBrandRequest(string Name, string? Website = null, string? Notes = null)
     {
         public CreateBrandCommand ToCommand() => new(Name, Website, Notes);
@@ -63,5 +73,10 @@ public sealed class BrandsController(ISender sender) : ControllerBase
     public sealed record UpdateBrandRequest(string Name, string? Website = null, string? Notes = null)
     {
         public UpdateBrandCommand ToCommand(Guid id) => new(id, Name, Website, Notes);
+    }
+
+    public sealed record MergeBrandRequest(Guid SourceId, Guid TargetId)
+    {
+        public MergeBrandCommand ToCommand() => new(SourceId, TargetId);
     }
 }

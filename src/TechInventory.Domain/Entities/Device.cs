@@ -191,6 +191,24 @@ public sealed class Device(
         Touch(modifiedBy);
     }
 
+    public void ReassignBrand(Guid? brandId, string? modifiedBy = null)
+    {
+        BrandId = Guard.AgainstOptionalDefault(brandId, nameof(brandId));
+        Touch(modifiedBy);
+    }
+
+    public void ReassignCategory(Guid categoryId, string? modifiedBy = null)
+    {
+        CategoryId = Guard.AgainstDefault(categoryId, nameof(categoryId));
+        Touch(modifiedBy);
+    }
+
+    public void ReassignLocation(Guid locationId, string? modifiedBy = null)
+    {
+        LocationId = Guard.AgainstDefault(locationId, nameof(locationId));
+        Touch(modifiedBy);
+    }
+
     public void UpdateDisposalMethod(string? disposalMethod, string? modifiedBy = null)
     {
         if (Status is not DeviceStatus.Retired and not DeviceStatus.Disposed)

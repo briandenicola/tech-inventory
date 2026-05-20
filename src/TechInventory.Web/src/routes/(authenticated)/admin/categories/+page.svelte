@@ -8,9 +8,18 @@
 	import { categorySchema, type CategoryFormData } from '$lib/schemas/category';
 	import { addToast } from '$lib/stores/toast';
 	import { registerPullToRefresh } from '$lib/stores/pullToRefresh';
+	import { fetchReferenceData, referenceDataStore } from '$lib/stores/referenceData';
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
+	import MergeEntityModal from '$lib/components/MergeEntityModal.svelte';
 	import DeactivateConfirmModal from '$lib/components/admin/DeactivateConfirmModal.svelte';
+	import {
+		buildMergeTargetOptions,
+		fetchMergeDeviceCount,
+		mergeReferenceEntities,
+		toMergeEntityOption,
+		type MergeEntityOption
+	} from '$lib/utils/referenceMerge';
 
 	/**
 	 * T28: Categories Admin — tree view with expand/collapse
@@ -61,11 +70,28 @@
 	let editingCategory = $state<CategoryResponse | null>(null);
 	let deactivateModalOpen = $state(false);
 	let deactivatingCategory = $state<CategoryResponse | null>(null);
+	let mergeModalOpen = $state(false);
+	let mergingCategory = $state<MergeEntityOption | null>(null);
+	let mergeError = $state<string | null>(null);
+	let mergeSubmitting = $state(false);
 
 	// Form state
 	let formData = $state<CategoryFormData>({ name: '', parentId: '', icon: '', depth: 1 });
 	let formErrors = $state<Record<string, string>>({});
 	let formSubmitting = $state(false);
+
+	const referenceCategories = $derived.by(() => {
+		if ($referenceDataStore.categories.length > 0) {
+			return $referenceDataStore.categories;
+		}
+
+		return categories
+			.filter((category): category is CategoryResponse & { id: string; name: string } => !!category.id && !!category.name && !!category.isActive)
+			.map((category) => ({ id: category.id, name: category.name }));
+	});
+	const mergeTargetOptions = $derived.by(() =>
+		mergingCategory ? buildMergeTargetOptions(referenceCategories, mergingCategory.id) : []
+	);
 
 	// Load categories on mount + URL params change
 	$effect(() => {
@@ -216,6 +242,68 @@
 		}
 	}
 
+	async function openMergeModal(category: CategoryResponse) {
+		const candidate = toMergeEntityOption(category);
+		if (!candidate) {
+			return;
+		}
+
+		mergeModalOpen = true;
+		mergeError = null;
+		mergingCategory = { ...candidate, deviceCount: null };
+
+		try {
+			const deviceCount = await fetchMergeDeviceCount('category', candidate.id);
+			if (mergingCategory?.id === candidate.id) {
+				mergingCategory = { ...candidate, deviceCount };
+			}
+		} catch (err: unknown) {
+			console.error('[CategoriesAdmin] Merge count failed:', err);
+			if (mergingCategory?.id === candidate.id) {
+				mergingCategory = { ...candidate, deviceCount: 0 };
+			}
+		}
+	}
+
+	function closeMergeModal() {
+		mergeModalOpen = false;
+		mergingCategory = null;
+		mergeError = null;
+		mergeSubmitting = false;
+	}
+
+	async function handleMergeConfirm(targetId: string) {
+		if (!mergingCategory?.id) {
+			return;
+		}
+
+		mergeSubmitting = true;
+		mergeError = null;
+		const targetCategory = mergeTargetOptions.find((category) => category.id === targetId);
+
+		try {
+			const response = await mergeReferenceEntities('category', {
+				sourceId: mergingCategory.id,
+				targetId
+			});
+			addToast({
+				type: 'success',
+				message: t('admin.merge.success', {
+					source: mergingCategory.name,
+					target: targetCategory?.name ?? '',
+					count: response.mergedCount
+				})
+			});
+			closeMergeModal();
+			await Promise.all([loadCategories(), fetchReferenceData()]);
+		} catch (err: unknown) {
+			console.error('[CategoriesAdmin] Merge failed:', err);
+			mergeError = err instanceof Error ? err.message : t('admin.merge.error');
+		} finally {
+			mergeSubmitting = false;
+		}
+	}
+
 	// Toggle inactive
 	function toggleInactive() {
 		const params = new URLSearchParams($page.url.searchParams);
@@ -346,6 +434,19 @@
 		</div>
 	{/if}
 </div>
+
+{#if mergeModalOpen && mergingCategory}
+	<MergeEntityModal
+		entityType="category"
+		sourceEntity={mergingCategory}
+		entities={mergeTargetOptions}
+		isOpen={mergeModalOpen}
+		isSubmitting={mergeSubmitting}
+		errorMessage={mergeError}
+		onConfirm={handleMergeConfirm}
+		onCancel={closeMergeModal}
+	/>
+{/if}
 
 <!-- Form Modal -->
 {#if formModalOpen}
@@ -512,7 +613,7 @@
 				<span
 					class="ml-2 inline-flex rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200"
 				>
-					Inactive
+					{t('common.states.inactive')}
 				</span>
 			{/if}
 		</div>
@@ -527,10 +628,17 @@
 			{#if category.isActive}
 				<button
 					type="button"
+					onclick={() => openMergeModal(category)}
+					class="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+				>
+					{t('common.actions.merge')}
+				</button>
+				<button
+					type="button"
 					onclick={() => openDeactivateModal(category)}
 					class="text-sm text-warning-600 hover:text-warning-700 dark:text-warning-400 dark:hover:text-warning-300"
 				>
-					Deactivate
+					{t('common.actions.deactivate')}
 				</button>
 			{/if}
 		</div>

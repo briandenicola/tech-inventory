@@ -13,6 +13,7 @@
 	import DeleteDeviceModal from '$lib/components/DeleteDeviceModal.svelte';
 	import ClaimOwnershipModal from '$lib/components/ClaimOwnershipModal.svelte';
 	import ReleaseOwnershipModal from '$lib/components/ReleaseOwnershipModal.svelte';
+	import AuditLogModal from '$lib/components/AuditLogModal.svelte';
 	import DeviceAuditTrail from '$lib/components/DeviceAuditTrail.svelte';
 	import type { DeviceResponse } from '$lib/queries/devices.svelte';
 
@@ -46,10 +47,12 @@
 	let showDeleteModal = $state(false);
 	let showClaimModal = $state(false);
 	let showReleaseModal = $state(false);
+	let showAuditLogModal = $state(false);
 
 	// Role checks
 	const canEdit = $derived(currentUser?.role === 'Admin' || currentUser?.role === 'Member');
 	const canDelete = $derived(currentUser?.role === 'Admin');
+	const canViewHistory = $derived(currentUser?.role === 'Admin');
 
 	// Ownership checks (T24, T25)
 	// Claim: visible when device unowned OR owned by another user
@@ -362,6 +365,19 @@
 					</svg>
 					{t('common.actions.edit')}
 				</a>
+			{/if}
+
+			{#if canViewHistory}
+				<button
+					type="button"
+					onclick={() => (showAuditLogModal = true)}
+					class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+				>
+					<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6m3 6V7m3 10v-3m5 7H4a1 1 0 01-1-1V4a1 1 0 011-1h16a1 1 0 011 1v16a1 1 0 01-1 1z" />
+					</svg>
+					{t('admin.audit.link.viewHistory')}
+				</button>
 			{/if}
 
 			{#if canDelete}
@@ -711,5 +727,20 @@
 		deviceName={device.name ?? 'Device'}
 		onConfirm={handleReleaseOwnership}
 		onCancel={() => (showReleaseModal = false)}
+	/>
+{/if}
+
+{#if showAuditLogModal && device}
+	<AuditLogModal
+		isOpen={showAuditLogModal}
+		onClose={() => (showAuditLogModal = false)}
+		entityId={device.id}
+		entityType="Device"
+		auditSummary={{
+			createdAt: device.createdAt,
+			createdBy: device.createdBy,
+			modifiedAt: device.modifiedAt,
+			modifiedBy: device.modifiedBy
+		}}
 	/>
 {/if}

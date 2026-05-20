@@ -1,7 +1,9 @@
 using System.Net;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using TechInventory.Application.Categories;
 using TechInventory.Application.Common.Paging;
+using TechInventory.Application.Merges;
 using TechInventory.Domain.Entities;
 
 namespace TechInventory.IntegrationTests.Controllers;
@@ -197,5 +199,36 @@ public sealed class CategoriesControllerTests(IntegrationTestFactory<CategoriesC
         var archivedChild = await ReadJsonAsync<CategoryResponse>(childResponse);
         archivedRoot.IsActive.Should().BeFalse();
         archivedChild.IsActive.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task MergeCategory_WhenValid_ReassignsDevicesAndReparentsChildren()
+    {
+        await ResetDatabaseAsync();
+        var references = await SeedDeviceReferenceDataAsync();
+        var target = new Category(Guid.NewGuid(), $"Target-{Guid.NewGuid():N}");
+        var child = new Category(Guid.NewGuid(), $"Child-{Guid.NewGuid():N}", references.Category.Id, 2, "speaker");
+        var device = CreateDevice(references, "Merged Device");
+        await SeedAsync(entities: [target, child, device]);
+        using var client = CreateClient();
+
+        var response = await client.PostAsync(
+            "/api/v1/categories/merge",
+            CreateJsonContent(new { sourceId = references.Category.Id, targetId = target.Id }));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var payload = await ReadJsonAsync<MergeReferenceEntityResponse>(response);
+        payload.Should().BeEquivalentTo(new MergeReferenceEntityResponse(1, references.Category.Id, target.Id));
+
+        var mergedDevice = await WithDbContextAsync(dbContext => dbContext.Devices.AsNoTracking().SingleAsync(entity => entity.Id == device.Id));
+        mergedDevice.CategoryId.Should().Be(target.Id);
+
+        var reparentedChild = await WithDbContextAsync(dbContext => dbContext.Categories.AsNoTracking().SingleAsync(entity => entity.Id == child.Id));
+        reparentedChild.ParentId.Should().Be(target.Id);
+        reparentedChild.Depth.Should().Be(2);
+
+        var sourceResponse = await client.GetAsync($"/api/v1/categories/{references.Category.Id}");
+        var sourcePayload = await ReadJsonAsync<CategoryResponse>(sourceResponse);
+        sourcePayload.IsActive.Should().BeFalse();
     }
 }

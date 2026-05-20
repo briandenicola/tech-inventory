@@ -1,7 +1,9 @@
 using System.Net;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using TechInventory.Application.Brands;
 using TechInventory.Application.Common.Paging;
+using TechInventory.Application.Merges;
 using TechInventory.Domain.Entities;
 
 namespace TechInventory.IntegrationTests.Controllers;
@@ -161,5 +163,41 @@ public sealed class BrandsControllerTests(IntegrationTestFactory<BrandsControlle
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
         var problem = await ReadProblemDetailsAsync(response);
         problem.Status.Should().Be((int)HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task MergeBrand_WhenValid_ReassignsDevicesDeactivatesSourceAndWritesAuditEvents()
+    {
+        await ResetDatabaseAsync();
+        var references = await SeedDeviceReferenceDataAsync();
+        var target = new Brand(Guid.NewGuid(), $"Target-{Guid.NewGuid():N}");
+        var device = CreateDevice(references, "Merged Device");
+        await SeedAsync(entities: [target, device]);
+        using var client = CreateClient();
+
+        var response = await client.PostAsync(
+            "/api/v1/brands/merge",
+            CreateJsonContent(new { sourceId = references.Brand.Id, targetId = target.Id }));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var payload = await ReadJsonAsync<MergeReferenceEntityResponse>(response);
+        payload.Should().BeEquivalentTo(new MergeReferenceEntityResponse(1, references.Brand.Id, target.Id));
+
+        var mergedDevice = await WithDbContextAsync(dbContext => dbContext.Devices.AsNoTracking().SingleAsync(entity => entity.Id == device.Id));
+        mergedDevice.BrandId.Should().Be(target.Id);
+
+        var reloadedSource = await client.GetAsync($"/api/v1/brands/{references.Brand.Id}");
+        var sourcePayload = await ReadJsonAsync<BrandResponse>(reloadedSource);
+        sourcePayload.IsActive.Should().BeFalse();
+
+        var auditEvents = await WithDbContextAsync(dbContext => dbContext.AuditEvents
+            .AsNoTracking()
+            .Where(entity => entity.EntityType == nameof(Brand)
+                && (entity.EntityId == references.Brand.Id.ToString() || entity.EntityId == target.Id.ToString()))
+            .ToListAsync());
+        auditEvents.Should().HaveCount(2);
+        auditEvents.Should().Contain(entity => entity.EntityId == references.Brand.Id.ToString() && entity.Action == Domain.Enums.AuditAction.Deleted);
+        auditEvents.Should().Contain(entity => entity.EntityId == target.Id.ToString() && entity.Action == Domain.Enums.AuditAction.Updated);
+        auditEvents.Should().OnlyContain(entity => entity.AfterPayload.Contains("\"mergedCount\":1", StringComparison.Ordinal));
     }
 }

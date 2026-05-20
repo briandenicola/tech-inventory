@@ -8,10 +8,19 @@
 	import { locationSchema, type LocationFormData } from '$lib/schemas/location';
 	import { addToast } from '$lib/stores/toast';
 	import { registerPullToRefresh } from '$lib/stores/pullToRefresh';
+	import { fetchReferenceData, referenceDataStore } from '$lib/stores/referenceData';
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import PaginationControls from '$lib/components/PaginationControls.svelte';
+	import MergeEntityModal from '$lib/components/MergeEntityModal.svelte';
 	import DeactivateConfirmModal from '$lib/components/admin/DeactivateConfirmModal.svelte';
+	import {
+		buildMergeTargetOptions,
+		fetchMergeDeviceCount,
+		mergeReferenceEntities,
+		toMergeEntityOption,
+		type MergeEntityOption
+	} from '$lib/utils/referenceMerge';
 
 	/**
 	 * T30: Locations Admin — paginated list with Add/Edit/Deactivate
@@ -45,10 +54,27 @@
 	let editingLocation = $state<LocationResponse | null>(null);
 	let deactivateModalOpen = $state(false);
 	let deactivatingLocation = $state<LocationResponse | null>(null);
+	let mergeModalOpen = $state(false);
+	let mergingLocation = $state<MergeEntityOption | null>(null);
+	let mergeError = $state<string | null>(null);
+	let mergeSubmitting = $state(false);
 
 	let formData = $state<LocationFormData>({ name: '', type: 'Home', notes: '' });
 	let formErrors = $state<Record<string, string>>({});
 	let formSubmitting = $state(false);
+
+	const referenceLocations = $derived.by(() => {
+		if ($referenceDataStore.locations.length > 0) {
+			return $referenceDataStore.locations;
+		}
+
+		return locations
+			.filter((location): location is LocationResponse & { id: string; name: string } => !!location.id && !!location.name && !!location.isActive)
+			.map((location) => ({ id: location.id, name: location.name }));
+	});
+	const mergeTargetOptions = $derived.by(() =>
+		mergingLocation ? buildMergeTargetOptions(referenceLocations, mergingLocation.id) : []
+	);
 
 	$effect(() => {
 		loadLocations();
@@ -156,6 +182,68 @@
 		}
 	}
 
+	async function openMergeModal(location: LocationResponse) {
+		const candidate = toMergeEntityOption(location);
+		if (!candidate) {
+			return;
+		}
+
+		mergeModalOpen = true;
+		mergeError = null;
+		mergingLocation = { ...candidate, deviceCount: null };
+
+		try {
+			const deviceCount = await fetchMergeDeviceCount('location', candidate.id);
+			if (mergingLocation?.id === candidate.id) {
+				mergingLocation = { ...candidate, deviceCount };
+			}
+		} catch (err: unknown) {
+			console.error('[LocationsAdmin] Merge count failed:', err);
+			if (mergingLocation?.id === candidate.id) {
+				mergingLocation = { ...candidate, deviceCount: 0 };
+			}
+		}
+	}
+
+	function closeMergeModal() {
+		mergeModalOpen = false;
+		mergingLocation = null;
+		mergeError = null;
+		mergeSubmitting = false;
+	}
+
+	async function handleMergeConfirm(targetId: string) {
+		if (!mergingLocation?.id) {
+			return;
+		}
+
+		mergeSubmitting = true;
+		mergeError = null;
+		const targetLocation = mergeTargetOptions.find((location) => location.id === targetId);
+
+		try {
+			const response = await mergeReferenceEntities('location', {
+				sourceId: mergingLocation.id,
+				targetId
+			});
+			addToast({
+				type: 'success',
+				message: t('admin.merge.success', {
+					source: mergingLocation.name,
+					target: targetLocation?.name ?? '',
+					count: response.mergedCount
+				})
+			});
+			closeMergeModal();
+			await Promise.all([loadLocations(), fetchReferenceData()]);
+		} catch (err: unknown) {
+			console.error('[LocationsAdmin] Merge failed:', err);
+			mergeError = err instanceof Error ? err.message : t('admin.merge.error');
+		} finally {
+			mergeSubmitting = false;
+		}
+	}
+
 	function toggleInactive() {
 		const params = new URLSearchParams($page.url.searchParams);
 		if (urlParams.includeInactive) {
@@ -256,7 +344,7 @@
 							scope="col"
 							class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
 						>
-							Actions
+							{t('common.labels.actions')}
 						</th>
 					</tr>
 				</thead>
@@ -287,10 +375,17 @@
 								{#if location.isActive}
 									<button
 										type="button"
+										onclick={() => openMergeModal(location)}
+										class="mr-3 text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+									>
+										{t('common.actions.merge')}
+									</button>
+									<button
+										type="button"
 										onclick={() => openDeactivateModal(location)}
 										class="text-warning-600 hover:text-warning-700 dark:text-warning-400 dark:hover:text-warning-300"
 									>
-										Deactivate
+										{t('common.actions.deactivate')}
 									</button>
 								{/if}
 							</td>
@@ -310,6 +405,19 @@
 		</div>
 	{/if}
 </div>
+
+{#if mergeModalOpen && mergingLocation}
+	<MergeEntityModal
+		entityType="location"
+		sourceEntity={mergingLocation}
+		entities={mergeTargetOptions}
+		isOpen={mergeModalOpen}
+		isSubmitting={mergeSubmitting}
+		errorMessage={mergeError}
+		onConfirm={handleMergeConfirm}
+		onCancel={closeMergeModal}
+	/>
+{/if}
 
 {#if formModalOpen}
 	<div

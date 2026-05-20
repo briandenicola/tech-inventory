@@ -6,6 +6,12 @@
  */
 
 import type { paths, components } from './generated/types';
+import type {
+	MergeEntityRequest,
+	MergeEntityResponse,
+	SummaryReportResponse,
+	WarrantyReportResponse
+} from './types';
 
 /**
  * Type helpers to extract request/response types from OpenAPI paths
@@ -314,7 +320,13 @@ export const brands = {
 			{
 				method: 'PATCH'
 			}
-		)
+		),
+
+	merge: async (body: MergeEntityRequest) =>
+		apiFetch<MergeEntityResponse>(`/api/v1/brands/merge`, {
+			method: 'POST',
+			body: JSON.stringify(body)
+		})
 };
 
 // Categories
@@ -344,7 +356,13 @@ export const categories = {
 			{
 				method: 'PATCH'
 			}
-		)
+		),
+
+	merge: async (body: MergeEntityRequest) =>
+		apiFetch<MergeEntityResponse>(`/api/v1/categories/merge`, {
+			method: 'POST',
+			body: JSON.stringify(body)
+		})
 };
 
 // Owners
@@ -417,7 +435,13 @@ export const locations = {
 			{
 				method: 'PATCH'
 			}
-		)
+		),
+
+	merge: async (body: MergeEntityRequest) =>
+		apiFetch<MergeEntityResponse>(`/api/v1/locations/merge`, {
+			method: 'POST',
+			body: JSON.stringify(body)
+		})
 };
 
 // Networks
@@ -532,6 +556,16 @@ export const auditEvents = {
 	) => apiFetch<GetResponse<paths['/api/v1/audit-events']>>(`/api/v1/audit-events${buildQueryString(params)}`)
 };
 
+// Reports
+export const reports = {
+	summary: async () => apiFetch<SummaryReportResponse>(`/api/v1/reports/summary`),
+
+	warranties: async (days: number) =>
+		apiFetch<WarrantyReportResponse>(
+			`/api/v1/reports/warranties${buildQueryString({ ExpiringWithinDays: days, days })}`
+		)
+};
+
 // F025 — local-account fallback endpoints. Kept narrow on purpose; admin-side
 // management lives in F025b.
 export const localAuth = {
@@ -559,6 +593,7 @@ const api = {
 	imports,
 	exports,
 	auditEvents,
+	reports,
 	localAuth,
 	setApiConfig
 };

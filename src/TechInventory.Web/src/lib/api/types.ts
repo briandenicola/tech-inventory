@@ -30,3 +30,53 @@ export type ImportRowPreview = Schemas['ImportRowPreview'];
 export type ImportFieldError = Schemas['ImportFieldError'];
 export type MissingLookup = Schemas['MissingLookup'];
 export type ExportFormat = Schemas['ExportFormat'];
+
+export interface MergeEntityRequest {
+	sourceId: string;
+	targetId: string;
+}
+
+export interface MergeEntityResponse {
+	mergedCount: number;
+	sourceId: string;
+	targetId: string;
+}
+
+export interface ReportBreakdownResponseItem {
+	label?: string | null;
+	name?: string | null;
+	status?: string | null;
+	count?: number | null;
+}
+
+export interface SummaryReportResponse {
+	totalDevices?: number;
+	totalActiveDeviceCount?: number;
+	totalValue?: number;
+	totalEstimatedValue?: number;
+	byCategory?: ReportBreakdownResponseItem[] | null;
+	devicesByCategory?: ReportBreakdownResponseItem[] | null;
+	byLocation?: ReportBreakdownResponseItem[] | null;
+	devicesByLocation?: ReportBreakdownResponseItem[] | null;
+	byStatus?: ReportBreakdownResponseItem[] | null;
+	devicesByStatus?: ReportBreakdownResponseItem[] | null;
+}
+
+export interface WarrantyReportItemResponse {
+	deviceId?: string | null;
+	deviceName?: string | null;
+	brandName?: string | null;
+	brand?: string | null;
+	purchaseDate?: string | null;
+	warrantyExpiry?: string | null;
+	daysUntilExpiry?: number | null;
+	daysRemaining?: number | null;
+}
+
+export interface WarrantyReportResponse {
+	totalCount?: number;
+	items?: WarrantyReportItemResponse[] | null;
+	devices?: WarrantyReportItemResponse[] | null;
+	asOfDate?: string | null;
+	expiringWithinDays?: number;
+}

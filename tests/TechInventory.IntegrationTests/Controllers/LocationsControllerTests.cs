@@ -2,6 +2,7 @@ using System.Net;
 using FluentAssertions;
 using TechInventory.Application.Common.Paging;
 using TechInventory.Application.Locations;
+using TechInventory.Application.Merges;
 using TechInventory.Domain.Entities;
 using TechInventory.Domain.Enums;
 
@@ -158,5 +159,27 @@ public sealed class LocationsControllerTests(IntegrationTestFactory<LocationsCon
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
         var problem = await ReadProblemDetailsAsync(response);
         problem.Status.Should().Be((int)HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task MergeLocation_WhenSourceHasNoDevices_ReturnsZeroMergedCountAndDeactivatesSource()
+    {
+        await ResetDatabaseAsync();
+        var references = await SeedDeviceReferenceDataAsync();
+        var target = new Location(Guid.NewGuid(), $"Target-{Guid.NewGuid():N}", LocationType.Home);
+        await SeedAsync(entities: [target]);
+        using var client = CreateClient();
+
+        var response = await client.PostAsync(
+            "/api/v1/locations/merge",
+            CreateJsonContent(new { sourceId = references.Location.Id, targetId = target.Id }));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var payload = await ReadJsonAsync<MergeReferenceEntityResponse>(response);
+        payload.Should().BeEquivalentTo(new MergeReferenceEntityResponse(0, references.Location.Id, target.Id));
+
+        var sourceResponse = await client.GetAsync($"/api/v1/locations/{references.Location.Id}");
+        var sourcePayload = await ReadJsonAsync<LocationResponse>(sourceResponse);
+        sourcePayload.IsActive.Should().BeFalse();
     }
 }

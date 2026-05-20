@@ -8,10 +8,19 @@
 	import { brandSchema, type BrandFormData } from '$lib/schemas/brand';
 	import { addToast } from '$lib/stores/toast';
 	import { registerPullToRefresh } from '$lib/stores/pullToRefresh';
+	import { fetchReferenceData, referenceDataStore } from '$lib/stores/referenceData';
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import PaginationControls from '$lib/components/PaginationControls.svelte';
+	import MergeEntityModal from '$lib/components/MergeEntityModal.svelte';
 	import DeactivateConfirmModal from '$lib/components/admin/DeactivateConfirmModal.svelte';
+	import {
+		buildMergeTargetOptions,
+		fetchMergeDeviceCount,
+		mergeReferenceEntities,
+		toMergeEntityOption,
+		type MergeEntityOption
+	} from '$lib/utils/referenceMerge';
 
 	/**
 	 * T27: Brands Admin — paginated list with Add/Edit/Deactivate
@@ -57,11 +66,28 @@
 	let editingBrand = $state<BrandResponse | null>(null);
 	let deactivateModalOpen = $state(false);
 	let deactivatingBrand = $state<BrandResponse | null>(null);
+	let mergeModalOpen = $state(false);
+	let mergingBrand = $state<MergeEntityOption | null>(null);
+	let mergeError = $state<string | null>(null);
+	let mergeSubmitting = $state(false);
 
 	// Form state
 	let formData = $state<BrandFormData>({ name: '', website: '', notes: '' });
 	let formErrors = $state<Record<string, string>>({});
 	let formSubmitting = $state(false);
+
+	const referenceBrands = $derived.by(() => {
+		if ($referenceDataStore.brands.length > 0) {
+			return $referenceDataStore.brands;
+		}
+
+		return brands
+			.filter((brand): brand is BrandResponse & { id: string; name: string } => !!brand.id && !!brand.name && !!brand.isActive)
+			.map((brand) => ({ id: brand.id, name: brand.name }));
+	});
+	const mergeTargetOptions = $derived.by(() =>
+		mergingBrand ? buildMergeTargetOptions(referenceBrands, mergingBrand.id) : []
+	);
 
 	// Load brands on mount + URL params change
 	$effect(() => {
@@ -179,6 +205,68 @@
 		}
 	}
 
+	async function openMergeModal(brand: BrandResponse) {
+		const candidate = toMergeEntityOption(brand);
+		if (!candidate) {
+			return;
+		}
+
+		mergeModalOpen = true;
+		mergeError = null;
+		mergingBrand = { ...candidate, deviceCount: null };
+
+		try {
+			const deviceCount = await fetchMergeDeviceCount('brand', candidate.id);
+			if (mergingBrand?.id === candidate.id) {
+				mergingBrand = { ...candidate, deviceCount };
+			}
+		} catch (err: unknown) {
+			console.error('[BrandsAdmin] Merge count failed:', err);
+			if (mergingBrand?.id === candidate.id) {
+				mergingBrand = { ...candidate, deviceCount: 0 };
+			}
+		}
+	}
+
+	function closeMergeModal() {
+		mergeModalOpen = false;
+		mergingBrand = null;
+		mergeError = null;
+		mergeSubmitting = false;
+	}
+
+	async function handleMergeConfirm(targetId: string) {
+		if (!mergingBrand?.id) {
+			return;
+		}
+
+		mergeSubmitting = true;
+		mergeError = null;
+		const targetBrand = mergeTargetOptions.find((brand) => brand.id === targetId);
+
+		try {
+			const response = await mergeReferenceEntities('brand', {
+				sourceId: mergingBrand.id,
+				targetId
+			});
+			addToast({
+				type: 'success',
+				message: t('admin.merge.success', {
+					source: mergingBrand.name,
+					target: targetBrand?.name ?? '',
+					count: response.mergedCount
+				})
+			});
+			closeMergeModal();
+			await Promise.all([loadBrands(), fetchReferenceData()]);
+		} catch (err: unknown) {
+			console.error('[BrandsAdmin] Merge failed:', err);
+			mergeError = err instanceof Error ? err.message : t('admin.merge.error');
+		} finally {
+			mergeSubmitting = false;
+		}
+	}
+
 	// Toggle inactive
 	function toggleInactive() {
 		const params = new URLSearchParams($page.url.searchParams);
@@ -288,7 +376,7 @@
 							scope="col"
 							class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
 						>
-							Actions
+							{t('common.labels.actions')}
 						</th>
 					</tr>
 				</thead>
@@ -328,10 +416,17 @@
 								{#if brand.isActive}
 									<button
 										type="button"
+										onclick={() => openMergeModal(brand)}
+										class="mr-3 text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+									>
+										{t('common.actions.merge')}
+									</button>
+									<button
+										type="button"
 										onclick={() => openDeactivateModal(brand)}
 										class="text-warning-600 hover:text-warning-700 dark:text-warning-400 dark:hover:text-warning-300"
 									>
-										Deactivate
+										{t('common.actions.deactivate')}
 									</button>
 								{/if}
 							</td>
@@ -352,6 +447,19 @@
 		</div>
 	{/if}
 </div>
+
+{#if mergeModalOpen && mergingBrand}
+	<MergeEntityModal
+		entityType="brand"
+		sourceEntity={mergingBrand}
+		entities={mergeTargetOptions}
+		isOpen={mergeModalOpen}
+		isSubmitting={mergeSubmitting}
+		errorMessage={mergeError}
+		onConfirm={handleMergeConfirm}
+		onCancel={closeMergeModal}
+	/>
+{/if}
 
 <!-- Form Modal -->
 {#if formModalOpen}

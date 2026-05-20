@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TechInventory.Api.Common;
 using TechInventory.Application.Common.Paging;
+using TechInventory.Application.Merges;
 using TechInventory.Application.Locations;
 using TechInventory.Application.Locations.Commands;
 using TechInventory.Application.Locations.Queries;
@@ -56,6 +57,15 @@ public sealed class LocationsController(ISender sender) : ControllerBase
     public async Task<IActionResult> DeleteLocation(Guid id, CancellationToken cancellationToken)
         => this.NoContentResult(await sender.Send(new DeleteLocationCommand(id), cancellationToken));
 
+    [HttpPost("merge")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(MergeReferenceEntityResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<MergeReferenceEntityResponse>> MergeLocations([FromBody] MergeLocationRequest request, CancellationToken cancellationToken)
+        => this.OkResult(await sender.Send(request.ToCommand(), cancellationToken));
+
     public sealed record CreateLocationRequest(string Name, LocationType Type)
     {
         public CreateLocationCommand ToCommand() => new(Name, Type);
@@ -64,5 +74,10 @@ public sealed class LocationsController(ISender sender) : ControllerBase
     public sealed record UpdateLocationRequest(string Name, LocationType Type)
     {
         public UpdateLocationCommand ToCommand(Guid id) => new(id, Name, Type);
+    }
+
+    public sealed record MergeLocationRequest(Guid SourceId, Guid TargetId)
+    {
+        public MergeLocationCommand ToCommand() => new(SourceId, TargetId);
     }
 }

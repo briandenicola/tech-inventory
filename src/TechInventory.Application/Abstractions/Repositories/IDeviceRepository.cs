@@ -8,6 +8,12 @@ public interface IDeviceRepository : IAggregateRepository<Device>
 {
     Task<PagedResult<Device>> ListAsync(DeviceListCriteria criteria, CancellationToken cancellationToken);
 
+    Task<Result<int>> ReassignBrandReferencesAsync(Guid sourceId, Guid targetId, CancellationToken cancellationToken);
+
+    Task<Result<int>> ReassignCategoryReferencesAsync(Guid sourceId, Guid targetId, CancellationToken cancellationToken);
+
+    Task<Result<int>> ReassignLocationReferencesAsync(Guid sourceId, Guid targetId, CancellationToken cancellationToken);
+
     Task<IReadOnlyList<DeviceTag>> ListTagsAsync(Guid deviceId, CancellationToken cancellationToken);
 
     Task<Result<DeviceTag>> UpsertTagAsync(DeviceTag deviceTag, CancellationToken cancellationToken);

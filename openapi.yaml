@@ -312,6 +312,70 @@ paths:
             text/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/brands/merge:
+    post:
+      tags:
+        - Brands
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MergeBrandRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/MergeBrandRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/MergeBrandRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/MergeReferenceEntityResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MergeReferenceEntityResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/MergeReferenceEntityResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
   /api/v1/categories:
     get:
       tags:
@@ -570,6 +634,70 @@ paths:
       responses:
         '204':
           description: No Content
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/categories/merge:
+    post:
+      tags:
+        - Categories
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MergeCategoryRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/MergeCategoryRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/MergeCategoryRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/MergeReferenceEntityResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MergeReferenceEntityResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/MergeReferenceEntityResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
         '404':
           description: Not Found
           content:
@@ -1919,6 +2047,70 @@ paths:
             text/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/locations/merge:
+    post:
+      tags:
+        - Locations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MergeLocationRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/MergeLocationRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/MergeLocationRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/MergeReferenceEntityResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MergeReferenceEntityResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/MergeReferenceEntityResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
   /api/v1/networks:
     get:
       tags:
@@ -2601,6 +2793,25 @@ paths:
             text/json:
               schema:
                 $ref: '#/components/schemas/ValidationProblemDetails'
+  /api/v1/reports/insurance:
+    get:
+      tags:
+        - Reports
+      parameters:
+        - name: LocationId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+          content:
+            text/csv:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
   /api/v1/tags:
     get:
       tags:
@@ -3200,6 +3411,10 @@ components:
         version:
           type: string
           nullable: true
+        warrantyExpiry:
+          type: string
+          format: date
+          nullable: true
       additionalProperties: false
     CreateLocationRequest:
       type: object
@@ -3287,6 +3502,10 @@ components:
           format: uuid
           nullable: true
         purchaseDate:
+          type: string
+          format: date
+          nullable: true
+        warrantyExpiry:
           type: string
           format: date
           nullable: true
@@ -3678,6 +3897,49 @@ components:
         - Storage
         - External
       type: string
+    MergeBrandRequest:
+      type: object
+      properties:
+        sourceId:
+          type: string
+          format: uuid
+        targetId:
+          type: string
+          format: uuid
+      additionalProperties: false
+    MergeCategoryRequest:
+      type: object
+      properties:
+        sourceId:
+          type: string
+          format: uuid
+        targetId:
+          type: string
+          format: uuid
+      additionalProperties: false
+    MergeLocationRequest:
+      type: object
+      properties:
+        sourceId:
+          type: string
+          format: uuid
+        targetId:
+          type: string
+          format: uuid
+      additionalProperties: false
+    MergeReferenceEntityResponse:
+      type: object
+      properties:
+        mergedCount:
+          type: integer
+          format: int32
+        sourceId:
+          type: string
+          format: uuid
+        targetId:
+          type: string
+          format: uuid
+      additionalProperties: false
     MissingLookup:
       type: object
       properties:
@@ -3830,6 +4092,78 @@ components:
           type: string
           nullable: true
       additionalProperties: { }
+    ReportBreakdownItem:
+      type: object
+      properties:
+        label:
+          type: string
+          nullable: true
+        count:
+          type: integer
+          format: int32
+      additionalProperties: false
+    SpendingGroupBy:
+      enum:
+        - Month
+        - Year
+      type: string
+    SpendingReportPoint:
+      type: object
+      properties:
+        periodLabel:
+          type: string
+          nullable: true
+        totalSpend:
+          type: number
+          format: double
+        deviceCount:
+          type: integer
+          format: int32
+      additionalProperties: false
+    SpendingReportResponse:
+      type: object
+      properties:
+        groupBy:
+          $ref: '#/components/schemas/SpendingGroupBy'
+        fromDate:
+          type: string
+          format: date
+          nullable: true
+        toDate:
+          type: string
+          format: date
+          nullable: true
+        periods:
+          type: array
+          items:
+            $ref: '#/components/schemas/SpendingReportPoint'
+          nullable: true
+      additionalProperties: false
+    SummaryReportResponse:
+      type: object
+      properties:
+        totalActiveDeviceCount:
+          type: integer
+          format: int32
+        totalEstimatedValue:
+          type: number
+          format: double
+        devicesByCategory:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportBreakdownItem'
+          nullable: true
+        devicesByLocation:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportBreakdownItem'
+          nullable: true
+        devicesByStatus:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportBreakdownItem'
+          nullable: true
+      additionalProperties: false
     TagResponse:
       type: object
       properties:
@@ -3972,6 +4306,10 @@ components:
         version:
           type: string
           nullable: true
+        warrantyExpiry:
+          type: string
+          format: date
+          nullable: true
       additionalProperties: false
     UpdateLocationRequest:
       type: object
@@ -4049,3 +4387,38 @@ components:
               type: string
           nullable: true
       additionalProperties: { }
+    WarrantyReportItem:
+      type: object
+      properties:
+        deviceName:
+          type: string
+          nullable: true
+        brand:
+          type: string
+          nullable: true
+        purchaseDate:
+          type: string
+          format: date
+          nullable: true
+        warrantyExpiry:
+          type: string
+          format: date
+        daysRemaining:
+          type: integer
+          format: int32
+      additionalProperties: false
+    WarrantyReportResponse:
+      type: object
+      properties:
+        asOfDate:
+          type: string
+          format: date
+        expiringWithinDays:
+          type: integer
+          format: int32
+        devices:
+          type: array
+          items:
+            $ref: '#/components/schemas/WarrantyReportItem'
+          nullable: true
+      additionalProperties: false

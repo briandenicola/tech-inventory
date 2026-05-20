@@ -26,7 +26,7 @@
 | ✅ P003-T04 | Pull-to-refresh on all pages | Vasquez | P1 | M | Implement pull-to-refresh gesture on touch devices. Use `overscroll-behavior-y: contain` + custom touch handler. Trigger query invalidation. Visual spinner indicator. Only on `pointer: coarse` devices. | Pull-to-refresh works on mobile (phone/tablet); spinner shows during refresh; data reloads; no-op on desktop. | — |
 | ✅ P003-T05 | Consistent hamburger nav on all routes | Vasquez | P1 | S | Audit all routes for hamburger menu presence. Ensure mobile nav renders on admin sub-routes (`/admin/brands`, `/admin/categories`, etc.), device sub-routes, and settings. Fix any route where nav is missing. | Hamburger menu visible and functional on every route at mobile viewport; nav items consistent. | Spec 002 T13 (✅) |
 | P003-T06 | Responsive admin/management tables | Vasquez | P1 | M | Admin entity tables (brands, categories, locations, networks, owners, tags) don't fit on mobile. Implement responsive pattern: card layout on mobile (`< 768px`), table on desktop. Or horizontal scroll with sticky first column. | Admin tables usable on 375px viewport; no horizontal overflow without indication; touch targets ≥ 44px. | Spec 002 T27-T32 (✅) |
-| P003-T07 | Audit log as modal (not page) | Vasquez | P1 | S | Convert audit log from standalone page to modal overlay. Trigger from: device detail page ("View History" button) and admin area. Modal shows filtered audit events for context (device-scoped or global). Paginated within modal. | Audit log opens as modal; filterable by device; pagination within modal; close returns to previous context. | P003-T01 |
+| ✅ P003-T07 | Audit log as modal (not page) | Vasquez | P1 | S | Convert audit log from standalone page to modal overlay. Trigger from: device detail page ("View History" button) and admin area. Modal shows filtered audit events for context (device-scoped or global). Paginated within modal. | Audit log opens as modal; filterable by device; pagination within modal; close returns to previous context. | P003-T01 |
 
 ---
 
@@ -34,8 +34,8 @@
 
 | ID | Task | Owner | Priority | Effort | Description | Definition of Done | Dependencies |
 |----|------|-------|----------|--------|-------------|-------------------|--------------|
-| P003-T08 | Dark mode toggle | Vasquez | P2 | M | Add manual dark/light/system toggle. Extend `tokens.css` with `[data-theme="dark"]` variants. Create `ThemeProvider` component. Persist choice in localStorage. Toggle UI in header or settings. | Dark mode renders correctly on all routes; toggle persists across sessions; respects system preference as default. | — |
-| P003-T09 | Merge duplicate reference entities | Hicks + Vasquez | P2 | L | **Backend (Hicks):** New endpoint `POST /api/v1/{entity}/merge` — reassigns all FK references from source to target, soft-deletes source, logs AuditEvent. Entities: brands, categories, locations. **Frontend (Vasquez):** "Merge" button on admin pages → modal with target entity selector + confirmation. Admin-only. | Merge endpoint works for brands/categories/locations; all device FKs updated; source deactivated; audit logged; UI shows merge modal; tests pass. | Spec 002 T27-T30 (✅) |
+| ✅ P003-T08 | Dark mode toggle | Vasquez | P2 | M | Add manual dark/light/system toggle. Extend `tokens.css` with `[data-theme="dark"]` variants. Create `ThemeProvider` component. Persist choice in localStorage. Toggle UI in header or settings. | Dark mode renders correctly on all routes; toggle persists across sessions; respects system preference as default. | — |
+| ✅ P003-T09 | Merge duplicate reference entities | Hicks + Vasquez | P2 | L | **Backend (Hicks):** New endpoint `POST /api/v1/{entity}/merge` — reassigns all FK references from source to target, soft-deletes source, logs AuditEvent. Entities: brands, categories, locations. **Frontend (Vasquez):** "Merge" button on admin pages → modal with target entity selector + confirmation. Admin-only. | Merge endpoint works for brands/categories/locations; all device FKs updated; source deactivated; audit logged; UI shows merge modal; tests pass. | Spec 002 T27-T30 (✅) |
 | P003-T10 | Insurance export report | Hicks + Vasquez | P2 | M | **Backend (Hicks):** New endpoint `GET /api/v1/reports/insurance` — returns device data formatted for insurance: name, brand, category, serial, purchase date, price, location. CSV with summary header (total value, device count, generated date). **Frontend (Vasquez):** Button on export page (or standalone `/reports/insurance` route). | Insurance report downloads as CSV; includes summary row; all active devices included; filterable by location. | Spec 002 T38 (unstarted — can parallel) |
 
 ---
@@ -45,8 +45,8 @@
 | ID | Task | Owner | Priority | Effort | Description | Definition of Done | Dependencies |
 |----|------|-------|----------|--------|-------------|-------------------|--------------|
 | P003-T11 | ✅ Reporting API endpoints | Hicks | P2 | L | Design and implement reporting query endpoints: `GET /api/v1/reports/summary` (total devices, total value, by-category counts, by-location counts), `GET /api/v1/reports/warranties` (devices with warranty expiring in N days), `GET /api/v1/reports/spending` (purchase value over time, grouped by month/year). | 3 reporting endpoints implemented with tests; OpenAPI spec updated; no N+1 queries. | — |
-| P003-T12 | Reporting UI — summary cards | Vasquez | P2 | M | Create `/reports` page with summary cards: total device count, total inventory value, top categories (bar list), top locations, devices by status. Consume `reports/summary` endpoint. Responsive grid layout. | Reports page renders summary data; responsive; loading/error states; axe-core zero violations. | P003-T11 |
-| P003-T13 | Reporting UI — warranty expiry list | Vasquez | P2 | S | On `/reports` page (or sub-tab): list of devices with warranties expiring within 30/60/90 days. Sortable by expiry date. Link to device detail. | Warranty list renders; date filtering works; links to device detail. | P003-T11 |
+| ✅ P003-T12 | Reporting UI — summary cards | Vasquez | P2 | M | Create `/reports` page with summary cards: total device count, total inventory value, top categories (bar list), top locations, devices by status. Consume `reports/summary` endpoint. Responsive grid layout. | Reports page renders summary data; responsive; loading/error states; axe-core zero violations. | P003-T11 |
+| ✅ P003-T13 | Reporting UI — warranty expiry list | Vasquez | P2 | S | On `/reports` page (or sub-tab): list of devices with warranties expiring within 30/60/90 days. Sortable by expiry date. Link to device detail. | Warranty list renders; date filtering works; links to device detail. | P003-T11 |
 
 ---
 
@@ -144,3 +144,7 @@ P003-T09, T10, T11 ─→ P003-T16 (backend tests)
 - **ADR-XXX**: Dark mode implementation strategy (CSS custom properties vs. Tailwind dark: prefix vs. both)
 - **ADR-XXX**: Insurance report format (CSV-only for v1, PDF deferred)
 - **ADR-XXX**: Merge endpoint design (generic vs. per-entity)
+
+## Backend Progress Notes
+
+- **2026-05-20 (Hicks):** Backend delivery for `P003-T09` and `P003-T10` is complete: admin merge endpoints for brands/categories/locations and `GET /api/v1/reports/insurance` are implemented, tested, and reflected in `openapi.yaml`. Frontend follow-through remains before the shared tasks can be checked off.

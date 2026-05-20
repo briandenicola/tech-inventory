@@ -26,6 +26,16 @@ Phase 1 lands in `specs/001-core-api/`. Pattern references: **R1** for MediatR h
 
 ## Recent Updates
 
+### 2026-05-20 (Spec-003 Batch 2) — T09/T10 merge + insurance backend ✅ COMPLETE
+
+**Delivered backend contracts for duplicate cleanup + insurance export:**
+
+- Added admin-only `POST /api/v1/brands/merge`, `/api/v1/categories/merge`, and `/api/v1/locations/merge` in the resource controllers plus MediatR commands/validators under `src\TechInventory.Application\Brands`, `Categories`, `Locations`, and shared merge helpers under `src\TechInventory.Application\Merges`. Merges validate distinct IDs, require active source/target records, reassign device FK references through `IDeviceRepository`, deactivate the source row, and write paired `AuditEvent` entries. Category merges also reparent descendants and block descendant/depth conflicts.
+- Added `GetInsuranceReportQuery` in `src\TechInventory.Application\Reports\Queries\GetInsuranceReportQuery.cs`, `IReportingRepository.GetInsuranceReportItemsAsync(...)`, and `ReportsController.GetInsurance(...)`. The report returns a CSV attachment with a generated-at comment line, active-device rows only, optional `locationId` filtering, and a `TOTAL` footer row.
+- Added backend coverage in `tests\TechInventory.UnitTests\Application\ReferenceMergeCommandHandlerTests.cs`, `tests\TechInventory.UnitTests\Application\ReportingQueryHandlerTests.cs`, `tests\TechInventory.IntegrationTests\Controllers\BrandsControllerTests.cs`, `CategoriesControllerTests.cs`, `LocationsControllerTests.cs`, `ReportsControllerTests.cs`, and `ReferenceMergeAuthorizationTests.cs`; regenerated repo-root `openapi.yaml` from the runtime document.
+- Tightened the `IDeviceRepository` merge helper signatures to return `Result<int>` so the repository contract suite stays consistent with the Application-layer result pattern.
+- Validation: `dotnet format --verify-no-changes` ✅, `dotnet build -c Release` ✅, `dotnet test -c Release` ✅ (**431 total / 426 passed / 5 skipped / 0 failed**). `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify.ps1` now reaches Playwright and fails only because `docker` is unavailable in this environment.
+
 ### 2026-05-20 (Spec-003 Batch 1) — T11 Reporting API Endpoints ✅ COMPLETE
 
 **Delivered 3 endpoints with finalized reporting data model:**
@@ -118,6 +128,12 @@ Brian must restart API (`Ctrl+C` then `task dev:up`) to pick up new config. Afte
 ---
 
 ## Learnings
+
+### 2026-05-20: Reference merge + insurance report patterns (P003-T09/T10)
+
+- Shared merge validation lives in `src\TechInventory.Application\Merges\MergeReferenceEntityCommandValidator.cs` / `IMergeReferenceEntityCommand`, but each entity keeps its own handler + controller so category-specific tree rules stay explicit and the OpenAPI surface remains resource-oriented.
+- `IDeviceRepository` reference-reassignment helpers should return `Result<int>` instead of raw `Task<int>` so repository contracts remain mock-friendly and consistent with the Application-layer `Result<T>` convention.
+- Insurance export splits cleanly across layers: Infrastructure projects `InsuranceReportItem` rows, Application formats CSV bytes + the dated filename with `TimeProvider`, and API just returns `File(...)`; that keeps CSV formatting testable without controller business logic.
 
 ### 2026-05-20: Reporting API foundations (P003-T11)
 

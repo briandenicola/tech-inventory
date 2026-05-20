@@ -34,6 +34,13 @@ Accessibility: WCAG 2.2 AA target, zero axe-core violations to merge. Browser ma
 
 ## Learnings
 
+### 2026-05-20 (P003-T07/T08) — audit modal reuse + resolved theme state
+
+- A reusable `<AuditLogModal>` works best as a context-preserving shell around the existing audit table/diff patterns: device-scoped opens can keep the `DeviceAuditTrail.svelte` summary above the paginated event list, while admin-global opens only need a lightweight entity-type filter.
+- Native `<dialog>` is viable here if you still layer in the missing UX details yourself: explicit `showModal()`/`close()` sync, backdrop-click handling (`event.target === dialog`), `cancel` interception for Escape, and a small Tab trap for keyboard users.
+- Manual dark mode in this codebase needs both `document.documentElement.dataset.theme` **and** the `.dark` class. The dataset drives token overrides in `tokens.css`, while the `.dark` class activates existing Tailwind `dark:` utilities, so a resolved-theme store should set both from one source of truth.
+- Persisting the theme under a single global key (`theme-preference`) is simpler than the old per-user prefs shape for pre-hydration bootstrapping; the root layout can then initialize the runtime store while `app.html` prevents first-paint flashes.
+
 ### F029: Dark Mode Toggle & Theme Contrast Repair (2026-05-20)
 
 **Theme Toggle Implementation**:
@@ -439,4 +446,12 @@ Work already completed in commit `68ddbd5` (`test(web): T26 ownership modals + T
 - Targeted Vitest (`BackToTopFab`, devices query helpers, DeviceTable, PaginationControls) ✅
 - Full `pnpm exec vitest run` ⚠️ still hits pre-existing `DeviceForm.test.ts` failures unrelated to infinite scroll.
 - Full `pnpm run lint` ⚠️ still blocked by pre-existing admin-page `any` / unused-var issues.
+
+### 2026-05-20 (P003-T09/T12/T13) — Merge UI + reports follow-through
+
+- `referenceDataStore` is the right source for merge targets on paginated admin pages: it gives the modal the full active entity list instead of only the current table page, and refreshing that store after a successful merge keeps forms/dropdowns consistent without a hard reload.
+- The merge confirmation count can stay generic by reusing `devices.list` with `Page=1` / `PageSize=1` plus the source filter (`BrandId`, `CategoryId`, or `LocationId`) and reading `totalCount`; the modal gets accurate “move X devices” text without a dedicated count endpoint.
+- Reporting UI needed a frontend normalizer because the current backend report payload uses `totalActiveDeviceCount`, `devices`, and `daysRemaining`, while the intended frontend contract uses `totalDevices`, `items`, and `daysUntilExpiry`. A small adapter in `src/lib/utils/reports.ts` lets the page ship now and survive the contract cleanup later.
+- Adding `@types/node` and `"node"` to `tsconfig.json` cleared the lingering `DeviceAuditTrail.test.ts` type-check blocker, so `pnpm run check` is green again for frontend work.
+- Delivery: reusable merge modal on brands/categories/locations, new `/reports` dashboard with summary cards + warranty expiry list, Reports navigation entry, targeted tests green (including follow-up `WarrantyExpiryPanel` accessibility coverage), full `pnpm exec vitest run` green, build green.
 

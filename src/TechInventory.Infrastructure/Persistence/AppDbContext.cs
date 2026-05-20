@@ -23,6 +23,8 @@ public sealed class AppDbContext(
 
     public DbSet<Household> Households => Set<Household>();
 
+    public DbSet<HouseholdSetting> HouseholdSettings => Set<HouseholdSetting>();
+
     public DbSet<ImportBatch> ImportBatches => Set<ImportBatch>();
 
     public DbSet<Location> Locations => Set<Location>();

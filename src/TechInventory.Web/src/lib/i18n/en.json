@@ -191,6 +191,10 @@
 			"deleteButton": "Delete Device",
 			"claimButton": "Claim Ownership",
 			"releaseButton": "Release Ownership",
+			"moreActions": "More actions",
+			"actionsMenuTitle": "Device actions",
+			"notFoundTitle": "Device Not Found",
+			"notFoundDescription": "This device does not exist or has been deleted.",
 			"tagsEmpty": "No tags assigned",
 			"audit": {
 				"title": "Audit Trail",

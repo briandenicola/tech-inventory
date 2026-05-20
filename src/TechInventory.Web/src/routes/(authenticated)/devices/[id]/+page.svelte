@@ -14,7 +14,8 @@
 	import ClaimOwnershipModal from '$lib/components/ClaimOwnershipModal.svelte';
 	import ReleaseOwnershipModal from '$lib/components/ReleaseOwnershipModal.svelte';
 	import AuditLogModal from '$lib/components/AuditLogModal.svelte';
-	import DeviceAuditTrail from '$lib/components/DeviceAuditTrail.svelte';
+	import DeviceActionsMenu from '$lib/components/DeviceActionsMenu.svelte';
+	import DeviceDetailFields from '$lib/components/DeviceDetailFields.svelte';
 	import type { DeviceResponse } from '$lib/queries/devices.svelte';
 
 	/**
@@ -160,6 +161,17 @@
 		});
 	}
 
+	function formatDateTime(dateStr: string | null): string {
+		if (!dateStr) return '—';
+		return new Date(dateStr).toLocaleString('en-US', {
+			year: 'numeric',
+			month: 'short',
+			day: 'numeric',
+			hour: '2-digit',
+			minute: '2-digit'
+		});
+	}
+
 	// Handle delete
 	async function handleDelete(reason: string) {
 		if (!device) return;
@@ -291,118 +303,15 @@
 		</h1>
 	</div>
 
-	<!-- Action buttons (role-aware). Mobile: horizontal scroll if overflowing. -->
 	{#if device && !isLoading}
-		<div
-			class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:justify-end sm:overflow-visible sm:px-0 sm:pb-0"
-		>
-			{#if canClaim}
-				<button
-					type="button"
-					onclick={() => (showClaimModal = true)}
-					class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-primary-600 bg-white px-4 py-2 text-sm font-medium text-primary-600 transition-colors hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-primary-500 dark:bg-neutral-900 dark:text-primary-400 dark:hover:bg-neutral-800"
-				>
-					<svg
-						class="h-4 w-4"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-						aria-hidden="true"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-						/>
-					</svg>
-					{t('devices.detail.claimButton')}
-				</button>
-			{/if}
-
-			{#if canRelease}
-				<button
-					type="button"
-					onclick={() => (showReleaseModal = true)}
-					class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-warning-600 bg-white px-4 py-2 text-sm font-medium text-warning-600 transition-colors hover:bg-warning-50 focus:outline-none focus:ring-2 focus:ring-warning-500 focus:ring-offset-2 dark:border-warning-500 dark:bg-neutral-900 dark:text-warning-400 dark:hover:bg-neutral-800"
-				>
-					<svg
-						class="h-4 w-4"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-						aria-hidden="true"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
-						/>
-					</svg>
-					{t('devices.detail.releaseButton')}
-				</button>
-			{/if}
-
-			{#if canEdit}
-				<a
-					href={`/devices/${device.id}/edit`}
-					class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-primary-600 bg-white px-4 py-2 text-sm font-medium text-primary-600 transition-colors hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-primary-500 dark:bg-neutral-900 dark:text-primary-400 dark:hover:bg-neutral-800"
-				>
-					<svg
-						class="h-4 w-4"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-						aria-hidden="true"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-						/>
-					</svg>
-					{t('common.actions.edit')}
-				</a>
-			{/if}
-
-			{#if canViewHistory}
-				<button
-					type="button"
-					onclick={() => (showAuditLogModal = true)}
-					class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
-				>
-					<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6m3 6V7m3 10v-3m5 7H4a1 1 0 01-1-1V4a1 1 0 011-1h16a1 1 0 011 1v16a1 1 0 01-1 1z" />
-					</svg>
-					{t('admin.audit.link.viewHistory')}
-				</button>
-			{/if}
-
-			{#if canDelete}
-				<button
-					type="button"
-					onclick={() => (showDeleteModal = true)}
-					class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-danger-600 bg-white px-4 py-2 text-sm font-medium text-danger-600 transition-colors hover:bg-danger-50 focus:outline-none focus:ring-2 focus:ring-danger-500 focus:ring-offset-2 dark:border-danger-500 dark:bg-neutral-900 dark:text-danger-400 dark:hover:bg-neutral-800"
-				>
-					<svg
-						class="h-4 w-4"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-						aria-hidden="true"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-						/>
-					</svg>
-					{t('common.actions.delete')}
-				</button>
-			{/if}
+		<div class="flex justify-end">
+			<DeviceActionsMenu
+				editHref={canEdit ? `/devices/${device.id}/edit` : undefined}
+				onClaim={canClaim ? () => (showClaimModal = true) : undefined}
+				onRelease={canRelease ? () => (showReleaseModal = true) : undefined}
+				onViewHistory={canViewHistory ? () => (showAuditLogModal = true) : undefined}
+				onDelete={canDelete ? () => (showDeleteModal = true) : undefined}
+			/>
 		</div>
 	{/if}
 </div>
@@ -429,10 +338,10 @@
 			/>
 		</svg>
 		<h2 class="mt-4 text-lg font-semibold text-warning-900 dark:text-warning-100">
-			Device Not Found
+			{t('devices.detail.notFoundTitle')}
 		</h2>
 		<p class="mt-2 text-sm text-warning-700 dark:text-warning-300">
-			This device does not exist or has been deleted.
+			{t('devices.detail.notFoundDescription')}
 		</p>
 		<a
 			href="/devices"
@@ -444,262 +353,18 @@
 {:else if error}
 	<ErrorState {error} onRetry={fetchDevice} />
 {:else if device}
-	<!-- Device details grid -->
-	<div class="space-y-6">
-		<!-- Status badge -->
-		<div>
-			<span
-				class="inline-flex items-center rounded-full px-3 py-1 text-sm font-medium {getStatusColor(
-					device.status
-				)}"
-			>
-				{device.status ?? 'Unknown'}
-			</span>
-		</div>
-
-		<!-- Fields grid (two-column on desktop) -->
-		<div class="grid gap-6 sm:grid-cols-2">
-			<!-- Name -->
-			<div>
-				<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-					{t('devices.columns.name')}
-				</dt>
-				<dd class="mt-1 text-base font-semibold text-neutral-900 dark:text-neutral-100">
-					{device.name ?? '—'}
-				</dd>
-			</div>
-
-			<!-- Serial Number -->
-			<div>
-				<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-					{t('devices.columns.serial')}
-				</dt>
-				<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">
-					{device.serialNumber ?? '—'}
-				</dd>
-			</div>
-
-			<!--
-				F034: surface every persisted device field that was previously
-				invisible on the detail page. Each row is gated on truthy value
-				so hand-entered devices with sparse data stay scannable.
-			-->
-			{#if device.model}
-				<div>
-					<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-						{t('devices.columns.model')}
-					</dt>
-					<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">{device.model}</dd>
-				</div>
-			{/if}
-
-			<!-- Brand -->
-			<div>
-				<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-					{t('devices.columns.brand')}
-				</dt>
-				<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">{brandName}</dd>
-			</div>
-
-			<!-- Category -->
-			<div>
-				<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-					{t('devices.columns.category')}
-				</dt>
-				<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">{categoryName}</dd>
-			</div>
-
-			<!-- Owner -->
-			<div>
-				<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-					{t('devices.columns.owner')}
-				</dt>
-				<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">{ownerName}</dd>
-			</div>
-
-			<!-- Location -->
-			<div>
-				<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-					{t('devices.columns.location')}
-				</dt>
-				<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">{locationName}</dd>
-			</div>
-
-			<!-- Network -->
-			<div>
-				<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-					{t('devices.columns.network')}
-				</dt>
-				<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">{networkName}</dd>
-			</div>
-
-			<!-- Purchase Date -->
-			<div>
-				<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-					{t('devices.columns.purchaseDate')}
-				</dt>
-				<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">
-					{formatDate(device.purchaseDate)}
-				</dd>
-			</div>
-
-			<!-- Purchase Price -->
-			<div>
-				<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-					{t('devices.columns.purchasePrice')}
-				</dt>
-				<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">
-					{#if device.purchasePrice !== null && device.currencyCode}
-						{device.currencyCode} {device.purchasePrice.toFixed(2)}
-					{:else}
-						—
-					{/if}
-				</dd>
-			</div>
-
-			<!-- F034: secondary identification + networking fields, all truthy-gated -->
-			{#if device.operatingSystem}
-				<div>
-					<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-						{t('devices.columns.operatingSystem')}
-					</dt>
-					<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">
-						{device.operatingSystem}
-					</dd>
-				</div>
-			{/if}
-
-			{#if device.version}
-				<div>
-					<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-						{t('devices.columns.version')}
-					</dt>
-					<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">{device.version}</dd>
-				</div>
-			{/if}
-
-			{#if device.ipAddress}
-				<div>
-					<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-						{t('devices.columns.ipAddress')}
-					</dt>
-					<dd class="mt-1 font-mono text-base text-neutral-900 dark:text-neutral-100">
-						{device.ipAddress}
-					</dd>
-				</div>
-			{/if}
-
-			{#if device.macAddress}
-				<div>
-					<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-						{t('devices.columns.macAddress')}
-					</dt>
-					<dd class="mt-1 font-mono text-base text-neutral-900 dark:text-neutral-100">
-						{device.macAddress}
-					</dd>
-				</div>
-			{/if}
-
-			{#if device.productUrl}
-				<div class="sm:col-span-2">
-					<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-						{t('devices.columns.productUrl')}
-					</dt>
-					<dd class="mt-1 truncate text-base text-neutral-900 dark:text-neutral-100">
-						<a
-							href={device.productUrl}
-							target="_blank"
-							rel="noopener noreferrer"
-							class="text-primary-600 hover:text-primary-500 hover:underline dark:text-primary-400 dark:hover:text-primary-300"
-						>
-							{device.productUrl}
-						</a>
-					</dd>
-				</div>
-			{/if}
-
-			{#if device.retiredDate}
-				<div>
-					<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-						{t('devices.columns.retiredDate')}
-					</dt>
-					<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">
-						{formatDate(device.retiredDate)}
-					</dd>
-				</div>
-			{/if}
-
-			{#if device.disposalMethod}
-				<div>
-					<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-						{t('devices.columns.disposalMethod')}
-					</dt>
-					<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">
-						{device.disposalMethod}
-					</dd>
-				</div>
-			{/if}
-		</div>
-
-		<!-- Tags -->
-		<div>
-			<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-				{t('common.nouns.tags')}
-			</dt>
-			<dd class="mt-2">
-				{#if deviceTags.length > 0}
-					<ul class="flex flex-wrap gap-2">
-						{#each deviceTags as tag (tag.id)}
-							<li
-								class="inline-flex items-center gap-2 rounded-full border border-neutral-300 bg-neutral-50 px-3 py-1 text-sm text-neutral-700 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200"
-							>
-								<span
-									class="h-2.5 w-2.5 rounded-full bg-neutral-400"
-									style:background-color={tag.color ?? undefined}
-									aria-hidden="true"
-								></span>
-								{tag.name}
-							</li>
-						{/each}
-					</ul>
-				{:else}
-					<p class="text-base text-neutral-900 dark:text-neutral-100">
-						{t('devices.detail.tagsEmpty')}
-					</p>
-				{/if}
-			</dd>
-		</div>
-
-		{#if device.purpose}
-			<div>
-				<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-					{t('devices.columns.purpose')}
-				</dt>
-				<dd class="mt-1 whitespace-pre-wrap text-base text-neutral-900 dark:text-neutral-100">
-					{device.purpose}
-				</dd>
-			</div>
-		{/if}
-
-		<!-- Notes (full-width) -->
-		{#if device.notes}
-			<div>
-				<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-					{t('devices.columns.notes')}
-				</dt>
-				<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">
-					{device.notes}
-				</dd>
-			</div>
-		{/if}
-
-		<DeviceAuditTrail
-			createdAt={device.createdAt}
-			createdBy={device.createdBy}
-			modifiedAt={device.modifiedAt}
-			modifiedBy={device.modifiedBy}
-		/>
-	</div>
+	<DeviceDetailFields
+		{device}
+		{brandName}
+		{categoryName}
+		{ownerName}
+		{locationName}
+		{networkName}
+		{deviceTags}
+		statusClass={getStatusColor(device.status)}
+		{formatDate}
+		{formatDateTime}
+	/>
 {/if}
 
 <!-- Delete confirmation modal -->

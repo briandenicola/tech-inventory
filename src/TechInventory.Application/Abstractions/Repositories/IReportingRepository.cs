@@ -10,6 +10,8 @@ public interface IReportingRepository
 
     Task<IReadOnlyList<EraReportDecade>> GetEraReportAsync(Guid? categoryId, CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<TimelineReportEntry>> GetTimelineReportAsync(Guid? categoryId, TimelineGroupBy groupBy, DateOnly? fromDate, DateOnly? toDate, CancellationToken cancellationToken);
+
     Task<IReadOnlyList<InsuranceReportItem>> GetInsuranceReportItemsAsync(Guid? locationId, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<SpendingReportPoint>> GetSpendingAsync(SpendingGroupBy groupBy, DateOnly? fromDate, DateOnly? toDate, CancellationToken cancellationToken);

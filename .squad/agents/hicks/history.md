@@ -135,6 +135,12 @@ Brian must restart API (`Ctrl+C` then `task dev:up`) to pick up new config. Afte
 - `IReportingRepository.GetEraReportAsync(...)` is simplest as a single `Select(...).ToListAsync()` over active devices with non-null purchase dates, followed by in-memory decade grouping. That keeps the repository to one database round-trip while still allowing stable `sampleDevices` arrays without provider-specific SQL tricks.
 - Deterministic `sampleDevices` ordering matters for the whimsical report UI and tests: order by most recent purchase year descending, then device name ascending, and take the first three names in each decade.
 
+### 2026-05-20: Historical timeline reporting (F037)
+
+- The timeline report follows the same reporting seam as the other report endpoints: shared models in `ReportModels.cs`, MediatR query/validator in `Reports\Queries\`, controller wiring in `ReportsController.cs`, and a single EF Core projection inside `ReportingRepository.cs`.
+- Timeline data must include historical lifecycle states, so the repository intentionally filters only on `PurchaseDate` and optional category/date range; `RetiredDate` becomes the public `disposalDate` for both retired and disposed records because the domain has one lifecycle-end date field today.
+- `estimatedValue` currently maps from `Device.PurchasePrice` (coalesced to `0m` when absent) so the frozen F037 contract stays numeric without inventing a new persistence field before the broader valuation story exists.
+
 ### 2026-05-20: Reference merge + insurance report patterns (P003-T09/T10)
 
 - Shared merge validation lives in `src\TechInventory.Application\Merges\MergeReferenceEntityCommandValidator.cs` / `IMergeReferenceEntityCommand`, but each entity keeps its own handler + controller so category-specific tree rules stay explicit and the OpenAPI surface remains resource-oriented.

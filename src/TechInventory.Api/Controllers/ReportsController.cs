@@ -35,6 +35,12 @@ public sealed class ReportsController(ISender sender) : ControllerBase
     public async Task<ActionResult<EraReportResponse>> GetEras([FromQuery] GetEraReportRequest request, CancellationToken cancellationToken)
         => this.OkResult(await sender.Send(request.ToQuery(), cancellationToken));
 
+    [HttpGet("timeline")]
+    [ProducesResponseType(typeof(TimelineReportResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<TimelineReportResponse>> GetTimeline([FromQuery] GetTimelineReportRequest request, CancellationToken cancellationToken)
+        => this.OkResult(await sender.Send(request.ToQuery(), cancellationToken));
+
     [HttpGet("insurance")]
     [Produces("text/csv")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -69,6 +75,23 @@ public sealed class ReportsController(ISender sender) : ControllerBase
         public Guid? CategoryId { get; init; }
 
         public GetEraReportQuery ToQuery() => new(CategoryId);
+    }
+
+    public sealed record GetTimelineReportRequest
+    {
+        [FromQuery(Name = "categoryId")]
+        public Guid? CategoryId { get; init; }
+
+        [FromQuery(Name = "groupBy")]
+        public string GroupBy { get; init; } = nameof(TimelineGroupBy.Category);
+
+        [FromQuery(Name = "fromDate")]
+        public DateOnly? FromDate { get; init; }
+
+        [FromQuery(Name = "toDate")]
+        public DateOnly? ToDate { get; init; }
+
+        public GetTimelineReportQuery ToQuery() => new(CategoryId, GroupBy, FromDate, ToDate);
     }
 
     public sealed record GetInsuranceReportRequest

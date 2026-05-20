@@ -72,6 +72,42 @@ public sealed class ReportingRepositoryIntegrationTests(IntegrationTestFactory<R
             options => options.WithStrictOrdering());
     }
 
+    [Fact]
+    public async Task ReportingRepository_GetTimelineReportAsync_FiltersAndSortsHistoricalEntries()
+    {
+        await using var dbContext = await _host.CreateDbContextAsync();
+        await ResetDatabaseAsync(dbContext);
+        var repository = _host.CreateRepository<IReportingRepository>(dbContext, "ReportingRepository");
+        var references = await SeedDeviceReferencesAsync(dbContext);
+        var secondCategory = new Category(Guid.NewGuid(), $"Category-{Guid.NewGuid():N}");
+        var secondOwner = new Owner(Guid.NewGuid(), "Casey", OwnerRole.Member);
+        dbContext.AddRange(secondCategory, secondOwner);
+        await dbContext.SaveChangesAsync();
+
+        dbContext.Devices.AddRange(
+            CreateReportDevice(references, "Too Early", DeviceStatus.Active, new DateOnly(2017, 1, 1), 200m),
+            CreateReportDevice(references, "Included Retired", DeviceStatus.Retired, new DateOnly(2020, 2, 1), 500m),
+            CreateReportDevice(references with { Owner = secondOwner }, "Included Disposed", DeviceStatus.Disposed, new DateOnly(2021, 4, 1), 700m),
+            CreateReportDevice(references with { Category = secondCategory }, "Wrong Category", DeviceStatus.Active, new DateOnly(2021, 6, 1), 800m),
+            CreateReportDevice(references, "Too Late", DeviceStatus.Active, new DateOnly(2023, 1, 1), 900m),
+            CreateReportDevice(references, "Missing Purchase Date", DeviceStatus.Active, null, 100m));
+        await dbContext.SaveChangesAsync();
+
+        var report = await repository.GetTimelineReportAsync(
+            references.Category.Id,
+            TimelineGroupBy.Owner,
+            new DateOnly(2020, 1, 1),
+            new DateOnly(2021, 12, 31),
+            CancellationToken.None);
+
+        report.Should().BeEquivalentTo(
+            [
+                new TimelineReportEntry("Included Retired", references.Brand.Name, new DateOnly(2020, 2, 1), new DateOnly(2024, 12, 31), references.Owner.DisplayName, 500m),
+                new TimelineReportEntry("Included Disposed", references.Brand.Name, new DateOnly(2021, 4, 1), new DateOnly(2024, 12, 31), secondOwner.DisplayName, 700m)
+            ],
+            options => options.WithStrictOrdering());
+    }
+
     private static async Task ResetDatabaseAsync(AppDbContext dbContext, CancellationToken cancellationToken = default)
     {
         await dbContext.Database.EnsureDeletedAsync(cancellationToken);

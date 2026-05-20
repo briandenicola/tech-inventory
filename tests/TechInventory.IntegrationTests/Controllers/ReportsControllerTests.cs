@@ -217,6 +217,52 @@ public sealed class ReportsControllerTests(IntegrationTestFactory<ReportsControl
     }
 
     [Fact]
+    public async Task GetTimeline_WhenGroupedByOwner_ReturnsHistoricalEntriesSortedOldestFirst()
+    {
+        await ResetDatabaseAsync();
+        var references = await SeedDeviceReferenceDataAsync();
+        var secondOwner = new Owner(Guid.NewGuid(), "Casey", OwnerRole.Member);
+        await SeedAsync(entities: [secondOwner]);
+        await SeedAsync(
+            entities:
+            [
+                CreateReportDevice(references.Household, references.Brand.Id, references.Category.Id, references.Owner.Id, references.Location.Id, references.Network.Id, "Old Laptop", DeviceStatus.Active, 1200m, purchaseDate: new DateOnly(2018, 1, 15)),
+                CreateReportDevice(references.Household, references.Brand.Id, references.Category.Id, secondOwner.Id, references.Location.Id, references.Network.Id, "Retired Tablet", DeviceStatus.Retired, 600m, purchaseDate: new DateOnly(2020, 6, 1)),
+                CreateReportDevice(references.Household, references.Brand.Id, references.Category.Id, secondOwner.Id, references.Location.Id, references.Network.Id, "Disposed Phone", DeviceStatus.Disposed, 300m, purchaseDate: new DateOnly(2021, 3, 20)),
+                CreateReportDevice(references.Household, references.Brand.Id, references.Category.Id, references.Owner.Id, references.Location.Id, references.Network.Id, "No Purchase Date", DeviceStatus.Active, 200m, purchaseDate: null, useDefaultPurchaseDate: false)
+            ]);
+        using var client = CreateClient();
+
+        var response = await client.GetAsync("/api/v1/reports/timeline?groupBy=Owner&fromDate=2018-01-01&toDate=2021-12-31");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var payload = await ReadJsonAsync<TimelineReportResponse>(response);
+        payload.AppliedCategoryId.Should().BeNull();
+        payload.AsOfDate.Should().Be(DateOnly.FromDateTime(DateTime.UtcNow));
+        payload.GroupBy.Should().Be(TimelineGroupBy.Owner);
+        payload.Entries.Should().BeEquivalentTo(
+            [
+                new TimelineReportEntry("Old Laptop", references.Brand.Name, new DateOnly(2018, 1, 15), null, references.Owner.DisplayName, 1200m),
+                new TimelineReportEntry("Retired Tablet", references.Brand.Name, new DateOnly(2020, 6, 1), new DateOnly(2024, 12, 31), secondOwner.DisplayName, 600m),
+                new TimelineReportEntry("Disposed Phone", references.Brand.Name, new DateOnly(2021, 3, 20), new DateOnly(2024, 12, 31), secondOwner.DisplayName, 300m)
+            ],
+            options => options.WithStrictOrdering());
+    }
+
+    [Fact]
+    public async Task GetTimeline_WhenGroupByInvalid_Returns400ValidationProblemDetails()
+    {
+        await ResetDatabaseAsync();
+        using var client = CreateClient();
+
+        var response = await client.GetAsync("/api/v1/reports/timeline?groupBy=Household");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problem = await ReadValidationProblemDetailsAsync(response);
+        problem.Errors.Keys.Should().Contain(key => string.Equals(key, "GroupBy", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public async Task GetInsurance_WhenFilteredByLocation_ReturnsCsvAttachmentForActiveDevicesOnly()
     {
         await ResetDatabaseAsync();

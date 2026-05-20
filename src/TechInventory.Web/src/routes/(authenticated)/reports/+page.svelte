@@ -6,6 +6,7 @@
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
 	import ReportBreakdownCard from '$lib/components/ReportBreakdownCard.svelte';
 	import ReportMetricCard from '$lib/components/ReportMetricCard.svelte';
+	import TimelineReport from '$lib/components/TimelineReport.svelte';
 	import WarrantyExpiryPanel from '$lib/components/WarrantyExpiryPanel.svelte';
 	import { t } from '$lib/i18n';
 	import { registerPullToRefresh } from '$lib/stores/pullToRefresh';
@@ -127,6 +128,10 @@
 
 	<div class="mt-8">
 		<EraReportCard />
+	</div>
+
+	<div class="mt-8">
+		<TimelineReport />
 	</div>
 
 	<div class="mt-8">

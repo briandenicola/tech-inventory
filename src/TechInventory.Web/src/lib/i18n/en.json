@@ -467,6 +467,29 @@
 				"2020s": "2020s"
 			}
 		},
+		"timeline": {
+			"title": "Tech Timeline",
+			"description": "See your devices plotted across time",
+			"empty": "No devices with purchase dates to show",
+			"error": "Couldn't load timeline data",
+			"loading": "Building your timeline...",
+			"filterLabel": "Category filter",
+			"allCategories": "All Categories",
+			"groupByLabel": "Timeline grouping",
+			"groupBy": {
+				"category": "By Category",
+				"owner": "By Owner"
+			},
+			"active": "Still active",
+			"disposed": "No longer owned",
+			"duration": "{years} years",
+			"legend": "Timeline Legend",
+			"deviceCount": "{count} devices",
+			"groupsLabel": "Timeline groups",
+			"axisLabel": "Timeline year axis",
+			"asOf": "As of {date}",
+			"unknownGroup": "Unknown"
+		},
 		"warranties": {
 			"title": "Upcoming Warranty Expirations",
 			"subtitle": "Devices with warranties expiring within the selected window.",

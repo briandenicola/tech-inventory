@@ -34,6 +34,77 @@ Accessibility: WCAG 2.2 AA target, zero axe-core violations to merge. Browser ma
 
 ## Learnings
 
+### F029: Dark Mode Toggle & Theme Contrast Repair (2026-05-20)
+
+**Theme Toggle Implementation**:
+- Added `themePreference: 'light' | 'dark' | 'system'` to `userPrefs.ts` with localStorage persistence
+- Created `<ThemeToggle>` component matching devices view-mode toggle's segmented-control pattern (rounded-full pill container, active option gets white bg + shadow)
+- Pre-hydration script in `app.html` reads localStorage and sets `data-theme` on `<html>` BEFORE first paint to suppress FOUC
+- Script is self-contained, error-safe (try/catch around localStorage), no external imports
+
+**tokens.css Dark-Branch Gating Pattern**:
+```css
+:root[data-theme='dark'] {
+  /* Explicit user preference: dark */
+  --app-color-primary-50: #e8f3ff;
+  /* ... */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    /* System preference: dark, UNLESS user explicitly chose light */
+    --app-color-primary-50: #e8f3ff;
+    /* ... same values */
+  }
+}
+```
+This ensures: explicit `data-theme='dark'` wins, explicit `data-theme='light'` wins over system, `'system'` (or no pref) falls through to OS `prefers-color-scheme`.
+
+**Raw Color Scale Ordering Preserved**:
+- 50 = lightest, 900 = darkest in BOTH light and dark themes
+- Never reverse ordering in dark mode; only RETUNE shades for better contrast
+- "Meaning swap" (light background → dark background) lives in semantic tokens like `--color-text`, `--color-bg`, NOT in the numbered scales
+
+**Semantic Diff Tokens (Drake's WCAG AA Palette)**:
+- Six tokens: `--color-diff-add-fg/bg`, `--color-diff-remove-fg/bg`, `--color-diff-change-fg/bg`
+- Light theme: forest green on pale mint (add), deep burgundy on pale rose (remove), warm brown on pale cream (change)
+- Dark theme: bright mint on dark green (add), bright rose on burgundy (remove), bright amber on brown (change)
+- All pairs ≥6.2:1 contrast (well above AA 4.5:1 floor)
+- **Registered via `@theme inline` block** — Tailwind v4 ONLY generates color utilities (`text-*`, `bg-*`, `border-*`) for names in `@theme`; defining `--color-*` in `:root` alone produces zero CSS
+- Applied via inline `style` attributes in `AuditDiffDrawer.svelte`: `style="color: var(--color-diff-add-fg); background-color: var(--color-diff-add-bg);"`
+- Never use raw Tailwind utilities (`bg-success-50`, `text-danger-900`) for diff rendering — semantic tokens only
+
+**FOUC Suppression Test Pattern (Playwright)**:
+```typescript
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('ti.currentUserId', 'test-user');
+    localStorage.setItem('ti.userPrefs.v1.test-user', JSON.stringify({ version: 1, themePreference: 'dark' }));
+  });
+});
+
+test('sets data-theme="dark" before first paint', async ({ page }) => {
+  await page.goto('/');
+  const htmlTheme = await page.locator('html').getAttribute('data-theme');
+  expect(htmlTheme).toBe('dark');
+});
+```
+This verifies the pre-hydration script runs synchronously BEFORE SvelteKit hydration.
+
+**Axe-Core Diff Contrast Test**:
+- Created `AuditDiffDrawer.test.ts` with axe-core checks in both light and dark modes
+- Forces dark mode via `document.documentElement.dataset.theme = 'dark'` + `.classList.add('dark')`
+- Prevents future contrast regressions on the diff rendering itself
+
+**Semantic Token Strategy for Audit Log**:
+- Replaced ad-hoc Tailwind colors (`text-neutral-500`, `bg-neutral-100`) with semantic tokens where possible
+- For diff rendering specifically, used inline `style` with CSS variable references: `style="color: var(--color-diff-add-fg); ..."`
+- This keeps contrast values centralized in `tokens.css` and makes theme swaps automatic
+
+**Reference**: Drake's diff palette at `.squad/decisions/inbox/drake-f029-diff-colors.md` for future contrast work.
+
+---
+
 ### 2026-05-19 (Phase 2 Round 2) — T09, T10, T12, T13: Login + Auth Store + Protected Routes + App Shell
 
 **Shipped:**

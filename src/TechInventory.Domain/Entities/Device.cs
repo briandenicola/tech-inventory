@@ -26,7 +26,8 @@ public sealed class Device(
     string? ipAddress = null,
     string? macAddress = null,
     string? productUrl = null,
-    string? version = null) : AggregateRoot(id)
+    string? version = null,
+    DateOnly? warrantyExpiry = null) : AggregateRoot(id)
 {
     public string Name { get; private set; } = Guard.AgainstNullOrWhiteSpace(name, nameof(name), 200);
 
@@ -70,6 +71,8 @@ public sealed class Device(
 
     public string? Version { get; private set; } = Guard.AgainstMaxLength(version, nameof(version), 50);
 
+    public DateOnly? WarrantyExpiry { get; private set; } = ValidateWarrantyExpiry(purchaseDate, warrantyExpiry);
+
     public static Device Create(
         Guid id,
         Household household,
@@ -93,7 +96,8 @@ public sealed class Device(
         string? ipAddress = null,
         string? macAddress = null,
         string? productUrl = null,
-        string? version = null)
+        string? version = null,
+        DateOnly? warrantyExpiry = null)
     {
         ArgumentNullException.ThrowIfNull(household);
 
@@ -119,7 +123,8 @@ public sealed class Device(
             ipAddress,
             macAddress,
             productUrl,
-            version);
+            version,
+            warrantyExpiry);
     }
 
     public void UpdateDetails(
@@ -140,7 +145,8 @@ public sealed class Device(
         string? ipAddress = null,
         string? macAddress = null,
         string? productUrl = null,
-        string? version = null)
+        string? version = null,
+        DateOnly? warrantyExpiry = null)
     {
         EnsureEditable();
 
@@ -161,6 +167,7 @@ public sealed class Device(
         MacAddress = ValidateMacAddress(macAddress);
         ProductUrl = ValidateProductUrl(productUrl);
         Version = Guard.AgainstMaxLength(version, nameof(version), 50);
+        WarrantyExpiry = ValidateWarrantyExpiry(PurchaseDate, warrantyExpiry);
 
         Touch(modifiedBy);
     }
@@ -227,6 +234,16 @@ public sealed class Device(
         }
 
         return normalized;
+    }
+
+    private static DateOnly? ValidateWarrantyExpiry(DateOnly? purchaseDate, DateOnly? warrantyExpiry)
+    {
+        if (warrantyExpiry.HasValue && purchaseDate.HasValue && warrantyExpiry.Value < purchaseDate.Value)
+        {
+            throw new ArgumentException("WarrantyExpiry cannot be earlier than PurchaseDate.", nameof(warrantyExpiry));
+        }
+
+        return warrantyExpiry;
     }
 
     private static string? ValidateMacAddress(string? macAddress)

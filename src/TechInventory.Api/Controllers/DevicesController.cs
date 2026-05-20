@@ -159,7 +159,8 @@ public sealed class DevicesController(ISender sender) : ControllerBase
         string? IpAddress = null,
         string? MacAddress = null,
         string? ProductUrl = null,
-        string? Version = null)
+        string? Version = null,
+        DateOnly? WarrantyExpiry = null)
     {
         public CreateDeviceCommand ToCommand()
             => new(
@@ -183,7 +184,8 @@ public sealed class DevicesController(ISender sender) : ControllerBase
                 IpAddress,
                 MacAddress,
                 ProductUrl,
-                Version);
+                Version,
+                WarrantyExpiry);
     }
 
     public sealed record UpdateDeviceRequest(
@@ -207,7 +209,8 @@ public sealed class DevicesController(ISender sender) : ControllerBase
         string? IpAddress = null,
         string? MacAddress = null,
         string? ProductUrl = null,
-        string? Version = null)
+        string? Version = null,
+        DateOnly? WarrantyExpiry = null)
     {
         public UpdateDeviceCommand ToCommand(Guid id)
             => new(
@@ -232,7 +235,8 @@ public sealed class DevicesController(ISender sender) : ControllerBase
                 IpAddress,
                 MacAddress,
                 ProductUrl,
-                Version);
+                Version,
+                WarrantyExpiry);
     }
 
     public sealed record DeleteDeviceRequest(string? DisposalMethod = null, DateOnly? RetiredDate = null)

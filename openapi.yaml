@@ -2143,6 +2143,102 @@ paths:
             text/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/reports/summary:
+    get:
+      tags:
+        - Reports
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SummaryReportResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SummaryReportResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SummaryReportResponse'
+  /api/v1/reports/warranties:
+    get:
+      tags:
+        - Reports
+      parameters:
+        - name: ExpiringWithinDays
+          in: query
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/WarrantyReportResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WarrantyReportResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/WarrantyReportResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+  /api/v1/reports/spending:
+    get:
+      tags:
+        - Reports
+      parameters:
+        - name: GroupBy
+          in: query
+          schema:
+            $ref: '#/components/schemas/SpendingGroupBy'
+        - name: FromDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: ToDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/SpendingReportResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpendingReportResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/SpendingReportResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
   /api/v1/tags:
     get:
       tags:
@@ -2675,6 +2771,10 @@ components:
         version:
           type: string
           nullable: true
+        warrantyExpiry:
+          type: string
+          format: date
+          nullable: true
       additionalProperties: false
     CreateLocationRequest:
       type: object
@@ -2762,6 +2862,10 @@ components:
           format: uuid
           nullable: true
         purchaseDate:
+          type: string
+          format: date
+          nullable: true
+        warrantyExpiry:
           type: string
           format: date
           nullable: true
@@ -3283,6 +3387,78 @@ components:
           type: string
           nullable: true
       additionalProperties: { }
+    ReportBreakdownItem:
+      type: object
+      properties:
+        label:
+          type: string
+          nullable: true
+        count:
+          type: integer
+          format: int32
+      additionalProperties: false
+    SpendingGroupBy:
+      enum:
+        - Month
+        - Year
+      type: string
+    SpendingReportPoint:
+      type: object
+      properties:
+        periodLabel:
+          type: string
+          nullable: true
+        totalSpend:
+          type: number
+          format: double
+        deviceCount:
+          type: integer
+          format: int32
+      additionalProperties: false
+    SpendingReportResponse:
+      type: object
+      properties:
+        groupBy:
+          $ref: '#/components/schemas/SpendingGroupBy'
+        fromDate:
+          type: string
+          format: date
+          nullable: true
+        toDate:
+          type: string
+          format: date
+          nullable: true
+        periods:
+          type: array
+          items:
+            $ref: '#/components/schemas/SpendingReportPoint'
+          nullable: true
+      additionalProperties: false
+    SummaryReportResponse:
+      type: object
+      properties:
+        totalActiveDeviceCount:
+          type: integer
+          format: int32
+        totalEstimatedValue:
+          type: number
+          format: double
+        devicesByCategory:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportBreakdownItem'
+          nullable: true
+        devicesByLocation:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportBreakdownItem'
+          nullable: true
+        devicesByStatus:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportBreakdownItem'
+          nullable: true
+      additionalProperties: false
     TagResponse:
       type: object
       properties:
@@ -3425,6 +3601,10 @@ components:
         version:
           type: string
           nullable: true
+        warrantyExpiry:
+          type: string
+          format: date
+          nullable: true
       additionalProperties: false
     UpdateLocationRequest:
       type: object
@@ -3495,3 +3675,38 @@ components:
               type: string
           nullable: true
       additionalProperties: { }
+    WarrantyReportItem:
+      type: object
+      properties:
+        deviceName:
+          type: string
+          nullable: true
+        brand:
+          type: string
+          nullable: true
+        purchaseDate:
+          type: string
+          format: date
+          nullable: true
+        warrantyExpiry:
+          type: string
+          format: date
+        daysRemaining:
+          type: integer
+          format: int32
+      additionalProperties: false
+    WarrantyReportResponse:
+      type: object
+      properties:
+        asOfDate:
+          type: string
+          format: date
+        expiringWithinDays:
+          type: integer
+          format: int32
+        devices:
+          type: array
+          items:
+            $ref: '#/components/schemas/WarrantyReportItem'
+          nullable: true
+      additionalProperties: false

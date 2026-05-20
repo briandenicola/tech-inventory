@@ -14,15 +14,18 @@ internal static class DeviceValidationRules
         Expression<Func<T, string?>> currencyCodeExpression,
         Expression<Func<T, string?>> modelExpression,
         Expression<Func<T, string?>> serialNumberExpression,
+        Expression<Func<T, DateOnly?>> purchaseDateExpression,
         Expression<Func<T, decimal?>> purchasePriceExpression,
         Expression<Func<T, string?>> notesExpression,
         Expression<Func<T, string?>> disposalMethodExpression,
         Expression<Func<T, DateOnly?>> retiredDateExpression,
+        Expression<Func<T, DateOnly?>> warrantyExpiryExpression,
         Expression<Func<T, DeviceStatus>> statusExpression)
     {
         ArgumentNullException.ThrowIfNull(validator);
 
         var statusAccessor = statusExpression.Compile();
+        var purchaseDateAccessor = purchaseDateExpression.Compile();
 
         validator.RuleFor(nameExpression)
             .NotEmpty()
@@ -55,6 +58,10 @@ internal static class DeviceValidationRules
         validator.RuleFor(disposalMethodExpression)
             .Must((instance, disposalMethod) => string.IsNullOrWhiteSpace(disposalMethod) || statusAccessor(instance) is DeviceStatus.Retired or DeviceStatus.Disposed)
             .WithMessage("DisposalMethod can only be set when Status is Retired or Disposed.");
+
+        validator.RuleFor(warrantyExpiryExpression)
+            .Must((instance, warrantyExpiry) => !warrantyExpiry.HasValue || !purchaseDateAccessor(instance).HasValue || warrantyExpiry.Value >= purchaseDateAccessor(instance)!.Value)
+            .WithMessage("WarrantyExpiry cannot be earlier than PurchaseDate.");
     }
 
     public static void ApplyOptionalBrandRule<T>(AbstractValidator<T> validator, Expression<Func<T, Guid?>> brandIdExpression)

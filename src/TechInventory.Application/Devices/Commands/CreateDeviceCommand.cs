@@ -30,7 +30,8 @@ public sealed record CreateDeviceCommand(
     string? IpAddress = null,
     string? MacAddress = null,
     string? ProductUrl = null,
-    string? Version = null) : IRequest<Result<DeviceResponse>>, IAuditable;
+    string? Version = null,
+    DateOnly? WarrantyExpiry = null) : IRequest<Result<DeviceResponse>>, IAuditable;
 
 public sealed class CreateDeviceCommandHandler(
     IDeviceRepository deviceRepository,
@@ -82,7 +83,8 @@ public sealed class CreateDeviceCommandHandler(
                 request.IpAddress,
                 request.MacAddress,
                 request.ProductUrl,
-                request.Version);
+                request.Version,
+                request.WarrantyExpiry);
 
             var addResult = await deviceRepository.AddAsync(device, cancellationToken).ConfigureAwait(false);
             if (addResult.IsFailure)

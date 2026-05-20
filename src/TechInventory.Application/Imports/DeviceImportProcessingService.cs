@@ -578,10 +578,12 @@ internal sealed class DeviceImportProcessingService(
                 row => row.CurrencyCode,
                 row => row.Model,
                 row => row.SerialNumber,
+                row => row.PurchaseDate,
                 row => row.PurchasePrice,
                 row => row.Notes,
                 row => row.DisposalMethod,
                 row => row.RetiredDate,
+                row => null,
                 row => row.Status);
 
             DeviceValidationRules.ApplyExtendedFieldRules(

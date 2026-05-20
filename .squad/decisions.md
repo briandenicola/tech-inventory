@@ -3102,6 +3102,160 @@ The base `IntegrationTestFactory<TMarker>` installs an in-memory `TestAuthHandle
 **Consequences:** All audit-log diff renderings now meet WCAG AA accessibility baseline in both light and dark themes. Consistent with Constitution §6.5.5 (tokens in CSS only, no magic values).
 
 
+### D-116: Audit Trail Contrast Fix — Semantic Token Usage
+
+**Date:** 2026-05-20 (Spec-003 T01)  
+**Agent:** Vasquez (Frontend Engineer)  
+**Status:** ✅ DONE  
+**Related:** `src/routes/(authenticated)/devices/[id]/DeviceAuditTrail.svelte`, `src/lib/tokens.css`
+
+**Decision:** Use direct semantic color tokens from `src/lib/tokens.css` for the audit trail surface and text (`--color-bg`, `--color-text`, `--color-text-secondary`, `--color-border`) instead of Tailwind `text-neutral-*` / `bg-neutral-*` utilities.
+
+**Rationale:** Audit trail contrast bug traced to theme-dependent neutral utility choices in dark mode. `tokens.css` defines semantic CSS variables, but those tokens are not registered through Tailwind v4 `@theme`, so relying on utility class names does not guarantee the audit UI uses the intended project palette.
+
+**Implementation:**
+- Extracted `DeviceAuditTrail.svelte` component with direct CSS variable refs
+- Replaced all `text-neutral-*` and `bg-neutral-*` with `var(--color-*)` references
+- Added component test with contrast ratio validation via `DeviceAuditTrail.test.ts`
+- axe-core accessibility checks passing; WCAG AA color contrast verified ✅
+
+**Consequences:** Contrast-critical audit text now resolves from project semantic tokens in both light and dark mode. Broader token-to-Tailwind registration can happen later without blocking this fix.
+
+---
+
+### D-117: Infinite Scroll with Accessibility Fallback
+
+**Date:** 2026-05-20 (Spec-003 T03)  
+**Agent:** Vasquez (Frontend Engineer)  
+**Status:** ✅ DONE  
+**Related:** `src/routes/(authenticated)/devices/+page.svelte`, Intersection Observer, `prefers-reduced-motion`
+
+**Decision:** Implement infinite scroll (Intersection Observer) for devices list default experience, with traditional pagination fallback when `prefers-reduced-motion: reduce` is active.
+
+**Rationale:**
+- Brian explicitly requested smoother mobile PWA experience
+- Backend API already paginates on `page` + `pageSize`; client-side page accumulation avoids contract churn
+- Reduced-motion users must not be forced into auto-loading tied to scroll movement
+
+**Implementation:**
+- First page loads via existing `useDevices()` query
+- Additional pages fetched imperatively with incremented `page` param
+- Page size normalized and clamped to validator ceiling (≤ 200) before requests
+- Floating back-to-top FAB complements infinite scroll; uses non-smooth scrolling for reduced-motion users
+- E2E tests in `tests/e2e/devices-infinite-scroll.spec.ts` ✅
+
+**Consequences:** Pagination UI hides when `prefers-reduced-motion: reduce`; users still have functional pagination controls in that mode.
+
+---
+
+### D-118: Reporting API Endpoints — Warranty, Summary, Spending
+
+**Date:** 2026-05-20 (Spec-003 T11)  
+**Agent:** Hicks (Backend Engineer)  
+**Status:** ✅ DONE  
+**Related:** `src/TechInventory.Api/Controllers/ReportsController.cs`, `src/TechInventory.Application/Reports/`, Migration `20260520165251_AddDeviceWarrantyExpiry`, 398 tests passing
+
+**Decision:** Ship 3 new reporting API endpoints for inventory summary, warranty tracking, and historical spending analysis.
+
+**Endpoints:**
+1. **GET /api/v1/reports/summary** — Device count by status (Active, Retired, Disposed); total inventory value
+2. **GET /api/v1/reports/warranties** — Devices with WarrantyExpiry, sorted by expiration date
+3. **GET /api/v1/reports/spending** — Historical spending grouped by year/category; includes all devices (Active, Retired, Disposed)
+
+**Design Decisions Embedded:**
+1. **Persist warranty expiry on Device** — Added nullable `Device.WarrantyExpiry` field via migration. Rationale: reporting spec requires durable warranty-expiry data; existing aggregate lacked this field.
+2. **Normalize status reporting to three buckets** — Returns `Active`, `Retired`, `Disposed` only. `InRepair` and `Lent` roll into `Active` inventory bucket.
+3. **Treat spending as historical, not active-only** — Includes any device with both `PurchaseDate` and `PurchasePrice`, regardless of lifecycle state. Preserves spend history after device retirement/disposal.
+
+**Implementation Details:**
+- EF projections for efficiency; no N+1 queries
+- FluentValidation for input contracts (date ranges, filters)
+- OpenAPI auto-documented
+- Full test coverage: 398 tests passing; `dotnet format`, `dotnet build`, `dotnet test` all ✅
+
+**Blockers Cleared:** T12 (frontend reporting UI) and T13 (fun/whimsical reports) now have finalized API contracts.
+
+---
+
+### D-119: User Backlog — PWA Field-Test Feedback (Spec-003 Batch 1)
+
+**Date:** 2026-05-20T16:26:09Z  
+**Captured By:** Brian (via Copilot)  
+**Type:** User Feedback + Feature Backlog  
+**Related:** Field-test session, spec-003-field-test-fixes
+
+**Summary:** Brian's PWA field-test surfaced 12 items (bugs + UX improvements + features + questions). Categorized and captured for team prioritization.
+
+**Bugs (P0) — Addressed in Batch 1:**
+1. ✅ **Audit log unviewable** → D-116 (contrast fix)
+2. **Devices hidden behind transparent element** → TODO (z-index investigation)
+3. **Tags not testable** → TODO (tag assignment form fix — T02, still in progress)
+
+**UX Improvements (P1):**
+4. ✅ **Infinite scroll on devices list** → D-117 (done)
+5. **Pull-down to refresh** — PWA gesture support (deferred)
+6. **Hamburger menu on all pages** — Consistent mobile nav (deferred)
+7. **Audit log as modal** — Modal overlay vs. separate page (deferred)
+8. **Better management pages** — Admin table UX/responsiveness (in progress)
+
+**Features (P2):**
+9. **Dark mode switch** — Settings toggle (deferred per D-035 — OS preference only in v1)
+10. **Merge duplicates** — Merge brands/categories/locations (deferred)
+11. **Insurance export report** — Formatted export for insurance claims (deferred)
+
+**Question:**
+12. **Reporting backlog clarification** — Brian: "What happened to our reporting backlog?" Answer: No dedicated reporting spec created; export was T38-T39 in spec 002, F019 for NL queries. Batch 1 added D-118 (reporting API).
+
+**Governance:** Backlog items 2-11 queued for future spec elaboration. T02 (tag fix) in progress. Session log at `.squad/log/2026-05-20T17-02-28Z-spec003-round-a-b-d.md`.
+
+---
+
+### D-120: User Directive — Silent SSO / Auto-Login
+
+**Date:** 2026-05-20T165114Z  
+**Submitted By:** Brian (via Copilot)  
+**Type:** User Request  
+**Status:** Backlog
+
+**Request:** The app should auto-login silently using cached/refresh tokens (like a standard iOS app). Only prompt for interactive login when there is no valid session. Users should not have to click "Login" every time they open the PWA.
+
+**UX Pain:** Login friction on every app launch; degrades PWA perceived responsiveness vs. native apps.
+
+**Implementation Notes:**
+- MSAL.js `acquireTokenSilent` path already implemented (D-050) via scope-aware token request
+- `onMount` hook in root `+layout.svelte` can attempt silent acquisition before route render
+- Fallback to `acquireTokenRedirect` if silent fails (InteractionRequiredAuthError)
+
+**Capture Rationale:** Improves session continuity for returning users; reduces cognitive friction. Priority TBD pending UX testing.
+
+**References:** D-050 (MSAL config), Constitution §7 (Security).
+
+---
+
+### D-121: User Directive — Fun & Whimsical Reporting
+
+**Date:** 2026-05-20T170008Z  
+**Submitted By:** Brian (via Copilot)  
+**Type:** User Request + Scope Expansion  
+**Status:** Backlog (partially addressed by D-118)
+
+**Request:** Add fun, nostalgic reports beyond utilitarian ones. Examples: "Cell Phones Owned Over the Decades", "Laptops Through the Eras". Reporting feature should include whimsical/timeline-style reports telling the family's tech history story — not just boring warranty/spending views.
+
+**Rationale:** App is for a family; reports should be enjoyable to browse, not just functional. Increases engagement and family tech nostalgia.
+
+**Scope:**
+- D-118 shipped utilitarian reporting (summary, warranties, spending) — foundation ready
+- T13 can expand on this with narrative/timeline reports (phase TBD)
+- Timeline query ideas: "Devices by acquisition year", "Tech eras & transitions", "Device lifespan trends"
+
+**Design Direction:**
+- Cards/tiles with device counts by era + representative images/icons
+- Timeline visualization (SVG or CSS) showing device ownership arcs
+- Share-friendly summaries ("We've owned 47 devices since 2010!")
+
+**References:** D-118 (reporting API foundation), PRD §F3 ("Quietly elegant" — extend to whimsy).
+
+---
 
 ## Governance
 

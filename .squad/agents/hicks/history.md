@@ -26,7 +26,36 @@ Phase 1 lands in `specs/001-core-api/`. Pattern references: **R1** for MediatR h
 
 ## Recent Updates
 
-**2026-05-18 (Phase 1 Round 7):** T29/T30/T31/T39/T42/T48 import/export verticals landed end-to-end. Added `PreviewImportCommand` + `CommitImportCommand` with `DeviceImportProcessingService` (CsvHelper-backed parsing, re-parse-on-commit strategy), `ImportContracts`, and `ImportsController` with multipart file handling, 10MB size cap, and batch persistence; commit creates missing Brand/Category/Owner/Location records, persists immutable `ImportBatch`, and emits one audit event per device. Added `ExportDevicesQuery` + `IDeviceExportService` projection + `ExportsController` with async buffered CSV/JSON response writing and export-row logging. `Program.cs` seeds default `Primary Household` (USD) on empty DB and supports `export-openapi` CLI command; `Taskfile.yml` exposes `openapi:export` task. Repo-root `openapi.yaml` generated from runtime. Smoke tests passed: imports preview/commit/list, exports JSON/CSV, `/openapi/v1.json`. Commits: `00fe492`, `9dbfd51`. Verification: `dotnet format --verify-no-changes` ✅, `dotnet build -c Release` ✅, `dotnet test -c Release` ✅ (**369 passed / 1 skipped**).
+### 2026-05-20 (Spec-003 Batch 1) — T11 Reporting API Endpoints ✅ COMPLETE
+
+**Delivered 3 endpoints with finalized reporting data model:**
+
+1. **GET /api/v1/reports/summary** — Device inventory by status (Active, Retired, Disposed); total value
+2. **GET /api/v1/reports/warranties** — Device warranty expiry tracking, sorted by expiration
+3. **GET /api/v1/reports/spending** — Historical spend analysis, includes all lifecycle states
+
+**Key Design Decisions:**
+- **Persist warranty expiry on Device** — Added nullable `Device.WarrantyExpiry` via migration `20260520165251_AddDeviceWarrantyExpiry`. Rationale: reporting spec requires durable warranty data; existing aggregate lacked this field.
+- **Normalize status to three buckets** — Returns Active/Retired/Disposed only. InRepair + Lent roll into Active bucket per spec/UI labels.
+- **Spending as historical** — Includes any device with both PurchaseDate + PurchasePrice regardless of current state. Preserves spend history after retirement/disposal.
+
+**Implementation:**
+- EF Core projections (no N+1 queries)
+- FluentValidation for input contracts
+- OpenAPI auto-documented
+- Test coverage: 398 passing
+- Full verification: `dotnet format` ✅, `dotnet build -c Release` ✅, `dotnet test -c Release` ✅
+
+**Impact:**
+- ✅ T12 (frontend reporting UI) has finalized API contracts and can proceed
+- ✅ T13 (fun/whimsical reports) has foundation ready for narrative/timeline queries
+- **Decision:** D-118 (reporting API: warranty, summary, spending)
+
+**Blockers Cleared:** None — independent delivery. T12/T13 unblocked for next team session.
+
+---
+
+**2026-05-18 (Phase 1 Round 7):** T29/T30/T31/T39/T42/T48 import/export verticals landed end-to-end. Added `PreviewImportCommand` + `CommitImportCommand` with `DeviceImportProcessingService` (CsvHelper-backed parsing, re-parse-on-commit strategy), `ImportContracts`, and `ImportsController` with multipart file handling, 10MB size cap, and batch persistence; commit creates missing Brand/Category/Owner/Location records, persists immutable `ImportBatch`, and emits one audit event per device. Added `ExportDevicesQuery` + `IDeviceExportService` projection + `ExportsController` with async buffered CSV/JSON response writing and export-row logging. `Program.cs` seeds default `Primary Household` (USD) on empty DB and supports `export-openapi` CLI command; `Taskfile.yml` exposes `openapi:export` task. Repo-root `openapi.yaml` generated from runtime. Smoke tests passed: imports preview/commit/list, exports JSON/CSV, `/openapi/v1.json`. Commits: `00fe492`, `9dbfd51`. Verification: `dotnet format --verify-no-changes` ✅, `dotnet build -c Release` ✅, `dotnet test -c Release` ✅ (**369 passed / 1 skipped**)
 
 **2026-05-18 (Phase 1 Round 6):** T32–T38, T40, and T41 landed in `src/TechInventory.Api` (commit `48c1920` + `74a1e21`). Attribute-routed controllers with explicit lowercase `/api/v1/...` paths for Devices, Brands, Categories (with tree route), Owners, Locations, Networks, Tags, and AuditEvents. Shared `ControllerResultExtensions.cs` maps `Result<T>.Success` → `Ok()` for reads, `CreatedAtAction()` for creates, `NoContent()` for patches; `Result.Failure` throws `ResultFailureException` for exception pipeline. Global `IExceptionHandler` + `ProblemDetailsFactory` (D-026, D-027) converts failures to RFC 7807 ProblemDetails (400/404/409/500 with validation `errors` dict). Dev auth bypass (D-022): `Auth:DevBypass=true` in `appsettings.Development.json` produces synthetic `dev-admin` principal with Admin role; startup throws if enabled outside Dev and logs warning. OpenAPI wired at `/openapi/v1.json`. Smoke tests: `GET /openapi/v1.json` → 200 JSON; `GET /api/v1/devices` → `{"items":[],"totalCount":0,"page":1,"pageSize":25}`; `POST /api/v1/brands -d '{"name":"TestBrand2"}'` → 201 with Location header; `POST /api/v1/brands -d ''` → 400 Validation ProblemDetails; `GET /api/v1/brands/{invalid-uuid}` → 404 ProblemDetails. 28 files modified. Verification: `dotnet format --verify-no-changes` ✅, `dotnet build -c Release` ✅, repo-root build blocked on Apone's integration test compile error (awaits fix).
 
@@ -89,6 +118,12 @@ Brian must restart API (`Ctrl+C` then `task dev:up`) to pick up new config. Afte
 ---
 
 ## Learnings
+
+### 2026-05-20: Reporting API foundations (P003-T11)
+
+- Reporting read-models live under `src\TechInventory.Application\Reports\` with MediatR query handlers and a dedicated `IReportingRepository` seam; Infrastructure owns the EF Core projections in `src\TechInventory.Infrastructure\Persistence\Repositories\ReportingRepository.cs`.
+- Warranty reporting required a persisted `Device.WarrantyExpiry` field, so `Device`, the EF mapping/migration, and the existing device create/update/get DTOs + validators all had to move together; leaving it as a report-only projection would have made the feature impossible to populate from the API.
+- Inventory summary treats any lifecycle state other than `Retired`/`Disposed` as the `Active` bucket, while the public status breakdown still returns only `Active`, `Retired`, and `Disposed` to match the reporting spec. Spending remains historical: it groups devices by purchase date + price regardless of current lifecycle state.
 
 ### 2026-05-18: Solution Scaffolding (Phase 0)
 

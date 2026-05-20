@@ -7,6 +7,7 @@
 	import type { LocationResponse } from '$lib/api/types';
 	import { locationSchema, type LocationFormData } from '$lib/schemas/location';
 	import { addToast } from '$lib/stores/toast';
+	import { registerPullToRefresh } from '$lib/stores/pullToRefresh';
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import PaginationControls from '$lib/components/PaginationControls.svelte';
@@ -51,6 +52,11 @@
 
 	$effect(() => {
 		loadLocations();
+	});
+
+	$effect(() => {
+		const unregister = registerPullToRefresh($page.url.pathname, loadLocations);
+		return unregister;
 	});
 
 	async function loadLocations() {
@@ -198,29 +204,58 @@
 	{#if loading}
 		<LoadingSkeleton />
 	{:else if error}
-		<ErrorState error={error} onRetry={loadLocations} />
+		<ErrorState {error} onRetry={loadLocations} />
 	{:else if locations.length === 0}
-		<div class="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-neutral-200 bg-white p-12 text-center dark:border-neutral-800 dark:bg-neutral-950">
-<svg class="h-16 w-16 text-neutral-400 dark:text-neutral-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-</svg>
-<p class="mt-4 text-lg font-semibold text-neutral-900 dark:text-neutral-50">{t('locations.list.emptyState')}</p>
-</div>
+		<div
+			class="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-neutral-200 bg-white p-12 text-center dark:border-neutral-800 dark:bg-neutral-950"
+		>
+			<svg
+				class="h-16 w-16 text-neutral-400 dark:text-neutral-600"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+				aria-hidden="true"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="1.5"
+					d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+				/>
+			</svg>
+			<p class="mt-4 text-lg font-semibold text-neutral-900 dark:text-neutral-50">
+				{t('locations.list.emptyState')}
+			</p>
+		</div>
 	{:else}
-		<div class="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow dark:border-neutral-800 dark:bg-neutral-950">
+		<div
+			class="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow dark:border-neutral-800 dark:bg-neutral-950"
+		>
 			<table class="min-w-full divide-y divide-neutral-200 dark:divide-neutral-800">
 				<thead class="bg-neutral-50 dark:bg-neutral-900">
 					<tr>
-						<th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
+						<th
+							scope="col"
+							class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
+						>
 							{t('locations.columns.name')}
 						</th>
-						<th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
+						<th
+							scope="col"
+							class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
+						>
 							{t('locations.columns.type')}
 						</th>
-						<th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
+						<th
+							scope="col"
+							class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
+						>
 							{t('locations.columns.description')}
 						</th>
-						<th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
+						<th
+							scope="col"
+							class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
+						>
 							Actions
 						</th>
 					</tr>
@@ -228,11 +263,15 @@
 				<tbody class="divide-y divide-neutral-200 dark:divide-neutral-800">
 					{#each locations as location (location.id)}
 						<tr class="hover:bg-neutral-50 dark:hover:bg-neutral-900">
-							<td class="whitespace-nowrap px-4 py-3 text-sm font-medium text-neutral-900 dark:text-neutral-50">
+							<td
+								class="whitespace-nowrap px-4 py-3 text-sm font-medium text-neutral-900 dark:text-neutral-50"
+							>
 								{location.name}
 							</td>
-							<td class="whitespace-nowrap px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300">
-								{t(`locations.types.${(location.type ?? 'home').toLowerCase()}`)}
+							<td
+								class="whitespace-nowrap px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300"
+							>
+								{t(`locations.types.${(location.type ?? 'Home').toLowerCase()}`)}
 							</td>
 							<td class="px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300">
 								{(location as LocationResponse & { notes?: string | null }).notes || '—'}
@@ -264,9 +303,8 @@
 		<div class="mt-6">
 			<PaginationControls
 				currentPage={urlParams.page}
-				
 				pageSize={urlParams.pageSize}
-				totalCount={totalCount}
+				{totalCount}
 				onPageChange={handlePageChange}
 			/>
 		</div>
@@ -280,13 +318,21 @@
 		aria-modal="true"
 		aria-labelledby="location-form-title"
 	>
-		<div class="relative mx-4 w-full max-w-lg rounded-lg bg-white p-6 shadow-xl dark:bg-neutral-900">
-			<h2 id="location-form-title" class="mb-4 text-xl font-semibold text-neutral-900 dark:text-neutral-50">
+		<div
+			class="relative mx-4 w-full max-w-lg rounded-lg bg-white p-6 shadow-xl dark:bg-neutral-900"
+		>
+			<h2
+				id="location-form-title"
+				class="mb-4 text-xl font-semibold text-neutral-900 dark:text-neutral-50"
+			>
 				{editingLocation ? t('locations.edit.title') : t('locations.create.title')}
 			</h2>
 			<form onsubmit={handleFormSubmit}>
 				<div class="mb-4">
-					<label for="location-name" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+					<label
+						for="location-name"
+						class="block text-sm font-medium text-neutral-700 dark:text-neutral-300"
+					>
 						{t('locations.fields.name')}
 					</label>
 					<input
@@ -303,7 +349,10 @@
 				</div>
 
 				<div class="mb-4">
-					<label for="location-type" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+					<label
+						for="location-type"
+						class="block text-sm font-medium text-neutral-700 dark:text-neutral-300"
+					>
 						{t('locations.fields.type')}
 					</label>
 					<select
@@ -322,7 +371,10 @@
 				</div>
 
 				<div class="mb-6">
-					<label for="location-notes" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+					<label
+						for="location-notes"
+						class="block text-sm font-medium text-neutral-700 dark:text-neutral-300"
+					>
 						{t('locations.fields.notes')}
 					</label>
 					<textarea
@@ -368,7 +420,3 @@
 		onCancel={closeDeactivateModal}
 	/>
 {/if}
-
-
-
-

@@ -7,6 +7,7 @@
 	import type { BrandResponse } from '$lib/api/types';
 	import { brandSchema, type BrandFormData } from '$lib/schemas/brand';
 	import { addToast } from '$lib/stores/toast';
+	import { registerPullToRefresh } from '$lib/stores/pullToRefresh';
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import PaginationControls from '$lib/components/PaginationControls.svelte';
@@ -14,14 +15,14 @@
 
 	/**
 	 * T27: Brands Admin — paginated list with Add/Edit/Deactivate
-	 * 
+	 *
 	 * Features:
 	 * - Paginated list (pageSize 25)
 	 * - Add/Edit modal with Zod validation
 	 * - Deactivate with confirmation
 	 * - Show Inactive toggle
 	 * - Admin role gate (enforced by layout + backend)
-	 * 
+	 *
 	 * Decision: D-091 (Inline edit modal vs separate route — chose inline modal for all 4 admin pages)
 	 */
 
@@ -65,6 +66,11 @@
 	// Load brands on mount + URL params change
 	$effect(() => {
 		loadBrands();
+	});
+
+	$effect(() => {
+		const unregister = registerPullToRefresh($page.url.pathname, loadBrands);
+		return unregister;
 	});
 
 	async function loadBrands() {
@@ -229,30 +235,59 @@
 	{#if loading}
 		<LoadingSkeleton />
 	{:else if error}
-		<ErrorState error={error} onRetry={loadBrands} />
+		<ErrorState {error} onRetry={loadBrands} />
 	{:else if brands.length === 0}
-		<div class="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-neutral-200 bg-white p-12 text-center dark:border-neutral-800 dark:bg-neutral-950">
-<svg class="h-16 w-16 text-neutral-400 dark:text-neutral-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-</svg>
-<p class="mt-4 text-lg font-semibold text-neutral-900 dark:text-neutral-50">{t('brands.list.emptyState')}</p>
-</div>
+		<div
+			class="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-neutral-200 bg-white p-12 text-center dark:border-neutral-800 dark:bg-neutral-950"
+		>
+			<svg
+				class="h-16 w-16 text-neutral-400 dark:text-neutral-600"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+				aria-hidden="true"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="1.5"
+					d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+				/>
+			</svg>
+			<p class="mt-4 text-lg font-semibold text-neutral-900 dark:text-neutral-50">
+				{t('brands.list.emptyState')}
+			</p>
+		</div>
 	{:else}
 		<!-- Table -->
-		<div class="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow dark:border-neutral-800 dark:bg-neutral-950">
+		<div
+			class="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow dark:border-neutral-800 dark:bg-neutral-950"
+		>
 			<table class="min-w-full divide-y divide-neutral-200 dark:divide-neutral-800">
 				<thead class="bg-neutral-50 dark:bg-neutral-900">
 					<tr>
-						<th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
+						<th
+							scope="col"
+							class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
+						>
 							{t('brands.columns.name')}
 						</th>
-						<th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
+						<th
+							scope="col"
+							class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
+						>
 							{t('brands.columns.website')}
 						</th>
-						<th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
+						<th
+							scope="col"
+							class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
+						>
 							{t('brands.columns.notes')}
 						</th>
-						<th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
+						<th
+							scope="col"
+							class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
+						>
 							Actions
 						</th>
 					</tr>
@@ -260,12 +295,19 @@
 				<tbody class="divide-y divide-neutral-200 dark:divide-neutral-800">
 					{#each brands as brand (brand.id)}
 						<tr class="hover:bg-neutral-50 dark:hover:bg-neutral-900">
-							<td class="whitespace-nowrap px-4 py-3 text-sm font-medium text-neutral-900 dark:text-neutral-50">
+							<td
+								class="whitespace-nowrap px-4 py-3 text-sm font-medium text-neutral-900 dark:text-neutral-50"
+							>
 								{brand.name}
 							</td>
 							<td class="px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300">
 								{#if brand.website}
-									<a href={brand.website} target="_blank" rel="noopener noreferrer" class="text-primary-600 hover:underline dark:text-primary-400">
+									<a
+										href={brand.website}
+										target="_blank"
+										rel="noopener noreferrer"
+										class="text-primary-600 hover:underline dark:text-primary-400"
+									>
 										{brand.website}
 									</a>
 								{:else}
@@ -303,9 +345,8 @@
 		<div class="mt-6">
 			<PaginationControls
 				currentPage={urlParams.page}
-				
 				pageSize={urlParams.pageSize}
-				totalCount={totalCount}
+				{totalCount}
 				onPageChange={handlePageChange}
 			/>
 		</div>
@@ -320,14 +361,22 @@
 		aria-modal="true"
 		aria-labelledby="brand-form-title"
 	>
-		<div class="relative mx-4 w-full max-w-lg rounded-lg bg-white p-6 shadow-xl dark:bg-neutral-900">
-			<h2 id="brand-form-title" class="mb-4 text-xl font-semibold text-neutral-900 dark:text-neutral-50">
+		<div
+			class="relative mx-4 w-full max-w-lg rounded-lg bg-white p-6 shadow-xl dark:bg-neutral-900"
+		>
+			<h2
+				id="brand-form-title"
+				class="mb-4 text-xl font-semibold text-neutral-900 dark:text-neutral-50"
+			>
 				{editingBrand ? t('brands.edit.title') : t('brands.create.title')}
 			</h2>
 			<form onsubmit={handleFormSubmit}>
 				<!-- Name -->
 				<div class="mb-4">
-					<label for="brand-name" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+					<label
+						for="brand-name"
+						class="block text-sm font-medium text-neutral-700 dark:text-neutral-300"
+					>
 						{t('brands.fields.name')}
 					</label>
 					<input
@@ -345,7 +394,10 @@
 
 				<!-- Website -->
 				<div class="mb-4">
-					<label for="brand-website" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+					<label
+						for="brand-website"
+						class="block text-sm font-medium text-neutral-700 dark:text-neutral-300"
+					>
 						{t('brands.fields.website')}
 					</label>
 					<input
@@ -363,7 +415,10 @@
 
 				<!-- Notes -->
 				<div class="mb-6">
-					<label for="brand-notes" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+					<label
+						for="brand-notes"
+						class="block text-sm font-medium text-neutral-700 dark:text-neutral-300"
+					>
 						{t('brands.fields.notes')}
 					</label>
 					<textarea
@@ -411,7 +466,3 @@
 		onCancel={closeDeactivateModal}
 	/>
 {/if}
-
-
-
-

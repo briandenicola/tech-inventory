@@ -7,13 +7,14 @@
 	import type { CategoryResponse } from '$lib/api/types';
 	import { categorySchema, type CategoryFormData } from '$lib/schemas/category';
 	import { addToast } from '$lib/stores/toast';
+	import { registerPullToRefresh } from '$lib/stores/pullToRefresh';
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import DeactivateConfirmModal from '$lib/components/admin/DeactivateConfirmModal.svelte';
 
 	/**
 	 * T28: Categories Admin — tree view with expand/collapse
-	 * 
+	 *
 	 * Features:
 	 * - Tree view with expand/collapse (flat list with depth indentation)
 	 * - Add root or child (parent selector = searchable dropdown)
@@ -22,7 +23,7 @@
 	 * - Show Inactive toggle
 	 * - Search filter (collapses non-matching subtrees)
 	 * - No pagination (tree view; load all)
-	 * 
+	 *
 	 * Decision: D-116 (tree component = flat list with depth-prefix indentation, not recursive)
 	 * Decision: D-117 (parent selector = searchable dropdown, not tree-picker)
 	 * Decision: D-118 (simple text filter — collapse non-matching subtrees)
@@ -69,6 +70,11 @@
 	// Load categories on mount + URL params change
 	$effect(() => {
 		loadCategories();
+	});
+
+	$effect(() => {
+		const unregister = registerPullToRefresh($page.url.pathname, loadCategories);
+		return unregister;
 	});
 
 	async function loadCategories() {
@@ -294,17 +300,34 @@
 	{#if loading}
 		<LoadingSkeleton />
 	{:else if error}
-		<ErrorState error={error} onRetry={loadCategories} />
+		<ErrorState {error} onRetry={loadCategories} />
 	{:else if displayedCategories.length === 0}
-		<div class="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-neutral-200 bg-white p-12 text-center dark:border-neutral-800 dark:bg-neutral-950">
-			<svg class="h-16 w-16 text-neutral-400 dark:text-neutral-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+		<div
+			class="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-neutral-200 bg-white p-12 text-center dark:border-neutral-800 dark:bg-neutral-950"
+		>
+			<svg
+				class="h-16 w-16 text-neutral-400 dark:text-neutral-600"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+				aria-hidden="true"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="1.5"
+					d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+				/>
 			</svg>
-			<p class="mt-4 text-lg font-semibold text-neutral-900 dark:text-neutral-50">{t('admin.categories.list.emptyState')}</p>
+			<p class="mt-4 text-lg font-semibold text-neutral-900 dark:text-neutral-50">
+				{t('admin.categories.list.emptyState')}
+			</p>
 		</div>
 	{:else}
 		<!-- Tree View -->
-		<div class="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow dark:border-neutral-800 dark:bg-neutral-950">
+		<div
+			class="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow dark:border-neutral-800 dark:bg-neutral-950"
+		>
 			<div class="divide-y divide-neutral-200 dark:divide-neutral-800">
 				{#each displayedCategories.filter((c) => c.parentId === null) as category (category.id)}
 					{@render categoryRow(category, 0)}
@@ -332,14 +355,22 @@
 		aria-modal="true"
 		aria-labelledby="category-form-title"
 	>
-		<div class="relative mx-4 w-full max-w-lg rounded-lg bg-white p-6 shadow-xl dark:bg-neutral-900">
-			<h2 id="category-form-title" class="mb-4 text-xl font-semibold text-neutral-900 dark:text-neutral-50">
+		<div
+			class="relative mx-4 w-full max-w-lg rounded-lg bg-white p-6 shadow-xl dark:bg-neutral-900"
+		>
+			<h2
+				id="category-form-title"
+				class="mb-4 text-xl font-semibold text-neutral-900 dark:text-neutral-50"
+			>
 				{editingCategory ? t('admin.categories.edit.title') : t('admin.categories.create.title')}
 			</h2>
 			<form onsubmit={handleFormSubmit}>
 				<!-- Name -->
 				<div class="mb-4">
-					<label for="category-name" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+					<label
+						for="category-name"
+						class="block text-sm font-medium text-neutral-700 dark:text-neutral-300"
+					>
 						{t('admin.categories.fields.name')} <span class="text-error-600">*</span>
 					</label>
 					<input
@@ -357,7 +388,10 @@
 
 				<!-- Parent -->
 				<div class="mb-4">
-					<label for="category-parent" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+					<label
+						for="category-parent"
+						class="block text-sm font-medium text-neutral-700 dark:text-neutral-300"
+					>
 						{t('admin.categories.fields.parent')}
 					</label>
 					<select
@@ -381,7 +415,10 @@
 
 				<!-- Icon -->
 				<div class="mb-6">
-					<label for="category-icon" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+					<label
+						for="category-icon"
+						class="block text-sm font-medium text-neutral-700 dark:text-neutral-300"
+					>
 						{t('admin.categories.fields.icon')}
 					</label>
 					<input
@@ -444,11 +481,21 @@
 				>
 					{#if expandedIds.has(categoryId)}
 						<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M19 9l-7 7-7-7"
+							/>
 						</svg>
 					{:else}
 						<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M9 5l7 7-7 7"
+							/>
 						</svg>
 					{/if}
 				</button>
@@ -462,7 +509,9 @@
 				{category.name}
 			</span>
 			{#if !category.isActive}
-				<span class="ml-2 inline-flex rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200">
+				<span
+					class="ml-2 inline-flex rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200"
+				>
 					Inactive
 				</span>
 			{/if}

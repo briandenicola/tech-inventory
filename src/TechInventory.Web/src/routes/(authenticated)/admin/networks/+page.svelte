@@ -7,6 +7,7 @@
 	import type { NetworkResponse } from '$lib/api/types';
 	import { networkSchema, type NetworkFormData } from '$lib/schemas/network';
 	import { addToast } from '$lib/stores/toast';
+	import { registerPullToRefresh } from '$lib/stores/pullToRefresh';
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import PaginationControls from '$lib/components/PaginationControls.svelte';
@@ -51,6 +52,11 @@
 
 	$effect(() => {
 		loadNetworks();
+	});
+
+	$effect(() => {
+		const unregister = registerPullToRefresh($page.url.pathname, loadNetworks);
+		return unregister;
 	});
 
 	async function loadNetworks() {
@@ -196,26 +202,52 @@
 	{#if loading}
 		<LoadingSkeleton />
 	{:else if error}
-		<ErrorState error={error} onRetry={loadNetworks} />
+		<ErrorState {error} onRetry={loadNetworks} />
 	{:else if networks.length === 0}
-		<div class="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-neutral-200 bg-white p-12 text-center dark:border-neutral-800 dark:bg-neutral-950">
-<svg class="h-16 w-16 text-neutral-400 dark:text-neutral-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-</svg>
-<p class="mt-4 text-lg font-semibold text-neutral-900 dark:text-neutral-50">{t('networks.list.emptyState')}</p>
-</div>
+		<div
+			class="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-neutral-200 bg-white p-12 text-center dark:border-neutral-800 dark:bg-neutral-950"
+		>
+			<svg
+				class="h-16 w-16 text-neutral-400 dark:text-neutral-600"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+				aria-hidden="true"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="1.5"
+					d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+				/>
+			</svg>
+			<p class="mt-4 text-lg font-semibold text-neutral-900 dark:text-neutral-50">
+				{t('networks.list.emptyState')}
+			</p>
+		</div>
 	{:else}
-		<div class="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow dark:border-neutral-800 dark:bg-neutral-950">
+		<div
+			class="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow dark:border-neutral-800 dark:bg-neutral-950"
+		>
 			<table class="min-w-full divide-y divide-neutral-200 dark:divide-neutral-800">
 				<thead class="bg-neutral-50 dark:bg-neutral-900">
 					<tr>
-						<th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
+						<th
+							scope="col"
+							class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
+						>
 							{t('networks.columns.name')}
 						</th>
-						<th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
+						<th
+							scope="col"
+							class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
+						>
 							{t('networks.columns.description')}
 						</th>
-						<th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
+						<th
+							scope="col"
+							class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
+						>
 							Actions
 						</th>
 					</tr>
@@ -223,7 +255,9 @@
 				<tbody class="divide-y divide-neutral-200 dark:divide-neutral-800">
 					{#each networks as network (network.id)}
 						<tr class="hover:bg-neutral-50 dark:hover:bg-neutral-900">
-							<td class="whitespace-nowrap px-4 py-3 text-sm font-medium text-neutral-900 dark:text-neutral-50">
+							<td
+								class="whitespace-nowrap px-4 py-3 text-sm font-medium text-neutral-900 dark:text-neutral-50"
+							>
 								{network.name}
 							</td>
 							<td class="px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300">
@@ -256,9 +290,8 @@
 		<div class="mt-6">
 			<PaginationControls
 				currentPage={urlParams.page}
-				
 				pageSize={urlParams.pageSize}
-				totalCount={totalCount}
+				{totalCount}
 				onPageChange={handlePageChange}
 			/>
 		</div>
@@ -272,13 +305,21 @@
 		aria-modal="true"
 		aria-labelledby="network-form-title"
 	>
-		<div class="relative mx-4 w-full max-w-lg rounded-lg bg-white p-6 shadow-xl dark:bg-neutral-900">
-			<h2 id="network-form-title" class="mb-4 text-xl font-semibold text-neutral-900 dark:text-neutral-50">
+		<div
+			class="relative mx-4 w-full max-w-lg rounded-lg bg-white p-6 shadow-xl dark:bg-neutral-900"
+		>
+			<h2
+				id="network-form-title"
+				class="mb-4 text-xl font-semibold text-neutral-900 dark:text-neutral-50"
+			>
 				{editingNetwork ? t('networks.edit.title') : t('networks.create.title')}
 			</h2>
 			<form onsubmit={handleFormSubmit}>
 				<div class="mb-4">
-					<label for="network-name" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+					<label
+						for="network-name"
+						class="block text-sm font-medium text-neutral-700 dark:text-neutral-300"
+					>
 						{t('networks.fields.name')}
 					</label>
 					<input
@@ -295,7 +336,10 @@
 				</div>
 
 				<div class="mb-6">
-					<label for="network-description" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+					<label
+						for="network-description"
+						class="block text-sm font-medium text-neutral-700 dark:text-neutral-300"
+					>
 						{t('networks.fields.description')}
 					</label>
 					<textarea
@@ -341,7 +385,3 @@
 		onCancel={closeDeactivateModal}
 	/>
 {/if}
-
-
-
-

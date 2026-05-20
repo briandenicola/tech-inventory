@@ -104,6 +104,51 @@ This verifies the pre-hydration script runs synchronously BEFORE SvelteKit hydra
 **Reference**: Drake's diff palette at `.squad/decisions/inbox/drake-f029-diff-colors.md` for future contrast work.
 
 ---
+### 2026-05-20 (P003-T04) — Pull-to-refresh on authenticated pages ✅ COMPLETE
+
+- A layout-level wrapper is the maintainable way to cover every authenticated route; each page should register a route-scoped refresh callback so the gesture stays generic while the actual invalidation/refetch logic remains page-specific.
+- Guarding on `window.scrollY === 0` plus `matchMedia('(pointer: coarse)')` keeps pull-to-refresh from fighting desktop input and the T03 infinite-scroll sentinel.
+- For infinite-scroll lists, refresh must clear the accumulated client pages before refetching page 1; otherwise mobile pull-to-refresh appears to do nothing because stale appended rows remain rendered.
+- **Delivery:** `PullToRefresh.svelte` now wraps `(authenticated)/+layout.svelte`, device/admin routes register refresh callbacks through `pullToRefresh.ts`, and the focused component test passes with full Vitest + build still green.
+- **Decision:** layout-level wrapper with route-scoped callback registry (see decision inbox note)
+
+## Spec-003 Batch 1 (Field-Test Fixes) — Sessions 2026-05-20
+
+**Status:** T01 ✅ DONE, T03 ✅ DONE, T05 ✅ DONE, T02 🔄 IN PROGRESS
+
+**Decisions merged into team history:** D-116 (Audit Contrast), D-117 (Infinite Scroll), D-119–D-121 (User Backlog + Directives)
+
+### 2026-05-20 (P003-T05) — Consistent hamburger nav ✅ COMPLETE
+
+- There are no nested authenticated layouts under `src/routes/(authenticated)/`; the missing mobile-nav experience came from stale shared route lists, not route-level layout overrides.
+- Centralizing authenticated navigation in a shared `appNav.ts` config keeps the desktop shell, mobile hamburger, and `/admin` hub cards aligned as admin routes expand.
+- Mobile navigation controls need explicit 44px touch targets (`h-11` / `min-h-11`) for field use; text padding alone is easy to under-size during implementation.
+- **Delivery:** Hamburger/menu shell now appears consistently across device and admin sub-routes, includes categories/owners in the admin nav, and reuses one source of truth for route order.
+
+### 2026-05-20 (P003-T01) — Audit trail contrast fix ✅ COMPLETE
+
+- The only shipped audit UI in the frontend was the device detail audit trail on `src/routes/(authenticated)/devices/[id]/+page.svelte`; no separate AuditLog/AuditViewer component existed yet.
+- For contrast-critical surfaces, use semantic CSS variables from `src/lib/tokens.css` directly (`--color-bg`, `--color-text`, `--color-text-secondary`, `--color-border`) instead of relying on Tailwind neutral utilities when those tokens are not registered through `@theme`.
+- A dedicated component test can verify both axe-core accessibility and WCAG AA color contrast by reading `tokens.css` and calculating ratios for light/dark token pairs.
+- **Delivery:** DeviceAuditTrail.svelte component extracted; contrast validation tests passing; axe-core ✅; Playwright E2E green.
+- **Decision:** D-116 (semantic token usage for contrast-critical surfaces)
+
+### 2026-05-20 (P003-T03) — Infinite scroll on devices list ✅ COMPLETE
+
+- Backend API already paginates on `page` + `pageSize`; client-side page accumulation avoids contract churn.
+- Intersection Observer pattern + `prefers-reduced-motion` fallback to traditional pagination for accessibility.
+- Floating back-to-top FAB uses non-smooth scrolling for reduced-motion users.
+- **Delivery:** Infinite scroll shipping as default; pagination UI auto-hides when `prefers-reduced-motion: reduce`; E2E tests green.
+- **Decision:** D-117 (infinite scroll with accessibility fallback)
+- **Next:** T02 (tag assignment) still running; no blockers from this delivery.
+
+### 2026-05-20 (P003-T02) — Device tag assignment fix 🔄 IN PROGRESS
+
+- Device create/update payloads still do **not** carry tags; the frontend has to save the base device first, then sync assignments through `/api/v1/devices/{id}/tags` POST/DELETE calls and fetch them separately for edit/detail views.
+- `referenceDataStore` needs tags alongside brands/categories/owners/locations/networks or the form cannot offer a usable assignment UI; fetching reference data on `DeviceForm` mount also protects direct-link loads where no prior page primed the store.
+- A checkbox-group tag selector is much easier to test and more accessible than a native multi-select for this flow; `DeviceForm.test.ts` can now assert real add/remove behavior without relying on flaky jsdom `<select>` bindings.
+- **Status:** Still in progress. No blockers; proceeding independently.
+
 
 ### 2026-05-19 (Phase 2 Round 2) — T09, T10, T12, T13: Login + Auth Store + Protected Routes + App Shell
 
@@ -380,4 +425,18 @@ Work already completed in commit `68ddbd5` (`test(web): T26 ownership modals + T
 **Acceptance:** All green — pnpm run check 0 errors / 0 warnings, pnpm run lint pass, pnpm exec vitest run all green, pnpm run build success, dotnet build --nologo -v minimal 0 errors / 0 warnings.
 
 **Decisions:** ADR written to .squad/decisions/inbox/vasquez-f031-polish-round2.md covering search relocation + filter flyout rationale.
+### 2026-05-20 (P003-T03) — Infinite scroll on devices list
+
+**Shipped:**
+- Reworked `/devices` to default to infinite scroll while keeping the server API on `page` + `pageSize`.
+- Added IntersectionObserver-driven page loading, inline load-more status, and a floating back-to-top FAB.
+- Added a reduced-motion fallback that restores `PaginationControls` instead of auto-loading more content.
+- Extracted shared device query helpers for page/pageSize clamping (`<= 200`) and direct page fetches.
+- Added targeted coverage for the new query helpers plus the FAB component.
+
+**Checks:**
+- Targeted ESLint on changed files ✅
+- Targeted Vitest (`BackToTopFab`, devices query helpers, DeviceTable, PaginationControls) ✅
+- Full `pnpm exec vitest run` ⚠️ still hits pre-existing `DeviceForm.test.ts` failures unrelated to infinite scroll.
+- Full `pnpm run lint` ⚠️ still blocked by pre-existing admin-page `any` / unused-var issues.
 

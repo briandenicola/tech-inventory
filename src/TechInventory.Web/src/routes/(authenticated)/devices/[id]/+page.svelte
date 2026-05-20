@@ -12,20 +12,21 @@
 	import DeleteDeviceModal from '$lib/components/DeleteDeviceModal.svelte';
 	import ClaimOwnershipModal from '$lib/components/ClaimOwnershipModal.svelte';
 	import ReleaseOwnershipModal from '$lib/components/ReleaseOwnershipModal.svelte';
+	import DeviceAuditTrail from '$lib/components/DeviceAuditTrail.svelte';
 	import type { DeviceResponse } from '$lib/queries/devices.svelte';
 
 	/**
 	 * T19: Device detail page — all fields, resolved references, breadcrumbs, role-aware Edit/Delete buttons
 	 * T24: Claim Ownership button + modal (visible if device unowned or owned by another)
 	 * T25: Release Ownership button + modal (visible if current user IS owner)
-	 * 
+	 *
 	 * States: loading → success/error/notFound
 	 * Breadcrumbs: Home > Devices > {Device Name}
 	 * Edit button: visible to Admin + Member
 	 * Delete button: visible to Admin only
 	 * Claim button: visible when device.ownerId !== currentUser.id
 	 * Release button: visible when device.ownerId === currentUser.id
-	 * 
+	 *
 	 * Related: specs/002-frontend-mvp/spec.md J5, J9
 	 */
 
@@ -45,24 +46,18 @@
 	let showReleaseModal = $state(false);
 
 	// Role checks
-	const canEdit = $derived(
-		currentUser?.role === 'Admin' || currentUser?.role === 'Member'
-	);
+	const canEdit = $derived(currentUser?.role === 'Admin' || currentUser?.role === 'Member');
 	const canDelete = $derived(currentUser?.role === 'Admin');
 
 	// Ownership checks (T24, T25)
 	// Claim: visible when device unowned OR owned by another user
-	const canClaim = $derived(
-		device && currentUser && device.ownerId !== currentUser.id
-	);
+	const canClaim = $derived(device && currentUser && device.ownerId !== currentUser.id);
 	// Release: visible when current user IS the owner
-	const canRelease = $derived(
-		device && currentUser && device.ownerId === currentUser.id
-	);
+	const canRelease = $derived(device && currentUser && device.ownerId === currentUser.id);
 
 	// Fetch device
 	async function fetchDevice() {
-		if (!deviceId) return; // Guard against undefined
+		if (!deviceId) return;
 
 		isLoading = true;
 		error = null;
@@ -73,7 +68,11 @@
 			device = result as DeviceResponse;
 		} catch (err) {
 			console.error('[device-detail] Fetch failed:', err);
-			if (err instanceof Error && 'status' in err && (err as unknown as { status: number }).status === 404) {
+			if (
+				err instanceof Error &&
+				'status' in err &&
+				(err as unknown as { status: number }).status === 404
+			) {
 				notFound = true;
 			} else {
 				error = err instanceof Error ? err.message : 'Failed to load device';
@@ -83,31 +82,34 @@
 		}
 	}
 
-	// Load device on mount
 	$effect(() => {
 		void fetchDevice();
 	});
 
 	// Resolve reference data (brand, category, owner, location, network names)
 	const brandName = $derived(
-		device?.brandId ? refData.brands.find((b) => b.id === device!.brandId)?.name ?? 'Unknown' : '—'
+		device?.brandId
+			? (refData.brands.find((b) => b.id === device!.brandId)?.name ?? 'Unknown')
+			: '—'
 	);
 	const categoryName = $derived(
 		device?.categoryId
-			? refData.categories.find((c) => c.id === device!.categoryId)?.name ?? 'Unknown'
+			? (refData.categories.find((c) => c.id === device!.categoryId)?.name ?? 'Unknown')
 			: '—'
 	);
 	const ownerName = $derived(
-		device?.ownerId ? refData.owners.find((o) => o.id === device!.ownerId)?.name ?? 'Unknown' : '—'
+		device?.ownerId
+			? (refData.owners.find((o) => o.id === device!.ownerId)?.name ?? 'Unknown')
+			: '—'
 	);
 	const locationName = $derived(
 		device?.locationId
-			? refData.locations.find((l) => l.id === device!.locationId)?.name ?? 'Unknown'
+			? (refData.locations.find((l) => l.id === device!.locationId)?.name ?? 'Unknown')
 			: '—'
 	);
 	const networkName = $derived(
 		device?.networkId
-			? refData.networks.find((n) => n.id === device!.networkId)?.name ?? 'Unknown'
+			? (refData.networks.find((n) => n.id === device!.networkId)?.name ?? 'Unknown')
 			: '—'
 	);
 
@@ -133,18 +135,6 @@
 			year: 'numeric',
 			month: 'short',
 			day: 'numeric'
-		});
-	}
-
-	function formatDateTime(dateStr: string | null): string {
-		if (!dateStr) return '—';
-		const date = new Date(dateStr);
-		return date.toLocaleString('en-US', {
-			year: 'numeric',
-			month: 'short',
-			day: 'numeric',
-			hour: '2-digit',
-			minute: '2-digit'
 		});
 	}
 
@@ -371,7 +361,9 @@
 {#if isLoading}
 	<LoadingSkeleton rows={5} />
 {:else if notFound}
-	<div class="rounded-lg border border-warning-200 bg-warning-50 p-12 text-center dark:border-warning-900 dark:bg-warning-950">
+	<div
+		class="rounded-lg border border-warning-200 bg-warning-50 p-12 text-center dark:border-warning-900 dark:bg-warning-950"
+	>
 		<svg
 			class="mx-auto h-16 w-16 text-warning-600 dark:text-warning-400"
 			fill="none"
@@ -502,6 +494,7 @@
 			</div>
 		</div>
 
+
 		<!-- Notes (full-width) -->
 		{#if device.notes}
 			<div>
@@ -514,30 +507,12 @@
 			</div>
 		{/if}
 
-		<!-- Audit trail (created/modified timestamps) -->
-		<div class="border-t border-neutral-200 pt-6 dark:border-neutral-800">
-			<h3 class="text-sm font-medium text-neutral-600 dark:text-neutral-400">Audit Trail</h3>
-			<dl class="mt-2 space-y-1 text-sm text-neutral-600 dark:text-neutral-400">
-				<div>
-					<span class="font-medium">Created:</span>
-					<time datetime={device.createdAt} title={formatDateTime(device.createdAt)}>
-						{formatDateTime(device.createdAt)}
-					</time>
-					{#if device.createdBy}
-						<span> by {device.createdBy}</span>
-					{/if}
-				</div>
-				<div>
-					<span class="font-medium">Last Modified:</span>
-					<time datetime={device.modifiedAt} title={formatDateTime(device.modifiedAt)}>
-						{formatDateTime(device.modifiedAt)}
-					</time>
-					{#if device.modifiedBy}
-						<span> by {device.modifiedBy}</span>
-					{/if}
-				</div>
-			</dl>
-		</div>
+		<DeviceAuditTrail
+			createdAt={device.createdAt}
+			createdBy={device.createdBy}
+			modifiedAt={device.modifiedAt}
+			modifiedBy={device.modifiedBy}
+		/>
 	</div>
 {/if}
 

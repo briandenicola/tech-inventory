@@ -124,7 +124,14 @@
 			"editButton": "Edit Device",
 			"deleteButton": "Delete Device",
 			"claimButton": "Claim Ownership",
-			"releaseButton": "Release Ownership"
+			"releaseButton": "Release Ownership",
+			"tagsEmpty": "No tags assigned",
+			"audit": {
+				"title": "Audit Trail",
+				"created": "Created",
+				"lastModified": "Last Modified",
+				"by": "by {actor}"
+			}
 		},
 		"claim": {
 			"button": "Claim Ownership",

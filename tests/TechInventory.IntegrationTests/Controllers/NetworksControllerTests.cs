@@ -1,6 +1,9 @@
 using System.Net;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using TechInventory.Application.BulkOperations;
 using TechInventory.Application.Common.Paging;
+using TechInventory.Application.Merges;
 using TechInventory.Application.Networks;
 using TechInventory.Domain.Entities;
 
@@ -157,5 +160,98 @@ public sealed class NetworksControllerTests(IntegrationTestFactory<NetworksContr
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
         var problem = await ReadProblemDetailsAsync(response);
         problem.Status.Should().Be((int)HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task MergeNetwork_WhenValid_ReassignsDevicesDeactivatesSourceAndWritesAuditEvents()
+    {
+        await ResetDatabaseAsync();
+        var references = await SeedDeviceReferenceDataAsync();
+        var target = new Network(Guid.NewGuid(), $"Target-{Guid.NewGuid():N}", "Guest");
+        var device = CreateDevice(references, "Merged Device");
+        await SeedAsync(entities: [target, device]);
+        using var client = CreateClient();
+
+        var response = await client.PostAsync(
+            "/api/v1/networks/merge",
+            CreateJsonContent(new { sourceId = references.Network.Id, targetId = target.Id }));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var payload = await ReadJsonAsync<MergeReferenceEntityResponse>(response);
+        payload.Should().BeEquivalentTo(new MergeReferenceEntityResponse(1, references.Network.Id, target.Id));
+
+        var mergedDevice = await WithDbContextAsync(dbContext => dbContext.Devices.AsNoTracking().SingleAsync(entity => entity.Id == device.Id));
+        mergedDevice.NetworkId.Should().Be(target.Id);
+
+        var sourceResponse = await client.GetAsync($"/api/v1/networks/{references.Network.Id}");
+        (await ReadJsonAsync<NetworkResponse>(sourceResponse)).IsActive.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task MergeNetwork_WhenSourceIsInactive_ReturnsConflict()
+    {
+        await ResetDatabaseAsync();
+        var references = await SeedDeviceReferenceDataAsync();
+        var target = new Network(Guid.NewGuid(), $"Target-{Guid.NewGuid():N}", "Guest");
+        await SeedAsync(entities: [target]);
+        await WithDbContextAsync(async dbContext =>
+        {
+            var source = await dbContext.Networks.SingleAsync(entity => entity.Id == references.Network.Id);
+            source.Deactivate();
+        });
+        using var client = CreateClient();
+
+        var response = await client.PostAsync(
+            "/api/v1/networks/merge",
+            CreateJsonContent(new { sourceId = references.Network.Id, targetId = target.Id }));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var problem = await ReadProblemDetailsAsync(response);
+        problem.Detail.Should().Contain(references.Network.Id.ToString());
+    }
+
+    [Fact]
+    public async Task BulkDeleteNetworks_WhenValid_DeactivatesAllNetworksAndWritesCorrelatedAuditEvents()
+    {
+        await ResetDatabaseAsync();
+        var first = new Network(Guid.NewGuid(), $"Network-{Guid.NewGuid():N}", "Primary");
+        var second = new Network(Guid.NewGuid(), $"Network-{Guid.NewGuid():N}", "Guest");
+        await SeedAsync(entities: [first, second]);
+        using var client = CreateClient();
+
+        var response = await client.PostAsync(
+            "/api/v1/networks/bulk/delete",
+            CreateJsonContent(new { networkIds = new[] { first.Id, second.Id } }));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var payload = await ReadJsonAsync<BulkOperationResponse>(response);
+        payload.AffectedCount.Should().Be(2);
+
+        var firstResponse = await client.GetAsync($"/api/v1/networks/{first.Id}");
+        var secondResponse = await client.GetAsync($"/api/v1/networks/{second.Id}");
+        (await ReadJsonAsync<NetworkResponse>(firstResponse)).IsActive.Should().BeFalse();
+        (await ReadJsonAsync<NetworkResponse>(secondResponse)).IsActive.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task BulkDeleteNetworks_WhenAnyNetworkIsInactive_ReturnsConflictWithoutMutatingOthers()
+    {
+        await ResetDatabaseAsync();
+        var active = new Network(Guid.NewGuid(), $"Network-{Guid.NewGuid():N}", "Primary");
+        var inactive = new Network(Guid.NewGuid(), $"Network-{Guid.NewGuid():N}", "Guest");
+        inactive.Deactivate();
+        await SeedAsync(entities: [active, inactive]);
+        using var client = CreateClient();
+
+        var response = await client.PostAsync(
+            "/api/v1/networks/bulk/delete",
+            CreateJsonContent(new { networkIds = new[] { active.Id, inactive.Id } }));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var problem = await ReadProblemDetailsAsync(response);
+        problem.Detail.Should().Contain(inactive.Id.ToString());
+
+        var reloadedActive = await client.GetAsync($"/api/v1/networks/{active.Id}");
+        (await ReadJsonAsync<NetworkResponse>(reloadedActive)).IsActive.Should().BeTrue();
     }
 }

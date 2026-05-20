@@ -27,12 +27,20 @@ Accessibility: WCAG 2.2 AA target, zero axe-core violations to merge. Browser ma
 
 ## Recent Updates
 
+**2026-05-20 (F039):** Reference-data admin bulk actions shipped. Added shared `ReferenceDataBulkBar.svelte`, `BulkDeleteReferenceModal.svelte`, and `referenceSelection.ts`; extended `MergeEntityModal.svelte` + `referenceMerge.ts` for multi-source and network merges; wired Brands/Categories/Locations/Networks admin pages for checkbox multi-select, select-all, bulk delete, and bulk merge; added temporary typed client wrappers for the new backend endpoints; validation green (`pnpm run check`, `pnpm run lint`, focused Vitest, full `pnpm exec vitest run`, `pnpm run build`), and repo `scripts\verify.ps1` still only stops at the known missing-`docker` Playwright step in this environment.
+
 **2026-05-18 (Phase 1 Round 1):** ESLint token-storage gate deployed. Custom inline rule in `src/TechInventory.Web/eslint.config.js` bans `localStorage.setItem/getItem/removeItem` for token-like keys (verified via test fixture). MSAL cache location pinned to `sessionStorage` in `src/lib/auth/msal.ts`. Decision D-011 documents path-aware ESLint custom rule pattern for future frontend security gates. Token-storage four-gate enforcement (D-010) coordinated with Hudson (pre-commit hook), Apone (Playwright E2E), and Bishop (code review checklist). `pnpm lint` gate active and verified.
 
 **2026-05-18 (Phase 1 Round 2):** Vite config type-error fix deployed. Moved `@ts-expect-error` directive from import line to precise plugins array location (Vite v6 / vitest pnpm dependency conflict). Frontend type-checking pipeline unblocked: `pnpm run check` ✅, `pnpm run lint` ✅. Verify pipeline gate now green, allowing Hicks's Domain work and Apone's test contracts to proceed without frontend blockage.
 
 
 ## Learnings
+
+### 2026-05-20 (F039) — reference-data bulk actions
+
+- A tiny shared Set helper (`referenceSelection.ts`) is enough to keep checkbox multi-select logic aligned across admin pages; once select/toggle/select-all live in one place, Brands/Locations/Networks can stay nearly identical and Categories only has to solve its tree-specific rendering.
+- Extending `MergeEntityModal.svelte` with a `sourceEntities` bulk mode is cleaner than introducing a second merge dialog. The same confirmation shell can handle one-source and many-source flows as long as the helper layer owns sorted target options and repeated merge calls.
+- Bulk delete UX for reference data should preflight device counts and hard-block the destructive action when any selected entity is still referenced. Surfacing those counts in one shared modal keeps the guardrails consistent and avoids per-page drift.
 
 ### 2026-05-20 (F040-F043) — device-list modal + overflow action polish
 

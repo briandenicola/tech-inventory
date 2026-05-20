@@ -139,6 +139,12 @@ Brian must restart API (`Ctrl+C` then `task dev:up`) to pick up new config. Afte
 
 ## Learnings
 
+### 2026-05-20: Reference bulk ops + network merge (F039)
+
+- Shared bulk-operation contracts now live in `src\TechInventory.Application\BulkOperations\`; reference-entity bulk-delete handlers/controllers reuse `BulkOperationResponse` + `BulkAuditEnvelope` instead of inventing per-entity payload types.
+- F039 keeps the same resource-oriented pattern as the earlier merge work: per-entity commands stay under `src\TechInventory.Application\{Brands,Categories,Locations,Networks}\Commands\`, controller endpoints live at `POST /api/v1/{entity}/bulk/delete`, and the new network merge seam is `src\TechInventory.Application\Networks\Commands\MergeNetworkCommand.cs` plus `POST /api/v1/networks/merge`.
+- Category bulk delete must process selected categories deepest-first so a batch can safely include both a parent and child without double-updating the child; runtime OpenAPI should be refreshed from `/openapi/v1.json` after adding endpoints.
+
 ### 2026-05-20: Household display settings (F044)
 
 - Per-household admin configuration fits well as a generic `HouseholdSetting` aggregate + repository keyed by `(HouseholdId, Key)`; JSON array values preserve user-defined order without hard-coding one schema/table per settings feature.

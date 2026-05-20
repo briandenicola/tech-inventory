@@ -1,7 +1,9 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TechInventory.Api.Authentication;
 using TechInventory.Api.Common;
+using TechInventory.Application.BulkOperations;
 using TechInventory.Application.Common.Paging;
 using TechInventory.Application.Merges;
 using TechInventory.Application.Locations;
@@ -66,6 +68,16 @@ public sealed class LocationsController(ISender sender) : ControllerBase
     public async Task<ActionResult<MergeReferenceEntityResponse>> MergeLocations([FromBody] MergeLocationRequest request, CancellationToken cancellationToken)
         => this.OkResult(await sender.Send(request.ToCommand(), cancellationToken));
 
+    [HttpPost("bulk/delete")]
+    [Authorize(Policy = AuthorizationPolicies.Admin)]
+    [ProducesResponseType(typeof(BulkOperationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BulkOperationResponse>> BulkDeleteLocations([FromBody] BulkDeleteLocationsRequest request, CancellationToken cancellationToken)
+        => this.OkResult(await sender.Send(request.ToCommand(), cancellationToken));
+
     public sealed record CreateLocationRequest(string Name, LocationType Type)
     {
         public CreateLocationCommand ToCommand() => new(Name, Type);
@@ -79,5 +91,10 @@ public sealed class LocationsController(ISender sender) : ControllerBase
     public sealed record MergeLocationRequest(Guid SourceId, Guid TargetId)
     {
         public MergeLocationCommand ToCommand() => new(SourceId, TargetId);
+    }
+
+    public sealed record BulkDeleteLocationsRequest(IReadOnlyList<Guid> LocationIds)
+    {
+        public BulkDeleteLocationsCommand ToCommand() => new(LocationIds ?? Array.Empty<Guid>());
     }
 }

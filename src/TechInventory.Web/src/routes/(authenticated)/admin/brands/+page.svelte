@@ -12,16 +12,25 @@
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import PaginationControls from '$lib/components/PaginationControls.svelte';
+	import BulkDeleteReferenceModal from '$lib/components/BulkDeleteReferenceModal.svelte';
 	import MergeEntityModal from '$lib/components/MergeEntityModal.svelte';
+	import ReferenceDataBulkBar from '$lib/components/ReferenceDataBulkBar.svelte';
 	import DeactivateConfirmModal from '$lib/components/admin/DeactivateConfirmModal.svelte';
 	import ResponsiveAdminList from '$lib/components/admin/ResponsiveAdminList.svelte';
 	import {
-		buildMergeTargetOptions,
-		fetchMergeDeviceCount,
+		fetchReferenceDeviceCount,
 		mergeReferenceEntities,
+		mergeReferenceEntitySelection,
+		sortMergeEntityOptions,
 		toMergeEntityOption,
 		type MergeEntityOption
 	} from '$lib/utils/referenceMerge';
+	import {
+		clearReferenceSelection,
+		getVisibleReferenceSelectionState,
+		toggleAllVisibleReferenceSelections,
+		toggleReferenceSelection
+	} from '$lib/utils/referenceSelection';
 
 	/**
 	 * T27: Brands Admin — paginated list with Add/Edit/Deactivate
@@ -68,9 +77,12 @@
 	let deactivateModalOpen = $state(false);
 	let deactivatingBrand = $state<BrandResponse | null>(null);
 	let mergeModalOpen = $state(false);
-	let mergingBrand = $state<MergeEntityOption | null>(null);
+	let mergeSourceBrands = $state<MergeEntityOption[]>([]);
+	let mergeTargetOptions = $state<MergeEntityOption[]>([]);
 	let mergeError = $state<string | null>(null);
 	let mergeSubmitting = $state(false);
+	let selectedIds = $state<Set<string>>(new Set());
+	let bulkDeleteModalOpen = $state(false);
 
 	// Form state
 	let formData = $state<BrandFormData>({ name: '', website: '', notes: '' });
@@ -86,8 +98,29 @@
 			.filter((brand): brand is BrandResponse & { id: string; name: string } => !!brand.id && !!brand.name && !!brand.isActive)
 			.map((brand) => ({ id: brand.id, name: brand.name }));
 	});
-	const mergeTargetOptions = $derived.by(() =>
-		mergingBrand ? buildMergeTargetOptions(referenceBrands, mergingBrand.id) : []
+	const sortedReferenceBrands = $derived(sortMergeEntityOptions(referenceBrands));
+	const visibleBrandIds = $derived(
+		brands.map((brand) => brand.id).filter((brandId): brandId is string => !!brandId)
+	);
+	const selectionState = $derived(getVisibleReferenceSelectionState(selectedIds, visibleBrandIds));
+	const allVisibleSelected = $derived(selectionState.allVisibleSelected);
+	const someVisibleSelected = $derived(selectionState.someVisibleSelected);
+	const selectedBrands = $derived.by(() =>
+		brands.filter(
+			(brand): brand is BrandResponse & { id: string; name: string } =>
+				!!brand.id && !!brand.name && selectedIds.has(brand.id)
+		)
+	);
+	const selectedBrandOptions = $derived(
+		selectedBrands.map((brand) => ({ id: brand.id, name: brand.name }))
+	);
+	const selectedActiveBrandOptions = $derived(
+		selectedBrands
+			.filter((brand) => brand.isActive)
+			.map((brand) => ({ id: brand.id, name: brand.name }))
+	);
+	const canBulkMerge = $derived(
+		selectedActiveBrandOptions.length >= 2 && selectedActiveBrandOptions.length === selectedBrands.length
 	);
 
 	// Load brands on mount + URL params change
@@ -98,6 +131,13 @@
 	$effect(() => {
 		const unregister = registerPullToRefresh($page.url.pathname, loadBrands);
 		return unregister;
+	});
+
+	$effect(() => {
+		void urlParams.page;
+		void urlParams.pageSize;
+		void urlParams.includeInactive;
+		selectedIds = clearReferenceSelection();
 	});
 
 	async function loadBrands() {
@@ -206,59 +246,100 @@
 		}
 	}
 
-	async function openMergeModal(brand: BrandResponse) {
+	async function buildMergeSourceBrands(items: MergeEntityOption[]): Promise<MergeEntityOption[]> {
+		return Promise.all(
+			items.map(async (item) => {
+				try {
+					return {
+						...item,
+						deviceCount: await fetchReferenceDeviceCount('brand', item.id)
+					};
+				} catch (err: unknown) {
+					console.error('[BrandsAdmin] Merge count failed:', err);
+					return {
+						...item,
+						deviceCount: 0
+					};
+				}
+			})
+		);
+	}
+
+	async function openMergeModal(items: MergeEntityOption[], targets: MergeEntityOption[]) {
+		mergeModalOpen = true;
+		mergeError = null;
+		mergeSubmitting = false;
+		mergeSourceBrands = items.map((item) => ({ ...item, deviceCount: null }));
+		mergeTargetOptions = [...targets].sort((left, right) => left.name.localeCompare(right.name));
+		mergeSourceBrands = await buildMergeSourceBrands(items);
+	}
+
+	async function openSingleMergeModal(brand: BrandResponse) {
 		const candidate = toMergeEntityOption(brand);
 		if (!candidate) {
 			return;
 		}
 
-		mergeModalOpen = true;
-		mergeError = null;
-		mergingBrand = { ...candidate, deviceCount: null };
+		await openMergeModal([candidate], sortedReferenceBrands);
+	}
 
-		try {
-			const deviceCount = await fetchMergeDeviceCount('brand', candidate.id);
-			if (mergingBrand?.id === candidate.id) {
-				mergingBrand = { ...candidate, deviceCount };
-			}
-		} catch (err: unknown) {
-			console.error('[BrandsAdmin] Merge count failed:', err);
-			if (mergingBrand?.id === candidate.id) {
-				mergingBrand = { ...candidate, deviceCount: 0 };
-			}
+	function openBulkMergeModal() {
+		if (!canBulkMerge) {
+			return;
 		}
+
+		void openMergeModal(selectedActiveBrandOptions, selectedActiveBrandOptions);
 	}
 
 	function closeMergeModal() {
 		mergeModalOpen = false;
-		mergingBrand = null;
+		mergeSourceBrands = [];
+		mergeTargetOptions = [];
 		mergeError = null;
 		mergeSubmitting = false;
 	}
 
 	async function handleMergeConfirm(targetId: string) {
-		if (!mergingBrand?.id) {
+		if (mergeSourceBrands.length === 0) {
 			return;
 		}
 
 		mergeSubmitting = true;
 		mergeError = null;
 		const targetBrand = mergeTargetOptions.find((brand) => brand.id === targetId);
+		const isBulkMerge = mergeSourceBrands.length > 1;
 
 		try {
-			const response = await mergeReferenceEntities('brand', {
-				sourceId: mergingBrand.id,
-				targetId
-			});
-			addToast({
-				type: 'success',
-				message: t('admin.merge.success', {
-					source: mergingBrand.name,
-					target: targetBrand?.name ?? '',
-					count: response.mergedCount
-				})
-			});
+			if (isBulkMerge) {
+				const mergedCount = await mergeReferenceEntitySelection(
+					'brand',
+					mergeSourceBrands.map((brand) => brand.id),
+					targetId
+				);
+				addToast({
+					type: 'success',
+					message: t('admin.bulk.mergeSuccess', {
+						target: targetBrand?.name ?? '',
+						count: mergedCount
+					})
+				});
+			} else {
+				const sourceBrand = mergeSourceBrands[0];
+				const response = await mergeReferenceEntities('brand', {
+					sourceId: sourceBrand.id,
+					targetId
+				});
+				addToast({
+					type: 'success',
+					message: t('admin.merge.success', {
+						source: sourceBrand.name,
+						target: targetBrand?.name ?? '',
+						count: response.mergedCount
+					})
+				});
+			}
 			closeMergeModal();
+			clearSelection();
 			await Promise.all([loadBrands(), fetchReferenceData()]);
 		} catch (err: unknown) {
 			console.error('[BrandsAdmin] Merge failed:', err);
@@ -287,6 +368,33 @@
 		if (newPageSize !== 25) params.set('pageSize', newPageSize.toString());
 		else params.delete('pageSize');
 		goto(`?${params.toString()}`, { replaceState: true, keepFocus: true, noScroll: true });
+	}
+
+	function setIndeterminate(node: HTMLInputElement, value: boolean) {
+		node.indeterminate = value;
+		return {
+			update(next: boolean) {
+				node.indeterminate = next;
+			}
+		};
+	}
+
+	function toggleSelect(id: string) {
+		selectedIds = toggleReferenceSelection(selectedIds, id);
+	}
+
+	function toggleSelectAllVisible() {
+		selectedIds = toggleAllVisibleReferenceSelections(selectedIds, visibleBrandIds);
+	}
+
+	function clearSelection() {
+		selectedIds = clearReferenceSelection();
+	}
+
+	async function handleBulkDeleteSuccess() {
+		clearSelection();
+		bulkDeleteModalOpen = false;
+		await Promise.all([loadBrands(), fetchReferenceData()]);
 	}
 
 	const primaryActionButtonClass =
@@ -320,6 +428,20 @@
 			</button>
 		</div>
 	</div>
+
+	{#if !loading && !error && brands.length > 0}
+		<div class="mb-4 flex items-center gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-700 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300">
+			<input
+				type="checkbox"
+				class="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
+				checked={allVisibleSelected}
+				use:setIndeterminate={!allVisibleSelected && someVisibleSelected}
+				onchange={toggleSelectAllVisible}
+				aria-label={t('admin.bulk.selectAllVisible')}
+			/>
+			<span>{t('admin.bulk.selectAllVisible')}</span>
+		</div>
+	{/if}
 
 	<!-- Loading -->
 	{#if loading}
@@ -356,6 +478,9 @@
 			keyExtractor={(brand) => brand.id ?? brand.name ?? ''}
 		>
 			{#snippet tableHead()}
+				<th scope="col" class="w-12 px-4 py-3 text-left">
+					<span class="sr-only">{t('common.actions.select')}</span>
+				</th>
 				<th
 					scope="col"
 					class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
@@ -383,7 +508,19 @@
 			{/snippet}
 
 			{#snippet desktopRow(brand: BrandResponse)}
-				<tr class="hover:bg-neutral-50 dark:hover:bg-neutral-900">
+				{@const selected = brand.id ? selectedIds.has(brand.id) : false}
+				<tr class="hover:bg-neutral-50 dark:hover:bg-neutral-900 {selected ? 'bg-primary-50 dark:bg-primary-950/30' : ''}">
+					<td class="w-12 px-4 py-3">
+						{#if brand.id}
+							<input
+								type="checkbox"
+								class="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
+								checked={selected}
+								onchange={() => toggleSelect(brand.id ?? '')}
+								aria-label={t('admin.bulk.selectRow', { name: brand.name ?? '' })}
+							/>
+						{/if}
+					</td>
 					<td class="whitespace-nowrap px-4 py-3 text-sm font-medium text-neutral-900 dark:text-neutral-50">
 						{brand.name}
 					</td>
@@ -411,9 +548,20 @@
 			{/snippet}
 
 			{#snippet mobileCard(brand: BrandResponse)}
-				<article class="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+				{@const selected = brand.id ? selectedIds.has(brand.id) : false}
+				<article class="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950 {selected ? 'border-primary-400 bg-primary-50/70 dark:border-primary-700 dark:bg-primary-950/20' : ''}">
 					<div class="flex items-start justify-between gap-3">
-						<div class="min-w-0">
+						<div class="flex min-w-0 items-start gap-3">
+							{#if brand.id}
+								<input
+									type="checkbox"
+									class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
+									checked={selected}
+									onchange={() => toggleSelect(brand.id ?? '')}
+									aria-label={t('admin.bulk.selectRow', { name: brand.name ?? '' })}
+								/>
+							{/if}
+							<div class="min-w-0">
 							<h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-50">{brand.name}</h2>
 							{#if brand.website}
 								<a
@@ -425,6 +573,7 @@
 									{brand.website}
 								</a>
 							{/if}
+							</div>
 						</div>
 						{#if !brand.isActive}
 							<span class="inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200">
@@ -458,7 +607,7 @@
 		{t('common.actions.edit')}
 	</button>
 	{#if brand.isActive}
-		<button type="button" onclick={() => openMergeModal(brand)} class={primaryActionButtonClass}>
+		<button type="button" onclick={() => void openSingleMergeModal(brand)} class={primaryActionButtonClass}>
 			{t('common.actions.merge')}
 		</button>
 		<button type="button" onclick={() => openDeactivateModal(brand)} class={warningActionButtonClass}>
@@ -467,10 +616,11 @@
 	{/if}
 {/snippet}
 
-{#if mergeModalOpen && mergingBrand}
+{#if mergeModalOpen && mergeSourceBrands.length > 0}
 	<MergeEntityModal
 		entityType="brand"
-		sourceEntity={mergingBrand}
+		sourceEntity={mergeSourceBrands[0] ?? null}
+		sourceEntities={mergeSourceBrands}
 		entities={mergeTargetOptions}
 		isOpen={mergeModalOpen}
 		isSubmitting={mergeSubmitting}
@@ -479,6 +629,24 @@
 		onCancel={closeMergeModal}
 	/>
 {/if}
+
+{#if bulkDeleteModalOpen}
+	<BulkDeleteReferenceModal
+		entityType="brand"
+		items={selectedBrandOptions}
+		isOpen={bulkDeleteModalOpen}
+		onDeleted={handleBulkDeleteSuccess}
+		onCancel={() => (bulkDeleteModalOpen = false)}
+	/>
+{/if}
+
+<ReferenceDataBulkBar
+	count={selectedIds.size}
+	onClear={clearSelection}
+	onDelete={() => (bulkDeleteModalOpen = true)}
+	onMerge={openBulkMergeModal}
+	mergeDisabled={!canBulkMerge}
+/>
 
 <!-- Form Modal -->
 {#if formModalOpen}

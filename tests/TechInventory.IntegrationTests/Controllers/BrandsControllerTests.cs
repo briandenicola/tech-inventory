@@ -2,6 +2,7 @@ using System.Net;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using TechInventory.Application.Brands;
+using TechInventory.Application.BulkOperations;
 using TechInventory.Application.Common.Paging;
 using TechInventory.Application.Merges;
 using TechInventory.Domain.Entities;
@@ -199,5 +200,59 @@ public sealed class BrandsControllerTests(IntegrationTestFactory<BrandsControlle
         auditEvents.Should().Contain(entity => entity.EntityId == references.Brand.Id.ToString() && entity.Action == Domain.Enums.AuditAction.Deleted);
         auditEvents.Should().Contain(entity => entity.EntityId == target.Id.ToString() && entity.Action == Domain.Enums.AuditAction.Updated);
         auditEvents.Should().OnlyContain(entity => entity.AfterPayload.Contains("\"mergedCount\":1", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task BulkDeleteBrands_WhenValid_DeactivatesAllBrandsAndWritesCorrelatedAuditEvents()
+    {
+        await ResetDatabaseAsync();
+        var first = new Brand(Guid.NewGuid(), $"Brand-{Guid.NewGuid():N}");
+        var second = new Brand(Guid.NewGuid(), $"Brand-{Guid.NewGuid():N}");
+        await SeedAsync(entities: [first, second]);
+        using var client = CreateClient();
+
+        var response = await client.PostAsync(
+            "/api/v1/brands/bulk/delete",
+            CreateJsonContent(new { brandIds = new[] { first.Id, second.Id } }));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var payload = await ReadJsonAsync<BulkOperationResponse>(response);
+        payload.AffectedCount.Should().Be(2);
+
+        var firstResponse = await client.GetAsync($"/api/v1/brands/{first.Id}");
+        var secondResponse = await client.GetAsync($"/api/v1/brands/{second.Id}");
+        (await ReadJsonAsync<BrandResponse>(firstResponse)).IsActive.Should().BeFalse();
+        (await ReadJsonAsync<BrandResponse>(secondResponse)).IsActive.Should().BeFalse();
+
+        var auditEvents = await WithDbContextAsync(dbContext => dbContext.AuditEvents
+            .AsNoTracking()
+            .Where(entity => entity.EntityType == nameof(Brand)
+                && (entity.EntityId == first.Id.ToString() || entity.EntityId == second.Id.ToString()))
+            .ToListAsync());
+        auditEvents.Should().HaveCount(2);
+        auditEvents.Should().OnlyContain(entity => entity.Action == Domain.Enums.AuditAction.Deleted);
+        auditEvents.Should().AllSatisfy(entity => entity.AfterPayload.Should().Contain(payload.CorrelationId.ToString()));
+    }
+
+    [Fact]
+    public async Task BulkDeleteBrands_WhenAnyBrandIsInactive_ReturnsConflictWithoutChangingActiveRows()
+    {
+        await ResetDatabaseAsync();
+        var active = new Brand(Guid.NewGuid(), $"Brand-{Guid.NewGuid():N}");
+        var inactive = new Brand(Guid.NewGuid(), $"Brand-{Guid.NewGuid():N}");
+        inactive.Deactivate();
+        await SeedAsync(entities: [active, inactive]);
+        using var client = CreateClient();
+
+        var response = await client.PostAsync(
+            "/api/v1/brands/bulk/delete",
+            CreateJsonContent(new { brandIds = new[] { active.Id, inactive.Id } }));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var problem = await ReadProblemDetailsAsync(response);
+        problem.Detail.Should().Contain(inactive.Id.ToString());
+
+        var reloadedActive = await client.GetAsync($"/api/v1/brands/{active.Id}");
+        (await ReadJsonAsync<BrandResponse>(reloadedActive)).IsActive.Should().BeTrue();
     }
 }

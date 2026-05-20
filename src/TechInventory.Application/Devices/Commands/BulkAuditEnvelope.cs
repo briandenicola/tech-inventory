@@ -1,4 +1,4 @@
-namespace TechInventory.Application.Devices.Commands;
+namespace TechInventory.Application.BulkOperations;
 
 /// <summary>
 /// Wrapper persisted into AuditEvent.BeforePayload / AfterPayload by bulk

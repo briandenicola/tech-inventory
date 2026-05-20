@@ -1,10 +1,12 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TechInventory.Api.Authentication;
 using TechInventory.Api.Common;
 using TechInventory.Application.Brands;
 using TechInventory.Application.Brands.Commands;
 using TechInventory.Application.Brands.Queries;
+using TechInventory.Application.BulkOperations;
 using TechInventory.Application.Common.Paging;
 using TechInventory.Application.Merges;
 
@@ -65,6 +67,16 @@ public sealed class BrandsController(ISender sender) : ControllerBase
     public async Task<ActionResult<MergeReferenceEntityResponse>> MergeBrands([FromBody] MergeBrandRequest request, CancellationToken cancellationToken)
         => this.OkResult(await sender.Send(request.ToCommand(), cancellationToken));
 
+    [HttpPost("bulk/delete")]
+    [Authorize(Policy = AuthorizationPolicies.Admin)]
+    [ProducesResponseType(typeof(BulkOperationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BulkOperationResponse>> BulkDeleteBrands([FromBody] BulkDeleteBrandsRequest request, CancellationToken cancellationToken)
+        => this.OkResult(await sender.Send(request.ToCommand(), cancellationToken));
+
     public sealed record CreateBrandRequest(string Name, string? Website = null, string? Notes = null)
     {
         public CreateBrandCommand ToCommand() => new(Name, Website, Notes);
@@ -78,5 +90,10 @@ public sealed class BrandsController(ISender sender) : ControllerBase
     public sealed record MergeBrandRequest(Guid SourceId, Guid TargetId)
     {
         public MergeBrandCommand ToCommand() => new(SourceId, TargetId);
+    }
+
+    public sealed record BulkDeleteBrandsRequest(IReadOnlyList<Guid> BrandIds)
+    {
+        public BulkDeleteBrandsCommand ToCommand() => new(BrandIds ?? Array.Empty<Guid>());
     }
 }

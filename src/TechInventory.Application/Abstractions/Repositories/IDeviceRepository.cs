@@ -14,6 +14,8 @@ public interface IDeviceRepository : IAggregateRepository<Device>
 
     Task<Result<int>> ReassignLocationReferencesAsync(Guid sourceId, Guid targetId, CancellationToken cancellationToken);
 
+    Task<Result<int>> ReassignNetworkReferencesAsync(Guid sourceId, Guid targetId, CancellationToken cancellationToken);
+
     Task<IReadOnlyList<DeviceTag>> ListTagsAsync(Guid deviceId, CancellationToken cancellationToken);
 
     Task<Result<DeviceTag>> UpsertTagAsync(DeviceTag deviceTag, CancellationToken cancellationToken);

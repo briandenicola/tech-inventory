@@ -1,6 +1,7 @@
 using System.Net;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using TechInventory.Application.BulkOperations;
 using TechInventory.Application.Categories;
 using TechInventory.Application.Common.Paging;
 using TechInventory.Application.Merges;
@@ -230,5 +231,53 @@ public sealed class CategoriesControllerTests(IntegrationTestFactory<CategoriesC
         var sourceResponse = await client.GetAsync($"/api/v1/categories/{references.Category.Id}");
         var sourcePayload = await ReadJsonAsync<CategoryResponse>(sourceResponse);
         sourcePayload.IsActive.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task BulkDeleteCategories_WhenValid_DeletesSelectedCategoriesAndTheirChildren()
+    {
+        await ResetDatabaseAsync();
+        var root = new Category(Guid.NewGuid(), $"Root-{Guid.NewGuid():N}");
+        var child = new Category(Guid.NewGuid(), $"Child-{Guid.NewGuid():N}", root.Id, 2, "speaker");
+        var sibling = new Category(Guid.NewGuid(), $"Sibling-{Guid.NewGuid():N}");
+        await SeedAsync(entities: [root, child, sibling]);
+        using var client = CreateClient();
+
+        var response = await client.PostAsync(
+            "/api/v1/categories/bulk/delete",
+            CreateJsonContent(new { categoryIds = new[] { root.Id, sibling.Id } }));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var payload = await ReadJsonAsync<BulkOperationResponse>(response);
+        payload.AffectedCount.Should().Be(2);
+
+        var rootResponse = await client.GetAsync($"/api/v1/categories/{root.Id}");
+        var childResponse = await client.GetAsync($"/api/v1/categories/{child.Id}");
+        var siblingResponse = await client.GetAsync($"/api/v1/categories/{sibling.Id}");
+        (await ReadJsonAsync<CategoryResponse>(rootResponse)).IsActive.Should().BeFalse();
+        (await ReadJsonAsync<CategoryResponse>(childResponse)).IsActive.Should().BeFalse();
+        (await ReadJsonAsync<CategoryResponse>(siblingResponse)).IsActive.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task BulkDeleteCategories_WhenAnyCategoryIsInactive_ReturnsConflictWithoutMutatingOthers()
+    {
+        await ResetDatabaseAsync();
+        var active = new Category(Guid.NewGuid(), $"Category-{Guid.NewGuid():N}");
+        var inactive = new Category(Guid.NewGuid(), $"Category-{Guid.NewGuid():N}");
+        inactive.Deactivate();
+        await SeedAsync(entities: [active, inactive]);
+        using var client = CreateClient();
+
+        var response = await client.PostAsync(
+            "/api/v1/categories/bulk/delete",
+            CreateJsonContent(new { categoryIds = new[] { active.Id, inactive.Id } }));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var problem = await ReadProblemDetailsAsync(response);
+        problem.Detail.Should().Contain(inactive.Id.ToString());
+
+        var reloadedActive = await client.GetAsync($"/api/v1/categories/{active.Id}");
+        (await ReadJsonAsync<CategoryResponse>(reloadedActive)).IsActive.Should().BeTrue();
     }
 }

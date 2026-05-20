@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TechInventory.Api.Authentication;
 using TechInventory.Api.Common;
+using TechInventory.Application.BulkOperations;
 using TechInventory.Application.Common.Paging;
 using TechInventory.Application.Devices;
 using TechInventory.Application.Devices.Commands;

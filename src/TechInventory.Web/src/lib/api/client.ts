@@ -10,6 +10,8 @@ import type {
 	EraReportResponse,
 	MergeEntityRequest,
 	MergeEntityResponse,
+	ReferenceEntityBulkDeleteRequest,
+	ReferenceEntityBulkDeleteResponse,
 	SummaryReportResponse,
 	TimelineReportParams,
 	TimelineReportResponse,
@@ -342,6 +344,12 @@ export const brands = {
 		apiFetch<MergeEntityResponse>(`/api/v1/brands/merge`, {
 			method: 'POST',
 			body: JSON.stringify(body)
+		}),
+
+	bulkDelete: async (body: ReferenceEntityBulkDeleteRequest) =>
+		apiFetch<ReferenceEntityBulkDeleteResponse>(`/api/v1/brands/bulk-delete`, {
+			method: 'POST',
+			body: JSON.stringify(body)
 		})
 };
 
@@ -376,6 +384,12 @@ export const categories = {
 
 	merge: async (body: MergeEntityRequest) =>
 		apiFetch<MergeEntityResponse>(`/api/v1/categories/merge`, {
+			method: 'POST',
+			body: JSON.stringify(body)
+		}),
+
+	bulkDelete: async (body: ReferenceEntityBulkDeleteRequest) =>
+		apiFetch<ReferenceEntityBulkDeleteResponse>(`/api/v1/categories/bulk-delete`, {
 			method: 'POST',
 			body: JSON.stringify(body)
 		})
@@ -457,6 +471,12 @@ export const locations = {
 		apiFetch<MergeEntityResponse>(`/api/v1/locations/merge`, {
 			method: 'POST',
 			body: JSON.stringify(body)
+		}),
+
+	bulkDelete: async (body: ReferenceEntityBulkDeleteRequest) =>
+		apiFetch<ReferenceEntityBulkDeleteResponse>(`/api/v1/locations/bulk-delete`, {
+			method: 'POST',
+			body: JSON.stringify(body)
 		})
 };
 
@@ -487,7 +507,19 @@ export const networks = {
 			{
 				method: 'PATCH'
 			}
-		)
+		),
+
+	merge: async (body: MergeEntityRequest) =>
+		apiFetch<MergeEntityResponse>(`/api/v1/networks/merge`, {
+			method: 'POST',
+			body: JSON.stringify(body)
+		}),
+
+	bulkDelete: async (body: ReferenceEntityBulkDeleteRequest) =>
+		apiFetch<ReferenceEntityBulkDeleteResponse>(`/api/v1/networks/bulk-delete`, {
+			method: 'POST',
+			body: JSON.stringify(body)
+		})
 };
 
 // Tags

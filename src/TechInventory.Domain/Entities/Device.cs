@@ -209,6 +209,12 @@ public sealed class Device(
         Touch(modifiedBy);
     }
 
+    public void ReassignNetwork(Guid? networkId, string? modifiedBy = null)
+    {
+        NetworkId = Guard.AgainstOptionalDefault(networkId, nameof(networkId));
+        Touch(modifiedBy);
+    }
+
     public void UpdateDisposalMethod(string? disposalMethod, string? modifiedBy = null)
     {
         if (Status is not DeviceStatus.Retired and not DeviceStatus.Disposed)

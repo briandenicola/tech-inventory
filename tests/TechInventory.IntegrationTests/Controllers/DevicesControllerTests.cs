@@ -1,6 +1,7 @@
 using System.Net;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using TechInventory.Application.BulkOperations;
 using TechInventory.Application.Common.Paging;
 using TechInventory.Application.Devices;
 using TechInventory.Domain.Entities;
@@ -312,7 +313,7 @@ public sealed class DevicesControllerTests(IntegrationTestFactory<DevicesControl
         var response = await client.PostAsync("/api/v1/devices/bulk/update", CreateJsonContent(request));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await ReadJsonAsync<TechInventory.Application.Devices.Commands.BulkOperationResponse>(response);
+        var result = await ReadJsonAsync<BulkOperationResponse>(response);
         result.AffectedCount.Should().Be(3);
         result.CorrelationId.Should().NotBeEmpty();
 
@@ -388,7 +389,7 @@ public sealed class DevicesControllerTests(IntegrationTestFactory<DevicesControl
         var response = await client.PostAsync("/api/v1/devices/bulk/delete", CreateJsonContent(request));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await ReadJsonAsync<TechInventory.Application.Devices.Commands.BulkOperationResponse>(response);
+        var result = await ReadJsonAsync<BulkOperationResponse>(response);
         result.AffectedCount.Should().Be(2);
 
         await WithDbContextAsync(async dbContext =>

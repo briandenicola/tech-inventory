@@ -4,17 +4,18 @@ import type {
 	CategoryResponse,
 	LocationResponse,
 	MergeEntityRequest,
-	MergeEntityResponse
+	MergeEntityResponse,
+	NetworkResponse
 } from '$lib/api/types';
 import type { ReferenceEntity } from '$lib/stores/referenceData';
 
-export type MergeEntityType = 'brand' | 'category' | 'location';
+export type MergeEntityType = 'brand' | 'category' | 'location' | 'network';
 
 export interface MergeEntityOption extends ReferenceEntity {
 	deviceCount?: number | null;
 }
 
-type MergeSourceResponse = BrandResponse | CategoryResponse | LocationResponse;
+type MergeSourceResponse = BrandResponse | CategoryResponse | LocationResponse | NetworkResponse;
 
 type DeviceCountQuery = {
 	Page: number;
@@ -22,6 +23,7 @@ type DeviceCountQuery = {
 	BrandId?: string;
 	CategoryId?: string;
 	LocationId?: string;
+	NetworkId?: string;
 };
 
 export function toMergeEntityOption(entity: MergeSourceResponse): MergeEntityOption | null {
@@ -48,7 +50,16 @@ export function buildMergeTargetOptions(
 		.sort((left, right) => left.name.localeCompare(right.name));
 }
 
-export async function fetchMergeDeviceCount(
+export function sortMergeEntityOptions(entities: ReferenceEntity[]): MergeEntityOption[] {
+	return entities
+		.map((entity) => ({
+			id: entity.id,
+			name: entity.name
+		}))
+		.sort((left, right) => left.name.localeCompare(right.name));
+}
+
+export async function fetchReferenceDeviceCount(
 	entityType: MergeEntityType,
 	sourceId: string
 ): Promise<number> {
@@ -69,8 +80,19 @@ export async function fetchMergeDeviceCount(
 		params.LocationId = sourceId;
 	}
 
+	if (entityType === 'network') {
+		params.NetworkId = sourceId;
+	}
+
 	const response = await api.devices.list(params);
 	return response.totalCount ?? 0;
+}
+
+export async function fetchMergeDeviceCount(
+	entityType: MergeEntityType,
+	sourceId: string
+): Promise<number> {
+	return fetchReferenceDeviceCount(entityType, sourceId);
 }
 
 export async function mergeReferenceEntities(
@@ -84,5 +106,26 @@ export async function mergeReferenceEntities(
 			return api.categories.merge(request);
 		case 'location':
 			return api.locations.merge(request);
+		case 'network':
+			return api.networks.merge(request);
 	}
+}
+
+export async function mergeReferenceEntitySelection(
+	entityType: MergeEntityType,
+	sourceIds: string[],
+	targetId: string
+): Promise<number> {
+	let mergedCount = 0;
+
+	for (const sourceId of sourceIds) {
+		if (sourceId === targetId) {
+			continue;
+		}
+
+		const response = await mergeReferenceEntities(entityType, { sourceId, targetId });
+		mergedCount += response.mergedCount;
+	}
+
+	return mergedCount;
 }

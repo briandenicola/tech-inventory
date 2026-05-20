@@ -927,16 +927,34 @@
 		"merge": {
 			"title": "Merge {entity}",
 			"description": "Move devices away from {source} into another {entity} and deactivate the source entry.",
+			"bulkDescription": "Choose which {entityPlural} should stay active. The other selected items will merge into it.",
 			"sourceLabel": "Source {entity}",
+			"sourcesLabel": "Selected {entityPlural}",
 			"searchLabel": "Search targets",
 			"searchPlaceholder": "Search {entityPlural}…",
 			"targetLabel": "Merge into",
 			"targetPlaceholder": "Select a target…",
 			"targetHint": "Choose the {entity} that should stay active.",
 			"confirmation": "This will move {count} devices from {source} to {target} and deactivate {source}.",
+			"bulkConfirmation": "This will merge {count} selected {entityPlural} into {target} and move {devices} device references.",
 			"selectTargetPrompt": "Select a target {entity} to review the impact.",
 			"success": "Merged {source} into {target}. {count} devices moved.",
 			"error": "The merge could not be completed. Review the details and try again."
+		},
+		"bulk": {
+			"actions": "Bulk actions",
+			"selected": "{count} selected",
+			"clear": "Clear",
+			"selectAllVisible": "Select all visible",
+			"selectRow": "Select {name}",
+			"deleteSelected": "Delete Selected",
+			"mergeSelected": "Merge Selected",
+			"deleteConfirmTitle": "Delete selected items?",
+			"deleteConfirmMessage": "This will permanently delete {count} selected {entityPlural}.",
+			"deleteSuccess": "Deleted {count} selected items.",
+			"mergeSuccess": "Merged selected items into {target}. {count} devices moved.",
+			"cannotDeleteHasDevices": "Some selected items still have devices assigned and cannot be deleted.",
+			"deviceCount": "{count} devices"
 		}
 	},
 	"settings": {

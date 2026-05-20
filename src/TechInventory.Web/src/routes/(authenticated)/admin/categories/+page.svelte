@@ -11,15 +11,24 @@
 	import { fetchReferenceData, referenceDataStore } from '$lib/stores/referenceData';
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
+	import BulkDeleteReferenceModal from '$lib/components/BulkDeleteReferenceModal.svelte';
 	import MergeEntityModal from '$lib/components/MergeEntityModal.svelte';
+	import ReferenceDataBulkBar from '$lib/components/ReferenceDataBulkBar.svelte';
 	import DeactivateConfirmModal from '$lib/components/admin/DeactivateConfirmModal.svelte';
 	import {
-		buildMergeTargetOptions,
-		fetchMergeDeviceCount,
+		fetchReferenceDeviceCount,
 		mergeReferenceEntities,
+		mergeReferenceEntitySelection,
+		sortMergeEntityOptions,
 		toMergeEntityOption,
 		type MergeEntityOption
 	} from '$lib/utils/referenceMerge';
+	import {
+		clearReferenceSelection,
+		getVisibleReferenceSelectionState,
+		toggleAllVisibleReferenceSelections,
+		toggleReferenceSelection
+	} from '$lib/utils/referenceSelection';
 
 	/**
 	 * T28: Categories Admin — tree view with expand/collapse
@@ -71,9 +80,12 @@
 	let deactivateModalOpen = $state(false);
 	let deactivatingCategory = $state<CategoryResponse | null>(null);
 	let mergeModalOpen = $state(false);
-	let mergingCategory = $state<MergeEntityOption | null>(null);
+	let mergeSourceCategories = $state<MergeEntityOption[]>([]);
+	let mergeTargetOptions = $state<MergeEntityOption[]>([]);
 	let mergeError = $state<string | null>(null);
 	let mergeSubmitting = $state(false);
+	let selectedIds = $state<Set<string>>(new Set());
+	let bulkDeleteModalOpen = $state(false);
 
 	// Form state
 	let formData = $state<CategoryFormData>({ name: '', parentId: '', icon: '', depth: 1 });
@@ -89,9 +101,7 @@
 			.filter((category): category is CategoryResponse & { id: string; name: string } => !!category.id && !!category.name && !!category.isActive)
 			.map((category) => ({ id: category.id, name: category.name }));
 	});
-	const mergeTargetOptions = $derived.by(() =>
-		mergingCategory ? buildMergeTargetOptions(referenceCategories, mergingCategory.id) : []
-	);
+	const sortedReferenceCategories = $derived(sortMergeEntityOptions(referenceCategories));
 
 	// Load categories on mount + URL params change
 	$effect(() => {
@@ -101,6 +111,12 @@
 	$effect(() => {
 		const unregister = registerPullToRefresh($page.url.pathname, loadCategories);
 		return unregister;
+	});
+
+	$effect(() => {
+		void urlParams.includeInactive;
+		void searchQuery;
+		selectedIds = clearReferenceSelection();
 	});
 
 	async function loadCategories() {
@@ -142,6 +158,34 @@
 
 		return categories.filter((c) => (c.id ? matchingIds.has(c.id) || ancestorIds.has(c.id) : false));
 	});
+	const visibleCategoryIds = $derived(
+		displayedCategories
+			.map((category) => category.id)
+			.filter((categoryId): categoryId is string => !!categoryId)
+	);
+	const selectionState = $derived(
+		getVisibleReferenceSelectionState(selectedIds, visibleCategoryIds)
+	);
+	const allVisibleSelected = $derived(selectionState.allVisibleSelected);
+	const someVisibleSelected = $derived(selectionState.someVisibleSelected);
+	const selectedCategories = $derived.by(() =>
+		displayedCategories.filter(
+			(category): category is CategoryResponse & { id: string; name: string } =>
+				!!category.id && !!category.name && selectedIds.has(category.id)
+		)
+	);
+	const selectedCategoryOptions = $derived(
+		selectedCategories.map((category) => ({ id: category.id, name: category.name }))
+	);
+	const selectedActiveCategoryOptions = $derived(
+		selectedCategories
+			.filter((category) => category.isActive)
+			.map((category) => ({ id: category.id, name: category.name }))
+	);
+	const canBulkMerge = $derived(
+		selectedActiveCategoryOptions.length >= 2 &&
+			selectedActiveCategoryOptions.length === selectedCategories.length
+	);
 
 	// Open add modal
 	function openAddModal() {
@@ -242,59 +286,102 @@
 		}
 	}
 
-	async function openMergeModal(category: CategoryResponse) {
+	async function buildMergeSourceCategories(
+		items: MergeEntityOption[]
+	): Promise<MergeEntityOption[]> {
+		return Promise.all(
+			items.map(async (item) => {
+				try {
+					return {
+						...item,
+						deviceCount: await fetchReferenceDeviceCount('category', item.id)
+					};
+				} catch (err: unknown) {
+					console.error('[CategoriesAdmin] Merge count failed:', err);
+					return {
+						...item,
+						deviceCount: 0
+					};
+				}
+			})
+		);
+	}
+
+	async function openMergeModal(items: MergeEntityOption[], targets: MergeEntityOption[]) {
+		mergeModalOpen = true;
+		mergeError = null;
+		mergeSubmitting = false;
+		mergeSourceCategories = items.map((item) => ({ ...item, deviceCount: null }));
+		mergeTargetOptions = [...targets].sort((left, right) => left.name.localeCompare(right.name));
+		mergeSourceCategories = await buildMergeSourceCategories(items);
+	}
+
+	async function openSingleMergeModal(category: CategoryResponse) {
 		const candidate = toMergeEntityOption(category);
 		if (!candidate) {
 			return;
 		}
 
-		mergeModalOpen = true;
-		mergeError = null;
-		mergingCategory = { ...candidate, deviceCount: null };
+		await openMergeModal([candidate], sortedReferenceCategories);
+	}
 
-		try {
-			const deviceCount = await fetchMergeDeviceCount('category', candidate.id);
-			if (mergingCategory?.id === candidate.id) {
-				mergingCategory = { ...candidate, deviceCount };
-			}
-		} catch (err: unknown) {
-			console.error('[CategoriesAdmin] Merge count failed:', err);
-			if (mergingCategory?.id === candidate.id) {
-				mergingCategory = { ...candidate, deviceCount: 0 };
-			}
+	function openBulkMergeModal() {
+		if (!canBulkMerge) {
+			return;
 		}
+
+		void openMergeModal(selectedActiveCategoryOptions, selectedActiveCategoryOptions);
 	}
 
 	function closeMergeModal() {
 		mergeModalOpen = false;
-		mergingCategory = null;
+		mergeSourceCategories = [];
+		mergeTargetOptions = [];
 		mergeError = null;
 		mergeSubmitting = false;
 	}
 
 	async function handleMergeConfirm(targetId: string) {
-		if (!mergingCategory?.id) {
+		if (mergeSourceCategories.length === 0) {
 			return;
 		}
 
 		mergeSubmitting = true;
 		mergeError = null;
 		const targetCategory = mergeTargetOptions.find((category) => category.id === targetId);
+		const isBulkMerge = mergeSourceCategories.length > 1;
 
 		try {
-			const response = await mergeReferenceEntities('category', {
-				sourceId: mergingCategory.id,
-				targetId
-			});
-			addToast({
-				type: 'success',
-				message: t('admin.merge.success', {
-					source: mergingCategory.name,
-					target: targetCategory?.name ?? '',
-					count: response.mergedCount
-				})
-			});
+			if (isBulkMerge) {
+				const mergedCount = await mergeReferenceEntitySelection(
+					'category',
+					mergeSourceCategories.map((category) => category.id),
+					targetId
+				);
+				addToast({
+					type: 'success',
+					message: t('admin.bulk.mergeSuccess', {
+						target: targetCategory?.name ?? '',
+						count: mergedCount
+					})
+				});
+			} else {
+				const sourceCategory = mergeSourceCategories[0];
+				const response = await mergeReferenceEntities('category', {
+					sourceId: sourceCategory.id,
+					targetId
+				});
+				addToast({
+					type: 'success',
+					message: t('admin.merge.success', {
+						source: sourceCategory.name,
+						target: targetCategory?.name ?? '',
+						count: response.mergedCount
+					})
+				});
+			}
 			closeMergeModal();
+			clearSelection();
 			await Promise.all([loadCategories(), fetchReferenceData()]);
 		} catch (err: unknown) {
 			console.error('[CategoriesAdmin] Merge failed:', err);
@@ -313,6 +400,33 @@
 			params.set('includeInactive', 'true');
 		}
 		goto(`?${params.toString()}`, { replaceState: true, keepFocus: true, noScroll: true });
+	}
+
+	function setIndeterminate(node: HTMLInputElement, value: boolean) {
+		node.indeterminate = value;
+		return {
+			update(next: boolean) {
+				node.indeterminate = next;
+			}
+		};
+	}
+
+	function toggleSelect(id: string) {
+		selectedIds = toggleReferenceSelection(selectedIds, id);
+	}
+
+	function toggleSelectAllVisible() {
+		selectedIds = toggleAllVisibleReferenceSelections(selectedIds, visibleCategoryIds);
+	}
+
+	function clearSelection() {
+		selectedIds = clearReferenceSelection();
+	}
+
+	async function handleBulkDeleteSuccess() {
+		clearSelection();
+		bulkDeleteModalOpen = false;
+		await Promise.all([loadCategories(), fetchReferenceData()]);
 	}
 
 	// Toggle expand/collapse
@@ -384,13 +498,27 @@
 	</div>
 
 	<!-- Search -->
-	<div class="mb-4">
+	<div class="mb-4 space-y-4">
 		<input
 			type="text"
 			bind:value={searchQuery}
 			placeholder={t('admin.categories.list.searchPlaceholder')}
 			class="block min-h-11 w-full rounded-md border border-neutral-300 px-4 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
 		/>
+
+		{#if displayedCategories.length > 0}
+			<div class="flex items-center gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-700 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300">
+				<input
+					type="checkbox"
+					class="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
+					checked={allVisibleSelected}
+					use:setIndeterminate={!allVisibleSelected && someVisibleSelected}
+					onchange={toggleSelectAllVisible}
+					aria-label={t('admin.bulk.selectAllVisible')}
+				/>
+				<span>{t('admin.bulk.selectAllVisible')}</span>
+			</div>
+		{/if}
 	</div>
 
 	<!-- Loading -->
@@ -423,22 +551,34 @@
 	{:else}
 		<div class="grid gap-3 md:hidden" role="list" aria-label={t('admin.categories.list.title')}>
 			{#each displayedCategories as category (category.id)}
+				{@const selected = category.id ? selectedIds.has(category.id) : false}
 				<div role="listitem">
-					<article class="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+					<article class="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950 {selected ? 'border-primary-400 bg-primary-50/70 dark:border-primary-700 dark:bg-primary-950/20' : ''}">
 						<div class="flex items-start justify-between gap-3">
-							<div class="min-w-0">
-								<div class="flex items-center gap-2">
-									{#if category.icon}
-										<span class="text-lg" aria-hidden="true">{category.icon}</span>
-									{/if}
-									<h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-50">{category.name}</h2>
-								</div>
-								{#if getParentName(category.parentId)}
-									<p class="mt-2 text-sm text-neutral-700 dark:text-neutral-300">
-										<span class="font-medium text-neutral-500 dark:text-neutral-400">{t('categories.columns.parent')}:</span>
-										{getParentName(category.parentId)}
-									</p>
+							<div class="flex min-w-0 items-start gap-3">
+								{#if category.id}
+									<input
+										type="checkbox"
+										class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
+										checked={selected}
+										onchange={() => toggleSelect(category.id ?? '')}
+										aria-label={t('admin.bulk.selectRow', { name: category.name ?? '' })}
+									/>
 								{/if}
+								<div class="min-w-0">
+									<div class="flex items-center gap-2">
+										{#if category.icon}
+											<span class="text-lg" aria-hidden="true">{category.icon}</span>
+										{/if}
+										<h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-50">{category.name}</h2>
+									</div>
+									{#if getParentName(category.parentId)}
+										<p class="mt-2 text-sm text-neutral-700 dark:text-neutral-300">
+											<span class="font-medium text-neutral-500 dark:text-neutral-400">{t('categories.columns.parent')}:</span>
+											{getParentName(category.parentId)}
+										</p>
+									{/if}
+								</div>
 							</div>
 							{#if !category.isActive}
 								<span class="inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200">{t('common.states.inactive')}</span>
@@ -477,7 +617,7 @@
 		{t('common.actions.edit')}
 	</button>
 	{#if category.isActive}
-		<button type="button" onclick={() => openMergeModal(category)} class={primaryActionButtonClass}>
+		<button type="button" onclick={() => void openSingleMergeModal(category)} class={primaryActionButtonClass}>
 			{t('common.actions.merge')}
 		</button>
 		<button type="button" onclick={() => openDeactivateModal(category)} class={warningActionButtonClass}>
@@ -486,10 +626,11 @@
 	{/if}
 {/snippet}
 
-{#if mergeModalOpen && mergingCategory}
+{#if mergeModalOpen && mergeSourceCategories.length > 0}
 	<MergeEntityModal
 		entityType="category"
-		sourceEntity={mergingCategory}
+		sourceEntity={mergeSourceCategories[0] ?? null}
+		sourceEntities={mergeSourceCategories}
 		entities={mergeTargetOptions}
 		isOpen={mergeModalOpen}
 		isSubmitting={mergeSubmitting}
@@ -498,6 +639,24 @@
 		onCancel={closeMergeModal}
 	/>
 {/if}
+
+{#if bulkDeleteModalOpen}
+	<BulkDeleteReferenceModal
+		entityType="category"
+		items={selectedCategoryOptions}
+		isOpen={bulkDeleteModalOpen}
+		onDeleted={handleBulkDeleteSuccess}
+		onCancel={() => (bulkDeleteModalOpen = false)}
+	/>
+{/if}
+
+<ReferenceDataBulkBar
+	count={selectedIds.size}
+	onClear={clearSelection}
+	onDelete={() => (bulkDeleteModalOpen = true)}
+	onMerge={openBulkMergeModal}
+	mergeDisabled={!canBulkMerge}
+/>
 
 <!-- Form Modal -->
 {#if formModalOpen}
@@ -622,8 +781,18 @@
 
 {#snippet categoryRow(category: CategoryResponse, level: number)}
 	{@const categoryId = category.id ?? ''}
-	<div class="flex items-center justify-between gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-900">
+	{@const selected = categoryId ? selectedIds.has(categoryId) : false}
+	<div class="flex items-center justify-between gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-900 {selected ? 'bg-primary-50 dark:bg-primary-950/30' : ''}">
 		<div class="flex min-w-0 items-center gap-2" style="padding-left: {level * 2}rem;">
+			{#if categoryId}
+				<input
+					type="checkbox"
+					class="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
+					checked={selected}
+					onchange={() => toggleSelect(categoryId)}
+					aria-label={t('admin.bulk.selectRow', { name: category.name ?? '' })}
+				/>
+			{/if}
 			{#if hasChildren(categoryId)}
 				<button
 					type="button"

@@ -4,6 +4,25 @@ Append-only log. Newest entries at the top.
 
 ---
 
+## 2026-05-20 — Vasquez F039 reference bulk admin UI
+
+- Added `src\TechInventory.Web\src\lib\components\ReferenceDataBulkBar.svelte`, `BulkDeleteReferenceModal.svelte`, and `src\TechInventory.Web\src\lib\utils\referenceSelection.ts` so Brands, Categories, Locations, and Networks can share Set-based checkbox selection, a sticky bulk action bar, and guarded bulk-delete confirmation UX.
+- Extended `src\TechInventory.Web\src\lib\components\MergeEntityModal.svelte` plus `src\TechInventory.Web\src\lib\utils\referenceMerge.ts` to support bulk-source merges and network merges, then added temporary typed wrappers in `src\TechInventory.Web\src\lib\api\client.ts` / `types.ts` for the new backend endpoints until the generated client is refreshed.
+- Rewired `src\TechInventory.Web\src\routes\(authenticated)\admin\{brands,categories,locations,networks}\+page.svelte` for row/card checkboxes, visible-item select-all, shared bulk delete, shared bulk merge, and i18n-driven copy; categories keeps its custom desktop tree/mobile-card split.
+- Added focused coverage in `ReferenceDataBulkBar.test.ts`, `BulkDeleteReferenceModal.test.ts`, `referenceSelection.test.ts`, and updated `MergeEntityModal.test.ts`; updated `docs\backlog.md` to mark F039 done and logged decision note `.squad\decisions\inbox\vasquez-f039-bulk-ui.md`.
+- Validation: `pnpm run check` ✅, `pnpm run lint` ✅, focused `pnpm exec vitest run src/lib/components/ReferenceDataBulkBar.test.ts src/lib/components/BulkDeleteReferenceModal.test.ts src/lib/components/MergeEntityModal.test.ts src/lib/utils/referenceSelection.test.ts` ✅ (**14 passed**), full `pnpm exec vitest run` ✅, `pnpm run build` ✅. Repo `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify.ps1` reaches Playwright and still fails only because `docker` is unavailable in this environment.
+
+---
+
+## 2026-05-20 — Hicks F039 reference bulk ops backend
+
+- Added admin-only backend bulk delete flows for brands, categories, locations, and networks under `src\TechInventory.Application\{Brands,Categories,Locations,Networks}\Commands\`, plus shared bulk primitives in `src\TechInventory.Application\BulkOperations\`; each endpoint now soft-deletes active rows atomically and writes one audit event per requested entity with a shared correlation id.
+- Added the missing network merge vertical through `src\TechInventory.Application\Networks\Commands\MergeNetworkCommand.cs`, `IDeviceRepository.ReassignNetworkReferencesAsync(...)`, `src\TechInventory.Api\Controllers\NetworksController.cs`, and matching unit/integration/authorization coverage. Category bulk delete processes selected nodes deepest-first so parent+child selections stay atomic while still cascading inactive state to descendants.
+- Exposed `POST /api/v1/{brands,categories,locations,networks}/bulk/delete` plus `POST /api/v1/networks/merge`, refreshed repo-root `openapi.yaml` from the runtime `/openapi/v1.json` document, marked `F039` in `docs\backlog.md` as in progress, appended Hicks learnings, and logged decision note `.squad\decisions\inbox\hicks-f039-bulk-ops.md`.
+- Validation: `dotnet format --verify-no-changes` ✅, `dotnet build -c Release` ✅, `dotnet test -c Release` ✅.
+
+---
+
 ## 2026-05-20 — Hicks F044 display settings API
 
 - Added `src\TechInventory.Domain\Entities\HouseholdSetting.cs`, `src\TechInventory.Application\Abstractions\Repositories\IHouseholdSettingRepository.cs`, `src\TechInventory.Infrastructure\Persistence\Repositories\HouseholdSettingRepository.cs`, EF configuration, and migration `20260520202952_AddHouseholdSettings` so per-household settings now persist as unique `(HouseholdId, Key)` rows with JSON values.

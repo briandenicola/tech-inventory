@@ -29,6 +29,37 @@ describe('MergeEntityModal', () => {
 		expect(onConfirm).toHaveBeenCalledWith('target-id');
 	});
 
+	it('supports selecting a merge target from a multi-select batch', async () => {
+		const onConfirm = vi.fn().mockResolvedValue(undefined);
+		render(MergeEntityModal, {
+			props: {
+				entityType: 'network',
+				sourceEntities: [
+					{ id: 'network-1', name: 'Office Wi-Fi', deviceCount: 2 },
+					{ id: 'network-2', name: 'Main Wi-Fi', deviceCount: 1 },
+					{ id: 'network-3', name: 'Guest Wi-Fi', deviceCount: 0 }
+				],
+				entities: [
+					{ id: 'network-1', name: 'Office Wi-Fi' },
+					{ id: 'network-2', name: 'Main Wi-Fi' },
+					{ id: 'network-3', name: 'Guest Wi-Fi' }
+				],
+				isOpen: true,
+				onConfirm,
+				onCancel: vi.fn()
+			}
+		});
+
+		await fireEvent.change(screen.getByLabelText(/merge into/i), {
+			target: { value: 'network-2' }
+		});
+		await fireEvent.click(screen.getByRole('button', { name: /confirm/i }));
+
+		expect(screen.getByRole('list', { name: /selected networks/i })).toBeInTheDocument();
+		expect(screen.getByText(/merge 2 selected networks into main wi-fi/i)).toBeInTheDocument();
+		expect(onConfirm).toHaveBeenCalledWith('network-2');
+	});
+
 	it('has no accessibility violations', async () => {
 		const { container } = render(MergeEntityModal, {
 			props: {

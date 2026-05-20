@@ -34,6 +34,12 @@ Accessibility: WCAG 2.2 AA target, zero axe-core violations to merge. Browser ma
 
 ## Learnings
 
+### 2026-05-20 (F037) — historical timeline card + bar extraction
+
+- Timeline-style report cards stay maintainable when the date math lives in `src/lib/utils/reports.ts` and the Svelte layer only owns fetch/filter state plus rendering. That keeps lifespan grouping and scaling unit-testable without spinning up the full card in component tests.
+- For phone-first history views, a split presentation works best: keep the desktop year axis for scanability, but let each mobile bar carry its own start/end labels so the timeline stays readable without a chart library.
+- A tiny bar primitive (`TimelineBar.svelte`) is enough to keep the parent report card under the 200-line rule while still giving tests a stable hook for active-vs-disposed rendering.
+
 ### 2026-05-20 (F035-T03/T05) — era report card + i18n
 
 - A self-contained report card component is the clean way to add whimsical reports onto `/reports` without bloating the page route: the page keeps ownership of the summary/warranty panels, while the card owns its own filter state, API call, loading/error/empty states, and a11y checks.

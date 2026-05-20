@@ -12,16 +12,25 @@
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import PaginationControls from '$lib/components/PaginationControls.svelte';
+	import BulkDeleteReferenceModal from '$lib/components/BulkDeleteReferenceModal.svelte';
 	import MergeEntityModal from '$lib/components/MergeEntityModal.svelte';
+	import ReferenceDataBulkBar from '$lib/components/ReferenceDataBulkBar.svelte';
 	import DeactivateConfirmModal from '$lib/components/admin/DeactivateConfirmModal.svelte';
 	import ResponsiveAdminList from '$lib/components/admin/ResponsiveAdminList.svelte';
 	import {
-		buildMergeTargetOptions,
-		fetchMergeDeviceCount,
+		fetchReferenceDeviceCount,
 		mergeReferenceEntities,
+		mergeReferenceEntitySelection,
+		sortMergeEntityOptions,
 		toMergeEntityOption,
 		type MergeEntityOption
 	} from '$lib/utils/referenceMerge';
+	import {
+		clearReferenceSelection,
+		getVisibleReferenceSelectionState,
+		toggleAllVisibleReferenceSelections,
+		toggleReferenceSelection
+	} from '$lib/utils/referenceSelection';
 
 	/**
 	 * T30: Locations Admin — paginated list with Add/Edit/Deactivate
@@ -56,9 +65,12 @@
 	let deactivateModalOpen = $state(false);
 	let deactivatingLocation = $state<LocationResponse | null>(null);
 	let mergeModalOpen = $state(false);
-	let mergingLocation = $state<MergeEntityOption | null>(null);
+	let mergeSourceLocations = $state<MergeEntityOption[]>([]);
+	let mergeTargetOptions = $state<MergeEntityOption[]>([]);
 	let mergeError = $state<string | null>(null);
 	let mergeSubmitting = $state(false);
+	let selectedIds = $state<Set<string>>(new Set());
+	let bulkDeleteModalOpen = $state(false);
 
 	let formData = $state<LocationFormData>({ name: '', type: 'Home', notes: '' });
 	let formErrors = $state<Record<string, string>>({});
@@ -73,8 +85,32 @@
 			.filter((location): location is LocationResponse & { id: string; name: string } => !!location.id && !!location.name && !!location.isActive)
 			.map((location) => ({ id: location.id, name: location.name }));
 	});
-	const mergeTargetOptions = $derived.by(() =>
-		mergingLocation ? buildMergeTargetOptions(referenceLocations, mergingLocation.id) : []
+	const sortedReferenceLocations = $derived(sortMergeEntityOptions(referenceLocations));
+	const visibleLocationIds = $derived(
+		locations.map((location) => location.id).filter((locationId): locationId is string => !!locationId)
+	);
+	const selectionState = $derived(
+		getVisibleReferenceSelectionState(selectedIds, visibleLocationIds)
+	);
+	const allVisibleSelected = $derived(selectionState.allVisibleSelected);
+	const someVisibleSelected = $derived(selectionState.someVisibleSelected);
+	const selectedLocations = $derived.by(() =>
+		locations.filter(
+			(location): location is LocationResponse & { id: string; name: string } =>
+				!!location.id && !!location.name && selectedIds.has(location.id)
+		)
+	);
+	const selectedLocationOptions = $derived(
+		selectedLocations.map((location) => ({ id: location.id, name: location.name }))
+	);
+	const selectedActiveLocationOptions = $derived(
+		selectedLocations
+			.filter((location) => location.isActive)
+			.map((location) => ({ id: location.id, name: location.name }))
+	);
+	const canBulkMerge = $derived(
+		selectedActiveLocationOptions.length >= 2 &&
+			selectedActiveLocationOptions.length === selectedLocations.length
 	);
 
 	$effect(() => {
@@ -84,6 +120,13 @@
 	$effect(() => {
 		const unregister = registerPullToRefresh($page.url.pathname, loadLocations);
 		return unregister;
+	});
+
+	$effect(() => {
+		void urlParams.page;
+		void urlParams.pageSize;
+		void urlParams.includeInactive;
+		selectedIds = clearReferenceSelection();
 	});
 
 	async function loadLocations() {
@@ -183,59 +226,102 @@
 		}
 	}
 
-	async function openMergeModal(location: LocationResponse) {
+	async function buildMergeSourceLocations(
+		items: MergeEntityOption[]
+	): Promise<MergeEntityOption[]> {
+		return Promise.all(
+			items.map(async (item) => {
+				try {
+					return {
+						...item,
+						deviceCount: await fetchReferenceDeviceCount('location', item.id)
+					};
+				} catch (err: unknown) {
+					console.error('[LocationsAdmin] Merge count failed:', err);
+					return {
+						...item,
+						deviceCount: 0
+					};
+				}
+			})
+		);
+	}
+
+	async function openMergeModal(items: MergeEntityOption[], targets: MergeEntityOption[]) {
+		mergeModalOpen = true;
+		mergeError = null;
+		mergeSubmitting = false;
+		mergeSourceLocations = items.map((item) => ({ ...item, deviceCount: null }));
+		mergeTargetOptions = [...targets].sort((left, right) => left.name.localeCompare(right.name));
+		mergeSourceLocations = await buildMergeSourceLocations(items);
+	}
+
+	async function openSingleMergeModal(location: LocationResponse) {
 		const candidate = toMergeEntityOption(location);
 		if (!candidate) {
 			return;
 		}
 
-		mergeModalOpen = true;
-		mergeError = null;
-		mergingLocation = { ...candidate, deviceCount: null };
+		await openMergeModal([candidate], sortedReferenceLocations);
+	}
 
-		try {
-			const deviceCount = await fetchMergeDeviceCount('location', candidate.id);
-			if (mergingLocation?.id === candidate.id) {
-				mergingLocation = { ...candidate, deviceCount };
-			}
-		} catch (err: unknown) {
-			console.error('[LocationsAdmin] Merge count failed:', err);
-			if (mergingLocation?.id === candidate.id) {
-				mergingLocation = { ...candidate, deviceCount: 0 };
-			}
+	function openBulkMergeModal() {
+		if (!canBulkMerge) {
+			return;
 		}
+
+		void openMergeModal(selectedActiveLocationOptions, selectedActiveLocationOptions);
 	}
 
 	function closeMergeModal() {
 		mergeModalOpen = false;
-		mergingLocation = null;
+		mergeSourceLocations = [];
+		mergeTargetOptions = [];
 		mergeError = null;
 		mergeSubmitting = false;
 	}
 
 	async function handleMergeConfirm(targetId: string) {
-		if (!mergingLocation?.id) {
+		if (mergeSourceLocations.length === 0) {
 			return;
 		}
 
 		mergeSubmitting = true;
 		mergeError = null;
 		const targetLocation = mergeTargetOptions.find((location) => location.id === targetId);
+		const isBulkMerge = mergeSourceLocations.length > 1;
 
 		try {
-			const response = await mergeReferenceEntities('location', {
-				sourceId: mergingLocation.id,
-				targetId
-			});
-			addToast({
-				type: 'success',
-				message: t('admin.merge.success', {
-					source: mergingLocation.name,
-					target: targetLocation?.name ?? '',
-					count: response.mergedCount
-				})
-			});
+			if (isBulkMerge) {
+				const mergedCount = await mergeReferenceEntitySelection(
+					'location',
+					mergeSourceLocations.map((location) => location.id),
+					targetId
+				);
+				addToast({
+					type: 'success',
+					message: t('admin.bulk.mergeSuccess', {
+						target: targetLocation?.name ?? '',
+						count: mergedCount
+					})
+				});
+			} else {
+				const sourceLocation = mergeSourceLocations[0];
+				const response = await mergeReferenceEntities('location', {
+					sourceId: sourceLocation.id,
+					targetId
+				});
+				addToast({
+					type: 'success',
+					message: t('admin.merge.success', {
+						source: sourceLocation.name,
+						target: targetLocation?.name ?? '',
+						count: response.mergedCount
+					})
+				});
+			}
 			closeMergeModal();
+			clearSelection();
 			await Promise.all([loadLocations(), fetchReferenceData()]);
 		} catch (err: unknown) {
 			console.error('[LocationsAdmin] Merge failed:', err);
@@ -262,6 +348,33 @@
 		if (newPageSize !== 25) params.set('pageSize', newPageSize.toString());
 		else params.delete('pageSize');
 		goto(`?${params.toString()}`, { replaceState: true, keepFocus: true, noScroll: true });
+	}
+
+	function setIndeterminate(node: HTMLInputElement, value: boolean) {
+		node.indeterminate = value;
+		return {
+			update(next: boolean) {
+				node.indeterminate = next;
+			}
+		};
+	}
+
+	function toggleSelect(id: string) {
+		selectedIds = toggleReferenceSelection(selectedIds, id);
+	}
+
+	function toggleSelectAllVisible() {
+		selectedIds = toggleAllVisibleReferenceSelections(selectedIds, visibleLocationIds);
+	}
+
+	function clearSelection() {
+		selectedIds = clearReferenceSelection();
+	}
+
+	async function handleBulkDeleteSuccess() {
+		clearSelection();
+		bulkDeleteModalOpen = false;
+		await Promise.all([loadLocations(), fetchReferenceData()]);
 	}
 
 	const primaryActionButtonClass =
@@ -292,6 +405,20 @@
 			</button>
 		</div>
 	</div>
+
+	{#if !loading && !error && locations.length > 0}
+		<div class="mb-4 flex items-center gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-700 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300">
+			<input
+				type="checkbox"
+				class="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
+				checked={allVisibleSelected}
+				use:setIndeterminate={!allVisibleSelected && someVisibleSelected}
+				onchange={toggleSelectAllVisible}
+				aria-label={t('admin.bulk.selectAllVisible')}
+			/>
+			<span>{t('admin.bulk.selectAllVisible')}</span>
+		</div>
+	{/if}
 
 	{#if loading}
 		<LoadingSkeleton />
@@ -327,6 +454,9 @@
 			keyExtractor={(location) => location.id ?? location.name ?? ''}
 		>
 			{#snippet tableHead()}
+				<th scope="col" class="w-12 px-4 py-3 text-left">
+					<span class="sr-only">{t('common.actions.select')}</span>
+				</th>
 				<th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">{t('locations.columns.name')}</th>
 				<th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">{t('locations.columns.type')}</th>
 				<th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">{t('locations.columns.description')}</th>
@@ -334,7 +464,19 @@
 			{/snippet}
 
 			{#snippet desktopRow(location: LocationResponse)}
-				<tr class="hover:bg-neutral-50 dark:hover:bg-neutral-900">
+				{@const selected = location.id ? selectedIds.has(location.id) : false}
+				<tr class="hover:bg-neutral-50 dark:hover:bg-neutral-900 {selected ? 'bg-primary-50 dark:bg-primary-950/30' : ''}">
+					<td class="w-12 px-4 py-3">
+						{#if location.id}
+							<input
+								type="checkbox"
+								class="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
+								checked={selected}
+								onchange={() => toggleSelect(location.id ?? '')}
+								aria-label={t('admin.bulk.selectRow', { name: location.name ?? '' })}
+							/>
+						{/if}
+					</td>
 					<td class="whitespace-nowrap px-4 py-3 text-sm font-medium text-neutral-900 dark:text-neutral-50">{location.name}</td>
 					<td class="whitespace-nowrap px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300">{t(`locations.types.${(location.type ?? 'Home').toLowerCase()}`)}</td>
 					<td class="px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300">{(location as LocationResponse & { notes?: string | null }).notes || '—'}</td>
@@ -347,14 +489,26 @@
 			{/snippet}
 
 			{#snippet mobileCard(location: LocationResponse)}
-				<article class="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+				{@const selected = location.id ? selectedIds.has(location.id) : false}
+				<article class="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950 {selected ? 'border-primary-400 bg-primary-50/70 dark:border-primary-700 dark:bg-primary-950/20' : ''}">
 					<div class="flex items-start justify-between gap-3">
-						<div class="min-w-0">
+						<div class="flex min-w-0 items-start gap-3">
+							{#if location.id}
+								<input
+									type="checkbox"
+									class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
+									checked={selected}
+									onchange={() => toggleSelect(location.id ?? '')}
+									aria-label={t('admin.bulk.selectRow', { name: location.name ?? '' })}
+								/>
+							{/if}
+							<div class="min-w-0">
 							<h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-50">{location.name}</h2>
 							<p class="mt-2 text-sm text-neutral-700 dark:text-neutral-300">
 								<span class="font-medium text-neutral-500 dark:text-neutral-400">{t('locations.columns.type')}:</span>
 								{t(`locations.types.${(location.type ?? 'Home').toLowerCase()}`)}
 							</p>
+							</div>
 						</div>
 						{#if !location.isActive}
 							<span class="inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200">{t('common.states.inactive')}</span>
@@ -386,7 +540,7 @@
 		{t('common.actions.edit')}
 	</button>
 	{#if location.isActive}
-		<button type="button" onclick={() => openMergeModal(location)} class={primaryActionButtonClass}>
+		<button type="button" onclick={() => void openSingleMergeModal(location)} class={primaryActionButtonClass}>
 			{t('common.actions.merge')}
 		</button>
 		<button type="button" onclick={() => openDeactivateModal(location)} class={warningActionButtonClass}>
@@ -395,10 +549,11 @@
 	{/if}
 {/snippet}
 
-{#if mergeModalOpen && mergingLocation}
+{#if mergeModalOpen && mergeSourceLocations.length > 0}
 	<MergeEntityModal
 		entityType="location"
-		sourceEntity={mergingLocation}
+		sourceEntity={mergeSourceLocations[0] ?? null}
+		sourceEntities={mergeSourceLocations}
 		entities={mergeTargetOptions}
 		isOpen={mergeModalOpen}
 		isSubmitting={mergeSubmitting}
@@ -407,6 +562,24 @@
 		onCancel={closeMergeModal}
 	/>
 {/if}
+
+{#if bulkDeleteModalOpen}
+	<BulkDeleteReferenceModal
+		entityType="location"
+		items={selectedLocationOptions}
+		isOpen={bulkDeleteModalOpen}
+		onDeleted={handleBulkDeleteSuccess}
+		onCancel={() => (bulkDeleteModalOpen = false)}
+	/>
+{/if}
+
+<ReferenceDataBulkBar
+	count={selectedIds.size}
+	onClear={clearSelection}
+	onDelete={() => (bulkDeleteModalOpen = true)}
+	onMerge={openBulkMergeModal}
+	mergeDisabled={!canBulkMerge}
+/>
 
 {#if formModalOpen}
 	<div

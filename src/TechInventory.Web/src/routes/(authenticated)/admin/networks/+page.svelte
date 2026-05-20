@@ -8,11 +8,29 @@
 	import { networkSchema, type NetworkFormData } from '$lib/schemas/network';
 	import { addToast } from '$lib/stores/toast';
 	import { registerPullToRefresh } from '$lib/stores/pullToRefresh';
+	import { fetchReferenceData, referenceDataStore } from '$lib/stores/referenceData';
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import PaginationControls from '$lib/components/PaginationControls.svelte';
+	import BulkDeleteReferenceModal from '$lib/components/BulkDeleteReferenceModal.svelte';
+	import MergeEntityModal from '$lib/components/MergeEntityModal.svelte';
+	import ReferenceDataBulkBar from '$lib/components/ReferenceDataBulkBar.svelte';
 	import DeactivateConfirmModal from '$lib/components/admin/DeactivateConfirmModal.svelte';
 	import ResponsiveAdminList from '$lib/components/admin/ResponsiveAdminList.svelte';
+	import {
+		fetchReferenceDeviceCount,
+		mergeReferenceEntities,
+		mergeReferenceEntitySelection,
+		sortMergeEntityOptions,
+		toMergeEntityOption,
+		type MergeEntityOption
+	} from '$lib/utils/referenceMerge';
+	import {
+		clearReferenceSelection,
+		getVisibleReferenceSelectionState,
+		toggleAllVisibleReferenceSelections,
+		toggleReferenceSelection
+	} from '$lib/utils/referenceSelection';
 
 	/**
 	 * T31: Networks Admin — paginated list with Add/Edit/Deactivate
@@ -46,10 +64,52 @@
 	let editingNetwork = $state<NetworkResponse | null>(null);
 	let deactivateModalOpen = $state(false);
 	let deactivatingNetwork = $state<NetworkResponse | null>(null);
+	let mergeModalOpen = $state(false);
+	let mergeSourceNetworks = $state<MergeEntityOption[]>([]);
+	let mergeTargetOptions = $state<MergeEntityOption[]>([]);
+	let mergeError = $state<string | null>(null);
+	let mergeSubmitting = $state(false);
+	let selectedIds = $state<Set<string>>(new Set());
+	let bulkDeleteModalOpen = $state(false);
 
 	let formData = $state<NetworkFormData>({ name: '', description: '' });
 	let formErrors = $state<Record<string, string>>({});
 	let formSubmitting = $state(false);
+
+	const referenceNetworks = $derived.by(() => {
+		if ($referenceDataStore.networks.length > 0) {
+			return $referenceDataStore.networks;
+		}
+
+		return networks
+			.filter((network): network is NetworkResponse & { id: string; name: string } => !!network.id && !!network.name && !!network.isActive)
+			.map((network) => ({ id: network.id, name: network.name }));
+	});
+	const sortedReferenceNetworks = $derived(sortMergeEntityOptions(referenceNetworks));
+	const visibleNetworkIds = $derived(
+		networks.map((network) => network.id).filter((networkId): networkId is string => !!networkId)
+	);
+	const selectionState = $derived(getVisibleReferenceSelectionState(selectedIds, visibleNetworkIds));
+	const allVisibleSelected = $derived(selectionState.allVisibleSelected);
+	const someVisibleSelected = $derived(selectionState.someVisibleSelected);
+	const selectedNetworks = $derived.by(() =>
+		networks.filter(
+			(network): network is NetworkResponse & { id: string; name: string } =>
+				!!network.id && !!network.name && selectedIds.has(network.id)
+		)
+	);
+	const selectedNetworkOptions = $derived(
+		selectedNetworks.map((network) => ({ id: network.id, name: network.name }))
+	);
+	const selectedActiveNetworkOptions = $derived(
+		selectedNetworks
+			.filter((network) => network.isActive)
+			.map((network) => ({ id: network.id, name: network.name }))
+	);
+	const canBulkMerge = $derived(
+		selectedActiveNetworkOptions.length >= 2 &&
+			selectedActiveNetworkOptions.length === selectedNetworks.length
+	);
 
 	$effect(() => {
 		loadNetworks();
@@ -58,6 +118,13 @@
 	$effect(() => {
 		const unregister = registerPullToRefresh($page.url.pathname, loadNetworks);
 		return unregister;
+	});
+
+	$effect(() => {
+		void urlParams.page;
+		void urlParams.pageSize;
+		void urlParams.includeInactive;
+		selectedIds = clearReferenceSelection();
 	});
 
 	async function loadNetworks() {
@@ -155,6 +222,111 @@
 		}
 	}
 
+	async function buildMergeSourceNetworks(
+		items: MergeEntityOption[]
+	): Promise<MergeEntityOption[]> {
+		return Promise.all(
+			items.map(async (item) => {
+				try {
+					return {
+						...item,
+						deviceCount: await fetchReferenceDeviceCount('network', item.id)
+					};
+				} catch (err: unknown) {
+					console.error('[NetworksAdmin] Merge count failed:', err);
+					return {
+						...item,
+						deviceCount: 0
+					};
+				}
+			})
+		);
+	}
+
+	async function openMergeModal(items: MergeEntityOption[], targets: MergeEntityOption[]) {
+		mergeModalOpen = true;
+		mergeError = null;
+		mergeSubmitting = false;
+		mergeSourceNetworks = items.map((item) => ({ ...item, deviceCount: null }));
+		mergeTargetOptions = [...targets].sort((left, right) => left.name.localeCompare(right.name));
+		mergeSourceNetworks = await buildMergeSourceNetworks(items);
+	}
+
+	async function openSingleMergeModal(network: NetworkResponse) {
+		const candidate = toMergeEntityOption(network);
+		if (!candidate) {
+			return;
+		}
+
+		await openMergeModal([candidate], sortedReferenceNetworks);
+	}
+
+	function openBulkMergeModal() {
+		if (!canBulkMerge) {
+			return;
+		}
+
+		void openMergeModal(selectedActiveNetworkOptions, selectedActiveNetworkOptions);
+	}
+
+	function closeMergeModal() {
+		mergeModalOpen = false;
+		mergeSourceNetworks = [];
+		mergeTargetOptions = [];
+		mergeError = null;
+		mergeSubmitting = false;
+	}
+
+	async function handleMergeConfirm(targetId: string) {
+		if (mergeSourceNetworks.length === 0) {
+			return;
+		}
+
+		mergeSubmitting = true;
+		mergeError = null;
+		const targetNetwork = mergeTargetOptions.find((network) => network.id === targetId);
+		const isBulkMerge = mergeSourceNetworks.length > 1;
+
+		try {
+			if (isBulkMerge) {
+				const mergedCount = await mergeReferenceEntitySelection(
+					'network',
+					mergeSourceNetworks.map((network) => network.id),
+					targetId
+				);
+				addToast({
+					type: 'success',
+					message: t('admin.bulk.mergeSuccess', {
+						target: targetNetwork?.name ?? '',
+						count: mergedCount
+					})
+				});
+			} else {
+				const sourceNetwork = mergeSourceNetworks[0];
+				const response = await mergeReferenceEntities('network', {
+					sourceId: sourceNetwork.id,
+					targetId
+				});
+				addToast({
+					type: 'success',
+					message: t('admin.merge.success', {
+						source: sourceNetwork.name,
+						target: targetNetwork?.name ?? '',
+						count: response.mergedCount
+					})
+				});
+			}
+			closeMergeModal();
+			clearSelection();
+			await Promise.all([loadNetworks(), fetchReferenceData()]);
+		} catch (err: unknown) {
+			console.error('[NetworksAdmin] Merge failed:', err);
+			mergeError = err instanceof Error ? err.message : t('admin.merge.error');
+		} finally {
+			mergeSubmitting = false;
+		}
+	}
+
 	function toggleInactive() {
 		const params = new URLSearchParams($page.url.searchParams);
 		if (urlParams.includeInactive) {
@@ -172,6 +344,33 @@
 		if (newPageSize !== 25) params.set('pageSize', newPageSize.toString());
 		else params.delete('pageSize');
 		goto(`?${params.toString()}`, { replaceState: true, keepFocus: true, noScroll: true });
+	}
+
+	function setIndeterminate(node: HTMLInputElement, value: boolean) {
+		node.indeterminate = value;
+		return {
+			update(next: boolean) {
+				node.indeterminate = next;
+			}
+		};
+	}
+
+	function toggleSelect(id: string) {
+		selectedIds = toggleReferenceSelection(selectedIds, id);
+	}
+
+	function toggleSelectAllVisible() {
+		selectedIds = toggleAllVisibleReferenceSelections(selectedIds, visibleNetworkIds);
+	}
+
+	function clearSelection() {
+		selectedIds = clearReferenceSelection();
+	}
+
+	async function handleBulkDeleteSuccess() {
+		clearSelection();
+		bulkDeleteModalOpen = false;
+		await Promise.all([loadNetworks(), fetchReferenceData()]);
 	}
 
 	const primaryActionButtonClass =
@@ -202,6 +401,20 @@
 			</button>
 		</div>
 	</div>
+
+	{#if !loading && !error && networks.length > 0}
+		<div class="mb-4 flex items-center gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-700 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300">
+			<input
+				type="checkbox"
+				class="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
+				checked={allVisibleSelected}
+				use:setIndeterminate={!allVisibleSelected && someVisibleSelected}
+				onchange={toggleSelectAllVisible}
+				aria-label={t('admin.bulk.selectAllVisible')}
+			/>
+			<span>{t('admin.bulk.selectAllVisible')}</span>
+		</div>
+	{/if}
 
 	{#if loading}
 		<LoadingSkeleton />
@@ -237,13 +450,28 @@
 			keyExtractor={(network) => network.id ?? network.name ?? ''}
 		>
 			{#snippet tableHead()}
+				<th scope="col" class="w-12 px-4 py-3 text-left">
+					<span class="sr-only">{t('common.actions.select')}</span>
+				</th>
 				<th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">{t('networks.columns.name')}</th>
 				<th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">{t('networks.columns.description')}</th>
 				<th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">{t('common.labels.actions')}</th>
 			{/snippet}
 
 			{#snippet desktopRow(network: NetworkResponse)}
-				<tr class="hover:bg-neutral-50 dark:hover:bg-neutral-900">
+				{@const selected = network.id ? selectedIds.has(network.id) : false}
+				<tr class="hover:bg-neutral-50 dark:hover:bg-neutral-900 {selected ? 'bg-primary-50 dark:bg-primary-950/30' : ''}">
+					<td class="w-12 px-4 py-3">
+						{#if network.id}
+							<input
+								type="checkbox"
+								class="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
+								checked={selected}
+								onchange={() => toggleSelect(network.id ?? '')}
+								aria-label={t('admin.bulk.selectRow', { name: network.name ?? '' })}
+							/>
+						{/if}
+					</td>
 					<td class="whitespace-nowrap px-4 py-3 text-sm font-medium text-neutral-900 dark:text-neutral-50">{network.name}</td>
 					<td class="px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300">{network.description || '—'}</td>
 					<td class="px-4 py-3 text-right">
@@ -255,9 +483,21 @@
 			{/snippet}
 
 			{#snippet mobileCard(network: NetworkResponse)}
-				<article class="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+				{@const selected = network.id ? selectedIds.has(network.id) : false}
+				<article class="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950 {selected ? 'border-primary-400 bg-primary-50/70 dark:border-primary-700 dark:bg-primary-950/20' : ''}">
 					<div class="flex items-start justify-between gap-3">
-						<h2 class="min-w-0 text-base font-semibold text-neutral-900 dark:text-neutral-50">{network.name}</h2>
+						<div class="flex min-w-0 items-start gap-3">
+							{#if network.id}
+								<input
+									type="checkbox"
+									class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
+									checked={selected}
+									onchange={() => toggleSelect(network.id ?? '')}
+									aria-label={t('admin.bulk.selectRow', { name: network.name ?? '' })}
+								/>
+							{/if}
+							<h2 class="min-w-0 text-base font-semibold text-neutral-900 dark:text-neutral-50">{network.name}</h2>
+						</div>
 						{#if !network.isActive}
 							<span class="inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200">{t('common.states.inactive')}</span>
 						{/if}
@@ -288,11 +528,46 @@
 		{t('common.actions.edit')}
 	</button>
 	{#if network.isActive}
+		<button type="button" onclick={() => void openSingleMergeModal(network)} class={primaryActionButtonClass}>
+			{t('common.actions.merge')}
+		</button>
 		<button type="button" onclick={() => openDeactivateModal(network)} class={warningActionButtonClass}>
 			{t('common.actions.deactivate')}
 		</button>
 	{/if}
 {/snippet}
+
+{#if mergeModalOpen && mergeSourceNetworks.length > 0}
+	<MergeEntityModal
+		entityType="network"
+		sourceEntity={mergeSourceNetworks[0] ?? null}
+		sourceEntities={mergeSourceNetworks}
+		entities={mergeTargetOptions}
+		isOpen={mergeModalOpen}
+		isSubmitting={mergeSubmitting}
+		errorMessage={mergeError}
+		onConfirm={handleMergeConfirm}
+		onCancel={closeMergeModal}
+	/>
+{/if}
+
+{#if bulkDeleteModalOpen}
+	<BulkDeleteReferenceModal
+		entityType="network"
+		items={selectedNetworkOptions}
+		isOpen={bulkDeleteModalOpen}
+		onDeleted={handleBulkDeleteSuccess}
+		onCancel={() => (bulkDeleteModalOpen = false)}
+	/>
+{/if}
+
+<ReferenceDataBulkBar
+	count={selectedIds.size}
+	onClear={clearSelection}
+	onDelete={() => (bulkDeleteModalOpen = true)}
+	onMerge={openBulkMergeModal}
+	mergeDisabled={!canBulkMerge}
+/>
 
 {#if formModalOpen}
 	<div

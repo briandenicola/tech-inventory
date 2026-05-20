@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	formatDateOnly,
+	normalizeEraReport,
 	normalizeSummaryReport,
 	normalizeWarrantyReport,
 	sortWarrantyItems
@@ -51,6 +52,20 @@ describe('reports utils', () => {
 		expect(legacy.totalCount).toBe(1);
 		expect(legacy.items[0]?.daysUntilExpiry).toBe(55);
 		expect(planned.items[0]?.deviceId).toBe('00000000-0000-4000-8000-000000000001');
+	});
+
+	it('normalizes and sorts era report payloads by start year', () => {
+		const report = normalizeEraReport({
+			decades: [
+				{ decade: '2020s', startYear: 2020, endYear: 2029, deviceCount: 5, totalValue: 3450, sampleDevices: ['iPhone 14 Pro'] },
+				{ decade: '1990s', startYear: 1990, endYear: 1999, deviceCount: 2, totalValue: 150, sampleDevices: ['Game Boy'] }
+			],
+			asOfDate: '2026-05-20',
+			appliedCategoryId: 'cat-phones'
+		});
+
+		expect(report.decades.map((item) => item.decade)).toEqual(['1990s', '2020s']);
+		expect(report.appliedCategoryId).toBe('cat-phones');
 	});
 
 	it('sorts warranty items by expiry date ascending by default', () => {

@@ -80,3 +80,18 @@ export interface WarrantyReportResponse {
 	asOfDate?: string | null;
 	expiringWithinDays?: number;
 }
+
+export interface EraReportDecadeResponse {
+	decade?: string | null;
+	startYear?: number | null;
+	endYear?: number | null;
+	deviceCount?: number | null;
+	totalValue?: number | null;
+	sampleDevices?: string[] | null;
+}
+
+export interface EraReportResponse {
+	decades?: EraReportDecadeResponse[] | null;
+	asOfDate?: string | null;
+	appliedCategoryId?: string | null;
+}

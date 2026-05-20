@@ -34,6 +34,18 @@ Accessibility: WCAG 2.2 AA target, zero axe-core violations to merge. Browser ma
 
 ## Learnings
 
+### 2026-05-20 (P003-T06) — responsive admin tables ✅ COMPLETE
+
+- A shared snippet-driven wrapper (`ResponsiveAdminList.svelte`) is the clean way to give multiple admin entity pages the same responsive split: mobile cards below `md`, semantic tables at `md+`, while each page still owns its field rendering and actions.
+- For data-light reference entities, single-column cards work better than horizontal scroll at 375px because Merge / Edit / Deactivate stay immediately visible instead of disappearing off-canvas; categories are the exception, where the desktop tree should stay intact and only the mobile presentation should flatten.
+- 44px targets on these admin pages require explicit `min-h-11` / `h-11` classes on toolbar controls, row actions, and modal form controls. Default text-size-plus-padding values in the existing admin CRUD pages were consistently coming in short.
+
+### 2026-05-20 — silent SSO bootstrap + no-flash login
+
+- Returning Entra users should be restored from the root `+layout.svelte`, not the login page itself. Keeping `authStore.isLoading=true` until `handleRedirectPromise()` and `acquireTokenSilent()` settle prevents the classic flash where `/auth/login` renders for a split-second before the app redirects back into `/devices`.
+- Silent bootstrap must call MSAL directly before `fetchCurrentUser()`. If bootstrap goes through the normal API client first, an `interaction_required` miss escalates into `acquireTokenRedirect()` and skips the desired fallback UX; treating that miss as a non-fatal "show the login button" case gives the iOS-style auto-login behavior Brian wanted.
+- In this single-household app, it is worth promoting the first cached MSAL account to the active account when none is set. That keeps silent token acquisition deterministic without inventing any custom token cache, so Bishop's rule still holds: tokens stay only in MSAL memory/sessionStorage.
+
 ### 2026-05-20 (P003-T07/T08) — audit modal reuse + resolved theme state
 
 - A reusable `<AuditLogModal>` works best as a context-preserving shell around the existing audit table/diff patterns: device-scoped opens can keep the `DeviceAuditTrail.svelte` summary above the paginated event list, while admin-global opens only need a lightweight entity-type filter.

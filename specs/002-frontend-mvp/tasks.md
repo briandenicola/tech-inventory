@@ -221,5 +221,6 @@ T15 + T19 block T53 (Lighthouse CI)
 - **[P]** = Parallelizable with peers in the same round.
 - **Scopes disjoint**: Vasquez owns frontend; Bishop owns backend auth; Apone owns test authorship; Hudson owns CI.
 - **Backend API is complete** (Phase 1 48/48 done); no new endpoints needed except T11 (`/api/v1/owners/me`).
+- **2026-05-20 follow-up:** T09/T10/T12 now also cover silent SSO bootstrap. Root `+layout.svelte` processes MSAL redirect results, attempts `acquireTokenSilent()` with the cached account before revealing `/auth/login`, and only falls back to the login button when MSAL returns `interaction_required`/no cached session.
 - **Round 0 open questions** (Spec §8) must be answered before launching Round 2+.
 - **Phase 2 definition of done**: All 53 tasks complete; 13 critical E2E journeys green on 6 browser projects; Lighthouse CI passing on 2 routes; zero axe-core violations; PWA installable.

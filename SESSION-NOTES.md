@@ -4,6 +4,22 @@ Append-only log. Newest entries at the top.
 
 ---
 
+## 2026-05-20 — Vasquez P003-T06 responsive admin tables
+
+- Added `src\TechInventory.Web\src\lib\components\admin\ResponsiveAdminList.svelte` plus `ResponsiveAdminList.test.ts`, then rewired `admin/brands`, `admin/locations`, `admin/networks`, `admin/owners`, and `admin/tags` so they render single-column cards below `md` and semantic tables at `md+`; brands/locations keep Merge actions visible in the mobile card action rows.
+- Reworked `admin/categories/+page.svelte` separately so the category tree remains on `md+`, but mobile now gets flat responsive cards with parent context instead of the previous overflowing tree rows; all admin headers stack cleanly, and action/form controls now use `min-h-11` / `h-11` touch targets.
+- Validation: `pnpm run check` ✅, `pnpm run lint` ✅, `pnpm exec vitest run` ✅ (**338 passed / 1 skipped**, including new `ResponsiveAdminList` axe coverage), `pnpm run build` ✅.
+
+---
+
+## 2026-05-20 — Vasquez + Bishop silent SSO auto-login polish
+
+- Updated `src\TechInventory.Web\src\routes\+layout.svelte` so app bootstrap now processes any MSAL redirect result, then attempts `acquireTokenSilent()` against the cached account before clearing auth. Successful silent restoration hydrates `/api/v1/owners/me` and skips auth entry routes by routing straight to `/devices`; `interaction_required`/missing-session cases now fall back cleanly to the existing login page instead of forcing an immediate redirect loop.
+- Updated `src\TechInventory.Web\src\lib\auth\index.ts` to promote the first cached MSAL account to active state in this single-household app and to expose a silent-only token helper distinct from the normal API-call redirect fallback. `src\TechInventory.Web\src\routes\auth\login\+page.svelte` now shows a short “Checking your household session…” splash (with delayed spinner) while the silent check runs, so users never see a flash of the login CTA before an auto-redirect.
+- Added focused coverage in `src\TechInventory.Web\src\lib\auth\index.test.ts` for cached-account promotion, silent success, `interaction_required` fallback, and the normal interactive redirect path. Validation: `pnpm run check` ✅, changed-file ESLint ✅, `pnpm exec vitest run src/lib/auth/index.test.ts` ✅ (**5 passed**), full `pnpm exec vitest run` ✅, `pnpm run build` ✅. Repo `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify.ps1` now gets through backend/frontend verification and still fails only when Playwright tries to call unavailable `docker` in this environment.
+
+---
+
 ## 2026-05-20 — Hicks P003-T09/T10 merge + insurance backend alignment
 
 - Finalized the backend half of `P003-T09` and `P003-T10`: `POST /api/v1/brands/merge`, `/api/v1/categories/merge`, and `/api/v1/locations/merge` are admin-only MediatR flows that validate distinct IDs, reassign device foreign keys, deactivate the source record, and append paired `AuditEvent` entries; category merge also reparents descendants and blocks descendant/depth conflicts.

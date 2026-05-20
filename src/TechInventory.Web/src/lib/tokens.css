@@ -94,6 +94,14 @@
 	--color-info-700: var(--app-color-info-700);
 	--color-info-800: var(--app-color-info-800);
 	--color-info-900: var(--app-color-info-900);
+
+	/* F029: Semantic diff tokens for JSON audit diffs (Drake, WCAG AA verified) */
+	--color-diff-add-fg: var(--app-color-diff-add-fg);
+	--color-diff-add-bg: var(--app-color-diff-add-bg);
+	--color-diff-remove-fg: var(--app-color-diff-remove-fg);
+	--color-diff-remove-bg: var(--app-color-diff-remove-bg);
+	--color-diff-change-fg: var(--app-color-diff-change-fg);
+	--color-diff-change-bg: var(--app-color-diff-change-bg);
 }
 
 @layer base {
@@ -245,6 +253,14 @@
 		--app-color-info-800: #00695c;
 		--app-color-info-900: #004d40;
 
+		/* F029: Semantic diff tokens — light theme (Drake, WCAG AA verified) */
+		--app-color-diff-add-fg: #1b5e20; /* Success-700: rich forest green */
+		--app-color-diff-add-bg: #e8f5e9; /* Success-50: pale mint wash */
+		--app-color-diff-remove-fg: #7f0000; /* Danger-900: deep burgundy */
+		--app-color-diff-remove-bg: #ffebee; /* Danger-50: pale rose wash */
+		--app-color-diff-change-fg: #6b4423; /* Warm brown (bespoke) */
+		--app-color-diff-change-bg: #fff8e1; /* Warning-50: pale cream wash */
+
 		/* Semantic color mappings (for hand-written CSS; not Tailwind utilities) */
 		--color-text: var(--app-color-neutral-900);
 		--color-text-secondary: var(--app-color-neutral-600);
@@ -352,8 +368,10 @@
 		/* xl: 1280px */
 	}
 
-	@media (prefers-color-scheme: dark) {
-		:root {
+	/* F029: Dark theme gating pattern. Both `:root[data-theme='dark']` (explicit
+	   user preference) AND `@media (prefers-color-scheme: dark) :root:not([data-theme='light'])`
+	   (system preference when not explicitly overridden to light). */
+	:root[data-theme='dark'] {
 			/* ===== Color Palette — Dark Theme =====
 			 *
 			 * IMPORTANT: shade indices keep the same direction in both themes
@@ -419,6 +437,110 @@
 			--app-color-info-400: #4db6ac;
 			--app-color-info-500: #26a69a;
 			--app-color-info-600: #4db6ac;
+
+			/* F029: Semantic diff tokens — dark theme (Drake, WCAG AA verified) */
+			--app-color-diff-add-fg: #a5d6a7; /* Success-200: bright mint */
+			--app-color-diff-add-bg: #1b5e20; /* Success-700: dark forest green */
+			--app-color-diff-remove-fg: #ef9a9a; /* Danger-200: bright rose */
+			--app-color-diff-remove-bg: #7f0000; /* Danger-900: deep burgundy */
+			--app-color-diff-change-fg: #ffe082; /* Warning-200: bright amber */
+			--app-color-diff-change-bg: #6b4423; /* Warm brown (bespoke) */
+
+			/* Semantic color mappings — these flip meaning between themes. */
+			--color-text: var(--app-color-neutral-50);
+			--color-text-secondary: var(--app-color-neutral-300);
+			--color-text-muted: var(--app-color-neutral-400);
+			--color-bg: var(--app-color-neutral-900);
+			--color-bg-secondary: var(--app-color-neutral-800);
+			--color-bg-tertiary: var(--app-color-neutral-700);
+			--color-border: var(--app-color-neutral-700);
+			--color-border-focus: var(--app-color-primary-500);
+
+			/* Shadows (lighter for dark mode) */
+			--shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+			--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4),
+				0 2px 4px -2px rgba(0, 0, 0, 0.4);
+			--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5),
+				0 4px 6px -4px rgba(0, 0, 0, 0.5);
+			--shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6),
+				0 8px 10px -6px rgba(0, 0, 0, 0.6);
+		}
+
+	@media (prefers-color-scheme: dark) {
+		:root:not([data-theme='light']) {
+			/* ===== Color Palette — Dark Theme (system preference) =====
+			 *
+			 * IMPORTANT: shade indices keep the same direction in both themes
+			 * (50 = lightest, 900 = darkest). Components author classes with
+			 * conventional Tailwind assumptions — `text-neutral-900
+			 * dark:text-neutral-50`, `bg-primary-600 dark:bg-primary-700` —
+			 * which only work if `dark:bg-neutral-900` actually resolves to a
+			 * dark color. Previously these shades inverted in dark mode and
+			 * silently cancelled every component's `dark:` override (e.g. row
+			 * text became dark on dark, page bg became light gray on dark).
+			 *
+			 * The dark-theme palette here only RETUNES individual shades for
+			 * better contrast on dark surfaces; it never reverses ordering.
+			 * Light/dark "meaning swap" lives in the semantic tokens below
+			 * (--color-text, --color-bg, etc.) — that's the right place for
+			 * it.
+			 */
+
+			/* Primary — slightly brighter shades for dark surfaces, same
+			   ordering as light (50 lightest, 900 darkest). */
+			--app-color-primary-50: #e8f3ff;
+			--app-color-primary-100: #d1e6ff;
+			--app-color-primary-200: #a3cdff;
+			--app-color-primary-300: #75b3ff;
+			--app-color-primary-400: #2997ff; /* Apple SF blue, dark mode */
+			--app-color-primary-500: #0a84ff;
+			--app-color-primary-600: #0077ed;
+			--app-color-primary-700: #006adc;
+			--app-color-primary-800: #005bb5;
+			--app-color-primary-900: #00509e;
+
+			/* Neutral — retuned for dark mode but ordering preserved.
+			   Top shades (50/100) are kept slightly off-white so subtle
+			   surfaces (rings, dividers in dark cards) still read as bright. */
+			--app-color-neutral-50: #f5f5f7;
+			--app-color-neutral-100: #e8e8ed;
+			--app-color-neutral-200: #d2d2d7;
+			--app-color-neutral-300: #b0b0b5;
+			--app-color-neutral-400: #86868b;
+			--app-color-neutral-500: #6e6e73;
+			--app-color-neutral-600: #515154;
+			--app-color-neutral-700: #3a3a3c;
+			--app-color-neutral-800: #2d2d2f;
+			--app-color-neutral-900: #1d1d1f;
+			--app-color-neutral-950: #0a0a0a;
+
+			/* Success (lighter green for visibility on dark surfaces) */
+			--app-color-success-400: #81c784;
+			--app-color-success-500: #66bb6a;
+			--app-color-success-600: #4caf50;
+
+			/* Warning (lighter orange/yellow) */
+			--app-color-warning-400: #ffd54f;
+			--app-color-warning-500: #ffb74d;
+			--app-color-warning-600: #ffa726;
+
+			/* Danger (lighter red) */
+			--app-color-danger-400: #ef5350;
+			--app-color-danger-500: #ef5350;
+			--app-color-danger-600: #e57373;
+
+			/* Info (lighter teal) */
+			--app-color-info-400: #4db6ac;
+			--app-color-info-500: #26a69a;
+			--app-color-info-600: #4db6ac;
+
+			/* F029: Semantic diff tokens — dark theme (Drake, WCAG AA verified) */
+			--app-color-diff-add-fg: #a5d6a7; /* Success-200: bright mint */
+			--app-color-diff-add-bg: #1b5e20; /* Success-700: dark forest green */
+			--app-color-diff-remove-fg: #ef9a9a; /* Danger-200: bright rose */
+			--app-color-diff-remove-bg: #7f0000; /* Danger-900: deep burgundy */
+			--app-color-diff-change-fg: #ffe082; /* Warning-200: bright amber */
+			--app-color-diff-change-bg: #6b4423; /* Warm brown (bespoke) */
 
 			/* Semantic color mappings — these flip meaning between themes. */
 			--color-text: var(--app-color-neutral-50);

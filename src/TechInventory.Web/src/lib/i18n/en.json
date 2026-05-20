@@ -820,7 +820,15 @@
 		},
 		"deferred": {
 			"heading": "Coming soon",
-			"body": "Avatar upload, dark-mode override, default landing page, and density controls land in the next iteration (F020b)."
+			"body": "Avatar upload, default landing page, and density controls land in the next iteration (F020b)."
+		},
+		"theme": {
+			"heading": "Appearance",
+			"subheading": "Control how the app looks in light and dark modes.",
+			"toggleLabel": "Theme preference",
+			"light": "Light",
+			"dark": "Dark",
+			"system": "System"
 		}
 	},
 	"errors": {

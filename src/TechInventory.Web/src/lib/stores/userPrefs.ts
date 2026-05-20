@@ -21,11 +21,13 @@ const KEY_PREFIX = 'ti.userPrefs.v1';
 const UserPrefsSchema = z.object({
 	version: z.literal(STORAGE_VERSION),
 	devicesDefaultView: z.string().nullable().optional(),
-	devicesViewMode: z.enum(['cards', 'table']).nullable().optional()
+	devicesViewMode: z.enum(['cards', 'table']).nullable().optional(),
+	themePreference: z.enum(['light', 'dark', 'system']).nullable().optional()
 });
 
 export type UserPrefs = z.infer<typeof UserPrefsSchema>;
 export type DevicesViewMode = 'cards' | 'table';
+export type ThemePreference = 'light' | 'dark' | 'system';
 
 const EMPTY_PREFS: UserPrefs = { version: STORAGE_VERSION };
 
@@ -114,6 +116,22 @@ export function setDevicesViewMode(
 	if (!userId) return;
 	const prefs = readPrefs(userId);
 	prefs.devicesViewMode = mode;
+	writePrefs(userId, prefs);
+}
+
+export function getThemePreference(userId: string | null | undefined): ThemePreference | null {
+	if (!userId) return null;
+	const prefs = readPrefs(userId);
+	return prefs.themePreference ?? null;
+}
+
+export function setThemePreference(
+	userId: string | null | undefined,
+	theme: ThemePreference
+): void {
+	if (!userId) return;
+	const prefs = readPrefs(userId);
+	prefs.themePreference = theme;
 	writePrefs(userId, prefs);
 }
 

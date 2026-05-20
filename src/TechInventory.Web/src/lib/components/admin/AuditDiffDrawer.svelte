@@ -63,13 +63,13 @@
 	function kindClass(kind: DiffKind): string {
 		switch (kind) {
 			case 'added':
-				return 'bg-success-50 text-success-900 dark:bg-success-950 dark:text-success-100 border-l-4 border-success-500';
+				return 'border-l-4 border-success-500';
 			case 'removed':
-				return 'bg-danger-50 text-danger-900 dark:bg-danger-950 dark:text-danger-100 border-l-4 border-danger-500';
+				return 'border-l-4 border-danger-500';
 			case 'changed':
-				return 'bg-warning-50 text-warning-900 dark:bg-warning-950 dark:text-warning-100 border-l-4 border-warning-500';
+				return 'border-l-4 border-warning-500';
 			case 'unchanged':
-				return 'bg-neutral-50 text-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 border-l-4 border-neutral-300 dark:border-neutral-700';
+				return 'border-l-4 border-neutral-300 dark:border-neutral-700';
 		}
 	}
 
@@ -215,7 +215,16 @@
 
 					<ul class="space-y-2">
 						{#each visibleDiff as entry (entry.path + entry.kind)}
-							<li class="rounded-r-lg px-4 py-3 {kindClass(entry.kind)}">
+							<li
+								class="rounded-r-lg px-4 py-3 {kindClass(entry.kind)}"
+								style={entry.kind === 'added'
+									? 'color: var(--color-diff-add-fg); background-color: var(--color-diff-add-bg);'
+									: entry.kind === 'removed'
+										? 'color: var(--color-diff-remove-fg); background-color: var(--color-diff-remove-bg);'
+										: entry.kind === 'changed'
+											? 'color: var(--color-diff-change-fg); background-color: var(--color-diff-change-bg);'
+											: ''}
+							>
 								<div class="flex items-center justify-between gap-2">
 									<code class="font-mono text-sm font-semibold">
 										{entry.path || '(value)'}

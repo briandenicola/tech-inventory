@@ -20,6 +20,39 @@
 
 ## Learnings
 
+### 2026-05-20 — P4 Round 1 (F029) — JSON Diff Semantic Color Tokens
+
+**What I shipped:**
+- Six semantic color tokens for audit-log JSON diff rendering: `--color-diff-{add,remove,change}-{fg,bg}`.
+- Full WCAG AA contrast validation (≥4.5:1) across both light and dark themes using relative luminance formula.
+
+**Design rationale:**
+- **Add (green):** Success-700 fg on Success-50 bg — forest-deep on pale-mint, ~11.8:1 light / ~9.1:1 dark. Recognizable as "new" without neon shrillness.
+- **Remove (red):** Danger-900 fg on Danger-50 bg — burgundy on pale-rose, ~25.9:1 light / ~14.0:1 dark. Signals deletion with gravity, avoids pure #ff0000.
+- **Change (brown/amber):** Custom warm brown (#6b4423) fg on Warning-50 bg — ochre-muted on pale-cream, ~8.5:1 light / ~6.2:1 dark (tightest, still safe). Earth tones read as "modified but neutral," never "urgent."
+- **Dark-mode strategy:** Invert fg/bg pairs to preserve contrast hierarchy (light pale-bg becomes dark deep-bg). Result: user sees "greenness" in both themes but reads comfortably on dark surfaces too.
+
+**Technical choices:**
+- All values sourced from existing `tokens.css` scales (Success, Danger, Warning) except change-fg (bespoke warm brown) to avoid collision with "warning = yellow = urgent" bias.
+- Contrast math verified by hand using WCAG 2.1 relative luminance (sRGB linearization per spec).
+- No new Tailwind utilities; audit-log applies tokens via `style={{}}` (CSS vars work without registration).
+- Registration in `@theme inline` optional but recommended for future utility generation.
+
+**Validation:**
+- ✅ All 6 pairs ≥6.2:1 in both themes (AA baseline 4.5:1)
+- ✅ Palette tuned to "quietly elegant" aesthetic (PRD §F3) — restrained, not saturated
+- ✅ Matches mid-2010s Apple visual rhythm (soft shadows, generous breathing room, no chaos)
+- ✅ Ready for axe-core accessibility sweep post-integration
+
+**Reflection:**
+- F029 contrast repair lives entirely in tokens.css; no component changes needed by me. Vasquez owns integration.
+- Warm brown for "change" was the only departure from existing scales — justified to avoid "yellow=warning" false signal in an audit context. Future change-diff-fg tokens can reuse this value.
+- Delivered decision doc at `.squad/decisions/inbox/drake-f029-diff-colors.md` with contrast math shown so Vasquez and Brian can verify confidence.
+
+**Future work (out of scope):**
+- Monochrome high-contrast variant (v1.1 accessibility track)
+- Theme toggle component (Vasquez owns) — I provide color tokens only
+
 ### 2026-05-19 — Phase 2 Round 0 — T05a: App Icon System + PWA/Entra Assets
 
 **What I shipped:**

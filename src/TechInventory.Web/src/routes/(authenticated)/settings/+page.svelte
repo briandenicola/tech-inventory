@@ -17,6 +17,7 @@
 	import { addToast } from '$lib/stores/toast';
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
+	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 
 	const currentUser = $derived($authStore.currentUser);
 
@@ -214,6 +215,26 @@
 					</button>
 				</div>
 			</form>
+		</section>
+
+		<!-- F029: Appearance (theme toggle) -->
+		<section
+			class="mt-6 rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-950"
+			aria-labelledby="theme-heading"
+		>
+			<h2
+				id="theme-heading"
+				class="text-lg font-semibold text-neutral-900 dark:text-neutral-50"
+			>
+				{t('settings.theme.heading')}
+			</h2>
+			<p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+				{t('settings.theme.subheading')}
+			</p>
+
+			<div class="mt-4">
+				<ThemeToggle />
+			</div>
 		</section>
 
 		<section

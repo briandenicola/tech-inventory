@@ -46,6 +46,26 @@ public sealed record EraReportResponse(
     DateOnly AsOfDate,
     Guid? AppliedCategoryId);
 
+public enum TimelineGroupBy
+{
+    Category = 1,
+    Owner = 2,
+}
+
+public sealed record TimelineReportEntry(
+    string DeviceName,
+    string? Brand,
+    DateOnly PurchaseDate,
+    DateOnly? DisposalDate,
+    string GroupLabel,
+    decimal EstimatedValue);
+
+public sealed record TimelineReportResponse(
+    IReadOnlyList<TimelineReportEntry> Entries,
+    DateOnly AsOfDate,
+    TimelineGroupBy GroupBy,
+    Guid? AppliedCategoryId);
+
 public enum SpendingGroupBy
 {
     Month = 1,

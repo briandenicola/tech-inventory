@@ -105,6 +105,66 @@ public sealed class ReportingQueryHandlerTests
     }
 
     [Fact]
+    public async Task GetTimelineReportQueryHandler_WhenCalled_ReturnsRepositoryResponseWithMetadata()
+    {
+        var repository = Substitute.For<IReportingRepository>();
+        var now = new DateTimeOffset(2026, 5, 20, 14, 30, 0, TimeSpan.Zero);
+        var categoryId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        var entries = new[]
+        {
+            new TimelineReportEntry("Laptop", "Lenovo", new DateOnly(2020, 4, 1), null, "Brian", 1200m),
+            new TimelineReportEntry("Phone", "Apple", new DateOnly(2022, 9, 16), new DateOnly(2024, 12, 31), "Casey", 999m),
+        };
+        repository.GetTimelineReportAsync(categoryId, TimelineGroupBy.Owner, new DateOnly(2020, 1, 1), new DateOnly(2024, 12, 31), Arg.Any<CancellationToken>())
+            .Returns(entries);
+        var handler = new GetTimelineReportQueryHandler(repository, new FixedTimeProvider(now));
+        var query = new GetTimelineReportQuery(categoryId, "Owner", new DateOnly(2020, 1, 1), new DateOnly(2024, 12, 31));
+
+        var result = await handler.Handle(query, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().BeEquivalentTo(new TimelineReportResponse(entries, new DateOnly(2026, 5, 20), TimelineGroupBy.Owner, categoryId));
+        await repository.Received(1).GetTimelineReportAsync(query.CategoryId, TimelineGroupBy.Owner, query.FromDate, query.ToDate, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetTimelineReportQueryHandler_WhenCategoryIdNull_ReturnsResponseWithNullAppliedCategoryId()
+    {
+        var repository = Substitute.For<IReportingRepository>();
+        var now = new DateTimeOffset(2026, 5, 20, 14, 30, 0, TimeSpan.Zero);
+        var entries = new[]
+        {
+            new TimelineReportEntry("Tablet", null, new DateOnly(2018, 6, 1), null, "Computers", 499m),
+        };
+        repository.GetTimelineReportAsync(null, TimelineGroupBy.Category, null, null, Arg.Any<CancellationToken>())
+            .Returns(entries);
+        var handler = new GetTimelineReportQueryHandler(repository, new FixedTimeProvider(now));
+
+        var result = await handler.Handle(new GetTimelineReportQuery(), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.AppliedCategoryId.Should().BeNull();
+        result.Value.GroupBy.Should().Be(TimelineGroupBy.Category);
+        result.Value.Entries.Should().BeEquivalentTo(entries);
+    }
+
+    [Fact]
+    public async Task GetTimelineReportQueryHandler_WhenRepositoryReturnsNoEntries_ReturnsEmptyResponse()
+    {
+        var repository = Substitute.For<IReportingRepository>();
+        var now = new DateTimeOffset(2026, 5, 20, 14, 30, 0, TimeSpan.Zero);
+        repository.GetTimelineReportAsync(null, TimelineGroupBy.Category, null, null, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<TimelineReportEntry>());
+        var handler = new GetTimelineReportQueryHandler(repository, new FixedTimeProvider(now));
+
+        var result = await handler.Handle(new GetTimelineReportQuery(), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Entries.Should().BeEmpty();
+        result.Value.AsOfDate.Should().Be(new DateOnly(2026, 5, 20));
+    }
+
+    [Fact]
     public async Task GetInsuranceReportQueryHandler_WhenCalled_ReturnsCsvWithHeaderAndFooter()
     {
         var repository = Substitute.For<IReportingRepository>();
@@ -156,6 +216,20 @@ public sealed class ReportingQueryHandlerTests
             query,
             new GetEraReportQueryValidator(),
             new EraReportResponse([], new DateOnly(2026, 5, 20), null));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("Validation");
+    }
+
+    [Fact]
+    public async Task GetTimelineReportQuery_WhenGroupByInvalid_ReturnsValidationFailure()
+    {
+        var query = new GetTimelineReportQuery(null, "Household", null, null);
+
+        var result = await DeviceHandlerTestSupport.ValidateAsync(
+            query,
+            new GetTimelineReportQueryValidator(),
+            new TimelineReportResponse([], new DateOnly(2026, 5, 20), TimelineGroupBy.Category, null));
 
         result.IsFailure.Should().BeTrue();
         result.Error!.Code.Should().Be("Validation");

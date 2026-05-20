@@ -140,6 +140,56 @@ public sealed class ReportingRepository(AppDbContext dbContext) : IReportingRepo
             .ToArray();
     }
 
+    public async Task<IReadOnlyList<TimelineReportEntry>> GetTimelineReportAsync(Guid? categoryId, TimelineGroupBy groupBy, DateOnly? fromDate, DateOnly? toDate, CancellationToken cancellationToken)
+    {
+        var query = _dbContext.Devices
+            .AsNoTracking()
+            .Where(device => device.PurchaseDate.HasValue);
+
+        if (categoryId.HasValue)
+        {
+            query = query.Where(device => device.CategoryId == categoryId.Value);
+        }
+
+        if (fromDate.HasValue)
+        {
+            query = query.Where(device => device.PurchaseDate >= fromDate.Value);
+        }
+
+        if (toDate.HasValue)
+        {
+            query = query.Where(device => device.PurchaseDate <= toDate.Value);
+        }
+
+        var entries = await (
+                from device in query
+                join category in _dbContext.Categories.AsNoTracking() on device.CategoryId equals category.Id
+                join owner in _dbContext.Owners.AsNoTracking() on device.OwnerId equals owner.Id
+                join brand in _dbContext.Brands.AsNoTracking() on device.BrandId equals brand.Id into brandGroup
+                from brand in brandGroup.DefaultIfEmpty()
+                orderby device.PurchaseDate, device.Name
+                select new TimelineReportProjection(
+                    device.Name,
+                    brand != null ? brand.Name : null,
+                    device.PurchaseDate!.Value,
+                    device.RetiredDate,
+                    category.Name,
+                    owner.DisplayName,
+                    device.PurchasePrice))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return entries
+            .Select(entry => new TimelineReportEntry(
+                entry.DeviceName,
+                entry.Brand,
+                entry.PurchaseDate,
+                entry.DisposalDate,
+                groupBy == TimelineGroupBy.Owner ? entry.OwnerLabel : entry.CategoryLabel,
+                entry.EstimatedValue ?? 0m))
+            .ToArray();
+    }
+
     public async Task<IReadOnlyList<InsuranceReportItem>> GetInsuranceReportItemsAsync(Guid? locationId, CancellationToken cancellationToken)
     {
         var activeDevices = _dbContext.Devices
@@ -238,4 +288,13 @@ public sealed class ReportingRepository(AppDbContext dbContext) : IReportingRepo
     private static int GetDecadeStartYear(int year) => year / 10 * 10;
 
     private sealed record EraReportDeviceProjection(string Name, int PurchaseYear, decimal? PurchasePrice);
+
+    private sealed record TimelineReportProjection(
+        string DeviceName,
+        string? Brand,
+        DateOnly PurchaseDate,
+        DateOnly? DisposalDate,
+        string CategoryLabel,
+        string OwnerLabel,
+        decimal? EstimatedValue);
 }

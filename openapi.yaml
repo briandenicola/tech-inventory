@@ -2828,6 +2828,55 @@ paths:
             text/json:
               schema:
                 $ref: '#/components/schemas/ValidationProblemDetails'
+  /api/v1/reports/timeline:
+    get:
+      tags:
+        - Reports
+      parameters:
+        - name: categoryId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: groupBy
+          in: query
+          schema:
+            type: string
+        - name: fromDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: toDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/TimelineReportResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimelineReportResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/TimelineReportResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
   /api/v1/reports/insurance:
     get:
       tags:
@@ -4283,6 +4332,52 @@ components:
         pageSize:
           type: integer
           format: int32
+      additionalProperties: false
+    TimelineGroupBy:
+      enum:
+        - Category
+        - Owner
+      type: string
+    TimelineReportEntry:
+      type: object
+      properties:
+        deviceName:
+          type: string
+          nullable: true
+        brand:
+          type: string
+          nullable: true
+        purchaseDate:
+          type: string
+          format: date
+        disposalDate:
+          type: string
+          format: date
+          nullable: true
+        groupLabel:
+          type: string
+          nullable: true
+        estimatedValue:
+          type: number
+          format: double
+      additionalProperties: false
+    TimelineReportResponse:
+      type: object
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimelineReportEntry'
+          nullable: true
+        asOfDate:
+          type: string
+          format: date
+        groupBy:
+          $ref: '#/components/schemas/TimelineGroupBy'
+        appliedCategoryId:
+          type: string
+          format: uuid
+          nullable: true
       additionalProperties: false
     UpdateBrandRequest:
       type: object

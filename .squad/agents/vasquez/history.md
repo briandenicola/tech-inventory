@@ -34,6 +34,12 @@ Accessibility: WCAG 2.2 AA target, zero axe-core violations to merge. Browser ma
 
 ## Learnings
 
+### 2026-05-20 (F035-T03/T05) — era report card + i18n
+
+- A self-contained report card component is the clean way to add whimsical reports onto `/reports` without bloating the page route: the page keeps ownership of the summary/warranty panels, while the card owns its own filter state, API call, loading/error/empty states, and a11y checks.
+- Reusing `referenceDataStore` for report filters is cheaper and more consistent than adding one-off category fetch logic per card. The report card can lazy-prime reference data on mount, but most authenticated visits already arrive with categories cached from the shared layout.
+- For “fun” data viz in this codebase, lightweight gradient bars + sample-device chips hit the brief without needing chart libraries; they stay mobile-friendly, token-safe, and easy to cover with `vitest-axe`.
+
 ### 2026-05-20 (P003-T06) — responsive admin tables ✅ COMPLETE
 
 - A shared snippet-driven wrapper (`ResponsiveAdminList.svelte`) is the clean way to give multiple admin entity pages the same responsive split: mobile cards below `md`, semantic tables at `md+`, while each page still owns its field rendering and actions.

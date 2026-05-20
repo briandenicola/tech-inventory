@@ -10,7 +10,7 @@ Extends spec-003 T11/T12 reporting work.
 
 | ID | Feature | Description | Priority | Status |
 |----|---------|-------------|----------|--------|
-| F035 | Era/decade device reports | Cell phones owned over the eras/decades; Laptops over the decades | P3 | Backlog |
+| F035 | Era/decade device reports | Cell phones owned over the eras/decades; Laptops over the decades. `/reports` now includes the first era report card backed by `/api/v1/reports/eras` with category filtering; broader nostalgic report set still remains. | P3 | In Progress |
 | F036 | Achievement reports | "Most brands used", "oldest device still active", collection milestones | P3 | Backlog |
 | F037 | Historical tech timeline | Visual timeline of devices owned over time | P3 | Backlog |
 
@@ -39,4 +39,4 @@ The following items are candidates for future scheduling but lack committed owne
 
 ---
 
-**Last updated:** 2026-05-20T18:33Z by Scribe
+**Last updated:** 2026-05-20T14:39Z by Hicks

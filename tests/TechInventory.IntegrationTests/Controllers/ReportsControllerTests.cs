@@ -143,6 +143,80 @@ public sealed class ReportsControllerTests(IntegrationTestFactory<ReportsControl
     }
 
     [Fact]
+    public async Task GetEras_WhenDataExists_ReturnsSortedDecadeBuckets()
+    {
+        await ResetDatabaseAsync();
+        var references = await SeedDeviceReferenceDataAsync();
+        var secondCategory = new Category(Guid.NewGuid(), "Wearables");
+        await SeedAsync(entities: [secondCategory]);
+        await SeedAsync(
+            entities:
+            [
+                CreateReportDevice(references.Household, references.Brand.Id, references.Category.Id, references.Owner.Id, references.Location.Id, references.Network.Id, "Future Console", DeviceStatus.Active, 1500m, purchaseDate: new DateOnly(2032, 7, 1)),
+                CreateReportDevice(references.Household, references.Brand.Id, references.Category.Id, references.Owner.Id, references.Location.Id, references.Network.Id, "Phone 2026", DeviceStatus.Lent, 900m, purchaseDate: new DateOnly(2026, 5, 1)),
+                CreateReportDevice(references.Household, references.Brand.Id, references.Category.Id, references.Owner.Id, references.Location.Id, references.Network.Id, "Laptop 2024", DeviceStatus.Active, 1200m, purchaseDate: new DateOnly(2024, 3, 1)),
+                CreateReportDevice(references.Household, references.Brand.Id, secondCategory.Id, references.Owner.Id, references.Location.Id, references.Network.Id, "Watch 2021", DeviceStatus.Active, 100m, purchaseDate: new DateOnly(2021, 11, 1)),
+                CreateReportDevice(references.Household, references.Brand.Id, references.Category.Id, references.Owner.Id, references.Location.Id, references.Network.Id, "Tablet 2020", DeviceStatus.InRepair, 400m, purchaseDate: new DateOnly(2020, 1, 1)),
+                CreateReportDevice(references.Household, references.Brand.Id, references.Category.Id, references.Owner.Id, references.Location.Id, references.Network.Id, "Vintage Stereo", DeviceStatus.Active, 300m, purchaseDate: new DateOnly(1979, 6, 1)),
+                CreateReportDevice(references.Household, references.Brand.Id, references.Category.Id, references.Owner.Id, references.Location.Id, references.Network.Id, "No Purchase Date", DeviceStatus.Active, 250m, purchaseDate: null, useDefaultPurchaseDate: false),
+                CreateReportDevice(references.Household, references.Brand.Id, references.Category.Id, references.Owner.Id, references.Location.Id, references.Network.Id, "Retired 2022", DeviceStatus.Retired, 999m, purchaseDate: new DateOnly(2022, 4, 1))
+            ]);
+        using var client = CreateClient();
+
+        var response = await client.GetAsync("/api/v1/reports/eras");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var payload = await ReadJsonAsync<EraReportResponse>(response);
+        payload.AppliedCategoryId.Should().BeNull();
+        payload.AsOfDate.Should().Be(DateOnly.FromDateTime(DateTime.UtcNow));
+        payload.Decades.Select(decade => decade.Decade).Should().Equal("2030s", "2020s", "1970s");
+        payload.Decades[0].Should().BeEquivalentTo(new EraReportDecade("2030s", 2030, 2039, 1, 1500m, ["Future Console"]));
+        payload.Decades[1].Should().BeEquivalentTo(new EraReportDecade("2020s", 2020, 2029, 4, 2600m, ["Phone 2026", "Laptop 2024", "Watch 2021"]));
+        payload.Decades[2].Should().BeEquivalentTo(new EraReportDecade("1970s", 1970, 1979, 1, 300m, ["Vintage Stereo"]));
+    }
+
+    [Fact]
+    public async Task GetEras_WhenFilteredByCategory_ReturnsMatchingDecadesOnly()
+    {
+        await ResetDatabaseAsync();
+        var references = await SeedDeviceReferenceDataAsync();
+        var secondCategory = new Category(Guid.NewGuid(), "Phones");
+        await SeedAsync(entities: [secondCategory]);
+        await SeedAsync(
+            entities:
+            [
+                CreateReportDevice(references.Household, references.Brand.Id, references.Category.Id, references.Owner.Id, references.Location.Id, references.Network.Id, "Included Laptop", DeviceStatus.Active, 1000m, purchaseDate: new DateOnly(2024, 3, 1)),
+                CreateReportDevice(references.Household, references.Brand.Id, references.Category.Id, references.Owner.Id, references.Location.Id, references.Network.Id, "Included Tablet", DeviceStatus.Active, 500m, purchaseDate: new DateOnly(2016, 8, 1)),
+                CreateReportDevice(references.Household, references.Brand.Id, secondCategory.Id, references.Owner.Id, references.Location.Id, references.Network.Id, "Excluded Phone", DeviceStatus.Active, 700m, purchaseDate: new DateOnly(2025, 1, 1))
+            ]);
+        using var client = CreateClient();
+
+        var response = await client.GetAsync($"/api/v1/reports/eras?categoryId={references.Category.Id}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var payload = await ReadJsonAsync<EraReportResponse>(response);
+        payload.AppliedCategoryId.Should().Be(references.Category.Id);
+        payload.Decades.Should().BeEquivalentTo(
+            [
+                new EraReportDecade("2020s", 2020, 2029, 1, 1000m, ["Included Laptop"]),
+                new EraReportDecade("2010s", 2010, 2019, 1, 500m, ["Included Tablet"])
+            ]);
+    }
+
+    [Fact]
+    public async Task GetEras_WhenCategoryIdEmpty_Returns400ValidationProblemDetails()
+    {
+        await ResetDatabaseAsync();
+        using var client = CreateClient();
+
+        var response = await client.GetAsync("/api/v1/reports/eras?categoryId=00000000-0000-0000-0000-000000000000");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problem = await ReadValidationProblemDetailsAsync(response);
+        problem.Errors.Keys.Should().Contain(key => string.Equals(key, "CategoryId", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public async Task GetInsurance_WhenFilteredByLocation_ReturnsCsvAttachmentForActiveDevicesOnly()
     {
         await ResetDatabaseAsync();
@@ -198,7 +272,8 @@ public sealed class ReportsControllerTests(IntegrationTestFactory<ReportsControl
         DeviceStatus status,
         decimal? purchasePrice,
         DateOnly? purchaseDate = null,
-        DateOnly? warrantyExpiry = null)
+        DateOnly? warrantyExpiry = null,
+        bool useDefaultPurchaseDate = true)
     {
         var retiredDate = status is DeviceStatus.Retired or DeviceStatus.Disposed
             ? new DateOnly(2024, 12, 31)
@@ -216,7 +291,7 @@ public sealed class ReportsControllerTests(IntegrationTestFactory<ReportsControl
             model: "Report Model",
             serialNumber: $"SN-{Guid.NewGuid():N}"[..12],
             networkId: networkId,
-            purchaseDate: purchaseDate ?? new DateOnly(2024, 1, 1),
+            purchaseDate: purchaseDate ?? (useDefaultPurchaseDate ? new DateOnly(2024, 1, 1) : null),
             purchasePrice: purchasePrice,
             currency: Currency.From("USD"),
             status: status,

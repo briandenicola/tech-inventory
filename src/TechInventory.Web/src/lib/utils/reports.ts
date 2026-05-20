@@ -1,4 +1,5 @@
 import type {
+	EraReportResponse,
 	SummaryReportResponse,
 	WarrantyReportItemResponse,
 	WarrantyReportResponse
@@ -38,6 +39,21 @@ export interface WarrantyReportItemViewModel {
 export interface WarrantyReportViewModel {
 	totalCount: number;
 	items: WarrantyReportItemViewModel[];
+}
+
+export interface EraReportDecadeViewModel {
+	decade: string;
+	startYear: number;
+	endYear: number;
+	deviceCount: number;
+	totalValue: number;
+	sampleDevices: string[];
+}
+
+export interface EraReportViewModel {
+	decades: EraReportDecadeViewModel[];
+	asOfDate: string | null;
+	appliedCategoryId: string | null;
 }
 
 function isFiniteNumber(value: unknown): value is number {
@@ -119,6 +135,30 @@ export function normalizeWarrantyReport(response: WarrantyReportResponse): Warra
 	return {
 		totalCount: normalizeCount(response.totalCount) || items.length,
 		items
+	};
+}
+
+export function normalizeEraReport(response: EraReportResponse): EraReportViewModel {
+	const decades = (response.decades ?? [])
+		.map((item) => ({
+			decade: normalizeLabel(item?.decade, 'Unknown'),
+			startYear: normalizeCount(item?.startYear),
+			endYear: normalizeCount(item?.endYear),
+			deviceCount: normalizeCount(item?.deviceCount),
+			totalValue: isFiniteNumber(item?.totalValue) ? item.totalValue : 0,
+			sampleDevices: (item?.sampleDevices ?? []).filter(
+				(device): device is string => typeof device === 'string' && device.trim().length > 0
+			)
+		}))
+		.sort((left, right) => left.startYear - right.startYear);
+
+	return {
+		decades,
+		asOfDate: typeof response.asOfDate === 'string' ? response.asOfDate : null,
+		appliedCategoryId:
+			typeof response.appliedCategoryId === 'string' && response.appliedCategoryId.length > 0
+				? response.appliedCategoryId
+				: null
 	};
 }
 

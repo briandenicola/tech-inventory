@@ -29,6 +29,12 @@ public sealed class ReportsController(ISender sender) : ControllerBase
     public async Task<ActionResult<SpendingReportResponse>> GetSpending([FromQuery] GetSpendingReportRequest request, CancellationToken cancellationToken)
         => this.OkResult(await sender.Send(request.ToQuery(), cancellationToken));
 
+    [HttpGet("eras")]
+    [ProducesResponseType(typeof(EraReportResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<EraReportResponse>> GetEras([FromQuery] GetEraReportRequest request, CancellationToken cancellationToken)
+        => this.OkResult(await sender.Send(request.ToQuery(), cancellationToken));
+
     [HttpGet("insurance")]
     [Produces("text/csv")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -55,6 +61,14 @@ public sealed class ReportsController(ISender sender) : ControllerBase
         public DateOnly? ToDate { get; init; }
 
         public GetSpendingReportQuery ToQuery() => new(GroupBy, FromDate, ToDate);
+    }
+
+    public sealed record GetEraReportRequest
+    {
+        [FromQuery(Name = "categoryId")]
+        public Guid? CategoryId { get; init; }
+
+        public GetEraReportQuery ToQuery() => new(CategoryId);
     }
 
     public sealed record GetInsuranceReportRequest

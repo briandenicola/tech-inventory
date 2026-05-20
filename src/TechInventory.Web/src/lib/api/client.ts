@@ -7,6 +7,7 @@
 
 import type { paths, components } from './generated/types';
 import type {
+	EraReportResponse,
 	MergeEntityRequest,
 	MergeEntityResponse,
 	SummaryReportResponse,
@@ -559,6 +560,11 @@ export const auditEvents = {
 // Reports
 export const reports = {
 	summary: async () => apiFetch<SummaryReportResponse>(`/api/v1/reports/summary`),
+
+	eras: async (categoryId?: string | null) =>
+		apiFetch<EraReportResponse>(
+			`/api/v1/reports/eras${buildQueryString({ categoryId })}`
+		),
 
 	warranties: async (days: number) =>
 		apiFetch<WarrantyReportResponse>(

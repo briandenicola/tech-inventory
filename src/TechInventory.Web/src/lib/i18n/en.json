@@ -439,6 +439,34 @@
 			"empty": "No report data is available yet.",
 			"unknownLabel": "Unknown"
 		},
+		"eras": {
+			"title": "Era Report Card",
+			"description": "A playful look at which decades shaped your household tech stack.",
+			"legend": "Bar length shows each decade's share of devices; sample devices add the nostalgia.",
+			"filterLabel": "Category filter",
+			"allCategories": "All Categories",
+			"deviceCount": "{count} devices",
+			"years": "{start}–{end}",
+			"sampleDevices": "Sample devices",
+			"noSamples": "No sample devices yet.",
+			"tableLabel": "Era report table",
+			"cardsLabel": "Era report cards",
+			"asOf": "As of {date}",
+			"empty": "No devices found for this era.",
+			"columns": {
+				"decade": "Decade",
+				"devices": "Devices",
+				"value": "Total value",
+				"sampleDevices": "Sample devices"
+			},
+			"decades": {
+				"1980s": "1980s",
+				"1990s": "1990s",
+				"2000s": "2000s",
+				"2010s": "2010s",
+				"2020s": "2020s"
+			}
+		},
 		"warranties": {
 			"title": "Upcoming Warranty Expirations",
 			"subtitle": "Devices with warranties expiring within the selected window.",
@@ -464,6 +492,7 @@
 		},
 		"errors": {
 			"summary": "Could not load the report summary.",
+			"eras": "Could not load the era report right now.",
 			"warranties": "Could not load the warranty report."
 		}
 	},

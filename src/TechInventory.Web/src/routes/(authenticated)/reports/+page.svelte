@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import api from '$lib/api/client';
+	import EraReportCard from '$lib/components/EraReportCard.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
 	import ReportBreakdownCard from '$lib/components/ReportBreakdownCard.svelte';
@@ -123,6 +124,10 @@
 			</div>
 		</div>
 	{/if}
+
+	<div class="mt-8">
+		<EraReportCard />
+	</div>
 
 	<div class="mt-8">
 		<WarrantyExpiryPanel

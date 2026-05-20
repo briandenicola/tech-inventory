@@ -33,6 +33,19 @@ public sealed record InsuranceReportItem(
 
 public sealed record InsuranceReportFileResponse(string FileName, byte[] Content);
 
+public sealed record EraReportDecade(
+    string Decade,
+    int StartYear,
+    int EndYear,
+    int DeviceCount,
+    decimal TotalValue,
+    IReadOnlyList<string> SampleDevices);
+
+public sealed record EraReportResponse(
+    IReadOnlyList<EraReportDecade> Decades,
+    DateOnly AsOfDate,
+    Guid? AppliedCategoryId);
+
 public enum SpendingGroupBy
 {
     Month = 1,

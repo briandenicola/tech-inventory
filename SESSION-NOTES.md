@@ -4,6 +4,24 @@ Append-only log. Newest entries at the top.
 
 ---
 
+## 2026-05-20 — Hicks F035 era/decade report API
+
+- Added `src\TechInventory.Application\Reports\Queries\GetEraReportQuery.cs`, `IReportingRepository.GetEraReportAsync(...)`, and `GET /api/v1/reports/eras` in `src\TechInventory.Api\Controllers\ReportsController.cs`, returning newest-first decade buckets with optional `categoryId` filtering plus `asOfDate` / `appliedCategoryId` metadata.
+- Implemented the repository as a single EF Core projection over active devices with non-null purchase dates; bucketing uses `year / 10 * 10`, sums `PurchasePrice` into `totalValue`, includes pre-1980 and future purchase years, and limits `sampleDevices` to three names per decade.
+- Added backend coverage in `tests\TechInventory.UnitTests\Application\ReportingQueryHandlerTests.cs`, `tests\TechInventory.IntegrationTests\Controllers\ReportsControllerTests.cs`, and new `tests\TechInventory.IntegrationTests\Repositories\ReportingRepositoryIntegrationTests.cs`; regenerated repo-root `openapi.yaml` so `/api/v1/reports/eras?categoryId=` is reflected in the committed spec.
+- Validation: `dotnet format --verify-no-changes` ✅, targeted reporting + OpenAPI drift tests ✅, `dotnet test -c Release --no-build` ✅ (**438 total / 433 passed / 5 skipped / 0 failed**). `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify.ps1` still fails only when Playwright teardown tries to call unavailable `docker` in this environment.
+
+---
+
+## 2026-05-20 — Vasquez F035 era report card + i18n
+
+- Added `src\TechInventory.Web\src\lib\components\EraReportCard.svelte`, `EraReportDecade.svelte`, and `EraReportCard.test.ts`, then wired the new card into `src\TechInventory.Web\src\routes\(authenticated)\reports\+page.svelte` so `/reports` now shows a whimsical decade breakdown with gradient bars, sample-device chips, a category filter, and explicit loading/error/empty states.
+- Extended `src\TechInventory.Web\src\lib\api\client.ts`, `api\types.ts`, and `src\TechInventory.Web\src\lib\utils\reports.ts` / `reports.test.ts` with the frozen `/api/v1/reports/eras` contract plus normalization helpers, and added the F035 labels under `src\TechInventory.Web\src\lib\i18n\en.json` (title, legend, decade labels, filter text, empty/error copy, table labels).
+- Updated `docs\backlog.md` to mark `F035` in progress, appended Vasquez learnings, and dropped decision note `.squad\decisions\inbox\vasquez-era-report-card-contained-fetching.md` documenting why whimsical report cards should own their own fetch/filter state while reusing `referenceDataStore`.
+- Validation: `pnpm run check` ✅, `pnpm run lint` ✅, focused `pnpm exec vitest run src/lib/components/EraReportCard.test.ts src/lib/utils/reports.test.ts` ✅, full `pnpm exec vitest run` ✅, `pnpm run build` ✅. Repo `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify.ps1` still fails only when Playwright teardown tries to call unavailable `docker` in this environment.
+
+---
+
 ## 2026-05-20 — Vasquez P003-T06 responsive admin tables
 
 - Added `src\TechInventory.Web\src\lib\components\admin\ResponsiveAdminList.svelte` plus `ResponsiveAdminList.test.ts`, then rewired `admin/brands`, `admin/locations`, `admin/networks`, `admin/owners`, and `admin/tags` so they render single-column cards below `md` and semantic tables at `md+`; brands/locations keep Merge actions visible in the mobile card action rows.

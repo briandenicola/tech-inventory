@@ -84,6 +84,27 @@ public sealed class ReportingQueryHandlerTests
     }
 
     [Fact]
+    public async Task GetEraReportQueryHandler_WhenCalled_ReturnsRepositoryResponseWithMetadata()
+    {
+        var repository = Substitute.For<IReportingRepository>();
+        var now = new DateTimeOffset(2026, 5, 20, 14, 30, 0, TimeSpan.Zero);
+        var categoryId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        var decades = new[]
+        {
+            new EraReportDecade("2020s", 2020, 2029, 2, 3450m, ["iPhone 14 Pro", "MacBook Pro 14"])
+        };
+        repository.GetEraReportAsync(categoryId, Arg.Any<CancellationToken>()).Returns(decades);
+        var handler = new GetEraReportQueryHandler(repository, new FixedTimeProvider(now));
+        var query = new GetEraReportQuery(categoryId);
+
+        var result = await handler.Handle(query, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().BeEquivalentTo(new EraReportResponse(decades, new DateOnly(2026, 5, 20), categoryId));
+        await repository.Received(1).GetEraReportAsync(query.CategoryId, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task GetInsuranceReportQueryHandler_WhenCalled_ReturnsCsvWithHeaderAndFooter()
     {
         var repository = Substitute.For<IReportingRepository>();
@@ -121,6 +142,20 @@ public sealed class ReportingQueryHandlerTests
             query,
             new GetInsuranceReportQueryValidator(),
             new InsuranceReportFileResponse("insurance-report-2026-05-20.csv", []));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("Validation");
+    }
+
+    [Fact]
+    public async Task GetEraReportQuery_WhenCategoryIdEmpty_ReturnsValidationFailure()
+    {
+        var query = new GetEraReportQuery(Guid.Empty);
+
+        var result = await DeviceHandlerTestSupport.ValidateAsync(
+            query,
+            new GetEraReportQueryValidator(),
+            new EraReportResponse([], new DateOnly(2026, 5, 20), null));
 
         result.IsFailure.Should().BeTrue();
         result.Error!.Code.Should().Be("Validation");

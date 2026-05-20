@@ -5,7 +5,9 @@
 	import { devices } from '$lib/api/client';
 	import { showToast } from '$lib/stores/toast';
 	import { invalidateDevicesCache } from '$lib/queries/devices.svelte';
+	import { referenceDataStore } from '$lib/stores/referenceData';
 	import DeviceForm from '$lib/components/DeviceForm.svelte';
+	import TagPicker from '$lib/components/TagPicker.svelte';
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import type { DeviceResponse } from '$lib/queries/devices.svelte';
@@ -13,11 +15,11 @@
 
 	/**
 	 * T21: Device edit page — /devices/[id]/edit
-	 * 
+	 *
 	 * Pre-populate form with existing device data. Retired devices show badge;
 	 * only notes editable when retired. Submit → PUT /api/v1/devices/{id} → toast → redirect.
-	 * 
-	 * Related: specs/002-frontend-mvp/spec.md J7
+	 *
+	 * Related: specs/002-frontend-mvp/spec.md J7, F030 (tag picker)
 	 */
 
 	const deviceId = $derived($page.params.id);
@@ -27,7 +29,13 @@
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
 
-	// Fetch device
+	// F030: tag picker state — load current tags on device fetch and diff
+	// against `selectedTagIds` on submit so we POST/DELETE only what changed.
+	let originalTagIds = $state<string[]>([]);
+	let selectedTagIds = $state<string[]>([]);
+	const availableTags = $derived($referenceDataStore.tags);
+
+	// Fetch device + tags
 	async function fetchDevice() {
 		if (!deviceId) return; // Guard against undefined
 
@@ -35,8 +43,16 @@
 		error = null;
 
 		try {
-			const result = await devices.get(deviceId);
-			device = result as DeviceResponse;
+			const [deviceResult, tagsResult] = await Promise.all([
+				devices.get(deviceId),
+				devices.listTags(deviceId)
+			]);
+			device = deviceResult as DeviceResponse;
+			const currentTagIds = (tagsResult ?? [])
+				.map((tag) => tag.id)
+				.filter((id): id is string => !!id);
+			originalTagIds = currentTagIds;
+			selectedTagIds = [...currentTagIds];
 		} catch (err) {
 			console.error('[device-edit] Fetch failed:', err);
 			error = err instanceof Error ? err.message : 'Failed to load device';
@@ -52,6 +68,11 @@
 
 	// Retired device logic: disable all fields except notes
 	const isRetired = $derived(device?.status === 'Retired');
+	// F030: AddTagToDeviceCommand rejects Disposed devices, and Retired devices
+	// are semantically locked too — hide tag mutations in either state.
+	const tagsLocked = $derived(
+		device?.status === 'Retired' || device?.status === 'Disposed'
+	);
 	const disabledFields = $derived(
 		isRetired
 			? [
@@ -88,12 +109,38 @@
 			};
 
 			await devices.update(device.id, payload);
+
+			// F030: apply tag diff. Skip entirely on locked devices (Retired/Disposed)
+			// because the picker is hidden and selectedTagIds === originalTagIds.
+			let tagFailures = 0;
+			if (!tagsLocked) {
+				const originalSet = new Set(originalTagIds);
+				const selectedSet = new Set(selectedTagIds);
+				const toAdd = selectedTagIds.filter((id) => !originalSet.has(id));
+				const toRemove = originalTagIds.filter((id) => !selectedSet.has(id));
+
+				if (toAdd.length > 0 || toRemove.length > 0) {
+					const results = await Promise.allSettled([
+						...toAdd.map((id) => devices.addTag(device!.id, id)),
+						...toRemove.map((id) => devices.removeTag(device!.id, id))
+					]);
+					tagFailures = results.filter((r) => r.status === 'rejected').length;
+				}
+			}
+
 			invalidateDevicesCache();
 
-			showToast({
-				type: 'success',
-				message: `Device "${data.name}" updated successfully`
-			});
+			if (tagFailures > 0) {
+				showToast({
+					type: 'error',
+					message: t('devices.tags.updateErrorSome', { count: tagFailures })
+				});
+			} else {
+				showToast({
+					type: 'success',
+					message: `Device "${data.name}" updated successfully`
+				});
+			}
 
 			// Navigate back to detail page
 			goto(`/devices/${device.id}`);
@@ -212,6 +259,28 @@
 {:else if device}
 	<!-- Form -->
 	<div class="rounded-lg border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+		{#if !tagsLocked}
+			<!--
+				F030: edit-mode tag picker. Hidden on Retired/Disposed devices
+				because AddTagToDeviceCommand will reject mutations and there's
+				no point letting the user dirty the selection.
+			-->
+			<div class="mb-6">
+				<label
+					for="edit-device-tag-picker"
+					class="mb-1.5 block text-sm font-medium text-neutral-900 dark:text-neutral-100"
+				>
+					{t('devices.tags.sectionLabel')}
+				</label>
+				<TagPicker
+					id="edit-device-tag-picker"
+					selectedIds={selectedTagIds}
+					{availableTags}
+					onChange={(ids) => (selectedTagIds = ids)}
+				/>
+			</div>
+		{/if}
+
 		<DeviceForm
 			mode="edit"
 			initialData={{

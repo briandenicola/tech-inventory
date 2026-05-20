@@ -9,7 +9,10 @@
  */
 
 import { writable } from 'svelte/store';
-import { brands, categories, owners, locations, networks } from '$lib/api/client';
+import { brands, categories, owners, locations, networks, tags } from '$lib/api/client';
+import type { components } from '$lib/api/generated/types';
+
+type TagResponse = components['schemas']['TagResponse'];
 
 /**
  * Simple reference entity shape (name + id)
@@ -28,6 +31,7 @@ export interface ReferenceDataState {
 	owners: ReferenceEntity[];
 	locations: ReferenceEntity[];
 	networks: ReferenceEntity[];
+	tags: TagResponse[];
 	isLoading: boolean;
 	error: string | null;
 }
@@ -38,6 +42,7 @@ const initialState: ReferenceDataState = {
 	owners: [],
 	locations: [],
 	networks: [],
+	tags: [],
 	isLoading: false,
 	error: null
 };
@@ -56,14 +61,15 @@ export async function fetchReferenceData(): Promise<void> {
 	try {
 		// Fetch all in parallel.
 		// pageSize is capped at 200 by Application validators (see Brands/Categories/
-		// Owners/Locations/Networks ListQueryValidator) — asking for more would 400
-		// the whole reference-data fetch and leave every dropdown empty.
-		const [brandsRes, categoriesRes, ownersRes, locationsRes, networksRes] = await Promise.all([
+		// Owners/Locations/Networks/Tags ListQueryValidator) — asking for more would
+		// 400 the whole reference-data fetch and leave every dropdown empty.
+		const [brandsRes, categoriesRes, ownersRes, locationsRes, networksRes, tagsRes] = await Promise.all([
 			brands.list({ pageSize: 200, includeInactive: false }),
 			categories.list({ pageSize: 200, includeInactive: false }),
 			owners.list({ pageSize: 200, includeInactive: false }),
 			locations.list({ pageSize: 200, includeInactive: false }),
-			networks.list({ pageSize: 200, includeInactive: false })
+			networks.list({ pageSize: 200, includeInactive: false }),
+			tags.list({ pageSize: 200, includeInactive: false })
 		]);
 
 		// Extract items (each response shape: { items: [], totalCount, page, pageSize })
@@ -98,6 +104,12 @@ export async function fetchReferenceData(): Promise<void> {
 					.filter((n): n is { id: string; name: string } => !!n.id && !!n.name)
 					.map((n) => ({ id: n.id, name: n.name }))
 			: [];
+		// Tags keep the full TagResponse shape (id + name + color + isActive +
+		// timestamps) so the TagPicker can render color swatches without a
+		// second round-trip.
+		const tagsData: TagResponse[] = (tagsRes.items ?? []).filter(
+			(tag): tag is TagResponse => !!tag.id && !!tag.name
+		);
 
 		referenceDataStore.set({
 			brands: brandsData,
@@ -105,6 +117,7 @@ export async function fetchReferenceData(): Promise<void> {
 			owners: ownersData,
 			locations: locationsData,
 			networks: networksData,
+			tags: tagsData,
 			isLoading: false,
 			error: null
 		});

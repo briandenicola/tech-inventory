@@ -155,6 +155,17 @@
 			"showingAll": "Showing all statuses",
 			"activeOnly": "Show Active only"
 		},
+		"tags": {
+			"label": "Tags",
+			"sectionLabel": "Tags (optional)",
+			"inputPlaceholder": "Type to find or add tags…",
+			"listboxLabel": "Available tags",
+			"noMatches": "No matching tags.",
+			"empty": "No tags yet.",
+			"removeTag": "Remove tag {name}",
+			"applyErrorSome": "Saved device, but {count} tag(s) could not be applied. Try again from edit.",
+			"updateErrorSome": "{count} tag change(s) could not be saved. Reload and try again."
+		},
 		"history": {
 			"title": "Change history",
 			"subtitle": "Most recent audit events for this device.",

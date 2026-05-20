@@ -7,6 +7,7 @@ using TechInventory.Application.Common.Paging;
 using TechInventory.Application.Devices;
 using TechInventory.Application.Devices.Commands;
 using TechInventory.Application.Devices.Queries;
+using TechInventory.Application.Tags;
 using TechInventory.Domain.Enums;
 
 namespace TechInventory.Api.Controllers;
@@ -61,6 +62,12 @@ public sealed class DevicesController(ISender sender) : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<DeviceTagResponse>> AddTag(Guid id, [FromBody] AddDeviceTagRequest request, CancellationToken cancellationToken)
         => this.OkResult(await sender.Send(request.ToCommand(id), cancellationToken));
+
+    [HttpGet("{id:guid}/tags")]
+    [ProducesResponseType(typeof(IReadOnlyList<TagResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<IReadOnlyList<TagResponse>>> ListTags(Guid id, CancellationToken cancellationToken)
+        => this.OkResult(await sender.Send(new ListDeviceTagsQuery(id), cancellationToken));
 
     [HttpDelete("{id:guid}/tags/{tagId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

@@ -243,6 +243,27 @@ export const devices = {
 				method: 'POST',
 				body: JSON.stringify(body)
 			}
+		),
+
+	// F030 device tagging
+	listTags: async (id: string) =>
+		apiFetch<GetResponse<paths['/api/v1/devices/{id}/tags']>>(
+			`/api/v1/devices/${encodeURIComponent(id)}/tags`
+		),
+
+	addTag: async (id: string, tagId: string) =>
+		apiFetch<PostResponse<paths['/api/v1/devices/{id}/tags']>>(
+			`/api/v1/devices/${encodeURIComponent(id)}/tags`,
+			{
+				method: 'POST',
+				body: JSON.stringify({ tagId })
+			}
+		),
+
+	removeTag: async (id: string, tagId: string) =>
+		apiFetch<void>(
+			`/api/v1/devices/${encodeURIComponent(id)}/tags/${encodeURIComponent(tagId)}`,
+			{ method: 'DELETE' }
 		)
 };
 

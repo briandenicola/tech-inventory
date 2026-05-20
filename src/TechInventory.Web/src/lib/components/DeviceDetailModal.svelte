@@ -32,6 +32,9 @@
 	import ReleaseOwnershipModal from '$lib/components/ReleaseOwnershipModal.svelte';
 	import DeviceAuditHistoryDrawer from '$lib/components/admin/DeviceAuditHistoryDrawer.svelte';
 	import type { DeviceResponse } from '$lib/queries/devices.svelte';
+	import type { components } from '$lib/api/generated/types';
+
+	type TagResponse = components['schemas']['TagResponse'];
 
 	interface Props {
 		deviceId: string;
@@ -48,6 +51,9 @@
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
 	let notFound = $state(false);
+
+	// F030: tags assigned to this device, loaded alongside the device record.
+	let deviceTags = $state<TagResponse[]>([]);
 
 	let showDeleteModal = $state(false);
 	let showClaimModal = $state(false);
@@ -66,10 +72,19 @@
 		isLoading = true;
 		error = null;
 		notFound = false;
+		deviceTags = [];
 
 		try {
-			const result = await devices.get(deviceId);
-			device = result as DeviceResponse;
+			const [deviceResult, tagsResult] = await Promise.all([
+				devices.get(deviceId),
+				devices.listTags(deviceId).catch((tagErr) => {
+					// F030: tag fetch failure is non-fatal; log and show empty.
+					console.error('[DeviceDetailModal] Tag fetch failed:', tagErr);
+					return [] as TagResponse[];
+				})
+			]);
+			device = deviceResult as DeviceResponse;
+			deviceTags = tagsResult ?? [];
 		} catch (err) {
 			console.error('[DeviceDetailModal] Fetch failed:', err);
 			if (
@@ -407,6 +422,42 @@
 								</dd>
 							</div>
 						</dl>
+
+						<!--
+							F030: per-device tag chips. Rendered between the property
+							grid and the notes block so they read as a property of the
+							device. Empty state is intentionally muted, not hidden,
+							so users notice the affordance and click Edit to add tags.
+						-->
+						<div class="mt-6">
+							<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+								{t('devices.tags.label')}
+							</dt>
+							<dd class="mt-2">
+								{#if deviceTags.length > 0}
+									<ul class="flex flex-wrap gap-2" aria-label={t('devices.tags.label')}>
+										{#each deviceTags as tag (tag.id)}
+											<li
+												class="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-3 py-1 text-sm font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200"
+											>
+												{#if tag.color}
+													<span
+														class="inline-block h-2 w-2 rounded-full"
+														style="background-color: {tag.color};"
+														aria-hidden="true"
+													></span>
+												{/if}
+												{tag.name}
+											</li>
+										{/each}
+									</ul>
+								{:else}
+									<p class="text-sm text-neutral-500 dark:text-neutral-400">
+										{t('devices.tags.empty')}
+									</p>
+								{/if}
+							</dd>
+						</div>
 
 						{#if device.notes}
 							<div class="mt-6">

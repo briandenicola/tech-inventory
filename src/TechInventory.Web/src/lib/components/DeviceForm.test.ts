@@ -55,6 +55,7 @@ describe('DeviceForm', () => {
 			owners: [createOwner({ name: 'Alice' }), createOwner({ name: 'Bob' })],
 			locations: [createLocation({ name: 'Office' }), createLocation({ name: 'Home' })],
 			networks: [createNetwork({ name: 'WiFi-Main' }), createNetwork({ name: 'WiFi-Guest' })],
+			tags: [],
 			isLoading: false,
 			error: null
 		};

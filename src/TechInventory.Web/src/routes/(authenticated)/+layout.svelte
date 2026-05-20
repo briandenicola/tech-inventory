@@ -86,7 +86,8 @@
 			snapshot.categories.length === 0 &&
 			snapshot.owners.length === 0 &&
 			snapshot.locations.length === 0 &&
-			snapshot.networks.length === 0
+			snapshot.networks.length === 0 &&
+			snapshot.tags.length === 0
 		) {
 			refDataHydrated = true;
 			void fetchReferenceData();

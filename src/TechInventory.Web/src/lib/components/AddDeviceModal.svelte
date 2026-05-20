@@ -16,7 +16,9 @@
 	import { devices } from '$lib/api/client';
 	import { showToast } from '$lib/stores/toast';
 	import { invalidateDevicesCache } from '$lib/queries/devices.svelte';
+	import { referenceDataStore } from '$lib/stores/referenceData';
 	import DeviceForm from '$lib/components/DeviceForm.svelte';
+	import TagPicker from '$lib/components/TagPicker.svelte';
 	import type { DeviceCreateInput } from '$lib/schemas/device';
 
 	interface Props {
@@ -28,6 +30,12 @@
 
 	let modalElement = $state<HTMLDivElement | undefined>(undefined);
 	let dialogElement = $state<HTMLDivElement | undefined>(undefined);
+
+	// F030: device tagging happens via separate POST /devices/{id}/tags
+	// endpoints, so the picker manages its own state and we apply the
+	// selection after the device has been created.
+	let selectedTagIds = $state<string[]>([]);
+	const availableTags = $derived($referenceDataStore.tags);
 
 	async function handleSubmit(data: DeviceCreateInput) {
 		// Transform empty strings to undefined for optional UUID fields
@@ -46,6 +54,23 @@
 
 		try {
 			const result = await devices.create(payload);
+
+			// F030: tag application is best-effort and runs only after the
+			// device exists. A tag failure should not block the create-success
+			// toast — surface partial failures with a separate warning toast.
+			if (result.id && selectedTagIds.length > 0) {
+				const tagResults = await Promise.allSettled(
+					selectedTagIds.map((tagId) => devices.addTag(result.id!, tagId))
+				);
+				const failures = tagResults.filter((r) => r.status === 'rejected').length;
+				if (failures > 0) {
+					showToast({
+						type: 'error',
+						message: t('devices.tags.applyErrorSome', { count: failures })
+					});
+				}
+			}
+
 			invalidateDevicesCache();
 
 			showToast({
@@ -161,6 +186,27 @@
 
 				<!-- Form body -->
 				<div class="px-6 py-6">
+					<!--
+						F030 tag picker. Lives above DeviceForm so it's visible without
+						scrolling and so the user can curate tags before saving. Tags
+						persist via separate POST /devices/{id}/tags calls inside
+						handleSubmit after the device record exists.
+					-->
+					<div class="mb-6">
+						<label
+							for="add-device-tag-picker"
+							class="mb-1.5 block text-sm font-medium text-neutral-900 dark:text-neutral-100"
+						>
+							{t('devices.tags.sectionLabel')}
+						</label>
+						<TagPicker
+							id="add-device-tag-picker"
+							selectedIds={selectedTagIds}
+							{availableTags}
+							onChange={(ids) => (selectedTagIds = ids)}
+						/>
+					</div>
+
 					<DeviceForm mode="create" onSubmit={handleSubmit} onCancel={onClose} />
 				</div>
 			</div>

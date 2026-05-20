@@ -27,7 +27,9 @@ Accessibility: WCAG 2.2 AA target, zero axe-core violations to merge. Browser ma
 
 ## Recent Updates
 
-**2026-05-20 (F039):** Reference-data admin bulk actions shipped. Added shared `ReferenceDataBulkBar.svelte`, `BulkDeleteReferenceModal.svelte`, and `referenceSelection.ts`; extended `MergeEntityModal.svelte` + `referenceMerge.ts` for multi-source and network merges; wired Brands/Categories/Locations/Networks admin pages for checkbox multi-select, select-all, bulk delete, and bulk merge; added temporary typed client wrappers for the new backend endpoints; validation green (`pnpm run check`, `pnpm run lint`, focused Vitest, full `pnpm exec vitest run`, `pnpm run build`), and repo `scripts\verify.ps1` still only stops at the known missing-`docker` Playwright step in this environment.
+**2026-05-20 (PWA Bug Bash):** Parallel 6-agent run (Vasquez × 6) fixed critical PWA UI regressions. (1) Removed per-item Merge button from admin lookup (Brands/Categories/Locations/Networks) — consolidated merge entry to bulk-action bar only (D-122). (2) Fixed dark-mode modal ghosting via Tailwind v4 token registration (950 semantic shades) + standardized modal backdrop/surface layering (D-123, skill: modal-rendering). (3) Rebuilt `/devices` filter drawer as mobile sheet pattern with `h-dvh`, sticky header/footer, body scroll lock, dialog semantics (D-124). (4) Restored Add Device FAB on `/devices` using bottom-left anchor-based FAB convention with role-aware visibility (D-125). (5) Implemented mobile stacked-card rendering for `/devices` and admin pages — primary ID heading + dt/dd pairs below, `md+` tables preserved (D-126, skill: responsive-list-rendering). (6) Retired redundant `/admin` hub page; top-level Admin nav now routes directly to `/admin/audit` (D-127). All validation green (399 vitest passed, 1 skipped). Orchestration logs: `.squad/orchestration-log/2026-05-20T22-30-{00..05}Z-vasquez-*`.
+
+**2026-05-20 (F039):** Reference-data admin bulk actions shipped.Added shared `ReferenceDataBulkBar.svelte`, `BulkDeleteReferenceModal.svelte`, and `referenceSelection.ts`; extended `MergeEntityModal.svelte` + `referenceMerge.ts` for multi-source and network merges; wired Brands/Categories/Locations/Networks admin pages for checkbox multi-select, select-all, bulk delete, and bulk merge; added temporary typed client wrappers for the new backend endpoints; validation green (`pnpm run check`, `pnpm run lint`, focused Vitest, full `pnpm exec vitest run`, `pnpm run build`), and repo `scripts\verify.ps1` still only stops at the known missing-`docker` Playwright step in this environment.
 
 **2026-05-18 (Phase 1 Round 1):** ESLint token-storage gate deployed. Custom inline rule in `src/TechInventory.Web/eslint.config.js` bans `localStorage.setItem/getItem/removeItem` for token-like keys (verified via test fixture). MSAL cache location pinned to `sessionStorage` in `src/lib/auth/msal.ts`. Decision D-011 documents path-aware ESLint custom rule pattern for future frontend security gates. Token-storage four-gate enforcement (D-010) coordinated with Hudson (pre-commit hook), Apone (Playwright E2E), and Bishop (code review checklist). `pnpm lint` gate active and verified.
 
@@ -35,6 +37,42 @@ Accessibility: WCAG 2.2 AA target, zero axe-core violations to merge. Browser ma
 
 
 ## Learnings
+
+### 2026-05-20 — device add FAB regression fix
+
+- List-page create affordances should be one shared route-linked pattern: desktop gets a single inline `/devices/new` link, while mobile gets a single fixed FAB that sits bottom-left with `env(safe-area-inset-left/bottom)` + `var(--space-6)` offsets.
+- The mobile FAB should be an anchor, not a click handler button, so the create route stays deep-linkable and browser/PWA navigation works naturally.
+- Create affordances on list pages need the same role gate everywhere they appear. If Viewer cannot create, hide the mobile FAB, the desktop header CTA, and the empty-state add action together so breakpoints never drift.
+
+### 2026-05-20 — stacked mobile list cards
+
+- Keep desktop list markup intact and add a separate `md:hidden` mobile renderer; trying to force one table DOM to satisfy both breakpoints makes action parity and tests brittle.
+- A small shared card primitive works well for admin lookup pages, but `/devices` still deserves route-local mobile markup because grouping, status styling, and detail-open behavior are device-specific.
+- Build card secondary content from label/value arrays and filter empties before render so optional metadata disappears cleanly while the markup stays a valid `<dl><div><dt><dd>` structure for axe.
+
+### 2026-05-20 — dark mode modal ghosting
+
+- The dark-mode modal bug was a two-part regression: several modal callout surfaces used `dark:bg-*-950` / `dark:border-*-900` utilities that Tailwind v4 never generated because those 950 tokens were not registered in `src/lib/tokens.css`, and some dialogs were still relying on ad-hoc backdrop/panel layering that let the blurred overlay visually bleed into the panel.
+- The reliable fix pattern in this codebase is: register every dark-only token through `@theme inline`, then keep blur on a dedicated backdrop and add `isolation: isolate` to the modal panel so the surface renders solid above the backdrop.
+- Shared modal hardening now lives in `src/TechInventory.Web/src/app.css` via `.ti-modal-backdrop` and `.ti-modal-surface`; representative consumers are `src/lib/components/DeviceDetailModal.svelte`, `MergeEntityModal.svelte`, and the confirm-modal components.
+
+### 2026-05-20 — mobile filter sheet pattern
+
+- For mobile/PWA sheets, keep the chrome outside the scroll region: use an `h-dvh` flex column, a `min-h-0 flex-1 overflow-y-auto` body, and non-scrolling/sticky header + footer so the close/apply affordances never scroll out of reach.
+- Put `env(safe-area-inset-top/bottom)` padding on the sheet header/footer instead of the scrolling body. That keeps controls clear of iPhone PWA status bars and the home-indicator area without wasting scrollable space.
+- Treat full-height sheets as dialogs, not plain sidebars: backdrop + body scroll lock, `role="dialog"`/`aria-modal="true"`, Escape-to-close, initial focus on the close button, and a small Tab trap. Also note that axe rejects `role="dialog"` on `<aside>`, so the dialog surface should be a neutral container like `<div>`.
+
+### 2026-05-20 — admin nav leaf routing + i18n hygiene
+
+- Top-level nav items in this app should jump straight to the page users actually need, not to a redundant hub that only repeats links already visible elsewhere. If the only unique action in a hub is one leaf page, point the nav item at that leaf and keep the section header for the grouped admin links.
+- When raw i18n keys leak into the UI, treat that as proof the catalog never got updated when the markup shipped. A quick repo grep for the missing key prefix (`admin.hub`, in this case) is the fastest way to confirm whether the strings are genuinely absent or just orphaned after a route cleanup.
+- Follow-up worth proposing: add a build-time or test-time unresolved-key check so missing translations fail fast instead of reaching production screens.
+
+### 2026-05-20 — admin lookup merge cleanup
+
+- Per-item destructive/reference actions on these admin lookup pages are easiest to sweep by editing the shared row/card action builders (`brandActionButtons`, `getCategoryActionItems`, `locationActionButtons`, `getNetworkActionItems`) instead of touching the bulk bar or merge modal itself. That keeps the bulk-selection flow intact while removing the redundant affordance from both desktop tables and mobile cards in one pass.
+- After removing the card-level Merge affordance, the follow-up cleanup lives in page-local single-merge code: `openSingleMergeModal`, any single-source toast branch, `sourceEntity` prop usage, and i18n strings like `common.actions.merge` / `admin.merge.success`. The shared `MergeEntityModal.svelte` and `referenceMerge.ts` bulk orchestration stay in place because `Merge Selected` still depends on them.
+- Scope delivered: `src/TechInventory.Web/src/routes/(authenticated)/admin/{brands,categories,locations,networks}/+page.svelte`, `src/TechInventory.Web/src/lib/utils/referenceMerge.ts`, `src/TechInventory.Web/src/lib/i18n/en.json`, and new coverage in `src/TechInventory.Web/src/routes/(authenticated)/admin/lookup-actions.test.ts`.
 
 ### 2026-05-20 (F039) — reference-data bulk actions
 

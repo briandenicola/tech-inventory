@@ -1,9 +1,10 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { t } from '$lib/i18n';
 	import { devices } from '$lib/api/client';
-	import { referenceDataStore } from '$lib/stores/referenceData';
+	import { fetchReferenceData, referenceDataStore } from '$lib/stores/referenceData';
 	import { authStore } from '$lib/stores/auth';
 	import { showToast } from '$lib/stores/toast';
 	import { invalidateDevicesCache } from '$lib/queries/devices.svelte';
@@ -36,6 +37,7 @@
 
 	// Device state
 	let device = $state<DeviceResponse | null>(null);
+	let deviceTags = $state<Array<{ id: string; name: string; color: string | null }>>([]);
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
 	let notFound = $state(false);
@@ -64,8 +66,18 @@
 		notFound = false;
 
 		try {
-			const result = await devices.get(deviceId);
-			device = result as DeviceResponse;
+			const [deviceResult, tagResults] = await Promise.all([
+				devices.get(deviceId),
+				devices.listTags(deviceId)
+			]);
+			device = deviceResult as DeviceResponse;
+			deviceTags = tagResults
+				.filter((tag): tag is { id: string; name: string; color?: string | null } => !!tag.id && !!tag.name)
+				.map((tag) => ({
+					id: tag.id,
+					name: tag.name,
+					color: tag.color ?? null
+				}));
 		} catch (err) {
 			console.error('[device-detail] Fetch failed:', err);
 			if (
@@ -82,9 +94,14 @@
 		}
 	}
 
+	onMount(() => {
+		void fetchReferenceData();
+	});
+
 	$effect(() => {
 		void fetchDevice();
 	});
+
 
 	// Resolve reference data (brand, category, owner, location, network names)
 	const brandName = $derived(
@@ -309,7 +326,7 @@
 
 			{#if canEdit}
 				<a
-					href="/devices/{device.id}/edit"
+					href={`/devices/${device.id}/edit`}
 					class="inline-flex items-center gap-2 rounded-lg border border-primary-600 bg-white px-4 py-2 text-sm font-medium text-primary-600 transition-colors hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-primary-500 dark:bg-neutral-900 dark:text-primary-400 dark:hover:bg-neutral-800"
 				>
 					<svg
@@ -494,6 +511,32 @@
 			</div>
 		</div>
 
+		<!-- Tags -->
+		<div>
+			<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+				{t('common.nouns.tags')}
+			</dt>
+			<dd class="mt-2">
+				{#if deviceTags.length > 0}
+					<ul class="flex flex-wrap gap-2">
+						{#each deviceTags as tag (tag.id)}
+							<li class="inline-flex items-center gap-2 rounded-full border border-neutral-300 bg-neutral-50 px-3 py-1 text-sm text-neutral-700 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200">
+								<span
+									class="h-2.5 w-2.5 rounded-full bg-neutral-400"
+									style:background-color={tag.color ?? undefined}
+									aria-hidden="true"
+								></span>
+								{tag.name}
+							</li>
+						{/each}
+					</ul>
+				{:else}
+					<p class="text-base text-neutral-900 dark:text-neutral-100">
+						{t('devices.detail.tagsEmpty')}
+					</p>
+				{/if}
+			</dd>
+		</div>
 
 		<!-- Notes (full-width) -->
 		{#if device.notes}

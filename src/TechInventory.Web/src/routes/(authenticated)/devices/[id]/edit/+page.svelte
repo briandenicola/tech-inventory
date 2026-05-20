@@ -9,7 +9,7 @@
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import type { DeviceResponse } from '$lib/queries/devices.svelte';
-	import type { DeviceUpdateInput } from '$lib/schemas/device';
+	import type { DeviceFormInput } from '$lib/schemas/device';
 
 	/**
 	 * T21: Device edit page — /devices/[id]/edit
@@ -24,19 +24,26 @@
 
 	// Device state
 	let device = $state<DeviceResponse | null>(null);
+	let deviceTagIds = $state<string[]>([]);
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
 
 	// Fetch device
 	async function fetchDevice() {
-		if (!deviceId) return; // Guard against undefined
+		if (!deviceId) return;
 
 		isLoading = true;
 		error = null;
 
 		try {
-			const result = await devices.get(deviceId);
-			device = result as DeviceResponse;
+			const [deviceResult, tagResults] = await Promise.all([
+				devices.get(deviceId),
+				devices.listTags(deviceId)
+			]);
+			device = deviceResult as DeviceResponse;
+			deviceTagIds = tagResults
+				.map((tag) => tag.id)
+				.filter((tagId): tagId is string => typeof tagId === 'string' && tagId.length > 0);
 		} catch (err) {
 			console.error('[device-edit] Fetch failed:', err);
 			error = err instanceof Error ? err.message : 'Failed to load device';
@@ -50,6 +57,7 @@
 		void fetchDevice();
 	});
 
+
 	// Retired device logic: disable all fields except notes
 	const isRetired = $derived(device?.status === 'Retired');
 	const disabledFields = $derived(
@@ -62,6 +70,7 @@
 					'ownerId',
 					'locationId',
 					'networkId',
+					'tagIds',
 					'purchaseDate',
 					'purchasePrice',
 					'currencyCode'
@@ -70,13 +79,13 @@
 	);
 
 	// Handle submit
-	async function handleSubmit(data: DeviceUpdateInput) {
+	async function handleSubmit(data: DeviceFormInput) {
 		if (!device) return;
 
 		try {
-			// Transform empty strings to undefined for optional UUID fields
+			const { tagIds, ...deviceData } = data;
 			const payload = {
-				...data,
+				...deviceData,
 				ownerId: data.ownerId || undefined,
 				locationId: data.locationId || undefined,
 				networkId: data.networkId || undefined,
@@ -88,6 +97,7 @@
 			};
 
 			await devices.update(device.id, payload);
+			await devices.syncTags(device.id, tagIds);
 			invalidateDevicesCache();
 
 			showToast({
@@ -150,7 +160,7 @@
 		</li>
 		<li>
 			<a
-				href="/devices/{deviceId}"
+				href={`/devices/${deviceId}`}
 				class="hover:text-primary-600 dark:hover:text-primary-400"
 			>
 				{device?.name ?? 'Device'}
@@ -217,15 +227,22 @@
 			initialData={{
 				name: device.name ?? '',
 				serialNumber: device.serialNumber ?? '',
-				brandId: device.brandId,
+				brandId: device.brandId ?? '',
 				categoryId: device.categoryId,
 				ownerId: device.ownerId ?? '',
 				locationId: device.locationId ?? '',
 				networkId: device.networkId ?? '',
+				tagIds: deviceTagIds,
 				purchaseDate: device.purchaseDate ?? '',
 				purchasePrice: device.purchasePrice ?? null,
 				currencyCode: device.currencyCode ?? 'USD',
-				notes: device.notes ?? ''
+				notes: device.notes ?? '',
+				purpose: device.purpose ?? '',
+				operatingSystem: device.operatingSystem ?? '',
+				ipAddress: device.ipAddress ?? '',
+				macAddress: device.macAddress ?? '',
+				productUrl: device.productUrl ?? '',
+				version: device.version ?? ''
 			}}
 			{disabledFields}
 			onSubmit={handleSubmit}

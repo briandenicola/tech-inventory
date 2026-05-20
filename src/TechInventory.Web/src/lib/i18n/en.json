@@ -191,6 +191,9 @@
 			"notes": "Notes"
 		},
 		"form": {
+			"tags": "Tags",
+			"tagsHint": "Choose all tags that apply to this device.",
+			"tagsEmpty": "Create tags in Admin before assigning them to devices.",
 			"additionalDetails": "Additional details (optional)",
 			"purpose": "Purpose",
 			"purposePlaceholder": "What is this device used for?",

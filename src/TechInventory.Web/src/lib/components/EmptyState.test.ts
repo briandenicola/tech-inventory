@@ -23,7 +23,7 @@ describe('EmptyState', () => {
 			
 			const addButton = screen.getByRole('link', { name: /Add Device/i });
 			expect(addButton).toBeInTheDocument();
-			expect(addButton).toHaveAttribute('href', '/devices/create');
+			expect(addButton).toHaveAttribute('href', '/devices/new');
 		});
 
 		it('has no accessibility violations', async () => {

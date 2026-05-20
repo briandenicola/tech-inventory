@@ -5,7 +5,7 @@
 	import { showToast } from '$lib/stores/toast';
 	import { invalidateDevicesCache } from '$lib/queries/devices.svelte';
 	import DeviceForm from '$lib/components/DeviceForm.svelte';
-	import type { DeviceCreateInput } from '$lib/schemas/device';
+	import type { DeviceFormInput } from '$lib/schemas/device';
 
 	/**
 	 * T20: Device create page — /devices/new
@@ -16,11 +16,11 @@
 	 * Related: specs/002-frontend-mvp/spec.md J6
 	 */
 
-	async function handleSubmit(data: DeviceCreateInput) {
+	async function handleSubmit(data: DeviceFormInput) {
 		try {
-			// Transform empty strings to undefined for optional UUID fields
+			const { tagIds, ...deviceData } = data;
 			const payload = {
-				...data,
+				...deviceData,
 				ownerId: data.ownerId || undefined,
 				locationId: data.locationId || undefined,
 				networkId: data.networkId || undefined,
@@ -32,6 +32,7 @@
 			};
 
 			const result = await devices.create(payload);
+			await devices.syncTags(result.id, tagIds);
 			invalidateDevicesCache();
 
 			showToast({
@@ -55,6 +56,7 @@
 	function handleCancel() {
 		goto('/devices');
 	}
+
 </script>
 
 <!-- Breadcrumbs -->

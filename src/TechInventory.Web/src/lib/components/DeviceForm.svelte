@@ -14,27 +14,30 @@
 	Related: specs/002-frontend-mvp/spec.md J5-J7, Constitution §4.3
 -->
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { t } from '$lib/i18n';
-	import { referenceDataStore } from '$lib/stores/referenceData';
-	import { deviceCreateSchema, type DeviceCreateInput } from '$lib/schemas/device';
+	import { fetchReferenceData, referenceDataStore } from '$lib/stores/referenceData';
+	import DeviceTagSelector from '$lib/components/DeviceTagSelector.svelte';
+	import { deviceFormSchema, type DeviceFormInput } from '$lib/schemas/device';
 	import type { ZodError } from 'zod';
 
 	interface Props {
 		mode: 'create' | 'edit';
-		initialData?: Partial<DeviceCreateInput>;
+		initialData?: Partial<DeviceFormInput>;
 		disabledFields?: string[];
-		onSubmit: (data: DeviceCreateInput) => Promise<void>;
+		onSubmit: (data: DeviceFormInput) => Promise<void>;
 		onCancel: () => void;
 	}
 
 	let { mode, initialData = {}, disabledFields = [], onSubmit, onCancel }: Props = $props();
 
-	// Reference data from store
 	const refData = $derived($referenceDataStore);
 
-	// Form state (capture initial values at component creation; no reactivity to prop changes)
-	// This is intentional: initialData is only read once when form mounts
-	let formData = $state<Record<string, unknown>>({
+	onMount(() => {
+		void fetchReferenceData();
+	});
+
+	let formData = $state<DeviceFormInput>({
 		name: initialData.name ?? '',
 		serialNumber: initialData.serialNumber ?? '',
 		brandId: initialData.brandId ?? '',
@@ -42,9 +45,10 @@
 		ownerId: initialData.ownerId ?? '',
 		locationId: initialData.locationId ?? '',
 		networkId: initialData.networkId ?? '',
+		tagIds: initialData.tagIds ?? [],
 		purchaseDate: initialData.purchaseDate ?? '',
 		purchasePrice: initialData.purchasePrice ?? null,
-		currencyCode: initialData.currencyCode ?? 'USD', // TODO D-070: Household default currency
+		currencyCode: initialData.currencyCode ?? 'USD',
 		notes: initialData.notes ?? '',
 		purpose: initialData.purpose ?? '',
 		operatingSystem: initialData.operatingSystem ?? '',
@@ -58,54 +62,70 @@
 	let touched = $state<Record<string, boolean>>({});
 	let isSubmitting = $state(false);
 
-	// Dirty flag (any field modified from initial)
+	function areValuesEqual(initial: unknown, current: unknown): boolean {
+		if (Array.isArray(initial) && Array.isArray(current)) {
+			return (
+				initial.length === current.length && initial.every((value, index) => value === current[index])
+			);
+		}
+
+		return initial === current;
+	}
+
+	function getInitialValue(formKey: keyof DeviceFormInput): unknown {
+		const initialValue = initialData[formKey];
+		if (initialValue !== undefined) {
+			return initialValue;
+		}
+
+		if (formKey === 'tagIds') {
+			return [];
+		}
+
+		if (formKey === 'purchasePrice') {
+			return null;
+		}
+
+		return '';
+	}
+
 	const isDirty = $derived(
 		Object.keys(formData).some((key) => {
-			const initial = initialData[key as keyof DeviceCreateInput];
-			const current = formData[key];
-			return initial !== current;
+			const formKey = key as keyof DeviceFormInput;
+			const initial = getInitialValue(formKey);
+			const current = formData[formKey];
+			return !areValuesEqual(initial, current);
 		})
 	);
 
-	// Validate single field
 	function validateField(name: string) {
 		try {
-			deviceCreateSchema.parse(formData);
-			// If parse succeeds, clear error for this field
+			deviceFormSchema.parse(formData);
 			errors = { ...errors, [name]: '' };
 		} catch (err) {
 			if (err instanceof Error && 'issues' in err) {
 				const zodError = err as ZodError;
 				const fieldError = zodError.issues.find((issue) => issue.path[0] === name);
-				if (fieldError) {
-					errors = { ...errors, [name]: fieldError.message };
-				} else {
-					errors = { ...errors, [name]: '' };
-				}
+				errors = { ...errors, [name]: fieldError?.message ?? '' };
 			}
 		}
 	}
 
-	// Handle blur (trigger validation)
 	function handleBlur(name: string) {
 		touched = { ...touched, [name]: true };
 		validateField(name);
 	}
 
-	// Handle submit
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
 		isSubmitting = true;
-
-		// Mark all fields as touched
 		touched = Object.keys(formData).reduce(
 			(acc, key) => ({ ...acc, [key]: true }),
-			{}
+			{} as Record<string, boolean>
 		);
 
 		try {
-			// Validate entire form
-			const validatedData = deviceCreateSchema.parse(formData);
+			const validatedData = deviceFormSchema.parse(formData);
 			await onSubmit(validatedData);
 		} catch (err) {
 			if (err instanceof Error && 'issues' in err) {
@@ -124,12 +144,10 @@
 		}
 	}
 
-	// Check if field is disabled
 	function isDisabled(field: string): boolean {
 		return disabledFields.includes(field);
 	}
 
-	// Format currency options (hardcoded for v1; TODO: fetch from settings)
 	const currencyOptions = [
 		{ code: 'USD', name: 'USD' },
 		{ code: 'EUR', name: 'EUR' },
@@ -288,6 +306,13 @@
 			<p class="mt-1 text-sm text-danger-600 dark:text-danger-400">{errors.networkId}</p>
 		{/if}
 	</div>
+
+	<!-- Tags -->
+	<DeviceTagSelector
+		options={refData.tags}
+		bind:selectedTagIds={formData.tagIds}
+		disabled={isDisabled('tagIds')}
+	/>
 
 	<!-- Purchase Date -->
 	<div>

@@ -41,7 +41,7 @@
 	<!-- CTA (only show if not filtered) -->
 	{#if !filtered}
 		<a
-			href="/devices/create"
+			href="/devices/new"
 			class="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600"
 		>
 			<svg

@@ -214,7 +214,46 @@ export const devices = {
 		apiFetch<void>(`/api/v1/devices/${encodeURIComponent(id)}/owner`, {
 			method: 'PATCH',
 			body: JSON.stringify({ ownerId })
-		})
+		}),
+
+	listTags: async (id: string) =>
+		apiFetch<GetResponse<paths['/api/v1/devices/{id}/tags']>>(
+			`/api/v1/devices/${encodeURIComponent(id)}/tags`
+		),
+
+	addTag: async (id: string, tagId: string) =>
+		apiFetch<PostResponse<paths['/api/v1/devices/{id}/tags']>>(
+			`/api/v1/devices/${encodeURIComponent(id)}/tags`,
+			{
+				method: 'POST',
+				body: JSON.stringify({ tagId })
+			}
+		),
+
+	removeTag: async (id: string, tagId: string) =>
+		apiFetch<void>(`/api/v1/devices/${encodeURIComponent(id)}/tags/${encodeURIComponent(tagId)}`, {
+			method: 'DELETE'
+		}),
+
+	syncTags: async (id: string, nextTagIds: string[]) => {
+		const uniqueNextTagIds = Array.from(
+			new Set(nextTagIds.filter((tagId): tagId is string => tagId.length > 0))
+		);
+		const currentTags = await devices.listTags(id);
+		const currentTagIds = currentTags
+			.map((tag) => tag.id)
+			.filter((tagId): tagId is string => typeof tagId === 'string' && tagId.length > 0);
+
+		const tagsToAdd = uniqueNextTagIds.filter((tagId) => !currentTagIds.includes(tagId));
+		const tagsToRemove = currentTagIds.filter((tagId) => !uniqueNextTagIds.includes(tagId));
+
+		await Promise.all([
+			...tagsToAdd.map((tagId) => devices.addTag(id, tagId)),
+			...tagsToRemove.map((tagId) => devices.removeTag(id, tagId))
+		]);
+
+		return devices.listTags(id);
+	}
 };
 
 // Brands

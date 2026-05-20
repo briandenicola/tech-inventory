@@ -16,6 +16,7 @@ import {
 	createOwner,
 	createLocation,
 	createNetwork,
+	createTag,
 	createDeviceCreateInput,
 	resetFactories
 } from '$lib/test-utils/factories';
@@ -36,9 +37,11 @@ vi.mock('$lib/stores/referenceData', async () => {
 			owners: [],
 			locations: [],
 			networks: [],
+			tags: [],
 			isLoading: false,
 			error: null
-		})
+		}),
+		fetchReferenceData: vi.fn(async () => {})
 	};
 });
 
@@ -55,13 +58,17 @@ describe('DeviceForm', () => {
 			owners: [createOwner({ name: 'Alice' }), createOwner({ name: 'Bob' })],
 			locations: [createLocation({ name: 'Office' }), createLocation({ name: 'Home' })],
 			networks: [createNetwork({ name: 'WiFi-Main' }), createNetwork({ name: 'WiFi-Guest' })],
+			tags: [
+				createTag({ id: '00000000-0000-4000-8000-000000000101', name: 'Travel', color: '#0ea5e9' }),
+				createTag({ id: '00000000-0000-4000-8000-000000000102', name: 'Critical', color: '#ef4444' })
+			],
 			isLoading: false,
 			error: null
 		};
 		referenceDataStore.set(refData);
 	});
 
-	const mockOnSubmit = vi.fn<(data: import('$lib/schemas/device').DeviceCreateInput) => Promise<void>>(async () => {});
+	const mockOnSubmit = vi.fn<(data: import('$lib/schemas/device').DeviceFormInput) => Promise<void>>(async () => {});
 	const mockOnCancel = vi.fn();
 
 	const defaultProps = {
@@ -84,6 +91,9 @@ describe('DeviceForm', () => {
 			expect(screen.getByLabelText(/devices.columns.owner/i)).toBeInTheDocument();
 			expect(screen.getByLabelText(/devices.columns.location/i)).toBeInTheDocument();
 			expect(screen.getByLabelText(/devices.columns.network/i)).toBeInTheDocument();
+			expect(screen.getByRole('group', { name: /devices.form.tags/i })).toBeInTheDocument();
+			expect(screen.getByLabelText('Travel')).toBeInTheDocument();
+			expect(screen.getByLabelText('Critical')).toBeInTheDocument();
 			expect(screen.getByLabelText(/devices.columns.purchaseDate/i)).toBeInTheDocument();
 			expect(screen.getByLabelText(/devices.columns.purchasePrice/i)).toBeInTheDocument();
 			expect(screen.getByLabelText(/devices.columns.currency/i)).toBeInTheDocument();
@@ -130,6 +140,7 @@ describe('DeviceForm', () => {
 			const initialData = createDeviceCreateInput({
 				name: 'Existing Device',
 				serialNumber: 'SN123456',
+				tagIds: ['00000000-0000-4000-8000-000000000102'],
 				purchasePrice: 999.99
 			});
 
@@ -149,6 +160,9 @@ describe('DeviceForm', () => {
 
 			const priceInput = screen.getByLabelText(/devices.columns.purchasePrice/i) as HTMLInputElement;
 			expect(priceInput.value).toBe('999.99');
+
+			const selectedTag = screen.getByLabelText('Critical') as HTMLInputElement;
+			expect(selectedTag).toBeChecked();
 		});
 
 		it('submit button disabled initially in edit mode when not dirty', () => {
@@ -242,46 +256,56 @@ describe('DeviceForm', () => {
 			});
 		});
 
-		it.skip('calls onSubmit with parsed data on valid submission', async () => {
-			// SKIP: Svelte 5 select bindings not updating formData in jsdom (T23)
-			// Root cause: bind:value on <select> doesn't trigger reactive updates in test environment
-			// Coverage: E2E tests (T46) cover full form submission flows in real browsers
+		it('calls onSubmit with selected tagIds on valid submission', async () => {
 			const user = userEvent.setup();
-			const onSubmit = vi.fn<(data: import('$lib/schemas/device').DeviceCreateInput) => Promise<void>>(async () => {});
+			const onSubmit = vi.fn<(data: import('$lib/schemas/device').DeviceFormInput) => Promise<void>>(async () => {});
+			const initialData = {
+				name: 'Existing Device',
+				serialNumber: 'SN123456',
+				brandId: '',
+				categoryId: '00000000-0000-4000-8000-000000000201',
+				ownerId: '',
+				locationId: '',
+				networkId: '',
+				tagIds: ['00000000-0000-4000-8000-000000000101'],
+				purchaseDate: '',
+				purchasePrice: null,
+				currencyCode: 'USD',
+				notes: '',
+				purpose: '',
+				operatingSystem: '',
+				ipAddress: '',
+				macAddress: '',
+				productUrl: '',
+				version: ''
+			};
 
 			render(DeviceForm, {
 				props: {
 					...defaultProps,
+					mode: 'edit',
+					initialData,
 					onSubmit
 				}
 			});
 
-			// Fill required fields (use IDs from resetFactories: first brand=0, first category=0)
-			await user.type(screen.getByLabelText(/devices.columns.name/i), 'Test Device');
-			await user.selectOptions(
-				screen.getByLabelText(/devices.columns.brand/i),
-				'brand-00000000-0000-0000-000000000000'
-			);
-			await user.selectOptions(
-				screen.getByLabelText(/devices.columns.category/i),
-				'category-000000-0000-000000000000'
-			);
-
-			// Wait for Svelte 5 runes reactivity to settle
-			await new Promise(resolve => setTimeout(resolve, 50));
+			const criticalCheckbox = screen.getByLabelText('Critical');
+			await user.click(criticalCheckbox);
 
 			const submitButton = screen.getByRole('button', { name: /common.actions.save/i });
 			await waitFor(() => expect(submitButton).not.toBeDisabled());
-
 			await user.click(submitButton);
 
 			await waitFor(() => {
 				expect(onSubmit).toHaveBeenCalledTimes(1);
 				expect(onSubmit).toHaveBeenCalledWith(
 					expect.objectContaining({
-						name: 'Test Device',
-						brandId: 'brand-00000000-0000-0000-000000000000',
-						categoryId: 'category-000000-0000-0000-000000000000'
+						name: 'Existing Device',
+						categoryId: '00000000-0000-4000-8000-000000000201',
+						tagIds: [
+							'00000000-0000-4000-8000-000000000101',
+							'00000000-0000-4000-8000-000000000102'
+						]
 					})
 				);
 			});
@@ -292,7 +316,7 @@ describe('DeviceForm', () => {
 			// Root cause: bind:value on <select> doesn't trigger reactive updates in test environment
 			// Coverage: E2E tests (T46) cover form submission loading states in real browsers
 			const user = userEvent.setup();
-			const onSubmit = vi.fn<(data: import('$lib/schemas/device').DeviceCreateInput) => Promise<void>>(
+			const onSubmit = vi.fn<(data: import('$lib/schemas/device').DeviceFormInput) => Promise<void>>(
 				async () => new Promise((resolve) => setTimeout(resolve, 100))
 			);
 
@@ -398,6 +422,19 @@ describe('DeviceForm', () => {
 			// Other fields should remain enabled
 			expect(screen.getByLabelText(/devices.columns.serial/i)).not.toBeDisabled();
 			expect(screen.getByLabelText(/devices.columns.brand/i)).not.toBeDisabled();
+			expect(screen.getByLabelText('Travel')).not.toBeDisabled();
+		});
+
+		it('disables tag checkboxes when tagIds is disabled', () => {
+			render(DeviceForm, {
+				props: {
+					...defaultProps,
+					disabledFields: ['tagIds']
+				}
+			});
+
+			expect(screen.getByLabelText('Travel')).toBeDisabled();
+			expect(screen.getByLabelText('Critical')).toBeDisabled();
 		});
 	});
 

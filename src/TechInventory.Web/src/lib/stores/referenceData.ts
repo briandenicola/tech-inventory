@@ -1,5 +1,5 @@
 /**
- * Reference Data Store — Brands, Categories, Owners, Locations, Networks
+ * Reference Data Store — Brands, Categories, Owners, Locations, Networks, Tags
  * 
  * Per T16: Reference entities (brands, categories, etc.) are slow-changing.
  * Fetch once on component mount; cache in module-level store. Don't refetch
@@ -9,7 +9,7 @@
  */
 
 import { writable } from 'svelte/store';
-import { brands, categories, owners, locations, networks } from '$lib/api/client';
+import { brands, categories, owners, locations, networks, tags } from '$lib/api/client';
 
 /**
  * Simple reference entity shape (name + id)
@@ -17,6 +17,10 @@ import { brands, categories, owners, locations, networks } from '$lib/api/client
 export type ReferenceEntity = {
 	id: string;
 	name: string;
+};
+
+export type ReferenceTag = ReferenceEntity & {
+	color: string | null;
 };
 
 /**
@@ -28,6 +32,7 @@ export interface ReferenceDataState {
 	owners: ReferenceEntity[];
 	locations: ReferenceEntity[];
 	networks: ReferenceEntity[];
+	tags: ReferenceTag[];
 	isLoading: boolean;
 	error: string | null;
 }
@@ -38,6 +43,7 @@ const initialState: ReferenceDataState = {
 	owners: [],
 	locations: [],
 	networks: [],
+	tags: [],
 	isLoading: false,
 	error: null
 };
@@ -54,17 +60,15 @@ export async function fetchReferenceData(): Promise<void> {
 	referenceDataStore.update((state) => ({ ...state, isLoading: true, error: null }));
 
 	try {
-		// Fetch all in parallel
-		const [brandsRes, categoriesRes, ownersRes, locationsRes, networksRes] = await Promise.all([
+		const [brandsRes, categoriesRes, ownersRes, locationsRes, networksRes, tagsRes] = await Promise.all([
 			brands.list({ pageSize: 1000, includeInactive: false }),
 			categories.list({ pageSize: 1000, includeInactive: false }),
 			owners.list({ pageSize: 1000, includeInactive: false }),
 			locations.list({ pageSize: 1000, includeInactive: false }),
-			networks.list({ pageSize: 1000, includeInactive: false })
+			networks.list({ pageSize: 1000, includeInactive: false }),
+			tags.list({ pageSize: 1000, includeInactive: false })
 		]);
 
-		// Extract items (each response shape: { items: [], totalCount, page, pageSize })
-		// Use type guards and nullish checks for safe property access
 		const brandsData = brandsRes.items
 			? brandsRes.items
 					.filter((b): b is { id: string; name: string } => !!b.id && !!b.name)
@@ -95,6 +99,15 @@ export async function fetchReferenceData(): Promise<void> {
 					.filter((n): n is { id: string; name: string } => !!n.id && !!n.name)
 					.map((n) => ({ id: n.id, name: n.name }))
 			: [];
+		const tagsData = tagsRes.items
+			? tagsRes.items
+					.filter((tag): tag is { id: string; name: string; color?: string | null } => !!tag.id && !!tag.name)
+					.map((tag) => ({
+						id: tag.id,
+						name: tag.name,
+						color: tag.color ?? null
+					}))
+			: [];
 
 		referenceDataStore.set({
 			brands: brandsData,
@@ -102,6 +115,7 @@ export async function fetchReferenceData(): Promise<void> {
 			owners: ownersData,
 			locations: locationsData,
 			networks: networksData,
+			tags: tagsData,
 			isLoading: false,
 			error: null
 		});

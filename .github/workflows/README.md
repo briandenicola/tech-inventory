@@ -1,5 +1,13 @@
 # GitHub Actions Workflows
 
+> **Phase note (added 2026-05-19)**: The "Phase 1 / Phase 2 / Phase 3" labels
+> in the security-check table below use the **original** PRD §13 numbering
+> (pre-2026-05-19 rewrite). All "Phase 1" gates are enforced today. Items
+> tagged "Phase 2 (planned)" or "Phase 3 (planned)" — CodeQL SAST, Trivy
+> container scan, SBOM generation — should be considered **P4 — Continuous
+> Iteration** candidates under the rewritten phase model and promoted to
+> `specs/_backlog/` when work begins.
+
 This document describes the CI/CD workflows that enforce code quality and security gates on Tech Inventory.
 
 ## CI Pipeline (`ci.yml`)

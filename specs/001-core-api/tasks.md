@@ -2,7 +2,7 @@
 
 **Spec**: `specs/001-core-api/spec.md`
 **Plan**: `specs/001-core-api/plan.md`
-**Status**: ✅ **PHASE 1 COMPLETE** — All 48 tasks shipped end-to-end
+**Status**: ✅ **P1 COMPLETE** (canonical **P1 — Core API** under PRD §13 as rewritten 2026-05-19) — All 48 tasks shipped end-to-end
 
 ---
 

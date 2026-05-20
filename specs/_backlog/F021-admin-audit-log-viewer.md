@@ -11,7 +11,7 @@
 
 ## Problem
 PRD `F7` (Audit & History) and `U3` (*"As Admin, I view audit history so I can
-see who changed what"*) are explicit Phase 2 requirements, and the backend is
+see who changed what"*) are explicit PRD requirements, and the backend is
 already shipped:
 
 - `AuditEvent` table is append-only with `Actor`, `EntityType`, `EntityId`,

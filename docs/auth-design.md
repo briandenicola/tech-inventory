@@ -1,7 +1,17 @@
 # Authentication Design — Workforce Entra ID Tenant
 
+> **Phase note (added 2026-05-19)**: Authored before the 2026-05-19 PRD §13
+> phase-model rewrite. The Entra OIDC + PKCE design described here **shipped
+> as part of canonical P2 — Frontend MVP + Auth** (production-validated
+> 2026-05-19). Internal references to "Phase 2 / Phase 3 / Phase 4 / Post-
+> Phase 2" labels reflect the original PRD §13 numbering; under the rewritten
+> model, post-MVP auth follow-ups (MFA enforcement, token-revocation API,
+> offline token caching) live in **P4 — Continuous Iteration** via
+> `specs/_backlog/`. The `specs/002-auth-entra` directory referenced below
+> was never created — auth shipped inside `specs/002-frontend-mvp/`.
+
 **Authorship**: Bishop (Security & Auth Specialist)  
-**Related Spec**: `specs/002-auth-entra` (Phase 2, Weeks 6–7)  
+**Related Spec**: `specs/002-frontend-mvp/` (shipped as canonical **P2**; originally planned as `specs/002-auth-entra` / "Phase 2, Weeks 6–7")  
 **Authority**: PRD §F5; Constitution §5.1; Decision: `copilot-directive-2026-05-18T140924Z-entra-tenant.md`
 
 ---

@@ -1,5 +1,14 @@
 # Threat Model — Tech Inventory v1
 
+> **Phase note (added 2026-05-19)**: Authored before the 2026-05-19 PRD §13
+> phase-model rewrite. Mitigation rows tagged `(TODO Phase 2)`,
+> `(TODO Phase 3)`, etc. use the **original** PRD §13 numbering and
+> describe planned work, not necessarily current status. Under the rewritten
+> model, any still-open mitigations roll up under **P4 — Continuous
+> Iteration** and should be promoted to `specs/_backlog/` if they are not
+> already shipped. A formal re-baseline of this threat model against the
+> shipped P0–P3 surfaces is itself a P4 candidate.
+
 **Scope**: Self-hosted family device inventory tracker (ASP.NET Core + SvelteKit PWA + SQLite).  
 **Methodology**: STRIDE per system surface.  
 **Authority**: Constitution §5 (Security), PRD §7 (NFRs — Security/Privacy), PRD §14 (Open Questions).  

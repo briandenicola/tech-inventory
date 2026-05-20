@@ -28,3 +28,13 @@ Reference repos (`docs/references.md`): **R1 drinks-and-desserts** (MediatR hand
   - 48 tasks decomposed; Hicks owns implementation, Apone owns test authorship, Hudson owns CI.
   - Reference entities use soft-delete via `IsActive` flag (consistent with Device soft-delete pattern).
   - AuditBehavior as MediatR pipeline (not SaveChanges interceptor) — gives richer before/after capture and respects the command boundary.
+
+- **2026-05-20**: Created spec 003 (`specs/003-pwa-polish/`) from Brian's field-test feedback. Key decisions:
+  - New spec (not amendment to 002) — constitution §1 scope discipline; 002 has clear completion tracking.
+  - 16 tasks across 5 rounds (A: bugs, B: mobile UX, C: features, D: reporting, E: tests).
+  - Dark mode promoted from 002 non-goal to 003 P2 — Brian explicitly requested in field test.
+  - Merge duplicates requires new backend endpoint (`POST /api/v1/{entity}/merge`) — Hicks owns.
+  - Reporting gets lightweight foundation here (3 API endpoints + summary UI); full dashboard remains Phase 4.
+  - Insurance export is CSV-first; PDF deferred (ADR needed if Brian wants PDF later).
+  - Infinite scroll supersedes pagination but keeps a11y fallback for `prefers-reduced-motion`.
+  - Rounds A+B+D can parallelize from day one; C depends on backend work from Hicks.

@@ -21,6 +21,11 @@ export const primaryNavItems = [
 		activePaths: ['/devices']
 	},
 	{
+		href: '/reports',
+		labelKey: 'navigation.reports',
+		activePaths: ['/reports']
+	},
+	{
 		href: '/import',
 		labelKey: 'navigation.imports',
 		activePaths: ['/import'],

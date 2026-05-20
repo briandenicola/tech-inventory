@@ -16,6 +16,7 @@ describe('appNav', () => {
 	it('shows the expected primary items for members', () => {
 		expect(getVisibleNavItems(primaryNavItems, 'Member').map((item) => item.href)).toEqual([
 			'/devices',
+			'/reports',
 			'/import',
 			'/export'
 		]);
@@ -33,9 +34,17 @@ describe('appNav', () => {
 	});
 
 	it('marks nested device and admin routes as active', () => {
+		const reportsItem = primaryNavItems.find((item) => item.href === '/reports');
+		const adminItem = primaryNavItems.find((item) => item.href === '/admin');
+		const exportItem = primaryNavItems.find((item) => item.href === '/export');
+
 		expect(isNavItemActive('/devices/123/edit', primaryNavItems[0])).toBe(true);
-		expect(isNavItemActive('/admin/owners', primaryNavItems[3])).toBe(true);
+		expect(reportsItem).toBeDefined();
+		expect(adminItem).toBeDefined();
+		expect(exportItem).toBeDefined();
+		expect(isNavItemActive('/reports', reportsItem!)).toBe(true);
+		expect(isNavItemActive('/admin/owners', adminItem!)).toBe(true);
 		expect(isNavItemActive('/admin/owners', adminNavItems[4])).toBe(true);
-		expect(isNavItemActive('/export', primaryNavItems[2])).toBe(true);
+		expect(isNavItemActive('/export', exportItem!)).toBe(true);
 	});
 });

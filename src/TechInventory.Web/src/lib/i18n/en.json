@@ -34,6 +34,8 @@
 			"download": "Download",
 			"upload": "Upload",
 			"retry": "Retry",
+			"merge": "Merge",
+			"deactivate": "Deactivate",
 			"select": "Select…"
 		},
 		"nouns": {
@@ -64,7 +66,11 @@
 			"saving": "Saving…",
 			"deleting": "Deleting…",
 			"processing": "Processing…",
-			"uploading": "Uploading…"
+			"uploading": "Uploading…",
+			"inactive": "Inactive"
+		},
+		"labels": {
+			"actions": "Actions"
 		},
 		"validation": {
 			"required": "This field is required",
@@ -121,6 +127,7 @@
 	"navigation": {
 		"home": "Home",
 		"devices": "Devices",
+		"reports": "Reports",
 		"brands": "Brands",
 		"manufacturers": "Manufacturers",
 		"categories": "Categories",
@@ -417,6 +424,46 @@
 		"filterTitle": "Filter Devices",
 		"success": "Export downloaded successfully",
 		"emptyState": "No devices to export with current filters"
+	},
+	"reports": {
+		"title": "Reports",
+		"subtitle": "Track your inventory snapshot and upcoming warranty deadlines.",
+		"summary": {
+			"totalDevices": "Total device count",
+			"totalValue": "Total inventory value",
+			"byCategory": "Devices by category",
+			"byLocation": "Devices by location",
+			"byStatus": "Devices by status",
+			"empty": "No report data is available yet.",
+			"unknownLabel": "Unknown"
+		},
+		"warranties": {
+			"title": "Upcoming Warranty Expirations",
+			"subtitle": "Devices with warranties expiring within the selected window.",
+			"filterLabel": "Warranty expiration window",
+			"filterDays": "{days} days",
+			"empty": "No warranties are expiring in the next {days} days.",
+			"sortExpiry": "Sort by warranty expiry",
+			"sortAsc": "Soonest first",
+			"sortDesc": "Latest first",
+			"missingDeviceLink": "Device details unavailable until the reporting API includes device IDs.",
+			"columns": {
+				"device": "Device name",
+				"brand": "Brand",
+				"expiry": "Warranty expiry date",
+				"days": "Days until expiry",
+				"status": "Status"
+			},
+			"priority": {
+				"urgent": "Urgent",
+				"warning": "Warning",
+				"info": "Info"
+			}
+		},
+		"errors": {
+			"summary": "Could not load the report summary.",
+			"warranties": "Could not load the warranty report."
+		}
 	},
 	"brands": {
 		"list": {
@@ -771,6 +818,9 @@
 				"subtitle": "Append-only record of every entity change. Click a row to see the BEFORE / AFTER diff.",
 				"emptyState": "No audit events match your filters."
 			},
+			"modal": {
+				"subtitle": "Quickly review change history without leaving your current page."
+			},
 			"columns": {
 				"timestamp": "Timestamp",
 				"actor": "Actor",
@@ -780,7 +830,10 @@
 				"summary": "Change"
 			},
 			"filters": {
+				"toggle": "Filters",
+				"activeCount": "{count} active filters",
 				"entityType": "Entity Type",
+				"entityTypePlaceholder": "Device, Brand, Category…",
 				"entityId": "Entity ID",
 				"action": "Action",
 				"actionAny": "Any action",
@@ -808,7 +861,24 @@
 			},
 			"link": {
 				"viewHistory": "View change history"
+			},
+			"actions": {
+				"open": "View Audit Log"
 			}
+		},
+		"merge": {
+			"title": "Merge {entity}",
+			"description": "Move devices away from {source} into another {entity} and deactivate the source entry.",
+			"sourceLabel": "Source {entity}",
+			"searchLabel": "Search targets",
+			"searchPlaceholder": "Search {entityPlural}…",
+			"targetLabel": "Merge into",
+			"targetPlaceholder": "Select a target…",
+			"targetHint": "Choose the {entity} that should stay active.",
+			"confirmation": "This will move {count} devices from {source} to {target} and deactivate {source}.",
+			"selectTargetPrompt": "Select a target {entity} to review the impact.",
+			"success": "Merged {source} into {target}. {count} devices moved.",
+			"error": "The merge could not be completed. Review the details and try again."
 		}
 	},
 	"settings": {

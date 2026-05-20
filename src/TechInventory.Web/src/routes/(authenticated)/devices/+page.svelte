@@ -13,6 +13,7 @@
 		type DeviceResponse
 	} from '$lib/queries/devices.svelte';
 	import { registerPullToRefresh } from '$lib/stores/pullToRefresh';
+	import AddDeviceFab from '$lib/components/AddDeviceFab.svelte';
 	import BackToTopFab from '$lib/components/BackToTopFab.svelte';
 	import {
 		getDevicesDefaultView,
@@ -31,6 +32,7 @@
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import PaginationControls from '$lib/components/PaginationControls.svelte';
 	import AddDeviceModal from '$lib/components/AddDeviceModal.svelte';
+	import DeviceDetailModal from '$lib/components/DeviceDetailModal.svelte';
 	import BulkActionBar from '$lib/components/BulkActionBar.svelte';
 	import BulkUpdateModal from '$lib/components/BulkUpdateModal.svelte';
 	import BulkDeleteModal from '$lib/components/BulkDeleteModal.svelte';
@@ -102,28 +104,19 @@
 			locationId: params.get('locationId') || undefined,
 			networkId: params.get('networkId') || undefined,
 			status,
-			purchaseYearMin: params.get('yearMin')
-				? parseInt(params.get('yearMin')!, 10)
-				: undefined,
-			purchaseYearMax: params.get('yearMax')
-				? parseInt(params.get('yearMax')!, 10)
-				: undefined,
+			purchaseYearMin: params.get('yearMin') ? parseInt(params.get('yearMin')!, 10) : undefined,
+			purchaseYearMax: params.get('yearMax') ? parseInt(params.get('yearMax')!, 10) : undefined,
 			sort: (params.get('sort') as 'name' | 'purchaseDate' | 'createdAt') || undefined,
 			sortDir: (params.get('sortDir') as 'asc' | 'desc') || 'asc',
-			groupBy:
-				(params.get('groupBy') as 'category' | 'owner' | 'year' | null) || undefined
+			groupBy: (params.get('groupBy') as 'category' | 'owner' | 'year' | null) || undefined
 		};
 		return filters;
 	});
 
 	// F026: did the user explicitly opt out of the Active default this session?
 	// Stays true only inside the bare-URL → Active-default branch.
-	const statusIsImplicitActive = $derived(
-		$page.url.searchParams.get('status') === null
-	);
-	const showingAllStatuses = $derived(
-		$page.url.searchParams.get('status') === STATUS_ALL_SENTINEL
-	);
+	const statusIsImplicitActive = $derived($page.url.searchParams.get('status') === null);
+	const showingAllStatuses = $derived($page.url.searchParams.get('status') === STATUS_ALL_SENTINEL);
 
 	// Devices query (reactive — pass a getter so filter changes propagate).
 	// Infinite scroll keeps the API on page 1 and progressively appends pages on
@@ -164,6 +157,7 @@
 
 	// Add Device modal state (D-137 — Apple-elegant modal replaces /devices/new flow)
 	let createModalOpen = $state(false);
+	const selectedDeviceId = $derived($page.url.searchParams.get('device'));
 
 	// Update URL when filters change
 	function updateFilters(newFilters: DeviceFiltersType) {
@@ -202,14 +196,34 @@
 
 	// Handle sort (toggle asc ↔ desc)
 	function handleSort(column: 'name' | 'purchaseDate' | 'createdAt') {
-		const newDir =
-			urlFilters.sort === column && urlFilters.sortDir === 'asc' ? 'desc' : 'asc';
+		const newDir = urlFilters.sort === column && urlFilters.sortDir === 'asc' ? 'desc' : 'asc';
 		updateFilters({ ...urlFilters, sort: column, sortDir: newDir });
 	}
 
 	// Handle pagination
 	function handlePageChange(page: number, pageSize: number) {
 		updateFilters({ ...urlFilters, page, pageSize });
+	}
+
+	function openDeviceDetail(deviceId: string) {
+		const params = new URLSearchParams($page.url.searchParams);
+		params.set('device', deviceId);
+		const query = params.toString();
+		void goto(query ? `${$page.url.pathname}?${query}` : $page.url.pathname, {
+			keepFocus: true,
+			noScroll: true
+		});
+	}
+
+	function closeDeviceDetail() {
+		const params = new URLSearchParams($page.url.searchParams);
+		params.delete('device');
+		const query = params.toString();
+		void goto(query ? `${$page.url.pathname}?${query}` : $page.url.pathname, {
+			keepFocus: true,
+			noScroll: true,
+			replaceState: true
+		});
 	}
 
 	// Determine if filters are active (for empty state logic).
@@ -569,223 +583,299 @@
 	onClose={() => (filtersOpen = false)}
 	onSaveDefault={handleSaveDefault}
 	onClearDefault={handleClearDefault}
-	hasStoredDefault={hasStoredDefault}
-	canSaveDefault={canSaveDefault}
+	{hasStoredDefault}
+	{canSaveDefault}
 />
 
 <!-- Main content -->
 <div class="p-6">
-		<!-- Header -->
-		<div class="mb-6 flex items-start justify-between gap-4 border-b border-neutral-200 pb-4 dark:border-neutral-800">
-			<div>
-				<h1 class="text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-50">
-					{t('devices.list.title')}
-				</h1>
-				{#if currentUser}
-					<p class="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
-						{t('auth.welcomeMessage', { name: currentUser.displayName })}
-					</p>
-				{/if}
-			</div>
+	<!-- Header -->
+	<div
+		class="mb-6 flex items-start justify-between gap-4 border-b border-neutral-200 pb-4 dark:border-neutral-800"
+	>
+		<div>
+			<h1 class="text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-50">
+				{t('devices.list.title')}
+			</h1>
+			{#if currentUser}
+				<p class="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
+					{t('auth.welcomeMessage', { name: currentUser.displayName })}
+				</p>
+			{/if}
+		</div>
 
-			<!-- Right-side actions -->
-			<div class="flex items-center gap-2">
-				<!-- Mobile view-mode toggle (cards vs table) -->
-				<div
-					class="md:hidden inline-flex items-center rounded-full bg-neutral-100 p-1 dark:bg-neutral-800"
-					role="group"
-					aria-label={t('devices.viewMode.toggleLabel')}
-				>
-					<button
-						type="button"
-						onclick={() => setViewMode('cards')}
-						aria-pressed={mobileViewMode === 'cards'}
-						class="min-h-11 px-3 rounded-full transition-colors {mobileViewMode === 'cards' ? 'bg-white shadow-sm text-neutral-900 dark:bg-neutral-700 dark:text-neutral-50' : 'text-neutral-600 dark:text-neutral-400'}"
-					>
-						<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h6v6H4zM14 6h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" />
-						</svg>
-						<span class="sr-only">{t('devices.viewMode.cards')}</span>
-					</button>
-					<button
-						type="button"
-						onclick={() => setViewMode('table')}
-						aria-pressed={mobileViewMode === 'table'}
-						class="min-h-11 px-3 rounded-full transition-colors {mobileViewMode === 'table' ? 'bg-white shadow-sm text-neutral-900 dark:bg-neutral-700 dark:text-neutral-50' : 'text-neutral-600 dark:text-neutral-400'}"
-					>
-						<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h18M3 12h18M3 19h18" />
-						</svg>
-						<span class="sr-only">{t('devices.viewMode.table')}</span>
-					</button>
-				</div>
-
-				<!-- Mobile filter button -->
+		<!-- Right-side actions -->
+		<div class="flex items-center gap-2">
+			<!-- Mobile view-mode toggle (cards vs table) -->
+			<div
+				class="md:hidden inline-flex items-center rounded-full bg-neutral-100 p-1 dark:bg-neutral-800"
+				role="group"
+				aria-label={t('devices.viewMode.toggleLabel')}
+			>
 				<button
 					type="button"
-					onclick={() => (filtersOpen = !filtersOpen)}
-					class="inline-flex items-center gap-2 rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-200 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
-					aria-expanded={filtersOpen}
+					onclick={() => setViewMode('cards')}
+					aria-pressed={mobileViewMode === 'cards'}
+					class="min-h-11 px-3 rounded-full transition-colors {mobileViewMode === 'cards'
+						? 'bg-white shadow-sm text-neutral-900 dark:bg-neutral-700 dark:text-neutral-50'
+						: 'text-neutral-600 dark:text-neutral-400'}"
 				>
-					<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<svg
+						class="h-5 w-5"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						aria-hidden="true"
+					>
 						<path
 							stroke-linecap="round"
 							stroke-linejoin="round"
 							stroke-width="2"
-							d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+							d="M4 6h6v6H4zM14 6h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"
 						/>
 					</svg>
-					{t('devices.filters.filterButton')}
+					<span class="sr-only">{t('devices.viewMode.cards')}</span>
 				</button>
-
-				<!-- Add Device CTA (desktop only; mobile uses the FAB below) -->
 				<button
 					type="button"
-					onclick={() => (createModalOpen = true)}
-					class="hidden md:inline-flex min-h-11 items-center gap-2 rounded-full bg-primary-600 px-5 py-2.5 text-base font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600"
+					onclick={() => setViewMode('table')}
+					aria-pressed={mobileViewMode === 'table'}
+					class="min-h-11 px-3 rounded-full transition-colors {mobileViewMode === 'table'
+						? 'bg-white shadow-sm text-neutral-900 dark:bg-neutral-700 dark:text-neutral-50'
+						: 'text-neutral-600 dark:text-neutral-400'}"
 				>
-					<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+					<svg
+						class="h-5 w-5"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						aria-hidden="true"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M3 5h18M3 12h18M3 19h18"
+						/>
 					</svg>
-					{t('devices.list.addButton')}
+					<span class="sr-only">{t('devices.viewMode.table')}</span>
 				</button>
 			</div>
-		</div>
 
-		<!-- Search input -->
-		<div class="mb-4 w-full md:max-w-lg">
-			<div class="relative">
-				<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-					<svg class="h-5 w-5 text-neutral-400 dark:text-neutral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-					</svg>
-				</div>
-				<input
-					type="search"
-					value={urlFilters.search || ''}
-					oninput={(e) => {
-						const target = e.target as HTMLInputElement;
-						const value = target.value;
-						if (searchTimeout) clearTimeout(searchTimeout);
-						searchTimeout = setTimeout(() => {
-							updateFilters({ ...urlFilters, search: value || undefined, page: 1 });
-						}, 300);
-					}}
-					placeholder={t('devices.filters.searchPlaceholder')}
-					aria-label={t('devices.filters.searchPlaceholder')}
-					class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 pl-11 pr-4 py-2.5 text-base text-neutral-900 placeholder:text-neutral-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-400 dark:focus:bg-neutral-900"
-				/>
+			<!-- Mobile filter button -->
+			<button
+				type="button"
+				onclick={() => (filtersOpen = !filtersOpen)}
+				class="inline-flex items-center gap-2 rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-200 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
+				aria-expanded={filtersOpen}
+			>
+				<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+					/>
+				</svg>
+				{t('devices.filters.filterButton')}
+			</button>
+
+			<!-- Add Device CTA (desktop only; mobile uses the FAB below) -->
+			<button
+				type="button"
+				onclick={() => (createModalOpen = true)}
+				class="hidden md:inline-flex min-h-11 items-center gap-2 rounded-full bg-primary-600 px-5 py-2.5 text-base font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600"
+			>
+				<svg
+					class="h-5 w-5"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					aria-hidden="true"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M12 4v16m8-8H4"
+					/>
+				</svg>
+				{t('devices.list.addButton')}
+			</button>
+		</div>
+	</div>
+
+	<!-- Search input -->
+	<div class="mb-4 w-full md:max-w-lg">
+		<div class="relative">
+			<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+				<svg
+					class="h-5 w-5 text-neutral-400 dark:text-neutral-500"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					aria-hidden="true"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+					/>
+				</svg>
 			</div>
+			<input
+				type="search"
+				value={urlFilters.search || ''}
+				oninput={(e) => {
+					const target = e.target as HTMLInputElement;
+					const value = target.value;
+					if (searchTimeout) clearTimeout(searchTimeout);
+					searchTimeout = setTimeout(() => {
+						updateFilters({ ...urlFilters, search: value || undefined, page: 1 });
+					}, 300);
+				}}
+				placeholder={t('devices.filters.searchPlaceholder')}
+				aria-label={t('devices.filters.searchPlaceholder')}
+				class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 pl-11 pr-4 py-2.5 text-base text-neutral-900 placeholder:text-neutral-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-400 dark:focus:bg-neutral-900"
+			/>
 		</div>
+	</div>
 
-		<!--
+	<!--
 			F026: status-filter chip. The implicit Active default is invisible by
 			itself, so we surface it as a chip with a one-tap escape hatch. When the
 			user has opted into "all", the chip flips to offer the reverse action.
 		-->
-		{#if statusIsImplicitActive}
-			<div class="mb-4 flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
-				<span
-					class="inline-flex items-center rounded-full bg-success-100 px-3 py-1 text-xs font-medium text-success-800 dark:bg-success-900 dark:text-success-100"
-				>
-					{t('devices.statusChip.showingActive')}
-				</span>
-				<button
-					type="button"
-					onclick={showAllStatuses}
-					class="rounded-full px-2 py-1 text-sm font-medium text-primary-700 underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-primary-300"
-				>
-					{t('devices.statusChip.showAll')}
-				</button>
-			</div>
-		{:else if showingAllStatuses}
-			<div class="mb-4 flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
-				<span
-					class="inline-flex items-center rounded-full bg-neutral-200 px-3 py-1 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200"
-				>
-					{t('devices.statusChip.showingAll')}
-				</span>
-				<button
-					type="button"
-					onclick={restoreActiveDefault}
-					class="rounded-full px-2 py-1 text-sm font-medium text-primary-700 underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-primary-300"
-				>
-					{t('devices.statusChip.activeOnly')}
-				</button>
-			</div>
-		{/if}
+	{#if statusIsImplicitActive}
+		<div class="mb-4 flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
+			<span
+				class="inline-flex items-center rounded-full bg-success-100 px-3 py-1 text-xs font-medium text-success-800 dark:bg-success-900 dark:text-success-100"
+			>
+				{t('devices.statusChip.showingActive')}
+			</span>
+			<button
+				type="button"
+				onclick={showAllStatuses}
+				class="rounded-full px-2 py-1 text-sm font-medium text-primary-700 underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-primary-300"
+			>
+				{t('devices.statusChip.showAll')}
+			</button>
+		</div>
+	{:else if showingAllStatuses}
+		<div class="mb-4 flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
+			<span
+				class="inline-flex items-center rounded-full bg-neutral-200 px-3 py-1 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200"
+			>
+				{t('devices.statusChip.showingAll')}
+			</span>
+			<button
+				type="button"
+				onclick={restoreActiveDefault}
+				class="rounded-full px-2 py-1 text-sm font-medium text-primary-700 underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-primary-300"
+			>
+				{t('devices.statusChip.activeOnly')}
+			</button>
+		</div>
+	{/if}
 
-		<!-- Content: loading / error / empty / success -->
-		{#if query.isLoading}
-			<LoadingSkeleton rows={7} />
-		{:else if query.error}
-			<ErrorState error={query.error} onRetry={refreshDevicesList} />
-		{:else if displayedDevices.length === 0}
-			<EmptyState filtered={hasActiveFilters} onAdd={() => (createModalOpen = true)} />
-		{:else}
-			<DeviceTable
-				devices={displayedDevices}
-				groups={groupedView}
-				currentSort={urlFilters.sort}
-				sortDir={urlFilters.sortDir}
-				onSort={handleSort}
-				selectable={true}
-				selectedIds={selectedIds}
-				onToggleSelect={toggleSelect}
-				onToggleSelectAll={toggleSelectAllVisible}
-				allVisibleSelected={allVisibleSelected}
-				someVisibleSelected={someVisibleSelected}
-				mobileViewMode={mobileViewMode}
+	<!-- Content: loading / error / empty / success -->
+	{#if query.isLoading}
+		<LoadingSkeleton rows={7} />
+	{:else if query.error}
+		<ErrorState error={query.error} onRetry={refreshDevicesList} />
+	{:else if displayedDevices.length === 0}
+		<EmptyState filtered={hasActiveFilters} onAdd={() => (createModalOpen = true)} />
+	{:else}
+		<DeviceTable
+			devices={displayedDevices}
+			groups={groupedView}
+			currentSort={urlFilters.sort}
+			sortDir={urlFilters.sortDir}
+			onSort={handleSort}
+			selectable={true}
+			{selectedIds}
+			onToggleSelect={toggleSelect}
+			onToggleSelectAll={toggleSelectAllVisible}
+			{allVisibleSelected}
+			{someVisibleSelected}
+			{mobileViewMode}
+			onOpenDevice={openDeviceDetail}
+		/>
+
+		{#if urlFilters.groupBy}
+			<!-- Grouped mode renders a single expanded page. -->
+		{:else if prefersReducedMotion}
+			<PaginationControls
+				currentPage={query.data?.page ?? urlFilters.page ?? 1}
+				pageSize={query.data?.pageSize ?? urlFilters.pageSize ?? 25}
+				totalCount={query.data?.totalCount ?? totalCount}
+				onPageChange={handlePageChange}
 			/>
+		{:else}
+			<div class="mt-6" aria-live="polite" aria-atomic="true">
+				{#if hasMorePages}
+					<div bind:this={sentinel} class="h-px w-full" aria-hidden="true"></div>
+				{/if}
 
-			{#if urlFilters.groupBy}
-				<!-- Grouped mode renders a single expanded page. -->
-			{:else if prefersReducedMotion}
-				<PaginationControls
-					currentPage={query.data?.page ?? urlFilters.page ?? 1}
-					pageSize={query.data?.pageSize ?? urlFilters.pageSize ?? 25}
-					totalCount={query.data?.totalCount ?? totalCount}
-					onPageChange={handlePageChange}
-				/>
-			{:else}
-				<div class="mt-6" aria-live="polite" aria-atomic="true">
-					{#if hasMorePages}
-						<div bind:this={sentinel} class="h-px w-full" aria-hidden="true"></div>
-					{/if}
-
-					{#if isLoadingMore}
-						<div class="flex items-center justify-center gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-700 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300">
-							<svg class="h-5 w-5 animate-spin text-primary-600 dark:text-primary-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-								<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-								<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-							</svg>
-							<span>{t('devices.infiniteScroll.loadingMore')}</span>
-						</div>
-					{:else if loadMoreError}
-						<div class="flex flex-col items-start gap-3 rounded-lg border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-700 dark:border-danger-900 dark:bg-danger-900/30 dark:text-danger-100 sm:flex-row sm:items-center sm:justify-between">
-							<span>{loadMoreError}</span>
-							<button
-								type="button"
-								onclick={() => void loadNextPage()}
-								class="rounded-lg border border-danger-300 px-3 py-2 font-medium transition-colors hover:bg-danger-100 focus:outline-none focus:ring-2 focus:ring-danger-500 dark:border-danger-700 dark:hover:bg-danger-900/60"
-							>
-								{t('common.actions.retry')}
-							</button>
-						</div>
-					{:else if !hasMorePages}
-						<p class="text-center text-sm text-neutral-600 dark:text-neutral-400">
-							{t('devices.infiniteScroll.complete')}
-						</p>
-					{/if}
-				</div>
-			{/if}
+				{#if isLoadingMore}
+					<div
+						class="flex items-center justify-center gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-700 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300"
+					>
+						<svg
+							class="h-5 w-5 animate-spin text-primary-600 dark:text-primary-400"
+							viewBox="0 0 24 24"
+							fill="none"
+							aria-hidden="true"
+						>
+							<circle
+								class="opacity-25"
+								cx="12"
+								cy="12"
+								r="10"
+								stroke="currentColor"
+								stroke-width="4"
+							></circle>
+							<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+							></path>
+						</svg>
+						<span>{t('devices.infiniteScroll.loadingMore')}</span>
+					</div>
+				{:else if loadMoreError}
+					<div
+						class="flex flex-col items-start gap-3 rounded-lg border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-700 dark:border-danger-900 dark:bg-danger-900/30 dark:text-danger-100 sm:flex-row sm:items-center sm:justify-between"
+					>
+						<span>{loadMoreError}</span>
+						<button
+							type="button"
+							onclick={() => void loadNextPage()}
+							class="rounded-lg border border-danger-300 px-3 py-2 font-medium transition-colors hover:bg-danger-100 focus:outline-none focus:ring-2 focus:ring-danger-500 dark:border-danger-700 dark:hover:bg-danger-900/60"
+						>
+							{t('common.actions.retry')}
+						</button>
+					</div>
+				{:else if !hasMorePages}
+					<p class="text-center text-sm text-neutral-600 dark:text-neutral-400">
+						{t('devices.infiniteScroll.complete')}
+					</p>
+				{/if}
+			</div>
 		{/if}
-	</div>
+	{/if}
+</div>
 
 {#if createModalOpen}
 	<AddDeviceModal
 		onClose={() => (createModalOpen = false)}
 		onCreated={() => void refreshDevicesList()}
+	/>
+{/if}
+
+{#if selectedDeviceId}
+	<DeviceDetailModal
+		deviceId={selectedDeviceId}
+		onClose={closeDeviceDetail}
+		onChanged={() => void refreshDevicesList()}
 	/>
 {/if}
 
@@ -814,23 +904,12 @@
 	/>
 {/if}
 
-<!--
-	F026: mobile-only Add-Device FAB. Hidden when a bulk selection is active
-	so it doesn't sit on top of the BulkActionBar's `fixed inset-x-0 bottom-0`
-	dock. The desktop header keeps the labeled CTA above.
--->
-{#if selectedIds.size === 0}
-	<button
-		type="button"
-		onclick={() => (createModalOpen = true)}
-		class="md:hidden fixed right-6 z-30 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary-600 text-white shadow-lg transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600 {showBackToTop ? 'bottom-24' : 'bottom-6'}"
-		aria-label={t('devices.list.addFab')}
-	>
-		<svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
-		</svg>
-	</button>
-{/if}
+<AddDeviceFab
+	visible={selectedIds.size === 0 && !createModalOpen && !selectedDeviceId}
+	label={t('devices.list.addFab')}
+	onClick={() => (createModalOpen = true)}
+	raised={showBackToTop}
+/>
 
 <BackToTopFab
 	visible={showBackToTop}

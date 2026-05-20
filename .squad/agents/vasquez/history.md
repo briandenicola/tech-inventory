@@ -34,6 +34,12 @@ Accessibility: WCAG 2.2 AA target, zero axe-core violations to merge. Browser ma
 
 ## Learnings
 
+### 2026-05-20 (F040-F043) — device-list modal + overflow action polish
+
+- For installed PWAs, a fixed action button should always account for `env(safe-area-inset-bottom/right)` or it risks sitting under mobile browser chrome. Wrapping the add affordance in a tiny shared FAB component keeps that offset logic out of the route and makes future floating actions trivial.
+- Device detail works best as a URL-backed modal (`/devices?...&device={id}`) instead of ad-hoc local state. The list keeps its filters/scroll context, back/forward still make sense, and the direct `/devices/[id]` route can reuse the exact same detail-fields component as a fallback for deep links.
+- A shared `DeviceActionsMenu.svelte` is the clean way to collapse dense device actions without losing desktop polish: mobile can render the same items as a bottom action sheet while desktop uses a dropdown, and both stay aligned with one action list.
+
 ### 2026-05-20 (F037) — historical timeline card + bar extraction
 
 - Timeline-style report cards stay maintainable when the date math lives in `src/lib/utils/reports.ts` and the Svelte layer only owns fetch/filter state plus rendering. That keeps lifespan grouping and scaling unit-testable without spinning up the full card in component tests.

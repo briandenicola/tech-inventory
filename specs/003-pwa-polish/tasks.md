@@ -148,3 +148,7 @@ P003-T09, T10, T11 ─→ P003-T16 (backend tests)
 ## Backend Progress Notes
 
 - **2026-05-20 (Hicks):** Backend delivery for `P003-T09` and `P003-T10` is complete: admin merge endpoints for brands/categories/locations and `GET /api/v1/reports/insurance` are implemented, tested, and reflected in `openapi.yaml`. Frontend follow-through remains before the shared tasks can be checked off.
+
+## Frontend Progress Notes
+
+- **2026-05-20 (Vasquez):** Backlog items `F040`–`F043` are complete on `/devices`: the add FAB is safe-area aware in PWA mode, list detail opens in `DeviceDetailModal.svelte` via `?device=`, device actions collapse behind `DeviceActionsMenu.svelte`, and the modal/direct route both reuse `DeviceDetailFields.svelte` for the horizontal key-value layout. Validation: `pnpm run lint` ✅, `pnpm run check` ✅, full `pnpm exec vitest run` ✅, `pnpm run build` ✅; repo `scripts\verify.ps1` still stops only when Playwright attempts to call unavailable `docker`.

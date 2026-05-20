@@ -35,6 +35,7 @@ public static class DependencyInjection
         services.AddScoped<IDeviceExportService>(serviceProvider => serviceProvider.GetRequiredService<DeviceRepository>());
         services.AddScoped<IReportingRepository, ReportingRepository>();
         services.AddScoped<IHouseholdRepository, HouseholdRepository>();
+        services.AddScoped<IHouseholdSettingRepository, HouseholdSettingRepository>();
         services.AddScoped<IOwnerRepository, OwnerRepository>();
         services.AddScoped<ILocationRepository, LocationRepository>();
         services.AddScoped<INetworkRepository, NetworkRepository>();

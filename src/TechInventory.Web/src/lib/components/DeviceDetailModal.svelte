@@ -1,24 +1,5 @@
-<!--
-	DeviceDetailModal.svelte — Modal wrapper around the device detail view.
-
-	Mirrors the Apple-elegant chrome from AddDeviceModal (rounded-2xl card,
-	shadow-2xl, backdrop-blur, sticky header with close X, scrollable body
-	capped at viewport height, Escape + backdrop click to close).
-
-	Owns its own fetch + Claim/Release/Delete state. Edit still navigates to
-	/devices/{id}/edit because that's a multi-step form better suited to a
-	full page; cancelling there comes back to /devices?device={id} so the
-	detail modal re-opens automatically.
-
-	Props:
-	- deviceId: string — which device to load
-	- onClose:  () => void — Cancel, Escape, X, backdrop click
-	- onChanged?: () => void — fired after a successful mutation
-	                          (delete / claim / release) so the parent list
-	                          can refetch.
--->
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { fly } from 'svelte/transition';
 	import { t } from '$lib/i18n';
 	import { devices } from '$lib/api/client';
 	import { referenceDataStore } from '$lib/stores/referenceData';
@@ -31,6 +12,8 @@
 	import ClaimOwnershipModal from '$lib/components/ClaimOwnershipModal.svelte';
 	import ReleaseOwnershipModal from '$lib/components/ReleaseOwnershipModal.svelte';
 	import AuditLogModal from '$lib/components/AuditLogModal.svelte';
+	import DeviceActionsMenu from '$lib/components/DeviceActionsMenu.svelte';
+	import DeviceDetailFields from '$lib/components/DeviceDetailFields.svelte';
 	import type { DeviceResponse } from '$lib/queries/devices.svelte';
 	import type { components } from '$lib/api/generated/types';
 
@@ -51,8 +34,6 @@
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
 	let notFound = $state(false);
-
-	// F030: tags assigned to this device, loaded alongside the device record.
 	let deviceTags = $state<TagResponse[]>([]);
 
 	let showDeleteModal = $state(false);
@@ -60,7 +41,7 @@
 	let showReleaseModal = $state(false);
 	let showHistoryDrawer = $state(false);
 
-	let dialogElement = $state<HTMLDivElement | undefined>(undefined);
+	let dialogElement = $state<HTMLDivElement | null>(null);
 
 	const canEdit = $derived(currentUser?.role === 'Admin' || currentUser?.role === 'Member');
 	const canDelete = $derived(currentUser?.role === 'Admin');
@@ -78,11 +59,11 @@
 			const [deviceResult, tagsResult] = await Promise.all([
 				devices.get(deviceId),
 				devices.listTags(deviceId).catch((tagErr) => {
-					// F030: tag fetch failure is non-fatal; log and show empty.
 					console.error('[DeviceDetailModal] Tag fetch failed:', tagErr);
 					return [] as TagResponse[];
 				})
 			]);
+
 			device = deviceResult as DeviceResponse;
 			deviceTags = tagsResult ?? [];
 		} catch (err) {
@@ -102,36 +83,40 @@
 	}
 
 	$effect(() => {
-		// Re-fetch whenever the modal is opened with a different deviceId.
 		void deviceId;
 		void fetchDevice();
 	});
 
-	const brandName = $derived(
-		device?.brandId
-			? (refData.brands.find((b) => b.id === device!.brandId)?.name ?? 'Unknown')
-			: '—'
-	);
-	const categoryName = $derived(
-		device?.categoryId
-			? (refData.categories.find((c) => c.id === device!.categoryId)?.name ?? 'Unknown')
-			: '—'
-	);
-	const ownerName = $derived(
-		device?.ownerId
-			? (refData.owners.find((o) => o.id === device!.ownerId)?.name ?? 'Unknown')
-			: '—'
-	);
-	const locationName = $derived(
-		device?.locationId
-			? (refData.locations.find((l) => l.id === device!.locationId)?.name ?? 'Unknown')
-			: '—'
-	);
-	const networkName = $derived(
-		device?.networkId
-			? (refData.networks.find((n) => n.id === device!.networkId)?.name ?? 'Unknown')
-			: '—'
-	);
+	const brandName = $derived.by(() => {
+		const brandId = device?.brandId;
+		return brandId
+			? (refData.brands.find((brand) => brand.id === brandId)?.name ?? 'Unknown')
+			: '—';
+	});
+	const categoryName = $derived.by(() => {
+		const categoryId = device?.categoryId;
+		return categoryId
+			? (refData.categories.find((category) => category.id === categoryId)?.name ?? 'Unknown')
+			: '—';
+	});
+	const ownerName = $derived.by(() => {
+		const ownerId = device?.ownerId;
+		return ownerId
+			? (refData.owners.find((owner) => owner.id === ownerId)?.name ?? 'Unknown')
+			: '—';
+	});
+	const locationName = $derived.by(() => {
+		const locationId = device?.locationId;
+		return locationId
+			? (refData.locations.find((location) => location.id === locationId)?.name ?? 'Unknown')
+			: '—';
+	});
+	const networkName = $derived.by(() => {
+		const networkId = device?.networkId;
+		return networkId
+			? (refData.networks.find((network) => network.id === networkId)?.name ?? 'Unknown')
+			: '—';
+	});
 
 	function getStatusColor(status: string | null): string {
 		switch (status) {
@@ -168,10 +153,11 @@
 
 	async function handleDelete(reason: string) {
 		if (!device) return;
+
 		try {
 			await devices.delete(device.id, reason);
 			invalidateDevicesCache();
-			showToast({ type: 'success', message: `${device.name ?? 'Device'} deleted successfully` });
+			showToast({ type: 'success', message: t('devices.delete.success') });
 			onChanged?.();
 			onClose();
 		} catch (err) {
@@ -188,6 +174,7 @@
 
 	async function handleClaimOwnership() {
 		if (!device || !currentUser) return;
+
 		try {
 			await devices.updateOwner(device.id, currentUser.id);
 			invalidateDevicesCache();
@@ -211,6 +198,7 @@
 
 	async function handleReleaseOwnership() {
 		if (!device) return;
+
 		try {
 			await devices.updateOwner(device.id, null);
 			invalidateDevicesCache();
@@ -232,26 +220,42 @@
 		}
 	}
 
-	function handleEdit() {
-		if (device) {
-			goto(`/devices/${device.id}/edit`);
-		}
-	}
-
 	function handleViewHistory() {
-		// F026: keep the audit history inside the device context. Brian's PWA
-		// field test (2026-05-19) flagged the old "navigate to /admin/audit"
-		// behaviour as a context-loss bug; the standalone admin route is still
-		// available for cross-entity browsing.
 		if (device) {
 			showHistoryDrawer = true;
 		}
 	}
 
-	function handleKeydown(e: KeyboardEvent) {
-		// Don't swallow Escape when a nested modal is open — let them close first.
+	function trapFocus(event: KeyboardEvent) {
+		if (event.key !== 'Tab' || !dialogElement) {
+			return;
+		}
+
+		const focusableElements = Array.from(
+			dialogElement.querySelectorAll<HTMLElement>(
+				'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+			)
+		).filter((element) => !element.hasAttribute('disabled'));
+
+		const firstElement = focusableElements[0];
+		const lastElement = focusableElements[focusableElements.length - 1];
+
+		if (!firstElement || !lastElement) {
+			return;
+		}
+
+		if (event.shiftKey && document.activeElement === firstElement) {
+			event.preventDefault();
+			lastElement.focus();
+		} else if (!event.shiftKey && document.activeElement === lastElement) {
+			event.preventDefault();
+			firstElement.focus();
+		}
+	}
+
+	function handleKeydown(event: KeyboardEvent) {
 		if (
-			e.key === 'Escape' &&
+			event.key === 'Escape' &&
 			!showDeleteModal &&
 			!showClaimModal &&
 			!showReleaseModal &&
@@ -265,19 +269,23 @@
 		const previousOverflow = document.body.style.overflow;
 		document.body.style.overflow = 'hidden';
 
-		if (dialogElement) {
-			dialogElement.focus();
-		}
+		dialogElement?.addEventListener('keydown', trapFocus);
+		dialogElement
+			?.querySelector<HTMLElement>(
+				'[data-dialog-initial-focus], button, [href], input, select, textarea'
+			)
+			?.focus();
 
 		return () => {
 			document.body.style.overflow = previousOverflow;
+			dialogElement?.removeEventListener('keydown', trapFocus);
 		};
 	});
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="fixed inset-0 z-50">
+<div class="fixed inset-0" style="z-index: var(--z-modal-backdrop);">
 	<button
 		type="button"
 		aria-label={t('common.actions.close')}
@@ -285,47 +293,54 @@
 		onclick={onClose}
 	></button>
 
-	<div class="pointer-events-none relative h-full overflow-y-auto">
-		<div class="flex min-h-full items-start justify-center px-4 py-10 sm:py-16">
+	<div
+		class="pointer-events-none relative flex min-h-full items-end justify-center sm:items-center sm:px-4 sm:py-10"
+	>
+		<div
+			bind:this={dialogElement}
+			transition:fly|local={{ y: 32, duration: 180 }}
+			class="pointer-events-auto relative flex w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl dark:bg-neutral-950 sm:max-w-4xl sm:rounded-2xl"
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="device-detail-modal-title"
+			tabindex="-1"
+			style="z-index: var(--z-modal);"
+		>
 			<div
-				bind:this={dialogElement}
-				class="pointer-events-auto relative w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-neutral-900"
-				role="dialog"
-				aria-modal="true"
-				aria-labelledby="device-detail-modal-title"
-				tabindex="-1"
+				class="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-neutral-200/70 bg-white/95 px-5 py-4 backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-950/95 sm:px-6 sm:py-5"
 			>
-				<!-- Sticky header -->
-				<div
-					class="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-neutral-200/70 bg-white/95 px-6 py-5 backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-900/95"
-				>
-					<div class="min-w-0 flex-1">
-						<h2
-							id="device-detail-modal-title"
-							class="truncate text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-50"
-						>
-							{device?.name ?? t('devices.detail.title')}
-						</h2>
-						{#if device}
-							<div class="mt-2 flex flex-wrap items-center gap-2">
-								<span
-									class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {getStatusColor(
-										device.status
-									)}"
-								>
-									{device.status ?? 'Unknown'}
-								</span>
-								{#if brandName !== '—'}
-									<span class="text-sm text-neutral-600 dark:text-neutral-400">{brandName}</span>
-								{/if}
-							</div>
-						{/if}
-					</div>
+				<div class="min-w-0 flex-1">
+					<p
+						class="text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400"
+					>
+						{t('devices.detail.title')}
+					</p>
+					<h2
+						id="device-detail-modal-title"
+						class="mt-1 truncate text-xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-50 sm:text-2xl"
+					>
+						{device?.name ?? t('devices.detail.title')}
+					</h2>
+					{#if device && brandName !== '—'}
+						<p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">{brandName}</p>
+					{/if}
+				</div>
+				<div class="flex items-center gap-2">
+					{#if device && !isLoading}
+						<DeviceActionsMenu
+							editHref={canEdit ? `/devices/${device.id}/edit` : undefined}
+							onClaim={canClaim ? () => (showClaimModal = true) : undefined}
+							onRelease={canRelease ? () => (showReleaseModal = true) : undefined}
+							onViewHistory={canViewHistory ? handleViewHistory : undefined}
+							onDelete={canDelete ? () => (showDeleteModal = true) : undefined}
+						/>
+					{/if}
 					<button
 						type="button"
 						onclick={onClose}
-						class="inline-flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+						class="inline-flex h-11 w-11 items-center justify-center rounded-full text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
 						aria-label={t('common.actions.close')}
+						data-dialog-initial-focus
 					>
 						<svg
 							class="h-5 w-5"
@@ -343,301 +358,37 @@
 						</svg>
 					</button>
 				</div>
+			</div>
 
-				<!-- Body -->
-				<div class="px-6 py-6">
-					{#if isLoading}
-						<LoadingSkeleton rows={5} />
-					{:else if notFound}
-						<div
-							class="rounded-xl border border-warning-200 bg-warning-50 p-8 text-center dark:border-warning-900 dark:bg-warning-950"
-						>
-							<h3 class="text-base font-semibold text-warning-900 dark:text-warning-100">
-								Device Not Found
-							</h3>
-							<p class="mt-2 text-sm text-warning-700 dark:text-warning-300">
-								This device does not exist or has been deleted.
-							</p>
-						</div>
-					{:else if error}
-						<ErrorState {error} onRetry={fetchDevice} />
-					{:else if device}
-						<dl class="grid gap-x-6 gap-y-5 sm:grid-cols-2">
-							<div>
-								<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-									{t('devices.columns.serial')}
-								</dt>
-								<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">
-									{device.serialNumber ?? '—'}
-								</dd>
-							</div>
-							{#if device.model}
-								<div>
-									<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-										{t('devices.columns.model')}
-									</dt>
-									<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">{device.model}</dd>
-								</div>
-							{/if}
-							<div>
-								<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-									{t('devices.columns.brand')}
-								</dt>
-								<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">{brandName}</dd>
-							</div>
-							<div>
-								<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-									{t('devices.columns.category')}
-								</dt>
-								<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">{categoryName}</dd>
-							</div>
-							<div>
-								<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-									{t('devices.columns.owner')}
-								</dt>
-								<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">{ownerName}</dd>
-							</div>
-							<div>
-								<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-									{t('devices.columns.location')}
-								</dt>
-								<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">{locationName}</dd>
-							</div>
-							<div>
-								<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-									{t('devices.columns.network')}
-								</dt>
-								<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">{networkName}</dd>
-							</div>
-							<div>
-								<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-									{t('devices.columns.purchaseDate')}
-								</dt>
-								<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">
-									{formatDate(device.purchaseDate)}
-								</dd>
-							</div>
-							<div>
-								<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-									{t('devices.columns.purchasePrice')}
-								</dt>
-								<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">
-									{#if device.purchasePrice !== null && device.currencyCode}
-										{device.currencyCode} {device.purchasePrice.toFixed(2)}
-									{:else}
-										—
-									{/if}
-								</dd>
-							</div>
-							<!--
-								F034: mirror the detail page so the modal view (deep-linked
-								via /devices?device=:id) exposes the same imported fields.
-								Each row is truthy-gated so devices without OS/IP/etc. stay
-								scannable.
-							-->
-							{#if device.operatingSystem}
-								<div>
-									<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-										{t('devices.columns.operatingSystem')}
-									</dt>
-									<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">{device.operatingSystem}</dd>
-								</div>
-							{/if}
-							{#if device.version}
-								<div>
-									<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-										{t('devices.columns.version')}
-									</dt>
-									<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">{device.version}</dd>
-								</div>
-							{/if}
-							{#if device.ipAddress}
-								<div>
-									<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-										{t('devices.columns.ipAddress')}
-									</dt>
-									<dd class="mt-1 font-mono text-base text-neutral-900 dark:text-neutral-100">{device.ipAddress}</dd>
-								</div>
-							{/if}
-							{#if device.macAddress}
-								<div>
-									<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-										{t('devices.columns.macAddress')}
-									</dt>
-									<dd class="mt-1 font-mono text-base text-neutral-900 dark:text-neutral-100">{device.macAddress}</dd>
-								</div>
-							{/if}
-							{#if device.productUrl}
-								<div class="sm:col-span-2">
-									<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-										{t('devices.columns.productUrl')}
-									</dt>
-									<dd class="mt-1 truncate text-base">
-										<a
-											href={device.productUrl}
-											target="_blank"
-											rel="noopener noreferrer"
-											class="text-primary-600 hover:text-primary-500 hover:underline dark:text-primary-400 dark:hover:text-primary-300"
-										>
-											{device.productUrl}
-										</a>
-									</dd>
-								</div>
-							{/if}
-							{#if device.retiredDate}
-								<div>
-									<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-										{t('devices.columns.retiredDate')}
-									</dt>
-									<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">
-										{formatDate(device.retiredDate)}
-									</dd>
-								</div>
-							{/if}
-							{#if device.disposalMethod}
-								<div>
-									<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-										{t('devices.columns.disposalMethod')}
-									</dt>
-									<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">{device.disposalMethod}</dd>
-								</div>
-							{/if}
-							{#if device.purpose}
-								<div class="sm:col-span-2">
-									<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-										{t('devices.columns.purpose')}
-									</dt>
-									<dd class="mt-1 whitespace-pre-wrap text-base text-neutral-900 dark:text-neutral-100">
-										{device.purpose}
-									</dd>
-								</div>
-							{/if}
-						</dl>
-
-						<!--
-							F030: per-device tag chips. Rendered between the property
-							grid and the notes block so they read as a property of the
-							device. Empty state is intentionally muted, not hidden,
-							so users notice the affordance and click Edit to add tags.
-						-->
-						<div class="mt-6">
-							<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-								{t('devices.tags.label')}
-							</dt>
-							<dd class="mt-2">
-								{#if deviceTags.length > 0}
-									<ul class="flex flex-wrap gap-2" aria-label={t('devices.tags.label')}>
-										{#each deviceTags as tag (tag.id)}
-											<li
-												class="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-3 py-1 text-sm font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200"
-											>
-												{#if tag.color}
-													<span
-														class="inline-block h-2 w-2 rounded-full"
-														style="background-color: {tag.color};"
-														aria-hidden="true"
-													></span>
-												{/if}
-												{tag.name}
-											</li>
-										{/each}
-									</ul>
-								{:else}
-									<p class="text-sm text-neutral-500 dark:text-neutral-400">
-										{t('devices.tags.empty')}
-									</p>
-								{/if}
-							</dd>
-						</div>
-
-						{#if device.notes}
-							<div class="mt-6">
-								<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-									{t('devices.columns.notes')}
-								</dt>
-								<dd
-									class="mt-1 whitespace-pre-wrap text-base text-neutral-900 dark:text-neutral-100"
-								>
-									{device.notes}
-								</dd>
-							</div>
-						{/if}
-
-						<div class="mt-8 border-t border-neutral-200 pt-5 dark:border-neutral-800">
-							<h3 class="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
-								Audit Trail
-							</h3>
-							<dl class="mt-2 space-y-1 text-sm text-neutral-600 dark:text-neutral-400">
-								<div>
-									<span class="font-medium">Created:</span>
-									<time datetime={device.createdAt} title={formatDateTime(device.createdAt)}>
-										{formatDateTime(device.createdAt)}
-									</time>
-									{#if device.createdBy}<span> by {device.createdBy}</span>{/if}
-								</div>
-								<div>
-									<span class="font-medium">Last Modified:</span>
-									<time datetime={device.modifiedAt} title={formatDateTime(device.modifiedAt)}>
-										{formatDateTime(device.modifiedAt)}
-									</time>
-									{#if device.modifiedBy}<span> by {device.modifiedBy}</span>{/if}
-								</div>
-							</dl>
-						</div>
-					{/if}
-				</div>
-
-				{#if device && !isLoading}
-					<!-- Sticky footer with role-aware actions -->
+			<div class="overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
+				{#if isLoading}
+					<LoadingSkeleton rows={6} />
+				{:else if notFound}
 					<div
-						class="sticky bottom-0 z-10 flex flex-wrap items-center justify-end gap-2 border-t border-neutral-200/70 bg-white/95 px-6 py-4 backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-900/95"
+						class="rounded-2xl border border-warning-200 bg-warning-50 p-8 text-center dark:border-warning-900 dark:bg-warning-950"
 					>
-						{#if canClaim}
-							<button
-								type="button"
-								onclick={() => (showClaimModal = true)}
-								class="inline-flex min-h-11 items-center gap-2 rounded-full border border-primary-600 px-4 py-2 text-sm font-medium text-primary-600 transition-colors hover:bg-primary-50 dark:border-primary-500 dark:text-primary-400 dark:hover:bg-neutral-800"
-							>
-								{t('devices.detail.claimButton')}
-							</button>
-						{/if}
-						{#if canRelease}
-							<button
-								type="button"
-								onclick={() => (showReleaseModal = true)}
-								class="inline-flex min-h-11 items-center gap-2 rounded-full border border-warning-600 px-4 py-2 text-sm font-medium text-warning-600 transition-colors hover:bg-warning-50 dark:border-warning-500 dark:text-warning-400 dark:hover:bg-neutral-800"
-							>
-								{t('devices.detail.releaseButton')}
-							</button>
-						{/if}
-						{#if canViewHistory}
-							<button
-								type="button"
-								onclick={handleViewHistory}
-								class="inline-flex min-h-11 items-center gap-2 rounded-full border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-							>
-								{t('admin.audit.link.viewHistory')}
-							</button>
-						{/if}
-						{#if canEdit}
-							<button
-								type="button"
-								onclick={handleEdit}
-								class="inline-flex min-h-11 items-center gap-2 rounded-full border border-primary-600 px-4 py-2 text-sm font-medium text-primary-600 transition-colors hover:bg-primary-50 dark:border-primary-500 dark:text-primary-400 dark:hover:bg-neutral-800"
-							>
-								{t('common.actions.edit')}
-							</button>
-						{/if}
-						{#if canDelete}
-							<button
-								type="button"
-								onclick={() => (showDeleteModal = true)}
-								class="inline-flex min-h-11 items-center gap-2 rounded-full border border-danger-600 px-4 py-2 text-sm font-medium text-danger-600 transition-colors hover:bg-danger-50 dark:border-danger-500 dark:text-danger-400 dark:hover:bg-neutral-800"
-							>
-								{t('common.actions.delete')}
-							</button>
-						{/if}
+						<h3 class="text-base font-semibold text-warning-900 dark:text-warning-100">
+							{t('devices.detail.notFoundTitle')}
+						</h3>
+						<p class="mt-2 text-sm text-warning-700 dark:text-warning-300">
+							{t('devices.detail.notFoundDescription')}
+						</p>
 					</div>
+				{:else if error}
+					<ErrorState {error} onRetry={fetchDevice} />
+				{:else if device}
+					<DeviceDetailFields
+						{device}
+						{brandName}
+						{categoryName}
+						{ownerName}
+						{locationName}
+						{networkName}
+						{deviceTags}
+						statusClass={getStatusColor(device.status)}
+						{formatDate}
+						{formatDateTime}
+					/>
 				{/if}
 			</div>
 		</div>

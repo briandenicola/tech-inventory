@@ -32,6 +32,7 @@
 		someVisibleSelected?: boolean;
 		/** F031: mobile view mode — cards (default) or table (horizontally scrollable). */
 		mobileViewMode?: 'cards' | 'table';
+		onOpenDevice?: (deviceId: string) => void;
 	}
 
 	let {
@@ -46,7 +47,8 @@
 		onToggleSelectAll,
 		allVisibleSelected = false,
 		someVisibleSelected = false,
-		mobileViewMode = 'cards'
+		mobileViewMode = 'cards',
+		onOpenDevice
 	}: Props = $props();
 
 	const refData = $derived($referenceDataStore);
@@ -115,6 +117,15 @@
 		}
 	}
 
+	function openDevice(deviceId: string): void {
+		if (onOpenDevice) {
+			onOpenDevice(deviceId);
+			return;
+		}
+
+		window.location.href = `/devices/${deviceId}`;
+	}
+
 	// F026: status pill colors for mobile cards. Mirrors the AuditDiffDrawer
 	// palette pattern so the visual language stays consistent across the app.
 	function statusBadgeClass(status: string | null | undefined): string {
@@ -141,10 +152,7 @@
 		<thead class="bg-neutral-50 dark:bg-neutral-900">
 			<tr>
 				{#if selectable}
-					<th
-						scope="col"
-						class="w-12 px-4 py-3 text-left"
-					>
+					<th scope="col" class="w-12 px-4 py-3 text-left">
 						<input
 							type="checkbox"
 							class="h-4 w-4 cursor-pointer rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
@@ -302,8 +310,10 @@
 			{#snippet desktopRow(device: DeviceResponse)}
 				{@const selected = selectable && isSelected(device.id)}
 				<tr
-					class="cursor-pointer transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-900 {selected ? 'bg-primary-500/10' : ''}"
-					onclick={() => (window.location.href = `/devices/${device.id}`)}
+					class="cursor-pointer transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-900 {selected
+						? 'bg-primary-500/10'
+						: ''}"
+					onclick={() => openDevice(device.id)}
 				>
 					{#if selectable}
 						<td
@@ -325,7 +335,9 @@
 							{#if device.model}
 								<!-- F034: surface model under the device name so the desktop
 								     table reveals it without forcing a click into detail. -->
-								<span class="mt-0.5 text-xs font-normal text-neutral-500 dark:text-neutral-400 truncate">
+								<span
+									class="mt-0.5 text-xs font-normal text-neutral-500 dark:text-neutral-400 truncate"
+								>
 									{device.model}
 								</span>
 							{/if}
@@ -356,11 +368,7 @@
 						class="sticky top-0 z-10 border-y border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900"
 						data-testid="device-group-header"
 					>
-						<th
-							colspan={groupColspan}
-							scope="colgroup"
-							class="px-4 py-2 text-left"
-						>
+						<th colspan={groupColspan} scope="colgroup" class="px-4 py-2 text-left">
 							<button
 								type="button"
 								onclick={() => toggleGroup(group.key)}
@@ -432,94 +440,149 @@
 	detail modal.
 -->
 {#if mobileViewMode === 'cards'}
-<div class="md:hidden grid grid-cols-2 gap-3">
-	{#snippet mobileCard(device: DeviceResponse)}
-		{@const selected = selectable && isSelected(device.id)}
-		<div
-			class="relative rounded-lg border border-neutral-200 bg-white transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:bg-neutral-900 {selected ? 'ring-2 ring-primary-500 bg-primary-500/5' : ''}"
-		>
-			{#if selectable}
-				<label class="absolute right-2 top-2 z-10 flex h-8 w-8 cursor-pointer items-center justify-center">
-					<input
-						type="checkbox"
-						class="h-5 w-5 cursor-pointer rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
-						checked={isSelected(device.id)}
-						onchange={(e) => handleSelectToggle(e, device.id)}
-						aria-label={t('devices.bulk.selectRow', { name: device.name || device.id })}
-					/>
-				</label>
-			{/if}
-			<a
-				href={`/devices/${device.id}`}
-				class="block p-3"
-				class:pr-10={selectable}
+	<div class="md:hidden grid grid-cols-2 gap-3">
+		{#snippet mobileCard(device: DeviceResponse)}
+			{@const selected = selectable && isSelected(device.id)}
+			<div
+				class="relative rounded-lg border border-neutral-200 bg-white transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:bg-neutral-900 {selected
+					? 'ring-2 ring-primary-500 bg-primary-500/5'
+					: ''}"
 			>
-				<h3 class="text-sm font-semibold leading-tight text-neutral-900 dark:text-neutral-50">
-					{device.name || '—'}
-				</h3>
-				{#if device.model}
-					<!-- F034: model is the most-asked secondary identifier on the cards. -->
-					<p class="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400 truncate">
-						{device.model}
-					</p>
-				{/if}
-				<span
-					class="mt-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {statusBadgeClass(device.status)}"
-				>
-					{device.status || '—'}
-				</span>
-				<dl class="mt-2 space-y-0.5 text-xs text-neutral-700 dark:text-neutral-300">
-					<div class="flex gap-1 truncate">
-						<dt class="font-medium text-neutral-500 dark:text-neutral-400">{t('devices.columns.brand')}:</dt>
-						<dd class="truncate">{lookupName(refData.brands, device.brandId)}</dd>
-					</div>
-					<div class="flex gap-1 truncate">
-						<dt class="font-medium text-neutral-500 dark:text-neutral-400">{t('devices.columns.category')}:</dt>
-						<dd class="truncate">{lookupName(refData.categories, device.categoryId)}</dd>
-					</div>
-				</dl>
-			</a>
-		</div>
-	{/snippet}
-
-	{#if isGrouped && groups}
-		{#each groups as group (group.key)}
-			{@const collapsed = isCollapsed(group.key)}
-			<section aria-label={group.label} data-testid="device-group-section-mobile" class="col-span-2">
-				<button
-					type="button"
-					onclick={() => toggleGroup(group.key)}
-					aria-expanded={!collapsed}
-					class="mb-2 flex w-full items-center gap-2 rounded-lg bg-neutral-100 px-3 py-2 text-sm font-semibold text-neutral-900 hover:bg-neutral-200 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-900 dark:text-neutral-50 dark:hover:bg-neutral-800"
-				>
-					<svg
-						class="h-4 w-4 transition-transform"
-						class:rotate-[-90deg]={collapsed}
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-						aria-hidden="true"
+				{#if selectable}
+					<label
+						class="absolute right-2 top-2 z-10 flex h-8 w-8 cursor-pointer items-center justify-center"
 					>
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-					</svg>
-					<span class="flex-1 text-left">{group.label}</span>
-					<span class="rounded-full bg-neutral-200 px-2 py-0.5 text-xs font-medium text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
-						{group.count}
-					</span>
-				</button>
-				{#if !collapsed}
-					<div class="grid grid-cols-2 gap-3">
-						{#each group.devices as device (device.id)}
-							{@render mobileCard(device)}
-						{/each}
-					</div>
+						<input
+							type="checkbox"
+							class="h-5 w-5 cursor-pointer rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
+							checked={isSelected(device.id)}
+							onchange={(e) => handleSelectToggle(e, device.id)}
+							aria-label={t('devices.bulk.selectRow', { name: device.name || device.id })}
+						/>
+					</label>
 				{/if}
-			</section>
-		{/each}
-	{:else}
-		{#each devices as device (device.id)}
-			{@render mobileCard(device)}
-		{/each}
-	{/if}
-</div>
+				{#if onOpenDevice}
+					<button
+						type="button"
+						onclick={() => openDevice(device.id)}
+						class="block w-full p-3 text-left"
+						class:pr-10={selectable}
+					>
+						<h3 class="text-sm font-semibold leading-tight text-neutral-900 dark:text-neutral-50">
+							{device.name || '—'}
+						</h3>
+						{#if device.model}
+							<p class="mt-0.5 truncate text-xs text-neutral-500 dark:text-neutral-400">
+								{device.model}
+							</p>
+						{/if}
+						<span
+							class="mt-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {statusBadgeClass(
+								device.status
+							)}"
+						>
+							{device.status || '—'}
+						</span>
+						<dl class="mt-2 space-y-0.5 text-xs text-neutral-700 dark:text-neutral-300">
+							<div class="flex gap-1 truncate">
+								<dt class="font-medium text-neutral-500 dark:text-neutral-400">
+									{t('devices.columns.brand')}:
+								</dt>
+								<dd class="truncate">{lookupName(refData.brands, device.brandId)}</dd>
+							</div>
+							<div class="flex gap-1 truncate">
+								<dt class="font-medium text-neutral-500 dark:text-neutral-400">
+									{t('devices.columns.category')}:
+								</dt>
+								<dd class="truncate">{lookupName(refData.categories, device.categoryId)}</dd>
+							</div>
+						</dl>
+					</button>
+				{:else}
+					<a href={`/devices/${device.id}`} class="block p-3" class:pr-10={selectable}>
+						<h3 class="text-sm font-semibold leading-tight text-neutral-900 dark:text-neutral-50">
+							{device.name || '—'}
+						</h3>
+						{#if device.model}
+							<p class="mt-0.5 truncate text-xs text-neutral-500 dark:text-neutral-400">
+								{device.model}
+							</p>
+						{/if}
+						<span
+							class="mt-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {statusBadgeClass(
+								device.status
+							)}"
+						>
+							{device.status || '—'}
+						</span>
+						<dl class="mt-2 space-y-0.5 text-xs text-neutral-700 dark:text-neutral-300">
+							<div class="flex gap-1 truncate">
+								<dt class="font-medium text-neutral-500 dark:text-neutral-400">
+									{t('devices.columns.brand')}:
+								</dt>
+								<dd class="truncate">{lookupName(refData.brands, device.brandId)}</dd>
+							</div>
+							<div class="flex gap-1 truncate">
+								<dt class="font-medium text-neutral-500 dark:text-neutral-400">
+									{t('devices.columns.category')}:
+								</dt>
+								<dd class="truncate">{lookupName(refData.categories, device.categoryId)}</dd>
+							</div>
+						</dl>
+					</a>
+				{/if}
+			</div>
+		{/snippet}
+
+		{#if isGrouped && groups}
+			{#each groups as group (group.key)}
+				{@const collapsed = isCollapsed(group.key)}
+				<section
+					aria-label={group.label}
+					data-testid="device-group-section-mobile"
+					class="col-span-2"
+				>
+					<button
+						type="button"
+						onclick={() => toggleGroup(group.key)}
+						aria-expanded={!collapsed}
+						class="mb-2 flex w-full items-center gap-2 rounded-lg bg-neutral-100 px-3 py-2 text-sm font-semibold text-neutral-900 hover:bg-neutral-200 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-900 dark:text-neutral-50 dark:hover:bg-neutral-800"
+					>
+						<svg
+							class="h-4 w-4 transition-transform"
+							class:rotate-[-90deg]={collapsed}
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+							aria-hidden="true"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M19 9l-7 7-7-7"
+							/>
+						</svg>
+						<span class="flex-1 text-left">{group.label}</span>
+						<span
+							class="rounded-full bg-neutral-200 px-2 py-0.5 text-xs font-medium text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
+						>
+							{group.count}
+						</span>
+					</button>
+					{#if !collapsed}
+						<div class="grid grid-cols-2 gap-3">
+							{#each group.devices as device (device.id)}
+								{@render mobileCard(device)}
+							{/each}
+						</div>
+					{/if}
+				</section>
+			{/each}
+		{:else}
+			{#each devices as device (device.id)}
+				{@render mobileCard(device)}
+			{/each}
+		{/if}
+	</div>
 {/if}

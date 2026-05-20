@@ -42,11 +42,11 @@ Fixes and improvements for the progressive web app (phone-first) experience.
 
 | ID | Feature | Description | Priority | Status |
 |----|---------|-------------|----------|--------|
-| F040 | Restore (+) FAB for add device | The floating action button to add a new device is missing in PWA mode — restore it as a visible, always-accessible FAB on the device list view. | P1 | Backlog |
-| F041 | Device details as modal | Device details should open as a slide-up modal/bottom sheet instead of navigating to a new page. Keeps context and feels native on mobile. | P2 | Backlog |
-| F042 | Hamburger menu for device actions | The Options menu (Edit, Release Ownership, View Change History, etc.) should collapse into a hamburger/kebab overflow menu in PWA mode instead of exposed buttons. | P2 | Backlog |
-| F043 | Device details table layout | Device details should render as a horizontal key-value table (`Column Name \| Property Value`) instead of stacking the label above the value. Cleaner, more scannable. | P2 | Backlog |
-| F044 | Admin column order settings | Give admins the ability to configure the display order of columns on the device list/details views from an admin settings screen. Persisted per-household. | P3 | Backlog |
+| F040 | Restore (+) FAB for add device | The floating action button to add a new device is missing in PWA mode — restore it as a visible, always-accessible FAB on the device list view. The shared `AddDeviceFab` now stays fixed above the safe area so the add affordance survives installed-PWA chrome. | P1 | Done |
+| F041 | Device details as modal | Device details now open as a slide-up bottom sheet on mobile and a centered modal on desktop, keeping list context while preserving Escape/backdrop dismiss and focus trapping. | P2 | Done |
+| F042 | Hamburger menu for device actions | Device edit / claim / release / history / delete actions now live behind a shared kebab overflow menu with a mobile action sheet and desktop dropdown. | P2 | Done |
+| F043 | Device details table layout | Device details now render through a horizontal key-value table component, replacing the old stacked label/value layout for better scanability. | P2 | Done |
+| F044 | Admin column order settings | Backend API now persists per-household device list/detail display order at `/api/v1/settings/display`; the admin settings screen still needs frontend wiring. | P3 | In Progress |
 
 ---
 

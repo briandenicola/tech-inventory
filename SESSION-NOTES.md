@@ -4,6 +4,42 @@ Append-only log. Newest entries at the top.
 
 ---
 
+## 2026-05-20 — Hicks F044 display settings API
+
+- Added `src\TechInventory.Domain\Entities\HouseholdSetting.cs`, `src\TechInventory.Application\Abstractions\Repositories\IHouseholdSettingRepository.cs`, `src\TechInventory.Infrastructure\Persistence\Repositories\HouseholdSettingRepository.cs`, EF configuration, and migration `20260520202952_AddHouseholdSettings` so per-household settings now persist as unique `(HouseholdId, Key)` rows with JSON values.
+- Added `src\TechInventory.Application\Settings\DisplaySettingsCatalog.cs`, `GetDisplaySettingsQuery.cs`, and `UpdateDisplaySettingsCommand.cs`, then exposed `GET/PUT /api/v1/settings/display` in `src\TechInventory.Api\Controllers\SettingsController.cs`; GET seeds default device-list/detail ordering when rows are missing, PUT is `Admin`-only, validation enforces the allowlists + duplicate rejection + required `name` list column, and successful updates append a `HouseholdSetting` audit event.
+- Added coverage in `tests\TechInventory.UnitTests\Application\DisplaySettingsHandlerTests.cs`, `DisplaySettingsValidationTests.cs`, `tests\TechInventory.IntegrationTests\Controllers\SettingsControllerTests.cs`, and `SettingsAuthorizationTests.cs`; regenerated repo-root `openapi.yaml`, updated `docs\backlog.md` to mark `F044` in progress, appended Hicks learnings, and added decision note `.squad\decisions\inbox\hicks-f044-household-settings-store.md`.
+- Validation: `dotnet format --verify-no-changes` ✅, `dotnet build -c Release` ✅, `dotnet test -c Release` ✅ (**455 total / 450 passed / 5 skipped / 0 failed**). `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify.ps1` still fails only when Playwright tries to call unavailable `docker` in this environment.
+
+---
+
+## 2026-05-20 — Vasquez F040-F043 device PWA UX pass
+
+- Added `src\TechInventory.Web\src\lib\components\AddDeviceFab.svelte`, `DeviceActionsMenu.svelte`, and `DeviceDetailFields.svelte`, then rewired `src\TechInventory.Web\src\routes\(authenticated)\devices\+page.svelte`, `src\lib\components\DeviceDetailModal.svelte`, and `devices\[id]\+page.svelte` so the device list now keeps a safe-area-aware add FAB visible, opens details in a bottom-sheet/desktop modal from `?device=`, collapses device actions behind a kebab menu, and renders shared horizontal detail tables.
+- Updated `src\TechInventory.Web\src\lib\components\DeviceTable.svelte` so list interactions stay in-place on `/devices` when opening detail, and added i18n copy for the new overflow menu / not-found modal states in `src\TechInventory.Web\src\lib\i18n\en.json`.
+- Added focused frontend coverage in `src\TechInventory.Web\src\lib\components\AddDeviceFab.test.ts`, `DeviceActionsMenu.test.ts`, `DeviceDetailFields.test.ts`, plus a `DeviceTable.test.ts` assertion for in-place detail opening. Updated `docs\backlog.md` to mark `F040`–`F043` done.
+- Validation: `pnpm run lint` ✅, `pnpm run check` ✅, focused `pnpm exec vitest run src/lib/components/AddDeviceFab.test.ts src/lib/components/DeviceActionsMenu.test.ts src/lib/components/DeviceDetailFields.test.ts src/lib/components/DeviceTable.test.ts` ✅ (**25 passed**), full `pnpm exec vitest run` ✅ (**362 passed / 1 skipped**), `pnpm run build` ✅. Repo `scripts\verify.ps1` still fails only when Playwright teardown tries to call unavailable `docker` in this environment.
+
+---
+
+## 2026-05-20 — Vasquez F037 timeline card + tests
+
+- Added `src\TechInventory.Web\src\lib\components\TimelineReport.svelte`, `TimelineBar.svelte`, and `TimelineReport.test.ts`, then wired the new card into `src\TechInventory.Web\src\routes\(authenticated)\reports\+page.svelte` so `/reports` now shows a category- or owner-grouped historical ownership timeline with active/disposed bars, desktop year axes, and mobile-friendly date labels.
+- Extended `src\TechInventory.Web\src\lib\api\client.ts`, `api\types.ts`, and `src\TechInventory.Web\src\lib\utils\reports.ts` / `reports.test.ts` with the frozen `/api/v1/reports/timeline` contract plus normalization helpers for duration-years, grouped entries, and shared min/max date scaling; added the new F037 strings under `src\TechInventory.Web\src\lib\i18n\en.json`.
+- Updated `docs\backlog.md` to mark `F037` in progress, appended Vasquez learnings, and dropped decision note `.squad\decisions\inbox\vasquez-f037-timeline.md` documenting the self-contained card + extracted bar pattern.
+- Validation: baseline `pnpm run check` ✅, `pnpm run lint` ✅, focused `pnpm exec vitest run src/lib/components/TimelineReport.test.ts` ✅, focused `pnpm exec vitest run src/lib/utils/reports.test.ts` ✅, final `pnpm run build` ✅.
+
+---
+
+## 2026-05-20 — Hicks F037 historical timeline backend
+
+- Added `src\TechInventory.Application\Reports\Queries\GetTimelineReportQuery.cs`, `IReportingRepository.GetTimelineReportAsync(...)`, timeline read models in `src\TechInventory.Application\Reports\ReportModels.cs`, and `GET /api/v1/reports/timeline` in `src\TechInventory.Api\Controllers\ReportsController.cs` with optional `categoryId`, `groupBy`, `fromDate`, and `toDate` filters.
+- Implemented the repository as a single EF Core projection over devices with non-null purchase dates, including active + retired/disposed history, sorting oldest-first, projecting `RetiredDate` as `disposalDate`, and switching `groupLabel` between category and owner without N+1 queries.
+- Added backend coverage in `tests\TechInventory.UnitTests\Application\ReportingQueryHandlerTests.cs`, `tests\TechInventory.IntegrationTests\Controllers\ReportsControllerTests.cs`, and `tests\TechInventory.IntegrationTests\Repositories\ReportingRepositoryIntegrationTests.cs`; regenerated repo-root `openapi.yaml` and logged the valuation/date-source decision in `.squad\decisions\inbox\hicks-f037-timeline.md`.
+- Validation: baseline `dotnet test -c Release` ✅, `dotnet build -c Release` ✅, `dotnet run --project .\src\TechInventory.Api\TechInventory.Api.csproj -c Release -- export-openapi` ✅, `dotnet format --verify-no-changes` ✅, final `dotnet test -c Release` ✅ (**445 total / 440 passed / 5 skipped / 0 failed**).
+
+---
+
 ## 2026-05-20 — Hicks F035 era/decade report API
 
 - Added `src\TechInventory.Application\Reports\Queries\GetEraReportQuery.cs`, `IReportingRepository.GetEraReportAsync(...)`, and `GET /api/v1/reports/eras` in `src\TechInventory.Api\Controllers\ReportsController.cs`, returning newest-first decade buckets with optional `categoryId` filtering plus `asOfDate` / `appliedCategoryId` metadata.

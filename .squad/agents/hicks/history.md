@@ -26,6 +26,16 @@ Phase 1 lands in `specs/001-core-api/`. Pattern references: **R1** for MediatR h
 
 ## Recent Updates
 
+### 2026-05-20 — F044 display settings backend ✅ COMPLETE
+
+**Delivered household-level display settings API for device list/detail ordering:**
+
+- Added `HouseholdSetting` plus `IHouseholdSettingRepository`, `HouseholdSettingRepository`, EF configuration, and migration `20260520202952_AddHouseholdSettings` so per-household settings persist as unique `(HouseholdId, Key)` rows with JSON array payloads.
+- Added the `src\TechInventory.Application\Settings\` vertical with shared defaults/allowlists in `DisplaySettingsCatalog`, MediatR query + command handlers, and FluentValidation rules for unknown identifiers, duplicate columns, and the required `name` list column.
+- Added `SettingsController` at `/api/v1/settings/display`; GET seeds default rows when missing, PUT is Admin-only, successful updates append a `HouseholdSetting` audit entry, and invalid persisted settings return `409 Conflict` instead of silently leaking corrupt data.
+- Added backend coverage in `tests\TechInventory.UnitTests\Application\DisplaySettingsHandlerTests.cs`, `DisplaySettingsValidationTests.cs`, `tests\TechInventory.IntegrationTests\Controllers\SettingsControllerTests.cs`, and `SettingsAuthorizationTests.cs`; regenerated repo-root `openapi.yaml` from the runtime document.
+- Validation: `dotnet format --verify-no-changes` ✅, `dotnet build -c Release` ✅, `dotnet test -c Release` ✅ (**455 total / 450 passed / 5 skipped / 0 failed**). `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify.ps1` still fails only because `docker` is unavailable for the Playwright compose step in this environment.
+
 ### 2026-05-20 (Spec-003 Batch 2) — T09/T10 merge + insurance backend ✅ COMPLETE
 
 **Delivered backend contracts for duplicate cleanup + insurance export:**
@@ -128,6 +138,12 @@ Brian must restart API (`Ctrl+C` then `task dev:up`) to pick up new config. Afte
 ---
 
 ## Learnings
+
+### 2026-05-20: Household display settings (F044)
+
+- Per-household admin configuration fits well as a generic `HouseholdSetting` aggregate + repository keyed by `(HouseholdId, Key)`; JSON array values preserve user-defined order without hard-coding one schema/table per settings feature.
+- `DisplaySettingsCatalog` is the right single source for defaults, allowlists, normalization, duplicate detection, and JSON serialization/deserialization so validators, handlers, tests, and OpenAPI-backed controllers all share one contract.
+- GET can safely seed missing default rows for the single-household install, but handlers should still validate persisted JSON and return `409 Conflict` when stored keys/values are duplicated or invalid so bad state never silently leaks into the UI.
 
 ### 2026-05-20: Era/decade reporting (F035-T01/T02)
 

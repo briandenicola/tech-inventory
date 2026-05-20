@@ -7,6 +7,7 @@
 	import type { OwnerResponse } from '$lib/api/types';
 	import { ownerSchema, type OwnerFormData } from '$lib/schemas/owner';
 	import { addToast } from '$lib/stores/toast';
+	import { registerPullToRefresh } from '$lib/stores/pullToRefresh';
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import PaginationControls from '$lib/components/PaginationControls.svelte';
@@ -14,7 +15,7 @@
 
 	/**
 	 * T29: Owners Admin — list with role badge + deactivate 409 guard
-	 * 
+	 *
 	 * Features:
 	 * - Paginated list with role badge (Admin / Member / Viewer — colored chip)
 	 * - Add: displayName, role, entraObjectId (optional UUID)
@@ -24,7 +25,7 @@
 	 * - Inline modals
 	 * - No pagination (typically <20 owners per household)
 	 * - Role gate: Admin only
-	 * 
+	 *
 	 * Decision: D-119 (Owners role gate pattern — client redirect + backend enforce)
 	 * Decision: D-120 (Owner deactivate 409 error display — toast with reason from backend)
 	 */
@@ -69,6 +70,11 @@
 	// Load owners on mount + URL params change
 	$effect(() => {
 		loadOwners();
+	});
+
+	$effect(() => {
+		const unregister = registerPullToRefresh($page.url.pathname, loadOwners);
+		return unregister;
 	});
 
 	async function loadOwners() {
@@ -214,8 +220,12 @@
 
 	// Role badge color
 	function getRoleBadgeClass(role: string | null | undefined) {
-		if (role === 'Admin') return 'bg-error-100 text-error-800 dark:bg-error-900 dark:text-error-200';
-		if (role === 'Member') return 'bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200';
+		if (role === 'Admin') {
+			return 'bg-error-100 text-error-800 dark:bg-error-900 dark:text-error-200';
+		}
+		if (role === 'Member') {
+			return 'bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200';
+		}
 		return 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200';
 	}
 </script>
@@ -254,30 +264,59 @@
 	{#if loading}
 		<LoadingSkeleton />
 	{:else if error}
-		<ErrorState error={error} onRetry={loadOwners} />
+		<ErrorState {error} onRetry={loadOwners} />
 	{:else if owners.length === 0}
-		<div class="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-neutral-200 bg-white p-12 text-center dark:border-neutral-800 dark:bg-neutral-950">
-			<svg class="h-16 w-16 text-neutral-400 dark:text-neutral-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+		<div
+			class="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-neutral-200 bg-white p-12 text-center dark:border-neutral-800 dark:bg-neutral-950"
+		>
+			<svg
+				class="h-16 w-16 text-neutral-400 dark:text-neutral-600"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+				aria-hidden="true"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="1.5"
+					d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+				/>
 			</svg>
-			<p class="mt-4 text-lg font-semibold text-neutral-900 dark:text-neutral-50">{t('admin.owners.list.emptyState')}</p>
+			<p class="mt-4 text-lg font-semibold text-neutral-900 dark:text-neutral-50">
+				{t('admin.owners.list.emptyState')}
+			</p>
 		</div>
 	{:else}
 		<!-- Table -->
-		<div class="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow dark:border-neutral-800 dark:bg-neutral-950">
+		<div
+			class="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow dark:border-neutral-800 dark:bg-neutral-950"
+		>
 			<table class="min-w-full divide-y divide-neutral-200 dark:divide-neutral-800">
 				<thead class="bg-neutral-50 dark:bg-neutral-900">
 					<tr>
-						<th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
+						<th
+							scope="col"
+							class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
+						>
 							{t('admin.owners.columns.name')}
 						</th>
-						<th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
+						<th
+							scope="col"
+							class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
+						>
 							{t('admin.owners.columns.role')}
 						</th>
-						<th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
+						<th
+							scope="col"
+							class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
+						>
 							{t('admin.owners.columns.entraObjectId')}
 						</th>
-						<th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
+						<th
+							scope="col"
+							class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
+						>
 							Actions
 						</th>
 					</tr>
@@ -285,17 +324,21 @@
 				<tbody class="divide-y divide-neutral-200 dark:divide-neutral-800">
 					{#each owners as owner (owner.id)}
 						<tr class="hover:bg-neutral-50 dark:hover:bg-neutral-900">
-							<td class="whitespace-nowrap px-4 py-3 text-sm font-medium text-neutral-900 dark:text-neutral-50">
+							<td
+								class="whitespace-nowrap px-4 py-3 text-sm font-medium text-neutral-900 dark:text-neutral-50"
+							>
 								{owner.displayName}
 								{#if !owner.isActive}
-									<span class="ml-2 inline-flex rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200">
+									<span
+										class="ml-2 inline-flex rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200"
+									>
 										Inactive
 									</span>
 								{/if}
 							</td>
 							<td class="px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300">
 								<span class="inline-flex rounded-full px-2 py-1 text-xs font-semibold {getRoleBadgeClass(owner.role)}">
-									{t(`admin.owners.roles.${(owner.role ?? 'member').toLowerCase()}`)}
+									{t(`admin.owners.roles.${(owner.role ?? 'Member').toLowerCase()}`)}
 								</span>
 							</td>
 							<td class="px-4 py-3 text-sm font-mono text-neutral-700 dark:text-neutral-300">
@@ -330,7 +373,7 @@
 			<PaginationControls
 				currentPage={urlParams.page}
 				pageSize={urlParams.pageSize}
-				totalCount={totalCount}
+				{totalCount}
 				onPageChange={handlePageChange}
 			/>
 		</div>
@@ -345,14 +388,22 @@
 		aria-modal="true"
 		aria-labelledby="owner-form-title"
 	>
-		<div class="relative mx-4 w-full max-w-lg rounded-lg bg-white p-6 shadow-xl dark:bg-neutral-900">
-			<h2 id="owner-form-title" class="mb-4 text-xl font-semibold text-neutral-900 dark:text-neutral-50">
+		<div
+			class="relative mx-4 w-full max-w-lg rounded-lg bg-white p-6 shadow-xl dark:bg-neutral-900"
+		>
+			<h2
+				id="owner-form-title"
+				class="mb-4 text-xl font-semibold text-neutral-900 dark:text-neutral-50"
+			>
 				{editingOwner ? t('admin.owners.edit.title') : t('admin.owners.create.title')}
 			</h2>
 			<form onsubmit={handleFormSubmit}>
 				<!-- Display Name -->
 				<div class="mb-4">
-					<label for="owner-name" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+					<label
+						for="owner-name"
+						class="block text-sm font-medium text-neutral-700 dark:text-neutral-300"
+					>
 						{t('admin.owners.fields.displayName')} <span class="text-error-600">*</span>
 					</label>
 					<input
@@ -370,7 +421,10 @@
 
 				<!-- Role -->
 				<div class="mb-4">
-					<label for="owner-role" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+					<label
+						for="owner-role"
+						class="block text-sm font-medium text-neutral-700 dark:text-neutral-300"
+					>
 						{t('admin.owners.fields.role')} <span class="text-error-600">*</span>
 					</label>
 					<select
@@ -390,7 +444,10 @@
 
 				<!-- Entra Object ID -->
 				<div class="mb-6">
-					<label for="owner-entra" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+					<label
+						for="owner-entra"
+						class="block text-sm font-medium text-neutral-700 dark:text-neutral-300"
+					>
 						{t('admin.owners.fields.entraObjectId')}
 					</label>
 					<input
@@ -402,7 +459,9 @@
 						class:border-error-600={formErrors.entraObjectId}
 					/>
 					{#if formErrors.entraObjectId}
-						<p class="mt-1 text-xs text-error-600 dark:text-error-400">{formErrors.entraObjectId}</p>
+						<p class="mt-1 text-xs text-error-600 dark:text-error-400">
+							{formErrors.entraObjectId}
+						</p>
 					{/if}
 				</div>
 

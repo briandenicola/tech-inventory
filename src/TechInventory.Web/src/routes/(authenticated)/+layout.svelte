@@ -5,9 +5,17 @@
 	import { ensureMsalInitialized } from '$lib/auth/msal';
 	import { clearAuth } from '$lib/stores/auth';
 	import { t } from '$lib/i18n';
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
+	import PullToRefresh from '$lib/components/PullToRefresh.svelte';
 	import ToastContainer from '$lib/components/ToastContainer.svelte';
 	import { fetchReferenceData, referenceDataStore } from '$lib/stores/referenceData';
+	import { activePullToRefresh } from '$lib/stores/pullToRefresh';
+	import {
+		adminNavItems,
+		getVisibleNavItems,
+		isNavItemActive,
+		primaryNavItems
+	} from '$lib/navigation/appNav';
 
 	let { children } = $props();
 
@@ -22,22 +30,16 @@
 	let userMenuOpen = $state(false);
 	let userMenuTrigger = $state<HTMLButtonElement | undefined>(undefined);
 
-	const adminLinks = [
-		{ href: '/admin/brands', key: 'navigation.adminBrands' },
-		{ href: '/admin/categories', key: 'navigation.adminCategories' },
-		{ href: '/admin/locations', key: 'navigation.adminLocations' },
-		{ href: '/admin/networks', key: 'navigation.adminNetworks' },
-		{ href: '/admin/owners', key: 'navigation.adminOwners' },
-		{ href: '/admin/tags', key: 'navigation.adminTags' },
-		{ href: '/admin/audit', key: 'navigation.adminAudit' },
-		{ href: '/admin/import', key: 'navigation.imports' },
-		{ href: '/admin/export', key: 'navigation.exports' }
-	] as const;
-
 	// Derive auth state from store
 	const currentUser = $derived($authStore.currentUser);
-	const isAdmin = $derived(currentUser?.role === 'Admin');
+	const currentRole = $derived(currentUser?.role ?? null);
 	const settingsActive = $derived($page.url.pathname.startsWith('/settings'));
+	const visiblePrimaryNavItems = $derived(getVisibleNavItems(primaryNavItems, currentRole));
+	const visibleAdminNavItems = $derived(getVisibleNavItems(adminNavItems, currentRole));
+	const pageRefreshHandler = $derived.by(() => {
+		const registration = $activePullToRefresh;
+		return registration?.routePath === $page.url.pathname ? registration.onRefresh : invalidateAll;
+	});
 
 	// T09 + J3: Sign out — branch on auth method.
 	// Local (F025) sessions live in sessionStorage and have no Entra session
@@ -127,9 +129,19 @@
 				</span>
 			</a>
 
-			<!-- Desktop spacer (nav links removed — wordmark links to /devices,
-				 admin links + sign out live in the user menu on the right) -->
-			<div class="hidden flex-1 md:block"></div>
+			<!-- Desktop Nav (hidden on mobile) -->
+			<nav class="hidden gap-6 md:flex" aria-label="Primary navigation">
+				{#each visiblePrimaryNavItems as item (item.href)}
+					<a
+						href={item.href}
+						class="text-sm font-medium text-neutral-700 hover:text-primary-600 dark:text-neutral-300 dark:hover:text-primary-400"
+						class:text-primary-600={isNavItemActive($page.url.pathname, item)}
+						class:dark:text-primary-400={isNavItemActive($page.url.pathname, item)}
+					>
+						{t(item.labelKey)}
+					</a>
+				{/each}
+			</nav>
 
 			<!-- Right: Unified user menu (display name + role + dropdown) -->
 			<div class="relative hidden md:block">
@@ -181,14 +193,14 @@
 							role="menu"
 							aria-label={t('header.userMenu')}
 						>
-							{#if isAdmin}
+							{#if visibleAdminNavItems.length > 0}
 								<div class="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
 									{t('navigation.admin')}
 								</div>
-								{#each adminLinks as link (link.href)}
-									{@const active = $page.url.pathname.startsWith(link.href)}
+								{#each visibleAdminNavItems as item (item.href)}
+									{@const active = isNavItemActive($page.url.pathname, item)}
 									<a
-										href={link.href}
+										href={item.href}
 										role="menuitem"
 										class="flex min-h-11 items-center rounded-xl px-3 py-2.5 text-base font-medium transition-colors duration-150"
 										class:bg-primary-50={active}
@@ -200,7 +212,7 @@
 										class:dark:text-neutral-300={!active}
 										class:dark:hover:bg-neutral-800={!active}
 									>
-										{t(link.key)}
+										{t(item.labelKey)}
 									</a>
 								{/each}
 								<hr class="my-2 border-t border-neutral-200 dark:border-neutral-800" />
@@ -236,7 +248,7 @@
 			<!-- Mobile: Hamburger Menu Button -->
 			<button
 				type="button"
-				class="inline-flex h-11 w-11 items-center justify-center rounded-full text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800 md:hidden"
+				class="inline-flex h-11 w-11 items-center justify-center rounded-full text-neutral-700 transition-colors hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-neutral-300 dark:hover:bg-neutral-800 md:hidden"
 				onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
 				aria-label={mobileMenuOpen ? t('header.closeMenu') : t('header.menu')}
 				aria-expanded={mobileMenuOpen}
@@ -249,13 +261,46 @@
 					aria-hidden="true"
 				>
 					{#if mobileMenuOpen}
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M6 18L18 6M6 6l12 12"
+						/>
 					{:else}
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M4 6h16M4 12h16M4 18h16"
+						/>
 					{/if}
 				</svg>
 			</button>
 		</div>
+
+		{#if visibleAdminNavItems.length > 0}
+			<nav
+				class="hidden border-t border-neutral-200 bg-neutral-50 md:block dark:border-neutral-800 dark:bg-neutral-900/70"
+				aria-label="Admin navigation"
+			>
+				<div class="mx-auto flex max-w-7xl flex-wrap gap-2 px-4 py-3 sm:px-6 lg:px-8">
+					{#each visibleAdminNavItems as item (item.href)}
+						<a
+							href={item.href}
+							class="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-neutral-700 transition-colors hover:bg-white hover:text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-primary-400"
+							class:bg-white={isNavItemActive($page.url.pathname, item)}
+							class:text-primary-600={isNavItemActive($page.url.pathname, item)}
+							class:shadow-sm={isNavItemActive($page.url.pathname, item)}
+							class:dark:bg-neutral-800={isNavItemActive($page.url.pathname, item)}
+							class:dark:text-primary-400={isNavItemActive($page.url.pathname, item)}
+						>
+							{t(item.labelKey)}
+						</a>
+					{/each}
+				</div>
+			</nav>
+		{/if}
 
 		<!-- Mobile Menu (expanded) -->
 		{#if mobileMenuOpen}
@@ -264,16 +309,17 @@
 				aria-label="Mobile navigation"
 			>
 				<div class="flex flex-col gap-1.5">
-					{@render mobileNavLink('/devices', t('navigation.devices'))}
+					{#each visiblePrimaryNavItems as item (item.href)}
+						{@render mobileNavLink(item.href, t(item.labelKey))}
+					{/each}
 
-					{#if isAdmin}
-						<!-- Admin Section (Mobile) -->
+					{#if visibleAdminNavItems.length > 0}
 						<div class="mt-2 space-y-1 border-t border-neutral-200 pt-3 dark:border-neutral-800">
 							<div class="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
 								{t('navigation.admin')}
 							</div>
-							{#each adminLinks as link (link.href)}
-								{@render mobileNavLink(link.href, t(link.key))}
+							{#each visibleAdminNavItems as item (item.href)}
+								{@render mobileNavLink(item.href, t(item.labelKey))}
 							{/each}
 						</div>
 					{/if}
@@ -310,7 +356,7 @@
 							<button
 								type="button"
 								onclick={handleSignOut}
-								class="flex min-h-11 w-full items-center rounded-xl px-3 py-2.5 text-left text-base font-medium text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+								class="flex min-h-11 w-full items-center rounded-xl px-3 py-2.5 text-left text-base font-medium text-neutral-700 transition-colors hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
 							>
 								{t('auth.signOut.button')}
 							</button>
@@ -323,7 +369,9 @@
 
 	<!-- Main Content Area -->
 	<main class="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8" id="main-content">
-		{@render children()}
+		<PullToRefresh onRefresh={pageRefreshHandler}>
+			{@render children()}
+		</PullToRefresh>
 	</main>
 
 	<!-- Footer -->

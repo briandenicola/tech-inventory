@@ -857,6 +857,11 @@
 		"unknownError": "An unexpected error occurred. Please try again.",
 		"retryButton": "Try Again"
 	},
+	"pullToRefresh": {
+		"pull": "Pull to refresh",
+		"release": "Release to refresh",
+		"refreshing": "Refreshing…"
+	},
 	"footer": {
 		"version": "Version {version}",
 		"github": "View on GitHub"

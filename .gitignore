@@ -55,3 +55,10 @@ test-results/
 .squad/sessions/
 # Squad: SubSquad activation file (local to this machine)
 .squad-workstream
+
+# Runtime logs
+src/TechInventory.Api/logs/
+
+
+# Local debugging captures (HAR files, browser exports) — may contain bearer tokens
+data/

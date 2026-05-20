@@ -5,7 +5,7 @@
  * Spec §4.2: Wrapper configures base URL + auth headers; ready for MSAL token injection (T05)
  */
 
-import type { paths } from './generated/types';
+import type { paths, components } from './generated/types';
 
 /**
  * Type helpers to extract request/response types from OpenAPI paths
@@ -101,8 +101,13 @@ async function apiFetch<TResponse>(
 	options: RequestInit = {}
 ): Promise<TResponse> {
 	const url = `${clientConfig.baseUrl}${path}`;
+	// FormData uploads must NOT carry an explicit Content-Type — the browser
+	// generates `multipart/form-data; boundary=...` and any manual value (incl.
+	// the default `application/json` below) bypasses that, causing a 415 from
+	// endpoints decorated with [Consumes("multipart/form-data")].
+	const isFormDataBody = typeof FormData !== 'undefined' && options.body instanceof FormData;
 	const headers: Record<string, string> = {
-		'Content-Type': 'application/json',
+		...(isFormDataBody ? {} : { 'Content-Type': 'application/json' }),
 		...(options.headers as Record<string, string> | undefined)
 	};
 
@@ -216,6 +221,31 @@ export const devices = {
 			body: JSON.stringify({ ownerId })
 		}),
 
+	// F024 bulk operations — endpoints use POST (not PATCH/DELETE-with-body) to
+	// sidestep client/proxy stripping of DELETE bodies.
+	bulkUpdate: async (
+		body: PostRequestBody<paths['/api/v1/devices/bulk/update']>
+	) =>
+		apiFetch<PostResponse<paths['/api/v1/devices/bulk/update']>>(
+			`/api/v1/devices/bulk/update`,
+			{
+				method: 'POST',
+				body: JSON.stringify(body)
+			}
+		),
+
+	bulkDelete: async (
+		body: PostRequestBody<paths['/api/v1/devices/bulk/delete']>
+	) =>
+		apiFetch<PostResponse<paths['/api/v1/devices/bulk/delete']>>(
+			`/api/v1/devices/bulk/delete`,
+			{
+				method: 'POST',
+				body: JSON.stringify(body)
+			}
+		),
+
+	// F030 device tagging
 	listTags: async (id: string) =>
 		apiFetch<GetResponse<paths['/api/v1/devices/{id}/tags']>>(
 			`/api/v1/devices/${encodeURIComponent(id)}/tags`
@@ -231,13 +261,14 @@ export const devices = {
 		),
 
 	removeTag: async (id: string, tagId: string) =>
-		apiFetch<void>(`/api/v1/devices/${encodeURIComponent(id)}/tags/${encodeURIComponent(tagId)}`, {
-			method: 'DELETE'
-		}),
+		apiFetch<void>(
+			`/api/v1/devices/${encodeURIComponent(id)}/tags/${encodeURIComponent(tagId)}`,
+			{ method: 'DELETE' }
+		),
 
 	syncTags: async (id: string, nextTagIds: string[]) => {
 		const uniqueNextTagIds = Array.from(
-			new Set(nextTagIds.filter((tagId): tagId is string => tagId.length > 0))
+			new Set(nextTagIds.filter((candidate): candidate is string => candidate.length > 0))
 		);
 		const currentTags = await devices.listTags(id);
 		const currentTagIds = currentTags
@@ -347,7 +378,16 @@ export const owners = {
 			{
 				method: 'PATCH'
 			}
-		)
+		),
+
+	// F020 v1 — self-service display-name update.
+	updateMyProfile: async (
+		body: components['schemas']['UpdateMyProfileRequest']
+	) =>
+		apiFetch<components['schemas']['OwnerResponse']>(`/api/v1/owners/me`, {
+			method: 'PATCH',
+			body: JSON.stringify(body)
+		})
 };
 
 // Locations
@@ -449,10 +489,11 @@ export const imports = {
 			body: formData
 		}),
 
-	commit: async (body: PostRequestBody<paths['/api/v1/imports/commit']>) =>
+	commit: async (formData: FormData) =>
 		apiFetch<PostResponse<paths['/api/v1/imports/commit']>>(`/api/v1/imports/commit`, {
 			method: 'POST',
-			body: JSON.stringify(body)
+			headers: {}, // Let browser set Content-Type with boundary
+			body: formData
 		})
 };
 
@@ -491,6 +532,22 @@ export const auditEvents = {
 	) => apiFetch<GetResponse<paths['/api/v1/audit-events']>>(`/api/v1/audit-events${buildQueryString(params)}`)
 };
 
+// F025 — local-account fallback endpoints. Kept narrow on purpose; admin-side
+// management lives in F025b.
+export const localAuth = {
+	login: async (body: { username: string; password: string }) =>
+		apiFetch<PostResponse<paths['/api/v1/auth/local/login']>>(
+			`/api/v1/auth/local/login`,
+			{ method: 'POST', body: JSON.stringify(body) }
+		),
+
+	changePassword: async (body: { currentPassword: string; newPassword: string }) =>
+		apiFetch<void>(`/api/v1/auth/local/change-password`, {
+			method: 'POST',
+			body: JSON.stringify(body)
+		})
+};
+
 const api = {
 	devices,
 	brands,
@@ -502,6 +559,7 @@ const api = {
 	imports,
 	exports,
 	auditEvents,
+	localAuth,
 	setApiConfig
 };
 

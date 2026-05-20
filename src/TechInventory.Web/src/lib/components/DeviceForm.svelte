@@ -14,7 +14,7 @@
 	Related: specs/002-frontend-mvp/spec.md J5-J7, Constitution §4.3
 -->
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { t } from '$lib/i18n';
 	import { fetchReferenceData, referenceDataStore } from '$lib/stores/referenceData';
 	import DeviceTagSelector from '$lib/components/DeviceTagSelector.svelte';
@@ -37,26 +37,29 @@
 		void fetchReferenceData();
 	});
 
-	let formData = $state<DeviceFormInput>({
-		name: initialData.name ?? '',
-		serialNumber: initialData.serialNumber ?? '',
-		brandId: initialData.brandId ?? '',
-		categoryId: initialData.categoryId ?? '',
-		ownerId: initialData.ownerId ?? '',
-		locationId: initialData.locationId ?? '',
-		networkId: initialData.networkId ?? '',
-		tagIds: initialData.tagIds ?? [],
-		purchaseDate: initialData.purchaseDate ?? '',
-		purchasePrice: initialData.purchasePrice ?? null,
-		currencyCode: initialData.currencyCode ?? 'USD',
-		notes: initialData.notes ?? '',
-		purpose: initialData.purpose ?? '',
-		operatingSystem: initialData.operatingSystem ?? '',
-		ipAddress: initialData.ipAddress ?? '',
-		macAddress: initialData.macAddress ?? '',
-		productUrl: initialData.productUrl ?? '',
-		version: initialData.version ?? ''
-	});
+	let formData = $state<DeviceFormInput>(
+		untrack(() => ({
+			name: initialData.name ?? '',
+			model: initialData.model ?? '',
+			serialNumber: initialData.serialNumber ?? '',
+			brandId: initialData.brandId ?? '',
+			categoryId: initialData.categoryId ?? '',
+			ownerId: initialData.ownerId ?? '',
+			locationId: initialData.locationId ?? '',
+			networkId: initialData.networkId ?? '',
+			tagIds: initialData.tagIds ?? [],
+			purchaseDate: initialData.purchaseDate ?? '',
+			purchasePrice: initialData.purchasePrice ?? null,
+			currencyCode: initialData.currencyCode ?? 'USD',
+			notes: initialData.notes ?? '',
+			purpose: initialData.purpose ?? '',
+			operatingSystem: initialData.operatingSystem ?? '',
+			ipAddress: initialData.ipAddress ?? '',
+			macAddress: initialData.macAddress ?? '',
+			productUrl: initialData.productUrl ?? '',
+			version: initialData.version ?? ''
+		}))
+	);
 
 	let errors = $state<Record<string, string>>({});
 	let touched = $state<Record<string, boolean>>({});
@@ -65,7 +68,8 @@
 	function areValuesEqual(initial: unknown, current: unknown): boolean {
 		if (Array.isArray(initial) && Array.isArray(current)) {
 			return (
-				initial.length === current.length && initial.every((value, index) => value === current[index])
+				initial.length === current.length &&
+				initial.every((value, index) => value === current[index])
 			);
 		}
 
@@ -180,7 +184,10 @@
 
 	<!-- Serial Number -->
 	<div>
-		<label for="serialNumber" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+		<label
+			for="serialNumber"
+			class="block text-sm font-medium text-neutral-900 dark:text-neutral-100"
+		>
 			{t('devices.columns.serial')}
 		</label>
 		<input
@@ -194,6 +201,32 @@
 		/>
 		{#if touched.serialNumber && errors.serialNumber}
 			<p class="mt-1 text-sm text-danger-600 dark:text-danger-400">{errors.serialNumber}</p>
+		{/if}
+	</div>
+
+	<!--
+		Model (F034) — sits between Serial Number and Brand because the
+		spec-sheet ordering "Serial → Model → Brand" matches how users read
+		device labels. The field is optional and gated on truthy values
+		everywhere it displays so hand-entered devices without a model
+		don't show a blank row.
+	-->
+	<div>
+		<label for="model" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+			{t('devices.columns.model')}
+		</label>
+		<input
+			id="model"
+			type="text"
+			bind:value={formData.model}
+			onblur={() => handleBlur('model')}
+			disabled={isDisabled('model')}
+			maxlength="200"
+			class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus:border-primary-500 dark:disabled:bg-neutral-900"
+			placeholder={t('devices.form.modelPlaceholder')}
+		/>
+		{#if touched.model && errors.model}
+			<p class="mt-1 text-sm text-danger-600 dark:text-danger-400">{errors.model}</p>
 		{/if}
 	</div>
 
@@ -221,7 +254,10 @@
 
 	<!-- Category -->
 	<div>
-		<label for="categoryId" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+		<label
+			for="categoryId"
+			class="block text-sm font-medium text-neutral-900 dark:text-neutral-100"
+		>
 			{t('devices.columns.category')} <span class="text-danger-600">*</span>
 		</label>
 		<select
@@ -265,7 +301,10 @@
 
 	<!-- Location -->
 	<div>
-		<label for="locationId" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+		<label
+			for="locationId"
+			class="block text-sm font-medium text-neutral-900 dark:text-neutral-100"
+		>
 			{t('devices.columns.location')}
 		</label>
 		<select
@@ -316,7 +355,10 @@
 
 	<!-- Purchase Date -->
 	<div>
-		<label for="purchaseDate" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+		<label
+			for="purchaseDate"
+			class="block text-sm font-medium text-neutral-900 dark:text-neutral-100"
+		>
 			{t('devices.columns.purchaseDate')}
 		</label>
 		<input
@@ -335,7 +377,10 @@
 	<!-- Purchase Price + Currency (two-column on desktop) -->
 	<div class="grid gap-4 sm:grid-cols-2">
 		<div>
-			<label for="purchasePrice" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+			<label
+				for="purchasePrice"
+				class="block text-sm font-medium text-neutral-900 dark:text-neutral-100"
+			>
 				{t('devices.columns.purchasePrice')}
 			</label>
 			<input
@@ -355,7 +400,10 @@
 		</div>
 
 		<div>
-			<label for="currencyCode" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+			<label
+				for="currencyCode"
+				class="block text-sm font-medium text-neutral-900 dark:text-neutral-100"
+			>
 				{t('devices.columns.currency')}
 			</label>
 			<select
@@ -396,7 +444,9 @@
 
 	<!-- Additional Details (collapsible) -->
 	<details class="group">
-		<summary class="cursor-pointer list-none text-sm font-medium text-neutral-900 dark:text-neutral-100">
+		<summary
+			class="cursor-pointer list-none text-sm font-medium text-neutral-900 dark:text-neutral-100"
+		>
 			<span class="inline-flex items-center gap-2">
 				<svg
 					class="h-4 w-4 transition-transform group-open:rotate-90"
@@ -414,7 +464,10 @@
 		<div class="mt-4 space-y-6 border-l-2 border-neutral-200 pl-4 dark:border-neutral-800">
 			<!-- Purpose -->
 			<div>
-				<label for="purpose" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+				<label
+					for="purpose"
+					class="block text-sm font-medium text-neutral-900 dark:text-neutral-100"
+				>
 					{t('devices.form.purpose')}
 				</label>
 				<textarea
@@ -433,7 +486,10 @@
 
 			<!-- Operating System -->
 			<div>
-				<label for="operatingSystem" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+				<label
+					for="operatingSystem"
+					class="block text-sm font-medium text-neutral-900 dark:text-neutral-100"
+				>
 					{t('devices.form.operatingSystem')}
 				</label>
 				<input
@@ -452,7 +508,10 @@
 
 			<!-- IP Address -->
 			<div>
-				<label for="ipAddress" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+				<label
+					for="ipAddress"
+					class="block text-sm font-medium text-neutral-900 dark:text-neutral-100"
+				>
 					{t('devices.form.ipAddress')}
 				</label>
 				<input
@@ -471,7 +530,10 @@
 
 			<!-- MAC Address -->
 			<div>
-				<label for="macAddress" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+				<label
+					for="macAddress"
+					class="block text-sm font-medium text-neutral-900 dark:text-neutral-100"
+				>
 					{t('devices.form.macAddress')}
 				</label>
 				<input
@@ -490,7 +552,10 @@
 
 			<!-- Product URL -->
 			<div>
-				<label for="productUrl" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+				<label
+					for="productUrl"
+					class="block text-sm font-medium text-neutral-900 dark:text-neutral-100"
+				>
 					{t('devices.form.productUrl')}
 				</label>
 				<input
@@ -509,7 +574,10 @@
 
 			<!-- Version -->
 			<div>
-				<label for="version" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+				<label
+					for="version"
+					class="block text-sm font-medium text-neutral-900 dark:text-neutral-100"
+				>
 					{t('devices.form.version')}
 				</label>
 				<input
@@ -545,13 +613,9 @@
 			class="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-primary-500 dark:hover:bg-primary-600"
 		>
 			{#if isSubmitting}
-				<svg
-					class="h-4 w-4 animate-spin"
-					fill="none"
-					viewBox="0 0 24 24"
-					aria-hidden="true"
-				>
-					<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+				<svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+					<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"
+					></circle>
 					<path
 						class="opacity-75"
 						fill="currentColor"

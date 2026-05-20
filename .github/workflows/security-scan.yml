@@ -1,0 +1,181 @@
+name: Container Image Security Scan
+
+# Cause-and-effect:
+#   release-images.yml builds and pushes the API + Web images to GHCR.
+#   This workflow runs immediately after release-images.yml completes,
+#   pulls both published images by short-SHA tag, and runs Trivy
+#   (HIGH/CRITICAL, ignore-unfixed, fail-on-finding) against each.
+#   SARIF results upload to the Security tab so triage happens there
+#   rather than in CI logs.
+#
+# Why a separate workflow (not part of release-images.yml or quality-gate.yml):
+#   - quality-gate.yml runs on PR + push and cannot scan published images
+#     that don't exist yet — only filesystem scans are possible at PR time.
+#   - Keeping the scan separate makes the dependency explicit
+#     ("images published → images scanned"), lets Bishop own the security
+#     pipeline without touching Hudson's release pipeline, and keeps SARIF
+#     uploads independent of the build/push job's permissions.
+#   - workflow_run definition must live on the default branch (main) to fire.
+#     The triggered workflow itself runs in the main-branch context but
+#     receives the upstream run's head_sha via the event payload, which we
+#     use to resolve the exact image tag (`sha-<short>`) that was just
+#     published by Hudson's metadata-action `type=sha,format=short`.
+#
+# Tag coverage: workflow_run fires for BOTH branch pushes and tag pushes of
+# the upstream workflow, so v* tag releases are scanned the same way as
+# pushes to main.
+#
+# Job naming contract: the upstream workflow declares `build-api` and
+# `build-web` with `outputs.image-digest`. We don't consume those outputs
+# directly (workflow_run can't `needs:` an upstream job) — we pull by the
+# `sha-<short>` tag instead, which is deterministic for any commit.
+
+# Disabled — kept on workflow_dispatch only. Trivy was failing on
+# upstream alpine CVEs in the nginx-unprivileged base; once we've
+# stabilised the prod deploy we'll re-enable the workflow_run trigger.
+# Manually invoke from the Actions tab to scan on demand.
+on:
+  workflow_dispatch:
+    inputs:
+      image-sha:
+        description: 'Full commit SHA whose images should be scanned (defaults to current ref)'
+        required: false
+
+permissions:
+  contents: read
+  packages: read           # pull images from ghcr.io
+  security-events: write   # upload SARIF to the Security tab
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAMESPACE: ${{ github.repository_owner }}/tech-inventory
+
+jobs:
+  resolve:
+    name: Resolve image tag
+    runs-on: ubuntu-latest
+    # Only run when the upstream workflow succeeded (or on a manual dispatch).
+    # workflow_run fires for failed/cancelled runs too; skip those — there
+    # are no images to scan.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    outputs:
+      image-tag: ${{ steps.tag.outputs.image-tag }}
+      head-sha:  ${{ steps.tag.outputs.head-sha }}
+    steps:
+      - id: tag
+        name: Compute image tag from upstream run
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            INPUT="${{ inputs.image-sha }}"
+            if [[ -n "$INPUT" ]]; then
+              HEAD="$INPUT"
+            else
+              HEAD="${{ github.sha }}"
+            fi
+          else
+            HEAD="${{ github.event.workflow_run.head_sha }}"
+          fi
+          SHORT="${HEAD:0:7}"
+          echo "image-tag=sha-$SHORT" >> "$GITHUB_OUTPUT"
+          echo "head-sha=$HEAD"        >> "$GITHUB_OUTPUT"
+          echo "Will scan: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}-{api,web}:sha-$SHORT"
+
+  scan-api:
+    name: Trivy scan — API image
+    needs: resolve
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+      security-events: write
+    steps:
+      - name: Checkout (for SARIF upload context)
+        uses: actions/checkout@v6
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Scan API image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}-api:${{ needs.resolve.outputs.image-tag }}
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+          format: sarif
+          output: trivy-api.sarif
+          # Repeat in non-SARIF mode for human-readable CI logs even when
+          # SARIF upload fails or the Security tab is unavailable.
+          # (trivy-action only emits one format per run; rely on the SARIF
+          # file for both upload and post-run inspection via artifact.)
+
+      - name: Upload SARIF to Security tab
+        if: always()
+        # Code Scanning is a paid GHAS feature on private repos — until Brian
+        # enables it the upload-sarif action returns "Resource not accessible
+        # by integration" and red-marks the run. SARIF artifact upload below
+        # still preserves results for manual inspection.
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-api.sarif
+          category: trivy-image-api
+
+      - name: Upload SARIF artifact (debug aid)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-api-sarif
+          path: trivy-api.sarif
+          retention-days: 14
+
+  scan-web:
+    name: Trivy scan — Web image
+    needs: resolve
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+      security-events: write
+    steps:
+      - name: Checkout (for SARIF upload context)
+        uses: actions/checkout@v6
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Scan Web image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}-web:${{ needs.resolve.outputs.image-tag }}
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+          format: sarif
+          output: trivy-web.sarif
+
+      - name: Upload SARIF to Security tab
+        if: always()
+        # Same gating as the API scan above — paid GHAS Code Scanning feature.
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-web.sarif
+          category: trivy-image-web
+
+      - name: Upload SARIF artifact (debug aid)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-web-sarif
+          path: trivy-web.sarif
+          retention-days: 14

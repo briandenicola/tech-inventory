@@ -2760,6 +2760,349 @@ Both groups typed via `paths['/api/v1/{resource}']` OpenAPI extraction.
 
 ---
 
+### D-133: CORS Allowed Origins Configured for Local Dev Web → API
+
+**Author:** Hicks (Backend)
+**Date:** 2026-05-18 (Phase 2 Round 4 closeout)
+**Status:** ✅ Shipped (commit `908845a`)
+**Related:** D-130/D-131 (`task dev:up`), D-134 (Vasquez relative API base URL), D-135 (Hudson web reverse proxy), D-139 (prod proxy directive)
+
+**Root Cause:** `Program.cs` had no `AddCors()` / `UseCors()` at all. The browser blocked `http://localhost:5173 → http://localhost:8080/api/v1/owners/me` at preflight because no `Access-Control-Allow-Origin` header was emitted. Local `task dev:up` was unusable end-to-end.
+
+**Decision:** Config-driven CORS policy keyed off `Cors:AllowedOrigins` (string array). If the array is empty (production default), no policy is applied — only when explicit origins are configured does the policy take effect, and it uses `.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod().AllowCredentials()` (no `AllowAnyOrigin()` — incompatible with credentials and unsafe). `UseCors("ApiCorsPolicy")` sits in the pipeline *before* `UseAuthentication()` so OPTIONS preflights are answered before the auth handler rejects them.
+
+- **Dev** (`appsettings.Development.json`): `Cors:AllowedOrigins = ["http://localhost:5173"]`
+- **Prod** (`appsettings.json`): no `Cors` section by default — single-origin via D-135 reverse proxy means CORS doesn't fire in practice; D-135 added a defense-in-depth `https://inventory.denicolafamily.com` entry in `appsettings.Production.json`.
+
+**Consequences:** Local Web ↔ API flow works on `task dev:up`. Operators wanting cross-origin prod deploys whitelist explicit origins; no wildcard escape hatch exists. Verified: `dotnet build -c Release` ✅, `dotnet test -c Release` 377/383 (6 skipped) ✅.
+
+**Files:** `src/TechInventory.Api/Program.cs`, `src/TechInventory.Api/appsettings.Development.json`.
+
+---
+
+### D-134: Env-Aware API Client Base URL — Relative in Prod, Absolute in Dev
+
+**Author:** Vasquez (Frontend)
+**Date:** 2026-05-18 (Phase 2 Round 4 closeout)
+**Status:** ✅ Shipped (commit `8f67f03`)
+**Related:** D-133 (Hicks CORS for dev), D-135 (Hudson reverse proxy), D-139 (prod proxy directive)
+
+**Decision:** Frontend API client default base URL is environment-derived:
+
+- **Dev:** `http://localhost:8080` (absolute — Vite on `:5173`, API on `:8080`, true cross-origin so CORS must fire).
+- **Prod:** `''` (empty string — relative URLs like `/api/v1/devices` so the SvelteKit static bundle's host proxy at `https://inventory.denicolafamily.com` reverse-proxies to the API container on the internal docker network).
+- `VITE_API_BASE_URL` env var continues to override when set (per-environment knob).
+- Added `src/TechInventory.Web/.env.development` so the dev workflow is explicit.
+
+**Why:** Per D-139 the browser only ever sees a single origin in production; relative URLs are the cleanest way to honor that without conditional logic at call sites. Dev keeps absolute URLs because Vite and API run on different ports.
+
+**Consequences:** All API calls now portable across dev/prod without per-environment client code. Pairs with D-133 (CORS) and D-135 (reverse proxy) to complete the prod same-origin architecture.
+
+**Files:** `src/TechInventory.Web/src/lib/api/client.ts`, `src/TechInventory.Web/.env.development`.
+
+---
+
+### D-135: Web Container = nginx Reverse Proxy (SPA + `/api/*` → API on Internal Network)
+
+**Author:** Hudson (DevOps / Platform)
+**Date:** 2026-05-18 (Phase 2 Round 4 closeout)
+**Status:** ✅ Shipped (commit `293d1d6`)
+**Related:** D-133 (Hicks CORS for dev), D-134 (Vasquez relative API URL), D-139 (prod proxy directive)
+
+**Decision:** Web Dockerfile is now a two-stage build:
+
+1. **Build stage:** Node builds the SvelteKit `adapter-static` bundle.
+2. **Runtime stage:** `nginx:alpine` serves the static bundle on `:80` and reverse-proxies `/api/*` to `http://api:8080` on the `techinv-net` Docker network.
+
+Added `src/TechInventory.Web/nginx.conf` (SPA fallback for client routing + `/api/` proxy with header passthrough). `docker-compose.yml`: web service now `ports: 3000:80`, dropped broken `PUBLIC_API_URL` env var, removed deprecated top-level `version:` key. Added `appsettings.Production.json` with `Cors:AllowedOrigins: ["https://inventory.denicolafamily.com"]` as defense-in-depth.
+
+**Bug fixed in passing:** Previous Dockerfile used `node build` despite `adapter-static` — that runtime would never have started; `nginx:alpine` is the correct serve.
+
+**Consequences:** Production deploy is single-origin behind Brian's external TLS-terminating reverse proxy at `https://inventory.denicolafamily.com`. Browser sees one origin; CORS is defense-in-depth not gate. Pairs with D-133 and D-134 to complete prod architecture (D-139).
+
+**Follow-up (deferred):** Re-run `docker compose build` and `nginx -t` validation in an environment with Docker installed (current CLI session can't execute either binary).
+
+**Files:** `src/TechInventory.Web/Dockerfile`, `src/TechInventory.Web/nginx.conf`, `docker-compose.yml`, `src/TechInventory.Api/appsettings.Production.json`.
+
+---
+
+### D-136: Auto-Provision Owners on First Sign-In via `/api/v1/owners/me`
+
+**Author:** Bishop (Backend Auth)
+**Date:** 2026-05-18 (Phase 2 Round 4 closeout)
+**Status:** ✅ Shipped (commit `061bfe0`)
+**Related:** D-133 (CORS unblocked the call path), T11 (Phase 2 Round 1 — `/owners/me` endpoint — onboarding promise now fulfilled), T07 (first-login onboarding scope)
+
+**Root Cause:** `/api/v1/owners/me` 404'd for the dev bypass principal (and would 404 for every real Entra user on first sign-in) because nothing provisioned the `Owner` row. T07's "first-login onboarding: create `Owner` if not found" was specified but had been deferred during initial Phase 1 implementation; the gap surfaced as soon as Vasquez wired the Web UI sign-in flow.
+
+**Decision:** Added `EnsureCurrentOwnerProvisionedCommand` (Application layer) that upserts an `Owner` row keyed by `EntraObjectId` from claims and returns the existing-or-newly-created row. `OwnersController.GetCurrentOwner` now dispatches this command instead of the read-only query, so `/owners/me` always succeeds for any authenticated principal.
+
+- Display name derives from `ClaimTypes.Name`, role from `ClaimTypes.Role`; fallbacks `User {short}` / `Member`.
+- Extended `ICurrentUserService` (and both `HttpContextCurrentUserService` + `SystemCurrentUserService` implementations) with `GetDisplayName()` / `GetRoleClaim()` so claim-derived defaults stay behind the abstraction.
+- Test coverage: existing owner returned unchanged; missing owner auto-provisioned with claim defaults; dev-admin can hit `/owners/me` against a fresh DB. Backend summary post-fix: **388 total / 382 passed / 6 skipped / 0 failed.**
+- OpenAPI spec regenerated for `/owners/me` contract.
+
+**Follow-up (deferred to Brian):** First-user-as-Admin policy — should the first-ever sign-in be force-promoted to `Admin` regardless of role claim? Current behavior trusts the role claim. Defer.
+
+**Consequences:** First-time principals (dev bypass and real Entra users) auto-onboarded. Unblocks downstream UI work that assumes `/owners/me` succeeds. Fulfills the deferred T07 onboarding promise.
+
+**Files:** `src/TechInventory.Application/Owners/EnsureCurrentOwnerProvisionedCommand.cs`, `src/TechInventory.Api/Controllers/OwnersController.cs`, `src/TechInventory.Application/Common/ICurrentUserService.cs`, `src/TechInventory.Api/Authentication/HttpContextCurrentUserService.cs`, `src/TechInventory.Application/Common/SystemCurrentUserService.cs`, `openapi.yaml`, integration + unit test additions.
+
+---
+
+### D-137: Apple-Elegant Visual Language Is the Design Target (User Directive)
+
+**Author:** brian.denicolafamily (via Copilot)
+**Date:** 2026-05-18 (Phase 2 Round 4 closeout)
+**Status:** 📌 Captured directive — implementation pending (P1 for Round 5)
+**Related:** D-138 (no framework bragging), `src/TechInventory.Web/src/lib/tokens.css`, future theming round
+
+**Directive (verbatim):** *"Not a fan of how the left panel looks right now. Fonts too small. Pull downs too tight. Doesn't have the apple elegant look and feel."*
+
+**Decision:** "Apple elegant" — think macOS Settings, App Store, Apple Music — is the canonical reference aesthetic for all future UI/UX work in TechInventory. Polish trumps density because this is a single-household app Brian uses daily.
+
+**Implementation guidelines (apply to upcoming Round 5+ work):**
+
+- Default base font 16px → 17/18px body; generous heading scale.
+- Form controls: ≥44px touch target minimum (also iOS HIG); generous vertical padding/line-height on `<select>` and dropdowns.
+- Sidebar/nav: more padding, more whitespace, larger labels — let it breathe.
+- Prefer SF-Pro-like system fonts or Inter; round shapes; subtle shadows over hard borders.
+- Soft desaturated palette; restrained color use; high contrast on text.
+
+**Open items:** Scheduling of the visual overhaul — Brian asked whether to address now or defer to dedicated theming round. **Resolved at session close:** deferred to next session as **P1** (lint debt cleanup is **P0** ahead of it).
+
+**Consequences:** Future UI work must justify deviations from this baseline; theming pass on `src/lib/tokens.css` + nav/dropdown components is queued.
+
+---
+
+### D-138: No Framework Attribution in User-Facing UI (User Directive)
+
+**Author:** brian.denicolafamily (via Copilot)
+**Date:** 2026-05-18 (Phase 2 Round 4 closeout)
+**Status:** ✅ Implemented (commit `05e91d9` — footer cleanup)
+**Related:** D-137 (Apple aesthetic), `src/TechInventory.Web/src/lib/i18n/en.json`, `src/TechInventory.Web/src/routes/(authenticated)/+layout.svelte`
+
+**Directive (verbatim):** *"Don't put 'Built with SvelteKit'. No one cares."*
+
+**Decision:** Do NOT include "Built with X" / framework attribution strings (e.g., "Built with SvelteKit and ❤️") anywhere in user-facing UI — footers, about pages, splash screens, settings. Applies to all framework, language, library, and tool name-drops.
+
+**Implementation:** Removed `footer.builtWith` from `src/TechInventory.Web/src/lib/i18n/en.json` and the corresponding span from the authenticated layout footer in commit `05e91d9`.
+
+**Consequences:** Future copy must not reintroduce framework attribution. Tool/framework names belong in `package.json`, `README.md`, and ADRs — never in chrome.
+
+---
+
+### D-139: Production Architecture — Same-Origin via Web-Container Reverse Proxy (User Directive)
+
+**Author:** brian.denicolafamily (via Copilot)
+**Date:** 2026-05-18 (Phase 2 Round 4 closeout)
+**Status:** ✅ Implemented across D-133 (CORS), D-134 (relative API URL), D-135 (nginx reverse proxy)
+**Related:** D-133, D-134, D-135
+
+**Directive:** Brian set the production deployment shape that drove the entire Round 4 closeout proxy work:
+
+- Production web URL: `https://inventory.denicolafamily.com`.
+- API runs on the same Docker network and is **NOT** exposed externally.
+- Web container reverse-proxies `/api/*` requests to the API container internally.
+- Browser sees all API calls as **same-origin** in production — no CORS across origins in practice.
+- CORS in production is defense-in-depth only; the real wall is the proxy boundary.
+
+**Implementation map:**
+
+1. **D-133 (Hicks):** Config-driven CORS so dev origin `http://localhost:5173` is allowed and prod can list `https://inventory.denicolafamily.com` as belt-and-suspenders.
+2. **D-134 (Vasquez):** Frontend API client uses relative URLs in prod, absolute in dev.
+3. **D-135 (Hudson):** `docker-compose.yml` `web` service is `nginx:alpine` serving the SvelteKit static bundle and forwarding `/api/*` to `http://api:8080` on the internal `techinv-net` network.
+
+**Consequences:** All future prod-facing UI and infra work assumes a single origin. Any deviation (e.g., separate API host) requires a new ADR.
+
+---
+
+### D-140: F025 v1b — Break-Glass Local Admin (Bootstrap-Only Slice)
+
+**Author:** brian.denicolafamily (via Copilot, solo)
+**Date:** 2026-05-19
+**Status:** ✅ Implemented (v1b slice — bootstrap seed + login + change-password)
+**Related:** F025 spec (`specs/_backlog/F025-local-admin-fallback-accounts.md`), `docs/auth-design.md`, Constitution §2, §6
+
+**Context.** Entra ID is a single point of failure for sign-in. If the tenant
+is misconfigured, the secret is rotated incorrectly, or Azure has an outage,
+no household admin can log in to repair the deployment. F025 designs the full
+"local credentials provider" alongside Entra; v1b is the minimum slice that
+gives the operator a usable rescue path **without** building a credential-
+management UI.
+
+**v1b carved scope (in):**
+
+- `LocalUser` aggregate + EF migration + repository (NOCASE username index).
+- Argon2id password hashing — OWASP 2025 baseline of `m=19_456 KiB, t=2, p=1`,
+  encoded `$argon2id$v=19$m=...,t=...,p=...$saltB64$hashB64`. Salt 16 B, hash
+  32 B. Verify uses fixed-time comparison; unknown algorithm tag fails closed.
+- HS256 JWT issuer with claims `sub/oid/name/preferred_username/role/auth_method=local/must_change_password`,
+  issuer `techinventory-local`, 8 h lifetime.
+- ASP.NET Core `PolicyScheme` `TechInventoryAuth` sniffs the JWT `iss` and
+  forwards to the existing Entra JwtBearer scheme or the new Local JwtBearer
+  scheme. Both schemes set `ClaimTypes.Role` so `[Authorize(Roles=…)]` is
+  unchanged.
+- Public endpoints: `POST /api/v1/auth/local/login` (anonymous, uniform 401
+  for `InvalidCredentials`) and `POST /api/v1/auth/local/change-password`
+  (requires `auth_method=local`).
+- Force-rotation middleware: after `UseAuthentication`, any local-auth
+  principal with `must_change_password=true` gets a 403
+  `code=PasswordChangeRequired` on every endpoint except change-password.
+- `LocalAdminSeedHostedService`: env-var-driven idempotent seeder. Refuses
+  Production unless `SeedAllowInProd=true`. Logs a CRITICAL warning on every
+  startup while configured, so leaving seed env vars in prod is loud.
+- Frontend: sessionStorage token (per D-002 / Constitution §6), local sign-in
+  preferred over MSAL when present, "Use a local account" toggle on the login
+  page, dedicated `/auth/change-password` page guarded by a root-layout
+  `$effect`.
+
+**v1b carved scope (out, deferred to F025b):**
+
+- Admin UI for managing local accounts (CRUD, reset, deactivate).
+- Per-account lockout enforcement (`FailedAttemptCount`, `LockoutUntilUtc` are
+  stored but not yet checked on login).
+- IP-based rate limiting on the login endpoint.
+- Refresh tokens / sliding sessions.
+- Soft delete semantics + last-Admin guard.
+- Self-service "convert me to local" for an existing Entra admin.
+
+**Key parameter choices and why:**
+
+| Choice                       | Value                                | Why                                                                                                                                                |
+| ---------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Algorithm                    | Argon2id                             | OWASP 2025 baseline; library: Konscious.Security.Cryptography.Argon2 1.3.1.                                                                        |
+| Memory / iterations / lanes  | 19 456 KiB / 2 / 1                   | OWASP minimum profile; safe on a Raspberry-Pi-class host. Re-tune via `Auth:Local:Argon2:*` when we benchmark target hardware (tracked in F025b).  |
+| JWT signing                  | HS256 with shared secret             | One service issues + validates; no token relying-party other than the API itself. RS256 would force operators to manage a key file with no payoff. |
+| JWT lifetime                 | 8 h, no refresh cookie               | Break-glass UX, not daily-driver auth. Long enough to fix the outage, short enough to limit theft window. Refresh deferred to F025b.               |
+| Token storage                | sessionStorage (`ti_local_token`)    | Constitution §6 forbids localStorage. Memory-only would break page refresh during the very outage we are recovering from.                          |
+| Error response on bad creds  | Uniform 401 + `code=InvalidCredentials` for both unknown user and wrong password | Prevents username enumeration.                                                                                                |
+| Bootstrap admin              | Env vars + hosted service, idempotent | Seed flow has zero UI dependencies, so it still works when the SPA is broken. Idempotent re-hashing acts as "operator reset" by restart.          |
+| Production seed safety       | Refuses unless `Auth:Local:SeedAllowInProd=true` + always-CRITICAL log         | Makes it very hard to accidentally leave a known-credential admin in prod.                                                    |
+
+**Operator runbook:** Documented in `docs/operations.md` § "Break-glass local
+admin". Required env vars: `Auth__Local__SigningKey` (≥ 32 chars),
+`Auth__Local__SeedEnabled=true`, `Auth__Local__SeedUsername`,
+`Auth__Local__SeedPassword`. After first successful sign-in + password
+rotation, remove the seed env vars and restart.
+
+**Consequences:**
+
+- Any new endpoint must continue to ride the shared `TechInventoryAuth`
+  PolicyScheme; bypassing it would skip the must-change-password gate.
+- Future password storage changes must keep the encoded `$argon2id$…` format
+  or migrate every row + lift the strict algorithm-tag check.
+- F025b is now the single landing place for the deferred items above; the
+  v1b columns in `LocalUser` (`FailedAttemptCount`, `LockoutUntilUtc`,
+  `IsActive`) intentionally already exist so F025b can light them up without
+  another migration.
+
+---
+
+### D-034: F031 Polish Round 2 — Search Relocation + Filter Flyout
+
+**Date:** 2026-05-20  
+**Author:** Vasquez (Frontend Developer)  
+**Status:** Implemented (commits 4d46c86, 987c0a8)  
+**Related:** Field-test feedback (Brian), F022 (filter defaults), F023 (grouping), F024 (bulk select), F026 (status chip)
+
+**Decisions:**
+
+1. **Search bar relocated to page header** — moved from inside filter drawer to main `devices/+page.svelte` header, directly below title and "Add Device" button. Full-width on mobile, `md:max-w-lg` (~32rem) on desktop.
+   - **Rationale:** Search is #1 entry point for device lookup. Hiding in drawer adds friction. Aligns with OS patterns (iOS Spotlight, Gmail, Drive). On mobile, pre-F031 required open drawer → search → close drawer = 2 wasted taps.
+   - **Trade-off:** Adds ~5 lines vertical space to header (acceptable).
+
+2. **Filter panel as flyout drawer on all breakpoints** — desktop sidebar (`md:sticky md:w-80`) converted to `position: fixed` floating drawer everywhere (`w-[22rem]` mobile, `md:w-96` desktop).
+   - **Rationale:** Reclaim 320px horizontal space at all times; consistency across breakpoints (one pattern, not mobile drawer + desktop sidebar); progressive disclosure (filters secondary to list).
+   - **Trade-off:** Desktop filter access now one click slower (previously always visible). Mitigated by: low filter usage (search + status chip cover 80%+ of lookups per Brian's analytics), keyboard shortcut potential for future.
+
+3. **Escape-to-close on filter drawer** — `$effect` wires `keydown` listener on `document`; Escape calls `onClose()`. Cleanup on teardown.
+
+4. **Mobile view-mode toggle** — new toggle in header to switch between card (default) and horizontally-scrollable table layouts. Persists to `userPrefs.devicesViewMode`.
+
+**Consequences:**
+- **Positive:** Faster device lookup (search now zero-click); 320px more list real estate on desktop (~1.5 extra table columns without scroll on 1366px laptop); consistent mental model across devices; standard Escape-to-close UX.
+- **Negative:** One click slower for desktop filter access (mitigated by low usage frequency).
+- **Neutral:** No impact on URL state, F022 defaults, F024 bulk select, F023 grouping, F026 status chip.
+
+**Verification:** `pnpm check/lint/vitest/build` ✅; `dotnet build` ✅ (0 errors, 0 warnings).
+
+---
+
+### D-035: Local Auth Pipeline — `UseTestAuth` Opt-Out Canonical Pattern
+
+**Date:** 2026-05-19  
+**By:** Bishop (Security/Auth) — at Brian's direction  
+**Status:** Implemented  
+**Related:** Constitution §4, D-025 (local auth break-glass)
+
+The base `IntegrationTestFactory<TMarker>` installs an in-memory `TestAuthHandler` (default Admin) so bulk integration tests don't wrangle JWT minting. Factories exercising the **real** auth pipeline (Entra JwtBearer, policy scheme auth-type sniffing, F025 local HS256 handler, `must_change_password` gate) MUST override `protected override bool UseTestAuth => false;`.
+
+**Currently applied to:**
+- `AuthIntegrationTests.NoAuthFactory`
+- `AuthIntegrationTests.JwtAuthFactory`
+- `LocalAuthEndpointTests.LocalAuthFactory`
+
+**Rationale:** Production binary is now bypass-free (the `Auth:DevBypass` shim was deleted). All test-side shortcuts live in test project, per-factory opt-in. Preserves ASVS V4.1.2 default-deny in production; keeps 401/403 negative-path tests honest (real `TechInventoryAuth` policy + Entra/Local handlers, not mocks).
+
+**Enforcement:** When `Program.cs` changes auth registration shape, every `PostConfigure<JwtBearerOptions>` in test project must re-point at the right scheme via `ApiAuthenticationSchemes.{EntraScheme,LocalScheme}` constants — never hardcoded strings.
+
+---
+
+### D-141: F029 Audit-Log Diff Color Palette (WCAG AA Verified)
+
+**Date:** 2026-05-20  
+**By:** Drake (Designer / Visual Engineer)  
+**Status:** ✅ Implemented & shipped (Vasquez commits 31cc3a5 + afcdba7 + 35f26d1)  
+**Related:** F029 spec, PRD §F3 (Apple-elegant aesthetic), Vasquez F029 session, Constitution §6.5.5 (design tokens)
+
+**Decision:** Six semantic color tokens for JSON diff rendering in audit log, all verified WCAG AA ≥4.5:1 contrast. Palette tuned to "quietly elegant" aesthetic (mid-2010s Apple).
+
+**Token Values — Light Theme**
+```css
+--color-diff-add-fg: #1b5e20;      /* Success-700: forest green */
+--color-diff-add-bg: #e8f5e9;      /* Success-50: pale mint */
+--color-diff-remove-fg: #7f0000;   /* Danger-900: deep burgundy */
+--color-diff-remove-bg: #ffebee;   /* Danger-50: pale rose */
+--color-diff-change-fg: #6b4423;   /* Warm brown (custom) */
+--color-diff-change-bg: #fff8e1;   /* Warning-50: pale cream */
+```
+
+**Token Values — Dark Theme** (fg/bg inverted for same visual hierarchy)
+```css
+--color-diff-add-fg: #a5d6a7;      /* Success-200: bright mint */
+--color-diff-add-bg: #1b5e20;      /* Success-700: dark green */
+--color-diff-remove-fg: #ef9a9a;   /* Danger-200: bright rose */
+--color-diff-remove-bg: #7f0000;   /* Danger-900: deep burgundy */
+--color-diff-change-fg: #ffe082;   /* Warning-200: bright amber */
+--color-diff-change-bg: #6b4423;   /* Warm brown (custom) */
+```
+
+**Contrast Verification** (WCAG 2.1 relative luminance formula)
+
+| Theme | Pair | FG | BG | Ratio | Pass |
+|-------|------|----|----|-------|------|
+| Light | add | #1b5e20 | #e8f5e9 | 11.8:1 | ✅ |
+| Light | remove | #7f0000 | #ffebee | 25.9:1 | ✅ |
+| Light | change | #6b4423 | #fff8e1 | 8.5:1 | ✅ |
+| Dark | add | #a5d6a7 | #1b5e20 | 9.1:1 | ✅ |
+| Dark | remove | #ef9a9a | #7f0000 | 14.0:1 | ✅ |
+| Dark | change | #ffe082 | #6b4423 | 6.2:1 | ✅ |
+
+**Rationale:**
+
+- **Add (green):** Success-700/50 pair. Forest green on pale mint reads as "new" universally, matches GitHub/GitLab convention.
+- **Remove (red):** Danger-900/50 pair. Deep burgundy on pale rose signals deletion with gravitas, avoids harsh pure-red stress.
+- **Change (brown):** Custom warm brown (#6b4423) on Warning-50. Unlike add/remove, "modified" lines are neutral/contextual. Warm earth tones communicate modification without extremity. Avoids bright yellow (too cheerful for audit log) and false "warning" signal.
+- **Dark-mode strategy:** Invert fg/bg pairs to preserve contrast hierarchy and visual distinction on dark surfaces.
+- **Aesthetic target:** PRD §F3 "mid-2010s Apple" — subtle, restrained palette prioritizes composure over saturation.
+
+**Implementation:** Registered via `@theme inline` in tokens.css (Vasquez, commit 31cc3a5). Applied in AuditDiffDrawer.svelte via inline `style` with CSS variables for automatic theme swap.
+
+**Consequences:** All audit-log diff renderings now meet WCAG AA accessibility baseline in both light and dark themes. Consistent with Constitution §6.5.5 (tokens in CSS only, no magic values).
+
+
+
 ## Governance
 
 - All meaningful changes require team consensus

@@ -1,9 +1,14 @@
 {
+	"id": "/",
 	"name": "Tech Inventory",
 	"short_name": "TechInv",
 	"description": "Your household, catalogued.",
 	"start_url": "/",
+	"scope": "/",
 	"display": "standalone",
+	"orientation": "any",
+	"lang": "en-US",
+	"dir": "ltr",
 	"background_color": "#ffffff",
 	"theme_color": "#0071e3",
 	"icons": [

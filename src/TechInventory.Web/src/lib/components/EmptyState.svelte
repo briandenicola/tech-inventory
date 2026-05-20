@@ -9,9 +9,10 @@
 
 	interface Props {
 		filtered?: boolean;
+		onAdd?: () => void;
 	}
 
-	let { filtered = false }: Props = $props();
+	let { filtered = false, onAdd }: Props = $props();
 </script>
 
 <div
@@ -40,20 +41,39 @@
 
 	<!-- CTA (only show if not filtered) -->
 	{#if !filtered}
-		<a
-			href="/devices/new"
-			class="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600"
-		>
-			<svg
-				class="h-5 w-5"
-				fill="none"
-				viewBox="0 0 24 24"
-				stroke="currentColor"
-				aria-hidden="true"
+		{#if onAdd}
+			<button
+				type="button"
+				onclick={onAdd}
+				class="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600"
 			>
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-			</svg>
-			{t('devices.list.addButton')}
-		</a>
+				<svg
+					class="h-5 w-5"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					aria-hidden="true"
+				>
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+				</svg>
+				{t('devices.list.addButton')}
+			</button>
+		{:else}
+			<a
+				href="/devices/new"
+				class="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600"
+			>
+				<svg
+					class="h-5 w-5"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					aria-hidden="true"
+				>
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+				</svg>
+				{t('devices.list.addButton')}
+			</a>
+		{/if}
 	{/if}
 </div>

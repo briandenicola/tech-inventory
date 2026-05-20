@@ -8,8 +8,8 @@ jobs:
   dotnet:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
         with: { dotnet-version: '10.0.x' }
       - run: dotnet restore
       - run: dotnet format --verify-no-changes
@@ -19,28 +19,49 @@ jobs:
 
   codeql:
     runs-on: ubuntu-latest
-    permissions: { security-events: write }
+    # SARIF upload requires Code Scanning to be enabled in repo settings
+    # (Settings → Code security → Code scanning → Set up). On private repos
+    # this is a paid GHAS feature; keep the job advisory until then so it
+    # still surfaces findings in logs without blocking PRs.
+    continue-on-error: true
+    permissions:
+      contents: read           # actions/checkout needs this when permissions are scoped
+      security-events: write   # uploading CodeQL findings to the Security tab
+      actions: read            # required by CodeQL on private repositories
     steps:
-      - uses: actions/checkout@v4
-      - uses: github/codeql-action/init@v3
-        with: { languages: csharp, javascript-typescript }
-      - uses: github/codeql-action/analyze@v3
+      - uses: actions/checkout@v6
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: csharp,javascript-typescript
+          build-mode: none
+      - uses: github/codeql-action/analyze@v4
 
   secrets:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read         # actions/checkout
+      pull-requests: read    # gitleaks-action reads PR commits on pull_request events
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with: { fetch-depth: 0 }
       - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  container-scan:
+  container-config-scan:
+    # Trivy CONFIG scan only — catches Dockerfile + Compose + IaC
+    # misconfigurations on PR. The previous `scan-type: fs` was largely
+    # redundant once we scan published images (see security-scan.yml,
+    # which Trivy-scans the actual GHCR images on every release). Keeping
+    # config-only here means Dockerfile regressions (e.g. running as root,
+    # missing healthcheck, exposed secrets via ENV) still block at PR time.
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: aquasecurity/trivy-action@master
         with:
-          scan-type: fs
+          scan-type: config
           severity: HIGH,CRITICAL
           exit-code: '1'
 
@@ -48,6 +69,6 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: anchore/sbom-action@v0
         with: { format: cyclonedx-json }

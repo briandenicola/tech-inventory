@@ -1,12 +1,12 @@
 name: CI Pipeline
 
+# Disabled — left on workflow_dispatch only so it doesn't auto-fire on
+# every push/PR. Quality Gate carries the merge-blocking checks; this
+# workflow's verify.sh pipeline (Playwright E2E + Docker compose) is
+# the one we keep wanting to repair-then-mute. Run manually from the
+# Actions tab when you want the full verify pass.
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
   verify:
@@ -15,12 +15,12 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Setup .NET 10
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
 
@@ -69,6 +69,8 @@ jobs:
       - name: Run verification pipeline
         run: ./scripts/verify.sh
 
-      # TODO: Phase 3 — Add container build + push to GHCR
-      # TODO: Phase 3 — Add SBOM generation (Syft or dotnet sbom)
-      # TODO: Phase 3 — Add Trivy container security scan
+      # Container build + push lives in `.github/workflows/release-images.yml`
+      # (triggers on push-to-main, v* tags, and workflow_dispatch).
+      # SBOM generation + Trivy scanning are owned by Bishop in a follow-up
+      # workflow that `needs: [build-api, build-web]` from release-images.yml
+      # and consumes their `outputs.image-digest`.

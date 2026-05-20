@@ -5,6 +5,7 @@
  * 
  * Backend constraints (from CreateDeviceCommand + UpdateDeviceCommand validators):
  * - name: required, max 200
+ * - model: optional, max 200 (F034)
  * - serial: optional, max 100
  * - brandId: optional UUID (nullable per D-095)
  * - categoryId: required UUID
@@ -32,6 +33,11 @@ const deviceBaseSchema = z.object({
 		.string()
 		.min(1, 'Device name is required')
 		.max(200, 'Device name must be 200 characters or less'),
+	model: z
+		.string()
+		.max(200, 'Model must be 200 characters or less')
+		.optional()
+		.or(z.literal('')),
 	serialNumber: z
 		.string()
 		.max(100, 'Serial number must be 100 characters or less')

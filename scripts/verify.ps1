@@ -38,6 +38,8 @@ if ($LASTEXITCODE -ne 0) { Pop-Location; exit $LASTEXITCODE }
 
 Write-Host ''
 Write-Host '[7/9] Checking frontend (tsc + svelte-check)...' -ForegroundColor Yellow
+pnpm run generate:client
+if ($LASTEXITCODE -ne 0) { Pop-Location; exit $LASTEXITCODE }
 pnpm run check
 if ($LASTEXITCODE -ne 0) { Pop-Location; exit $LASTEXITCODE }
 

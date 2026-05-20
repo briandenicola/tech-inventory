@@ -27,6 +27,18 @@
 			icon: '🏷️'
 		},
 		{
+			title: t('navigation.adminCategories'),
+			href: '/admin/categories',
+			description: 'Manage device categories and types',
+			icon: '🗂️'
+		},
+		{
+			title: t('navigation.adminOwners'),
+			href: '/admin/owners',
+			description: 'Manage household members and roles',
+			icon: '👤'
+		},
+		{
 			title: t('navigation.adminLocations'),
 			href: '/admin/locations',
 			description: 'Manage storage and deployment locations',
@@ -43,6 +55,18 @@
 			href: '/admin/tags',
 			description: 'Manage categorization tags',
 			icon: '🏳️'
+		},
+		{
+			title: t('navigation.imports'),
+			href: '/admin/import',
+			description: 'Bulk-import devices from a CSV file',
+			icon: '📥'
+		},
+		{
+			title: t('navigation.exports'),
+			href: '/admin/export',
+			description: 'Download devices as CSV or JSON',
+			icon: '📤'
 		}
 	];
 </script>
@@ -57,7 +81,7 @@
 		</p>
 	</div>
 
-	<div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-2">
+	<div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
 		{#each adminSections as section (section.href)}
 			<a
 				href={section.href}

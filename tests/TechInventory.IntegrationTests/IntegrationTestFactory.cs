@@ -1,9 +1,12 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using TechInventory.IntegrationTests.Support;
 
 namespace TechInventory.IntegrationTests;
 
@@ -30,6 +33,24 @@ public class IntegrationTestFactory<TMarker> : WebApplicationFactory<Program>
     // Allow derived classes to override the environment
     protected virtual string Environment => "Development";
 
+    /// <summary>
+    /// Role stamped onto every authenticated request by <see cref="TestAuthHandler"/>.
+    /// Defaults to Admin; override in a derived factory (e.g.
+    /// <see cref="Support.MemberRoleIntegrationTestFactory{T}"/>) to flip the
+    /// caller's role for role-based authorization tests.
+    /// </summary>
+    protected virtual string TestAuthRole => "Admin";
+
+    /// <summary>
+    /// When <c>true</c> (default), the factory swaps Program.cs's auth wiring
+    /// for the in-memory <see cref="TestAuthHandler"/> so every request is
+    /// authenticated as <see cref="TestAuthRole"/>. Override to <c>false</c>
+    /// in factories that need to exercise the real auth pipeline — e.g. the
+    /// JWT validation tests in <c>AuthIntegrationTests</c>, or the local
+    /// HS256 flow in <c>LocalAuthEndpointTests</c>.
+    /// </summary>
+    protected virtual bool UseTestAuth => true;
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment(Environment);
@@ -37,9 +58,34 @@ public class IntegrationTestFactory<TMarker> : WebApplicationFactory<Program>
         {
             configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["ConnectionStrings:Default"] = ConnectionString
+                ["ConnectionStrings:Default"] = ConnectionString,
+                // Disable the local-admin seed in test hosts. Each test class
+                // gets its own SQLite file and uses TestAuthHandler for auth,
+                // so the seed service would just create noise.
+                ["Auth:Local:SeedEnabled"] = "false"
             });
         });
+
+        if (UseTestAuth)
+        {
+            // Swap whatever auth Program.cs registered for a TestAuthHandler
+            // that authenticates every request as the configured role. Lives
+            // in the test project so the production binary stays bypass-free.
+            builder.ConfigureTestServices(services =>
+            {
+                services.Configure<AuthenticationOptions>(options =>
+                {
+                    options.DefaultAuthenticateScheme = TestAuthHandler.SchemeName;
+                    options.DefaultChallengeScheme = TestAuthHandler.SchemeName;
+                });
+
+                var roleForRequests = TestAuthRole;
+                services.AddAuthentication()
+                    .AddScheme<TestAuthHandlerOptions, TestAuthHandler>(
+                        TestAuthHandler.SchemeName,
+                        options => options.Role = roleForRequests);
+            });
+        }
 
         builder.ConfigureServices(services =>
         {

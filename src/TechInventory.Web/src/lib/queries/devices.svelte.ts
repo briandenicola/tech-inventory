@@ -1,8 +1,9 @@
 /**
  * T14: Devices List Query Hook — Svelte 5 Runes Pattern
  *
- * useDevices() provides reactive server state for device list filters,
- * sorting, pagination, and infinite-scroll page fetches.
+ * useDevices() hook provides reactive server state for device list with
+ * filter/sort/pagination. Auto-refetches when filters change ($derived + $effect).
+ * Simple cache by serialized filter key; invalidation wired in R4 (CRUD mutations).
  *
  * Related: specs/002-frontend-mvp/spec.md §5 (Devices list), J4
  */
@@ -12,14 +13,14 @@ import { z } from 'zod';
 
 export const DEFAULT_DEVICE_PAGE_SIZE = 25;
 export const MAX_DEVICE_PAGE_SIZE = 200;
+export type DeviceSort = 'name' | 'purchaseDate' | 'createdAt';
+export type DeviceSortDirection = 'asc' | 'desc';
 
 /**
  * DeviceStatus enum (mirror OpenAPI spec)
  */
 export const DeviceStatus = z.enum(['Active', 'Retired', 'Disposed', 'InRepair', 'Lent']);
 export type DeviceStatus = z.infer<typeof DeviceStatus>;
-export type DeviceSort = 'name' | 'purchaseDate' | 'createdAt';
-export type DeviceSortDirection = 'asc' | 'desc';
 
 /**
  * DeviceResponse schema (runtime validation mirror of OpenAPI)
@@ -34,20 +35,23 @@ export const DeviceResponseSchema = z.object({
 	ownerId: z.string().uuid().nullable(),
 	locationId: z.string().uuid().nullable(),
 	networkId: z.string().uuid().nullable(),
-	purchaseDate: z.string().nullable(),
+	purchaseDate: z.string().nullable(), // ISO date string
 	purchasePrice: z.number().nullable(),
 	currencyCode: z.string().nullable(),
 	status: z.string().nullable(),
 	notes: z.string().nullable(),
 	retiredDate: z.string().nullable(),
 	disposalMethod: z.string().nullable(),
-	purpose: z.string().nullish(),
-	operatingSystem: z.string().nullish(),
-	ipAddress: z.string().nullish(),
-	macAddress: z.string().nullish(),
-	productUrl: z.string().nullish(),
-	version: z.string().nullish(),
-	createdAt: z.string(),
+	// F034: server has always returned these fields; the Zod mirror was missing
+	// them, so the UI silently dropped Purpose/OS/IP/MAC/URL/Version even when
+	// imports populated them. Adding them lets the detail page render them.
+	purpose: z.string().nullable().optional(),
+	operatingSystem: z.string().nullable().optional(),
+	ipAddress: z.string().nullable().optional(),
+	macAddress: z.string().nullable().optional(),
+	productUrl: z.string().nullable().optional(),
+	version: z.string().nullable().optional(),
+	createdAt: z.string(), // ISO datetime
 	createdBy: z.string().nullable(),
 	modifiedAt: z.string(),
 	modifiedBy: z.string().nullable()
@@ -75,6 +79,10 @@ export type PaginatedResponse<T> = {
 
 /**
  * Device filters shape (maps to /api/v1/devices query params)
+ *
+ * Note: OpenAPI uses PascalCase query params (Page, PageSize, Search, etc.)
+ * but API client wrapper (client.ts) accepts camelCase and passes raw params object.
+ * Our hook uses camelCase internally; wrapper maps to API shape.
  */
 export interface DeviceFilters {
 	search?: string;
@@ -90,22 +98,8 @@ export interface DeviceFilters {
 	sortDir?: DeviceSortDirection;
 	page?: number;
 	pageSize?: number;
-}
-
-interface DeviceFiltersParams {
-	Page?: number;
-	PageSize?: number;
-	Search?: string;
-	BrandId?: string;
-	CategoryId?: string;
-	OwnerId?: string;
-	LocationId?: string;
-	NetworkId?: string;
-	Status?: DeviceStatus;
-	PurchaseYearFrom?: number;
-	PurchaseYearTo?: number;
-	SortBy?: DeviceSort;
-	SortDescending?: boolean;
+	/** F023: client-side grouping dimension. Undefined => flat list. */
+	groupBy?: 'category' | 'owner' | 'year';
 }
 
 /**
@@ -118,9 +112,24 @@ export interface DevicesQueryResult {
 	refetch: () => Promise<void>;
 }
 
-type DeviceFiltersSource = DeviceFilters | (() => DeviceFilters);
-
-const cache = new Map<string, PaginatedResponse<DeviceResponse>>();
+/**
+ * Simple in-memory cache by serialized filter key.
+ *
+ * Entries carry a fetch timestamp and are treated as stale after CACHE_TTL_MS.
+ * Without a TTL, a transiently-empty result (e.g. before the user added
+ * matching devices) would stick for the entire SPA session — Brian hit this
+ * with the F026 Active-default filter showing "No devices yet" indefinitely
+ * after a state where no Active devices existed.
+ *
+ * Mutations (create/update/delete/bulk) also clear the cache via
+ * `invalidateDevicesCache()`.
+ */
+const CACHE_TTL_MS = 30_000;
+interface CacheEntry {
+	value: PaginatedResponse<DeviceResponse>;
+	fetchedAt: number;
+}
+const cache = new Map<string, CacheEntry>();
 
 export function clampDevicePage(page: number | undefined): number {
 	if (typeof page !== 'number' || !Number.isFinite(page)) {
@@ -163,8 +172,20 @@ export function serializeDeviceFilters(filters: DeviceFilters): string {
 	return JSON.stringify(sorted);
 }
 
-function resolveFilters(filters: DeviceFiltersSource): DeviceFilters {
-	return typeof filters === 'function' ? filters() : filters;
+interface DeviceFiltersParams {
+	Page?: number;
+	PageSize?: number;
+	Search?: string;
+	BrandId?: string;
+	CategoryId?: string;
+	OwnerId?: string;
+	LocationId?: string;
+	NetworkId?: string;
+	Status?: DeviceStatus;
+	PurchaseYearFrom?: number;
+	PurchaseYearTo?: number;
+	SortBy?: DeviceSort;
+	SortDescending?: boolean;
 }
 
 function buildDeviceQueryParams(filters: DeviceFilters): DeviceFiltersParams {
@@ -208,32 +229,60 @@ export async function fetchDevicesPage(
 /**
  * useDevices() — Svelte 5 runes-based reactive query hook
  *
- * Pass a closure when the filter source is itself reactive to avoid capturing
- * only the initial object value.
+ * Usage:
+ * ```
+ * let filters = $state({ page: 1, pageSize: 25, search: 'iPhone' });
+ * const query = useDevices(() => filters);
+ *
+ * $effect(() => {
+ *   // query.data, query.isLoading, query.error are reactive
+ * });
+ * ```
+ *
+ * Auto-refetches when filters change via $derived + $effect internally.
  */
-export function useDevices(filters: DeviceFiltersSource): DevicesQueryResult {
+/**
+ * Devices query hook (Svelte 5 runes)
+ *
+ * Accepts a *getter* so updates to the caller's reactive filters propagate
+ * into the hook. Passing a plain object snapshot would freeze the hook on
+ * the first render and silently swallow every subsequent filter change —
+ * the exact bug that hid `?search=` typing from the backend prior to this
+ * refactor.
+ *
+ * Usage:
+ * ```
+ * const urlFilters = $derived.by(() => buildFiltersFromUrl());
+ * const query = useDevices(() => urlFilters);
+ * ```
+ *
+ * Auto-refetches when the caller's reactive filters change.
+ */
+export function useDevices(getFilters: () => DeviceFilters): DevicesQueryResult {
+	// Internal reactive state
 	let data = $state<PaginatedResponse<DeviceResponse> | null>(null);
 	let isLoading = $state<boolean>(true);
 	let error = $state<string | null>(null);
 
-	const normalizedFilters = $derived(normalizeDeviceFilters(resolveFilters(filters)));
+	const normalizedFilters = $derived(normalizeDeviceFilters(getFilters()));
 	const cacheKey = $derived(serializeDeviceFilters(normalizedFilters));
 
+	// Fetch function (called on mount + filter change)
 	async function fetchDevices() {
 		isLoading = true;
 		error = null;
-		data = null;
 
+		const filters = normalizedFilters;
 		const cached = cache.get(cacheKey);
-		if (cached) {
-			data = cached;
+		if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+			data = cached.value;
 			isLoading = false;
 			return;
 		}
 
 		try {
-			const validated = await fetchDevicesPage(normalizedFilters);
-			cache.set(cacheKey, validated);
+			const validated = await fetchDevicesPage(filters);
+			cache.set(cacheKey, { value: validated, fetchedAt: Date.now() });
 			data = validated;
 		} catch (err) {
 			console.error('[devices] Fetch error:', err);
@@ -243,12 +292,14 @@ export function useDevices(filters: DeviceFiltersSource): DevicesQueryResult {
 		}
 	}
 
+	// $effect: refetch when cacheKey changes (i.e., filters change)
 	$effect(() => {
-		void cacheKey;
 		void normalizedFilters;
+		void cacheKey;
 		void fetchDevices();
 	});
 
+	// Expose refetch function for manual refresh
 	const refetch = async () => {
 		cache.delete(cacheKey);
 		await fetchDevices();
@@ -268,6 +319,9 @@ export function useDevices(filters: DeviceFiltersSource): DevicesQueryResult {
 	};
 }
 
+/**
+ * Clear entire devices cache (e.g., after device CRUD mutation in Round 4)
+ */
 export function invalidateDevicesCache(): void {
 	cache.clear();
 }

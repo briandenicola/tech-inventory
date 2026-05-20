@@ -383,45 +383,72 @@ task down      # tear down
 
 ## 13. Release Plan
 
-### Phase 0 — Foundation (Weeks 1–2)
-- Project bootstrap, Spec Kit, constitution, PRD, threat model
+> **Phase model rewritten 2026-05-19** to match what actually shipped. The
+> original Phase 0–5 ordering (Foundation → Core API → Auth → Infrastructure →
+> Web PWA → Hardening) is preserved in `git log` and in historical session
+> notes for archeology; this section is the canonical going-forward truth.
+> Cross-cutting work that landed during multiple phases (containerization,
+> CI/CD, observability, Entra auth) is attributed to where it actually
+> shipped rather than to a planned-but-never-spec'd phase.
+
+### Phase 0 — Foundation (shipped)
+- Project bootstrap, Spec Kit, constitution, PRD, threat model, references
 - Backlog populated
-- Local dev environment running
+- Local dev environment (Docker Compose, Taskfile, hermetic test stack)
+- Pre-commit hooks (gitleaks), CI scaffold, squad established
 
-### Phase 1 — Core API (Weeks 3–5) → `specs/001-core-api`
-- Domain model, EF Core, migrations
-- CRUD endpoints, OpenAPI
-- Import endpoint (CSV)
-- Unit + integration tests
+### Phase 1 — Core API (shipped) → `specs/001-core-api`
+- Domain model, EF Core, code-first migrations
+- CRUD endpoints + OpenAPI document
+- CSV import endpoint + pipeline
+- Audit log (append-only `AuditEvent`)
+- Unit + integration test harness with per-class SQLite isolation
 
-### Phase 2 — Auth (Weeks 6–7) → `specs/002-auth-entra`
-- Entra ID integration
-- Roles, policies
-- Audit log
+### Phase 2 — Frontend MVP + Auth (shipped 2026-05-19) → `specs/002-frontend-mvp`
+- SvelteKit PWA: device list/detail/create/edit, reference-entity admin,
+  import/export, audit-log viewer (F021 v1)
+- MSAL.js with `sessionStorage` token cache (four-gate enforcement per D-010)
+- Real Microsoft Entra ID OIDC + PKCE (replaced `Auth:DevBypass` in prod
+  binary); roles `Viewer` / `Member` / `Admin`
+- Local-admin fallback (F025 v1b, ADR D-140)
+- F020 (Profile/display-name), F022 (saved sort/filter prefs, localStorage),
+  F023 (group-devices-by-dimension), F024 (multi-select bulk actions)
+- *Originally split in the old plan as P2 (Auth) + P4 (Web PWA); they
+  shipped together as one coherent slice.*
 
-### Phase 3 — Infrastructure (Week 8) → `specs/003-infrastructure`
-- Docker Compose for prod
-- Caddy + TLS
-- Backups, healthchecks
+### Phase 3 — Production Launch (shipped 2026-05-19)
+- Production cutover to `https://inventory.denicolafamily.com` (external
+  TLS proxy / openresty)
+- Multi-stream production commit `35103d4`, Entra issuer fixes (`9877a6f`),
+  CI e2e + Trivy alpine upgrade (`e091c7f`), claim-mapping fix (`42e53a2`)
+- Brian validated end-to-end: Entra sign-in as Admin, owner auto-provisioned
+  on first sign-in (D-136), devices page renders, role-gated UI works
+- *Originally planned as P3 (Infrastructure, Week 8) + P5 (Hardening &
+  Launch, Weeks 13–14); shipped inside the frontend MVP effort.*
 
-### Phase 4 — Web PWA (Weeks 9–12) → `specs/004-web-pwa`
-- SvelteKit client
-- MSAL.js auth
-- Dashboard, list, detail, timeline, import, export
-- Offline read cache, installable
+### Phase 4 — Continuous Iteration (current)
+**Backlog-driven; no further linear phases planned.** Work pulls from
+`specs/_backlog/` (F-numbered entries). Each entry triages → promotes via
+Spec Kit `/specify` when it's worth a full spec, or ships directly when
+small. The roll-up of in-flight and shipped backlog items lives in
+`specs/_backlog/README.md`.
 
-### Phase 5 — Hardening & Launch (Weeks 13–14)
-- Threat model review
-- Performance pass
-- Backup/restore drill
-- Family onboarding docs
+Current Phase-4 themes (each tracked as one or more `F0XX-*.md`):
+- **PWA field-test follow-ups** — F026–F033 (captured 2026-05-19)
+- **Reporting** — F032 (insurance-grade PDF) is the first concrete entry
+  pulling what the old plan called "Phase 4 Polish & Reporting" into the
+  backlog queue
+- **Photo / vision** — F018 (AI draft) + F033 (capture + auto-creation)
+- **Conversational** — F019 (household AI chatbot)
+- **Admin surface follow-ups** — F021b (`/admin/logs`), F025b (local-admin
+  power features)
 
-### v2 Candidates (post-launch)
-- Photo attachments
+### v2 Candidates (post-launch, not yet in backlog)
+- Photo attachments (now subsumed under F033)
 - Warranty reminders
 - Depreciation tracking
 - Location/lifecycle workflows
-- Bulk-edit UI
+- Bulk-edit UI (partially shipped via F024)
 
 > Active feature ideas tracked in `specs/_backlog/`.
 

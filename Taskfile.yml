@@ -2,21 +2,25 @@ version: '3'
 
 # Tech Inventory — Local Development Automation
 # Requires: Docker, Task (https://taskfile.dev)
-# TODO: Task must be installed locally. Install via: `choco install go-task` (Windows) or `brew install go-task/tap/go-task` (macOS/Linux)
+#   Install Task via: `choco install go-task` (Windows) or `brew install go-task/tap/go-task` (macOS/Linux)
 #
 # Core commands:
-#   task up              — Bring up the full dev stack (API, Web, DB)
+#   task up              — Bring up the full dev stack (API, Web, DB) via Docker Compose
+#   task dev:up          — Local (non-Docker) one-command dev: migrate + run API + Web in parallel
 #   task test            — Run all tests against the running stack
 #   task down            — Tear down the stack
 #   task verify          — Run the constitution-blessed verification pipeline
 #
 # Local validation:
 #   task validate:local  — Fresh checkout → working dev environment with DB migrations applied
-#   task dev:up          — One-command dev: migrate + run API + Web in parallel (Ctrl+C exits both)
-#   task dev:api         — Run API (foreground, http://localhost:8080)
-#   task dev:web         — Run Web dev server (foreground, http://localhost:5173)
+#   task dev:api         — Run API only (foreground, http://localhost:8080)
+#   task dev:web         — Run Web dev server only (foreground, http://localhost:5173)
 #   task import:preview  — Preview CSV import (default: data/Devices.csv)
 #   task import:commit   — Commit CSV import to database (destructive)
+#
+# Production / backups:
+#   task backup:verify   — Spot-check the latest Litestream snapshot (requires --profile backup running)
+#   task backup:restore  — Restore /data/techinv.db from the latest replica (DESTRUCTIVE)
 
 silent: false
 method: timestamp
@@ -124,6 +128,55 @@ tasks:
     desc: Show running containers
     cmds:
       - docker compose ps
+
+  backup:verify:
+    desc: Spot-check the most recent Litestream snapshot (prod stack only)
+    summary: |
+      Lists Litestream snapshots for /data/techinv.db and prints the age of
+      the newest one. Requires the prod stack with `--profile backup` running.
+    cmds:
+      - cmd: |
+          $compose = 'docker compose -f docker-compose.yml -f docker-compose.prod.yml'
+          $running = & docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile backup ps backup --status running --quiet
+          if (-not $running) {
+            Write-Error 'litestream sidecar is not running. Start it with: docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile backup up -d backup'
+            exit 1
+          }
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml exec backup litestream snapshots -config /etc/litestream.yml /data/techinv.db
+        platforms: [windows]
+      - cmd: |
+          set -e
+          if ! docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile backup ps backup --status running --quiet | grep -q .; then
+            echo "litestream sidecar is not running."
+            echo "   Start it with: docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile backup up -d backup"
+            exit 1
+          fi
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml exec backup \
+            litestream snapshots -config /etc/litestream.yml /data/techinv.db
+        platforms: [linux, darwin]
+
+  backup:restore:
+    desc: Restore /data/techinv.db from the latest Litestream replica (DESTRUCTIVE)
+    summary: |
+      Stops the API, restores the latest snapshot into a temp file, swaps it
+      into place, and restarts the API. Make a host-side copy of techinv.db
+      first if you might want to roll back this restore.
+    cmds:
+      - cmd: |
+          set -e
+          echo "⚠️  This will overwrite /data/techinv.db inside the techinv-data volume."
+          read -p "Type 'restore' to continue: " confirm
+          [ "$confirm" = "restore" ] || { echo "Aborted."; exit 1; }
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml stop api
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile backup run --rm backup \
+            litestream restore -config /etc/litestream.yml -o /data/techinv.db.restored /data/techinv.db
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile backup run --rm --entrypoint sh backup \
+            -c 'mv /data/techinv.db /data/techinv.db.pre-restore && mv /data/techinv.db.restored /data/techinv.db'
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml start api
+          echo "✅ Restore complete. Previous DB saved as /data/techinv.db.pre-restore in the volume."
+        platforms: [linux, darwin]
+      - cmd: powershell -NoProfile -ExecutionPolicy Bypass -Command "Write-Warning 'backup:restore is documented only on Linux/macOS. On Windows, follow docs/deployment.md → Backup & restore manually.'"
+        platforms: [windows]
 
   clean:
     desc: Remove build artifacts and volumes

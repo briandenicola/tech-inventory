@@ -1,0 +1,116 @@
+name: Release Container Images
+
+# Build + push API and Web images to GHCR on every semver tag push.
+#
+# Triggered exclusively by `v*.*.*` tag pushes (e.g. `v0.1.0`, `v1.2.3`).
+# Each run produces two images, each tagged with both `:latest` and the
+# semver tag (`:vX.Y.Z`):
+#
+#   ghcr.io/briandenicola/tech-inventory-api:latest
+#   ghcr.io/briandenicola/tech-inventory-api:vX.Y.Z
+#   ghcr.io/briandenicola/tech-inventory-web:latest
+#   ghcr.io/briandenicola/tech-inventory-web:vX.Y.Z
+#
+# linux/amd64 only — Brian's home server is x86_64. Adding arm64 would
+# double build time for no current consumer; revisit when there is one.
+#
+# Provenance / SBOM attestations are intentionally off for now; Bishop
+# owns container scanning + SBOM as a separate workflow.
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  # Manual trigger from the Actions UI / `gh workflow run`. Useful for
+  # rebuilding `:latest` off main without cutting a fresh tag (e.g. after
+  # a security patch lands and you want the home server to pick it up).
+  # Optionally pass a `tag` input to also publish a named tag alongside
+  # `:latest` (defaults to empty → only `:latest` is pushed).
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Optional extra image tag (e.g. hotfix-2026-05-19). Leave blank to only push :latest."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  packages: write          # required to push to ghcr.io/<owner>/<image>
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAMESPACE: ${{ github.repository_owner }}/tech-inventory
+
+jobs:
+  build:
+    name: Build & push ${{ matrix.image.name }} image
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - name: api
+            dockerfile: src/TechInventory.Api/Dockerfile
+            title: Tech Inventory API
+            description: ASP.NET Core 10 Web API for Tech Inventory
+          - name: web
+            dockerfile: src/TechInventory.Web/Dockerfile
+            title: Tech Inventory Web
+            description: SvelteKit PWA + nginx reverse proxy for Tech Inventory
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}-${{ matrix.image.name }}
+          # On tag pushes (`v*.*.*`): publish `:latest` + `:vX.Y.Z`.
+          # On workflow_dispatch: publish `:latest`, plus `:<inputs.tag>`
+          # if the operator provided one. `enable=` keeps the second
+          # tag from materialising as a literal `:` when no input is set.
+          # `:sha-<short>` is published on every run so the downstream
+          # Container Image Security Scan workflow can pull a
+          # deterministic, race-free tag for whatever commit triggered
+          # this run (it resolves the upstream head_sha → short SHA →
+          # `sha-<short>` tag).
+          tags: |
+            type=raw,value=latest
+            type=raw,value=${{ github.ref_name }},enable=${{ github.event_name == 'push' }}
+            type=raw,value=${{ inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' && inputs.tag != '' }}
+            type=sha,format=short
+          labels: |
+            org.opencontainers.image.title=${{ matrix.image.title }}
+            org.opencontainers.image.description=${{ matrix.image.description }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ github.ref_name }}
+            org.opencontainers.image.licenses=MIT
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.image.dockerfile }}
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # GitHub Actions cache backend — scoped per image so api/web
+          # don't fight over the same cache key.
+          cache-from: type=gha,scope=${{ matrix.image.name }}
+          cache-to: type=gha,scope=${{ matrix.image.name }},mode=max
+          # Attestations off — enable when Bishop's signing workflow lands.
+          provenance: false
+          sbom: false

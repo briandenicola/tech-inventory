@@ -20,26 +20,27 @@
 		onFiltersChange: (filters: DeviceFilters) => void;
 		isOpen?: boolean;
 		onClose?: () => void;
+		onSaveDefault?: () => void;
+		onClearDefault?: () => void;
+		hasStoredDefault?: boolean;
+		canSaveDefault?: boolean;
 	}
 
-	let { filters, onFiltersChange, isOpen = true, onClose }: Props = $props();
+	let {
+		filters,
+		onFiltersChange,
+		isOpen = true,
+		onClose,
+		onSaveDefault,
+		onClearDefault,
+		hasStoredDefault = false,
+		canSaveDefault = true
+	}: Props = $props();
 
 	const refData = $derived($referenceDataStore);
 
 	// Define status options with proper typing
 	const statusOptions: DeviceStatus[] = ['Active', 'Retired', 'Disposed', 'InRepair', 'Lent'];
-
-	// Debounced search
-	let searchTimeout: ReturnType<typeof setTimeout> | null = null;
-	function handleSearchChange(e: Event) {
-		const target = e.target as HTMLInputElement;
-		const value = target.value;
-
-		if (searchTimeout) clearTimeout(searchTimeout);
-		searchTimeout = setTimeout(() => {
-			onFiltersChange({ ...filters, search: value || undefined, page: 1 });
-		}, 300);
-	}
 
 	// Filter change handlers
 	function handleFilterChange(
@@ -64,7 +65,7 @@
 
 	// Clear all filters
 	function clearAll() {
-		onFiltersChange({ page: 1, pageSize: filters.pageSize || 25 });
+		onFiltersChange({ page: 1, pageSize: filters.pageSize || 25, groupBy: filters.groupBy });
 	}
 
 	// Fetch reference data on mount
@@ -74,14 +75,38 @@
 		}
 	});
 
+	// Escape-to-close when drawer is open
+	$effect(() => {
+		if (!isOpen || !onClose) return;
+
+		function handleKeydown(event: KeyboardEvent) {
+			if (event.key === 'Escape') {
+				onClose?.();
+			}
+		}
+
+		document.addEventListener('keydown', handleKeydown);
+		return () => {
+			document.removeEventListener('keydown', handleKeydown);
+		};
+	});
+
 	// Current year for year range max
 	const currentYear = new Date().getFullYear();
 </script>
 
-<!-- Mobile drawer backdrop -->
-{#if !isOpen && onClose}
+<!--
+	Mobile drawer backdrop.
+
+	F026: the previous condition was inverted (`!isOpen && onClose`), which
+	rendered a full-screen z-40 overlay *whenever the drawer was closed* — that
+	intercepted every tap on the devices list and gave the "transparent element
+	in front of devices" symptom Brian reported during field testing. Backdrop
+	must only render when the drawer is actually open.
+-->
+{#if isOpen && onClose}
 	<div
-		class="md:hidden fixed inset-0 z-40 bg-neutral-900/50"
+		class="fixed inset-0 z-40 bg-neutral-900/50"
 		onclick={onClose}
 		role="presentation"
 	></div>
@@ -89,24 +114,24 @@
 
 <!-- Filters sidebar/drawer -->
 <aside
-	class="fixed inset-y-0 left-0 z-50 w-80 transform overflow-y-auto border-r border-neutral-200 bg-white p-6 transition-transform dark:border-neutral-800 dark:bg-neutral-950 md:sticky md:top-0 md:z-auto md:h-screen md:w-72 md:translate-x-0"
+	class="fixed inset-y-0 left-0 z-50 w-[22rem] md:w-96 transform overflow-y-auto border-r border-neutral-200/70 bg-white p-7 transition-transform dark:border-neutral-800/70 dark:bg-neutral-950"
 	class:translate-x-0={isOpen}
 	class:-translate-x-full={!isOpen}
 	aria-label={t('devices.filters.title')}
 >
 	<!-- Header -->
-	<div class="mb-6 flex items-center justify-between">
-		<h2 class="text-lg font-semibold text-neutral-900 dark:text-neutral-50">
+	<div class="mb-7 flex items-center justify-between">
+		<h2 class="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-50">
 			{t('devices.filters.title')}
 		</h2>
 		{#if onClose}
 			<button
 				type="button"
 				onclick={onClose}
-				class="md:hidden rounded-lg p-1 hover:bg-neutral-100 dark:hover:bg-neutral-900"
+				class="inline-flex h-11 w-11 items-center justify-center rounded-full text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
 				aria-label={t('devices.filters.closeFilters')}
 			>
-				<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+				<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
 					<path
 						stroke-linecap="round"
 						stroke-linejoin="round"
@@ -119,30 +144,40 @@
 	</div>
 
 	<!-- Search -->
-	<div class="mb-4">
-		<label for="search" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
-			{t('devices.filters.searchPlaceholder')}
+	<div class="mb-6">
+		<label for="groupBy" class="mb-2 block text-base font-medium text-neutral-800 dark:text-neutral-200">
+			{t('devices.filters.groupByLabel')}
 		</label>
-		<input
-			type="search"
-			id="search"
-			value={filters.search || ''}
-			oninput={handleSearchChange}
-			placeholder={t('devices.filters.searchPlaceholder')}
-			class="mt-1 w-full rounded-md border-neutral-300 text-sm focus:border-primary-500 focus:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
-		/>
+		<select
+			id="groupBy"
+			value={filters.groupBy || ''}
+			onchange={(e) => {
+				const value = (e.target as HTMLSelectElement).value;
+				onFiltersChange({
+					...filters,
+					groupBy: value === '' ? undefined : (value as 'category' | 'owner' | 'year'),
+					page: 1
+				});
+			}}
+			class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:bg-neutral-900"
+		>
+			<option value="">{t('devices.filters.groupByNone')}</option>
+			<option value="category">{t('devices.filters.groupByCategory')}</option>
+			<option value="owner">{t('devices.filters.groupByOwner')}</option>
+			<option value="year">{t('devices.filters.groupByYear')}</option>
+		</select>
 	</div>
 
 	<!-- Brand -->
-	<div class="mb-4">
-		<label for="brand" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+	<div class="mb-6">
+		<label for="brand" class="mb-2 block text-base font-medium text-neutral-800 dark:text-neutral-200">
 			{t('devices.filters.brandLabel')}
 		</label>
 		<select
 			id="brand"
 			value={filters.brandId || ''}
 			onchange={(e) => handleFilterChange('brandId', (e.target as HTMLSelectElement).value)}
-			class="mt-1 w-full rounded-md border-neutral-300 text-sm focus:border-primary-500 focus:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+			class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:bg-neutral-900"
 		>
 			<option value="">{t('devices.filters.allOption')}</option>
 			{#each refData.brands as brand (brand.id)}
@@ -152,15 +187,15 @@
 	</div>
 
 	<!-- Category -->
-	<div class="mb-4">
-		<label for="category" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+	<div class="mb-6">
+		<label for="category" class="mb-2 block text-base font-medium text-neutral-800 dark:text-neutral-200">
 			{t('devices.filters.categoryLabel')}
 		</label>
 		<select
 			id="category"
 			value={filters.categoryId || ''}
 			onchange={(e) => handleFilterChange('categoryId', (e.target as HTMLSelectElement).value)}
-			class="mt-1 w-full rounded-md border-neutral-300 text-sm focus:border-primary-500 focus:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+			class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:bg-neutral-900"
 		>
 			<option value="">{t('devices.filters.allOption')}</option>
 			{#each refData.categories as category (category.id)}
@@ -170,15 +205,15 @@
 	</div>
 
 	<!-- Owner -->
-	<div class="mb-4">
-		<label for="owner" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+	<div class="mb-6">
+		<label for="owner" class="mb-2 block text-base font-medium text-neutral-800 dark:text-neutral-200">
 			{t('devices.filters.ownerLabel')}
 		</label>
 		<select
 			id="owner"
 			value={filters.ownerId || ''}
 			onchange={(e) => handleFilterChange('ownerId', (e.target as HTMLSelectElement).value)}
-			class="mt-1 w-full rounded-md border-neutral-300 text-sm focus:border-primary-500 focus:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+			class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:bg-neutral-900"
 		>
 			<option value="">{t('devices.filters.allOption')}</option>
 			{#each refData.owners as owner (owner.id)}
@@ -188,15 +223,15 @@
 	</div>
 
 	<!-- Location -->
-	<div class="mb-4">
-		<label for="location" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+	<div class="mb-6">
+		<label for="location" class="mb-2 block text-base font-medium text-neutral-800 dark:text-neutral-200">
 			{t('devices.filters.locationLabel')}
 		</label>
 		<select
 			id="location"
 			value={filters.locationId || ''}
 			onchange={(e) => handleFilterChange('locationId', (e.target as HTMLSelectElement).value)}
-			class="mt-1 w-full rounded-md border-neutral-300 text-sm focus:border-primary-500 focus:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+			class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:bg-neutral-900"
 		>
 			<option value="">{t('devices.filters.allOption')}</option>
 			{#each refData.locations as location (location.id)}
@@ -206,15 +241,15 @@
 	</div>
 
 	<!-- Network -->
-	<div class="mb-4">
-		<label for="network" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+	<div class="mb-6">
+		<label for="network" class="mb-2 block text-base font-medium text-neutral-800 dark:text-neutral-200">
 			{t('devices.filters.networkLabel')}
 		</label>
 		<select
 			id="network"
 			value={filters.networkId || ''}
 			onchange={(e) => handleFilterChange('networkId', (e.target as HTMLSelectElement).value)}
-			class="mt-1 w-full rounded-md border-neutral-300 text-sm focus:border-primary-500 focus:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+			class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:bg-neutral-900"
 		>
 			<option value="">{t('devices.filters.allOption')}</option>
 			{#each refData.networks as network (network.id)}
@@ -224,20 +259,20 @@
 	</div>
 
 	<!-- Status multi-select -->
-	<fieldset class="mb-4">
-		<legend class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+	<fieldset class="mb-6">
+		<legend class="mb-2 block text-base font-medium text-neutral-800 dark:text-neutral-200">
 			{t('devices.filters.statusLabel')}
 		</legend>
-		<div class="mt-2 space-y-2">
+		<div class="space-y-2.5">
 			{#each statusOptions as status}
-				<label class="flex items-center gap-2">
+				<label class="flex min-h-10 cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800">
 					<input
 						type="checkbox"
 						checked={statusValues.includes(status)}
 						onchange={() => toggleStatus(status)}
-						class="rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-900"
+						class="h-5 w-5 rounded-md border-neutral-300 text-primary-600 focus:ring-primary-500 focus:ring-offset-0 dark:border-neutral-600 dark:bg-neutral-800"
 					/>
-					<span class="text-sm text-neutral-700 dark:text-neutral-300">
+					<span class="text-base text-neutral-800 dark:text-neutral-200">
 						{t(`devices.filters.status${status}`)}
 					</span>
 				</label>
@@ -246,11 +281,11 @@
 	</fieldset>
 
 	<!-- Purchase Year Range -->
-	<fieldset class="mb-6">
-		<legend class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+	<fieldset class="mb-7">
+		<legend class="mb-2 block text-base font-medium text-neutral-800 dark:text-neutral-200">
 			{t('devices.filters.yearRangeLabel')}
 		</legend>
-		<div class="mt-2 flex gap-2">
+		<div class="flex gap-3">
 			<div class="flex-1">
 				<label for="yearMin" class="sr-only">{t('devices.filters.yearMinLabel')}</label>
 				<input
@@ -265,7 +300,7 @@
 							parseInt((e.target as HTMLInputElement).value, 10) || undefined
 						)}
 					placeholder="1990"
-					class="w-full rounded-md border-neutral-300 text-sm focus:border-primary-500 focus:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+					class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 placeholder:text-neutral-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-400 dark:focus:bg-neutral-900"
 				/>
 			</div>
 			<div class="flex-1">
@@ -282,7 +317,7 @@
 							parseInt((e.target as HTMLInputElement).value, 10) || undefined
 						)}
 					placeholder={currentYear.toString()}
-					class="w-full rounded-md border-neutral-300 text-sm focus:border-primary-500 focus:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+					class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 placeholder:text-neutral-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-400 dark:focus:bg-neutral-900"
 				/>
 			</div>
 		</div>
@@ -292,10 +327,34 @@
 	<button
 		type="button"
 		onclick={clearAll}
-		class="w-full rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-900"
+		class="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-neutral-300 px-5 py-2.5 text-base font-medium text-neutral-700 transition-colors hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
 	>
 		{t('devices.filters.clearAll')}
 	</button>
+
+	{#if onSaveDefault || onClearDefault}
+		<div class="mt-3 flex flex-col gap-2">
+			{#if onSaveDefault}
+				<button
+					type="button"
+					onclick={onSaveDefault}
+					disabled={!canSaveDefault}
+					class="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-primary-600 px-5 py-2.5 text-base font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-primary-500 dark:hover:bg-primary-600"
+				>
+					{t('devices.filters.saveDefault')}
+				</button>
+			{/if}
+			{#if onClearDefault && hasStoredDefault}
+				<button
+					type="button"
+					onclick={onClearDefault}
+					class="inline-flex min-h-11 w-full items-center justify-center rounded-full px-5 py-2.5 text-sm font-medium text-neutral-600 underline-offset-4 transition-colors hover:underline focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:text-neutral-400"
+				>
+					{t('devices.filters.clearDefault')}
+				</button>
+			{/if}
+		</div>
+	{/if}
 
 	<!-- ARIA live region for results announcement -->
 	<div class="sr-only" role="status" aria-live="polite" aria-atomic="true">

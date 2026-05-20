@@ -13,7 +13,7 @@ import { z } from 'zod';
 
 export const ownerSchema = z.object({
 	displayName: z.string().trim().min(1, 'Display name is required').max(200, 'Display name must be 200 characters or less'),
-	role: z.enum(['Admin', 'Member', 'Viewer'], { errorMap: () => ({ message: 'Role is required' }) }),
+	role: z.enum(['Admin', 'Member', 'Viewer']),
 	entraObjectId: z.string().uuid('Invalid Entra Object ID').optional().or(z.literal(''))
 });
 

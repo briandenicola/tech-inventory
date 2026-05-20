@@ -2,7 +2,11 @@
 
 **Spec**: `specs/002-frontend-mvp/spec.md`
 **Plan**: `specs/002-frontend-mvp/plan.md`
-**Status**: Draft
+**Status**: Shipped (production-validated 2026-05-19)
+
+> **Phase note (added 2026-05-19)**: Authored under the pre-rewrite PRD §13
+> numbering. Now canonical **P2 — Frontend MVP + Auth** under the rewritten
+> model. Internal "Phase N" references are preserved as historical record.
 
 ---
 

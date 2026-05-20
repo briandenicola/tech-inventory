@@ -1,7 +1,7 @@
 # Spec 002 — Frontend MVP + Real Entra OIDC
 
-**Status**: Draft
-**Phase**: 2 (Weeks 6–9) per PRD §13
+**Status**: Shipped (production-validated 2026-05-19)
+**Phase**: Canonical **P2 — Frontend MVP + Auth** under PRD §13 as rewritten 2026-05-19. *(Originally drafted as "Phase 2 (Weeks 6–9) per PRD §13" under the pre-rewrite numbering; references to other "Phase N" labels inside this document reflect the original plan and are preserved as historical record. Work that this spec deferred to "Phase 3 / Phase 4" is now tracked under **P4 — Continuous Iteration** via `specs/_backlog/`.)*
 **Owner**: Ripley (Lead/Architect)
 **Last Updated**: 2026-05-18
 

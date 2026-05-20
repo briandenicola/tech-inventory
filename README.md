@@ -1,13 +1,28 @@
 # Tech Inventory
 
+[![Quality Gate](https://github.com/briandenicola/tech-inventory/actions/workflows/quality-gate.yml/badge.svg?branch=main)](https://github.com/briandenicola/tech-inventory/actions/workflows/quality-gate.yml)
+[![CI Pipeline](https://github.com/briandenicola/tech-inventory/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/briandenicola/tech-inventory/actions/workflows/ci.yml)
+[![Release Container Images](https://github.com/briandenicola/tech-inventory/actions/workflows/release-images.yml/badge.svg)](https://github.com/briandenicola/tech-inventory/actions/workflows/release-images.yml)
+[![Container Image Security Scan](https://github.com/briandenicola/tech-inventory/actions/workflows/security-scan.yml/badge.svg?branch=main)](https://github.com/briandenicola/tech-inventory/actions/workflows/security-scan.yml)
+
 A self-hosted family device and appliance inventory tracker. Single-household, authenticated via Microsoft Entra ID, deployed as Docker Compose on home infrastructure.
 
 ## Architecture
 
-- **Backend**: ASP.NET Core 10 Web API — Clean Architecture (Domain → Application → Infrastructure → Api)
-- **Frontend**: SvelteKit PWA with TypeScript, Tailwind CSS, MSAL.js authentication
+- **Backend**: ASP.NET Core 10 Web API — Clean Architecture (Domain → Application → Infrastructure → Api), MediatR + FluentValidation, Serilog, OpenTelemetry
+- **Frontend**: SvelteKit PWA with TypeScript (strict), Tailwind CSS, MSAL.js authentication, generated TypeScript API client (no hand-written fetch)
 - **Database**: SQLite via EF Core code-first migrations
-- **Deployment**: Docker Compose (API + Web + DB); external reverse proxy terminates TLS
+- **Deployment**: Docker Compose (API + Web + DB). The web container is an nginx reverse proxy that serves the SvelteKit static bundle and forwards `/api/*` to the API on the internal network — browsers see a single origin in production. An external proxy (Nginx Proxy Manager) terminates TLS in front of it. See [`docs/architecture.md`](docs/architecture.md), [`docs/deployment.md`](docs/deployment.md), and ADR **D-139**.
+- **Auth**: Microsoft Entra ID (workforce tenant) via OIDC + PKCE as the primary identity provider, with a local-account break-glass fallback (F025 v1b — Argon2id + HS256 JWT). See [`docs/auth-design.md`](docs/auth-design.md) and [`docs/operations.md`](docs/operations.md#break-glass-local-admin-f025-v1b).
+
+### Recent shipped slices
+
+- **F025 v1b** — Break-glass local admin (`POST /api/v1/auth/local/{login,change-password}`, Argon2id hashing, env-var seed hosted service, force-rotation middleware). Operator runbook: [`docs/operations.md`](docs/operations.md#break-glass-local-admin-f025-v1b).
+- **F024 v1** — Multi-select bulk actions on the device list.
+- **F023 v1** — Group devices by Category / Owner / Purchase year.
+- **F022 v1** — Per-user default sort/filter preferences (localStorage).
+- **F021 v1** — Admin audit log viewer (`/admin/audit`).
+- **F020 v1** — User profile (display name).
 
 ## Local Development
 
@@ -75,11 +90,29 @@ Run `task hooks:install` once per clone. It downloads the pinned `gitleaks` bina
 - **API Liveness**: `http://localhost:8080/health`
 - **API Readiness**: `http://localhost:8080/health/ready`
 
+## Container Images
+
+Published to [GitHub Container Registry](https://github.com/briandenicola?tab=packages&repo_name=tech-inventory) on every `v*.*.*` tag push via [`release-images.yml`](.github/workflows/release-images.yml). Both images are publicly pullable (no `docker login` required).
+
+| Image | Registry link | Pull command |
+|-------|---------------|--------------|
+| API   | [`ghcr.io/briandenicola/tech-inventory-api`](https://github.com/users/briandenicola/packages/container/package/tech-inventory-api) | `docker pull ghcr.io/briandenicola/tech-inventory-api:latest` |
+| Web   | [`ghcr.io/briandenicola/tech-inventory-web`](https://github.com/users/briandenicola/packages/container/package/tech-inventory-web) | `docker pull ghcr.io/briandenicola/tech-inventory-web:latest` |
+
+Pin a release by setting `IMAGE_TAG=v0.1.0` in `.env`. See [`docs/deployment.md`](docs/deployment.md) for the full home-server deploy runbook.
+
 ## Documentation
 
 - [Product Requirements](docs/prd.md)
 - [Architecture](docs/architecture.md)
+- [Authentication Design](docs/auth-design.md) — Entra ID + local break-glass fallback
+- [Security Baseline](docs/security-baseline.md)
+- [Threat Model](docs/threat-model.md)
+- [Operations Runbook](docs/operations.md) — break-glass admin, day-2 operations
+- [Deployment Runbook](docs/deployment.md) — production deploy, NPM, backups, rollback
+- [Testing Guide](docs/testing.md)
 - [Constitution](.specify/memory/constitution.md)
+- [Architecture Decisions](.squad/decisions.md) — append-only ADR ledger (D-001 …)
 
 ## Contributing
 

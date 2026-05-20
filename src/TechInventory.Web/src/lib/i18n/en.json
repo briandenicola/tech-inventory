@@ -33,7 +33,8 @@
 			"clear": "Clear",
 			"download": "Download",
 			"upload": "Upload",
-			"retry": "Retry"
+			"retry": "Retry",
+			"select": "Select…"
 		},
 		"nouns": {
 			"device": "Device",
@@ -90,7 +91,32 @@
 		"sessionExpired": "Your session has expired. Please sign in again.",
 		"accessDenied": "Access denied. You do not have permission to view this page.",
 		"welcomeMessage": "Welcome back, {name}!",
-		"unauthorized": "You must be signed in to access this page."
+		"unauthorized": "You must be signed in to access this page.",
+		"local": {
+			"useLocalAccount": "Use a local account instead",
+			"backToSso": "Back to single sign-on",
+			"formTitle": "Local account sign-in",
+			"formDescription": "Reserved for break-glass access when Entra ID is unavailable.",
+			"usernameLabel": "Username",
+			"passwordLabel": "Password",
+			"submit": "Sign in locally",
+			"submitting": "Signing in…",
+			"invalidCredentials": "Username or password is incorrect.",
+			"unknownError": "Local sign-in failed. Please try again.",
+			"changePassword": {
+				"title": "Change your password",
+				"description": "Your local account must rotate its password before continuing.",
+				"currentLabel": "Current password",
+				"newLabel": "New password",
+				"confirmLabel": "Confirm new password",
+				"submit": "Update password",
+				"submitting": "Updating…",
+				"mustDifferFromCurrent": "New password must differ from the current password.",
+				"mustMatch": "Passwords do not match.",
+				"minLength": "Password must be at least 12 characters.",
+				"success": "Password updated. Please sign in again with your new password."
+			}
+		}
 	},
 	"navigation": {
 		"home": "Home",
@@ -108,16 +134,47 @@
 		"settings": "Settings",
 		"admin": "Admin",
 		"adminBrands": "Brands",
+		"adminCategories": "Categories",
 		"adminLocations": "Locations",
 		"adminNetworks": "Networks",
-		"adminTags": "Tags"
+		"adminOwners": "Owners",
+		"adminTags": "Tags",
+		"adminAudit": "Audit Log"
 	},
 	"devices": {
 		"list": {
 			"title": "Devices",
 			"addButton": "Add Device",
+			"addFab": "Add device",
 			"emptyState": "No devices yet. Add your first device to get started.",
 			"emptyFiltered": "No devices match your filters."
+		},
+		"statusChip": {
+			"showingActive": "Showing Active only",
+			"showAll": "Show all statuses",
+			"showingAll": "Showing all statuses",
+			"activeOnly": "Show Active only"
+		},
+		"viewMode": {
+			"cards": "Cards",
+			"table": "Table",
+			"toggleLabel": "Device list view mode"
+		},
+		"tags": {
+			"label": "Tags",
+			"sectionLabel": "Tags (optional)",
+			"inputPlaceholder": "Type to find or add tags…",
+			"listboxLabel": "Available tags",
+			"noMatches": "No matching tags.",
+			"empty": "No tags yet.",
+			"removeTag": "Remove tag {name}",
+			"applyErrorSome": "Saved device, but {count} tag(s) could not be applied. Try again from edit.",
+			"updateErrorSome": "{count} tag change(s) could not be saved. Reload and try again."
+		},
+		"history": {
+			"title": "Change history",
+			"subtitle": "Most recent audit events for this device.",
+			"empty": "No changes recorded for this device yet."
 		},
 		"detail": {
 			"title": "Device Details",
@@ -186,15 +243,24 @@
 			"acquiredOn": "Acquired On",
 			"purchaseDate": "Purchase Date",
 			"retiredOn": "Retired On",
+			"retiredDate": "Retired Date",
+			"disposalMethod": "Disposal Method",
 			"purchasePrice": "Purchase Price",
 			"currency": "Currency",
-			"notes": "Notes"
+			"notes": "Notes",
+			"purpose": "Purpose",
+			"operatingSystem": "Operating System",
+			"ipAddress": "IP Address",
+			"macAddress": "MAC Address",
+			"productUrl": "Product URL",
+			"version": "Version"
 		},
 		"form": {
 			"tags": "Tags",
 			"tagsHint": "Choose all tags that apply to this device.",
 			"tagsEmpty": "Create tags in Admin before assigning them to devices.",
 			"additionalDetails": "Additional details (optional)",
+			"modelPlaceholder": "e.g., A2483, GA02768-US, RF28JBEDBSG/AA",
 			"purpose": "Purpose",
 			"purposePlaceholder": "What is this device used for?",
 			"operatingSystem": "Operating System",
@@ -243,6 +309,10 @@
 			"yearMinLabel": "From Year",
 			"yearMaxLabel": "To Year",
 			"clearAll": "Clear All Filters",
+			"saveDefault": "Save as default view",
+			"clearDefault": "Clear saved default",
+			"defaultSaved": "Default view saved",
+			"defaultCleared": "Default view cleared",
 			"filterButton": "Filter",
 			"closeFilters": "Close Filters",
 			"allOption": "All",
@@ -251,7 +321,47 @@
 			"statusDisposed": "Disposed",
 			"statusInRepair": "In Repair",
 			"statusLent": "Lent",
-			"resultsAnnouncement": "{count} devices found"
+			"resultsAnnouncement": "{count} devices found",
+			"groupByLabel": "Group by",
+			"groupByNone": "None",
+			"groupByCategory": "Category",
+			"groupByOwner": "Owner",
+			"groupByYear": "Purchase year"
+		},
+		"groups": {
+			"unknown": "Unknown",
+			"countBadge": "{count}",
+			"expandGroup": "Expand {label}",
+			"collapseGroup": "Collapse {label}"
+		},
+		"bulk": {
+			"selectAllVisible": "Select all visible devices",
+			"selectRow": "Select {name}",
+			"countSelected": "{count} selected",
+			"clear": "Clear selection",
+			"actions": "Bulk actions",
+			"changeCategory": "Change category",
+			"changeOwner": "Change owner",
+			"changeBrand": "Change brand",
+			"changeLocation": "Change location",
+			"changeStatus": "Change status",
+			"delete": "Delete selected",
+			"update": {
+				"title": "Update {count} devices",
+				"fieldLabel": "New value",
+				"confirm": "Apply changes",
+				"keepCurrentValue": "— Keep current value —"
+			},
+			"deleteModal": {
+				"title": "Delete {count} devices",
+				"warning": "This will soft-delete {count} devices. Type the number to confirm.",
+				"confirmPrompt": "Type {count} to confirm",
+				"reasonLabel": "Reason",
+				"reasonPlaceholder": "Why are you deleting these devices? (min 10 chars)"
+			},
+			"successUpdate": "{count} devices updated",
+			"successDelete": "{count} devices deleted",
+			"errorPartial": "Bulk operation failed. No devices were changed."
 		}
 	},
 	"ownership": {
@@ -286,7 +396,10 @@
 			"validRows": "{count} valid rows",
 			"invalidRows": "{count} invalid rows",
 			"missingLookups": "Missing reference data",
-			"validationErrors": "Validation Errors"
+			"validationErrors": "Validation Errors",
+			"previewRowsTitle": "Preview rows",
+			"previewRowsHint": "First {count} valid rows — verify columns landed in the right fields before committing.",
+			"previewRowsEmpty": "No valid rows to preview."
 		},
 		"commit": {
 			"title": "Commit Import",
@@ -651,6 +764,87 @@
 				"member": "Member",
 				"viewer": "Viewer"
 			}
+		},
+		"audit": {
+			"list": {
+				"title": "Audit Log",
+				"subtitle": "Append-only record of every entity change. Click a row to see the BEFORE / AFTER diff.",
+				"emptyState": "No audit events match your filters."
+			},
+			"columns": {
+				"timestamp": "Timestamp",
+				"actor": "Actor",
+				"entityType": "Entity Type",
+				"entityId": "Entity ID",
+				"action": "Action",
+				"summary": "Change"
+			},
+			"filters": {
+				"entityType": "Entity Type",
+				"entityId": "Entity ID",
+				"action": "Action",
+				"actionAny": "Any action",
+				"actor": "Actor",
+				"from": "From",
+				"to": "To",
+				"apply": "Apply Filters"
+			},
+			"summary": {
+				"created": "Created (new record)",
+				"updated": "Updated (fields changed)",
+				"deleted": "Deleted (record removed)"
+			},
+			"diff": {
+				"title": "Change Detail",
+				"changes": "Changes",
+				"showUnchanged": "Show unchanged fields",
+				"empty": "No payload changes to display.",
+				"added": "Added",
+				"removed": "Removed",
+				"changed": "Changed",
+				"unchanged": "Unchanged",
+				"before": "Before",
+				"after": "After"
+			},
+			"link": {
+				"viewHistory": "View change history"
+			}
+		}
+	},
+	"settings": {
+		"title": "Settings",
+		"subtitle": "Manage your profile and personal preferences.",
+		"profile": {
+			"heading": "Profile",
+			"subheading": "Update how your name appears in the app and in audit history.",
+			"saving": "Saving…",
+			"fields": {
+				"displayName": "Display name",
+				"displayNameHelp": "Visible to other members and recorded with every change you make.",
+				"role": "Role",
+				"roleHelp": "Roles are managed by an Admin or in Entra ID.",
+				"entraObjectId": "Entra Object ID",
+				"entraObjectIdHelp": "Read-only. Sourced from your sign-in token."
+			},
+			"errors": {
+				"required": "Display name is required.",
+				"tooLong": "Display name must be 200 characters or fewer."
+			},
+			"toast": {
+				"success": "Display name updated."
+			}
+		},
+		"deferred": {
+			"heading": "Coming soon",
+			"body": "Avatar upload, default landing page, and density controls land in the next iteration (F020b)."
+		},
+		"theme": {
+			"heading": "Appearance",
+			"subheading": "Control how the app looks in light and dark modes.",
+			"toggleLabel": "Theme preference",
+			"light": "Light",
+			"dark": "Dark",
+			"system": "System"
 		}
 	},
 	"errors": {
@@ -665,12 +859,23 @@
 	},
 	"footer": {
 		"version": "Version {version}",
-		"github": "View on GitHub",
-		"builtWith": "Built with SvelteKit"
+		"github": "View on GitHub"
 	},
 	"header": {
 		"menu": "Menu",
 		"closeMenu": "Close menu",
 		"userMenu": "User menu"
+	},
+	"offline": {
+		"title": "You're offline",
+		"description": "Tech Inventory needs an internet connection to load fresh data. Check your network and try again.",
+		"retry": "Try again"
+	},
+	"pwa": {
+		"update": {
+			"message": "A new version of Tech Inventory is ready.",
+			"reload": "Reload",
+			"dismiss": "Dismiss"
+		}
 	}
 }

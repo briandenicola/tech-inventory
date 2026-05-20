@@ -363,6 +363,75 @@ namespace TechInventory.Infrastructure.Persistence.Migrations
                     b.ToTable("ImportBatches", (string)null);
                 });
 
+            modelBuilder.Entity("TechInventory.Domain.Entities.LocalUser", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("FailedAttemptCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset?>("LastLoginUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("LastPasswordChangeUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("LockoutUntilUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("ModifiedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("MustChangePasswordOnNextLogin")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("PasswordAlgorithm")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Role")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Username")
+                        .IsUnique();
+
+                    b.ToTable("LocalUsers", (string)null);
+                });
+
             modelBuilder.Entity("TechInventory.Domain.Entities.Location", b =>
                 {
                     b.Property<Guid>("Id")

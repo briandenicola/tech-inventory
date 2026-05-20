@@ -1,7 +1,7 @@
 # Plan — 001 Core API
 
 **Spec**: `specs/001-core-api/spec.md`
-**Phase**: 1 (Weeks 3–5)
+**Phase**: Canonical **P1 — Core API** under PRD §13 as rewritten 2026-05-19. *(Originally "Phase 1 (Weeks 3–5)" in the pre-rewrite numbering — same scope, label only.)*
 **Last Updated**: 2025-05-18
 
 ---

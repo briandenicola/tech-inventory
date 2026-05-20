@@ -1,5 +1,11 @@
 # T47 CI Pipeline Setup Checklist
 
+> **Phase note (added 2026-05-19)**: "Phase 1 / Phase 2 / Phase 3" labels in
+> this checklist use the **original** PRD §13 numbering (pre-2026-05-19
+> rewrite). Under the rewritten model, all "Phase 1 quality gates" referenced
+> below are part of canonical **P0 — Foundation** (shipped), and any
+> "Phase 2 / Phase 3 TODO" items roll up under **P4 — Continuous Iteration**.
+
 **Completed by:** Hudson (Copilot)  
 **Date:** 2026-05-18  
 **Status:** Ready for deployment — requires manual GitHub UI setup by Brian

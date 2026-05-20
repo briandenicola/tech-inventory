@@ -977,6 +977,47 @@ paths:
             text/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+    get:
+      tags:
+        - Devices
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TagResponse'
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TagResponse'
+            text/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TagResponse'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
   '/api/v1/devices/{id}/tags/{tagId}':
     delete:
       tags:
@@ -1070,6 +1111,146 @@ paths:
             text/json:
               schema:
                 $ref: '#/components/schemas/ValidationProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/devices/bulk/update:
+    post:
+      tags:
+        - Devices
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkUpdateDevicesRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/BulkUpdateDevicesRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/BulkUpdateDevicesRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/BulkOperationResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkOperationResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/BulkOperationResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/devices/bulk/delete:
+    post:
+      tags:
+        - Devices
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkDeleteDevicesRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/BulkDeleteDevicesRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/BulkDeleteDevicesRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/BulkOperationResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkOperationResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/BulkOperationResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '403':
+          description: Forbidden
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
         '404':
           description: Not Found
           content:
@@ -1391,6 +1572,112 @@ paths:
             text/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/auth/local/login:
+    post:
+      tags:
+        - LocalAuth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocalLoginRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/LocalLoginRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/LocalLoginRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/LocalLoginResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocalLoginResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/LocalLoginResponse'
+        '401':
+          description: Unauthorized
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+  /api/v1/auth/local/change-password:
+    post:
+      tags:
+        - LocalAuth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeLocalPasswordRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/ChangeLocalPasswordRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/ChangeLocalPasswordRequest'
+      responses:
+        '204':
+          description: No Content
+        '401':
+          description: Unauthorized
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Forbidden
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
   /api/v1/locations:
     get:
       tags:
@@ -2143,6 +2430,81 @@ paths:
             text/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+    patch:
+      tags:
+        - Owners
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMyProfileRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMyProfileRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/UpdateMyProfileRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/OwnerResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/OwnerResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '401':
+          description: Unauthorized
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
   /api/v1/reports/summary:
     get:
       tags:
@@ -2589,6 +2951,63 @@ components:
           type: integer
           format: int32
       additionalProperties: false
+    BulkDeleteDevicesRequest:
+      type: object
+      properties:
+        deviceIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          nullable: true
+        reason:
+          type: string
+          nullable: true
+      additionalProperties: false
+    BulkOperationResponse:
+      type: object
+      properties:
+        correlationId:
+          type: string
+          format: uuid
+        affectedCount:
+          type: integer
+          format: int32
+      additionalProperties: false
+    BulkUpdateDeviceChangesRequest:
+      type: object
+      properties:
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+        ownerId:
+          type: string
+          format: uuid
+          nullable: true
+        brandId:
+          type: string
+          format: uuid
+          nullable: true
+        locationId:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          $ref: '#/components/schemas/DeviceStatus'
+      additionalProperties: false
+    BulkUpdateDevicesRequest:
+      type: object
+      properties:
+        deviceIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          nullable: true
+        changes:
+          $ref: '#/components/schemas/BulkUpdateDeviceChangesRequest'
+      additionalProperties: false
     CategoryResponse:
       type: object
       properties:
@@ -2645,6 +3064,16 @@ components:
         pageSize:
           type: integer
           format: int32
+      additionalProperties: false
+    ChangeLocalPasswordRequest:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+          nullable: true
+        newPassword:
+          type: string
+          nullable: true
       additionalProperties: false
     ClaimDeviceOwnershipRequest:
       type: object
@@ -2771,10 +3200,6 @@ components:
         version:
           type: string
           nullable: true
-        warrantyExpiry:
-          type: string
-          format: date
-          nullable: true
       additionalProperties: false
     CreateLocationRequest:
       type: object
@@ -2862,10 +3287,6 @@ components:
           format: uuid
           nullable: true
         purchaseDate:
-          type: string
-          format: date
-          nullable: true
-        warrantyExpiry:
           type: string
           format: date
           nullable: true
@@ -3184,6 +3605,28 @@ components:
         - PartialSuccess
         - Failed
       type: string
+    LocalLoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          nullable: true
+        password:
+          type: string
+          nullable: true
+      additionalProperties: false
+    LocalLoginResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          nullable: true
+        expiresInSeconds:
+          type: integer
+          format: int64
+        mustChangePassword:
+          type: boolean
+      additionalProperties: false
     LocationResponse:
       type: object
       properties:
@@ -3387,78 +3830,6 @@ components:
           type: string
           nullable: true
       additionalProperties: { }
-    ReportBreakdownItem:
-      type: object
-      properties:
-        label:
-          type: string
-          nullable: true
-        count:
-          type: integer
-          format: int32
-      additionalProperties: false
-    SpendingGroupBy:
-      enum:
-        - Month
-        - Year
-      type: string
-    SpendingReportPoint:
-      type: object
-      properties:
-        periodLabel:
-          type: string
-          nullable: true
-        totalSpend:
-          type: number
-          format: double
-        deviceCount:
-          type: integer
-          format: int32
-      additionalProperties: false
-    SpendingReportResponse:
-      type: object
-      properties:
-        groupBy:
-          $ref: '#/components/schemas/SpendingGroupBy'
-        fromDate:
-          type: string
-          format: date
-          nullable: true
-        toDate:
-          type: string
-          format: date
-          nullable: true
-        periods:
-          type: array
-          items:
-            $ref: '#/components/schemas/SpendingReportPoint'
-          nullable: true
-      additionalProperties: false
-    SummaryReportResponse:
-      type: object
-      properties:
-        totalActiveDeviceCount:
-          type: integer
-          format: int32
-        totalEstimatedValue:
-          type: number
-          format: double
-        devicesByCategory:
-          type: array
-          items:
-            $ref: '#/components/schemas/ReportBreakdownItem'
-          nullable: true
-        devicesByLocation:
-          type: array
-          items:
-            $ref: '#/components/schemas/ReportBreakdownItem'
-          nullable: true
-        devicesByStatus:
-          type: array
-          items:
-            $ref: '#/components/schemas/ReportBreakdownItem'
-          nullable: true
-      additionalProperties: false
     TagResponse:
       type: object
       properties:
@@ -3601,10 +3972,6 @@ components:
         version:
           type: string
           nullable: true
-        warrantyExpiry:
-          type: string
-          format: date
-          nullable: true
       additionalProperties: false
     UpdateLocationRequest:
       type: object
@@ -3614,6 +3981,13 @@ components:
           nullable: true
         type:
           $ref: '#/components/schemas/LocationType'
+      additionalProperties: false
+    UpdateMyProfileRequest:
+      type: object
+      properties:
+        displayName:
+          type: string
+          nullable: true
       additionalProperties: false
     UpdateNetworkRequest:
       type: object
@@ -3675,38 +4049,3 @@ components:
               type: string
           nullable: true
       additionalProperties: { }
-    WarrantyReportItem:
-      type: object
-      properties:
-        deviceName:
-          type: string
-          nullable: true
-        brand:
-          type: string
-          nullable: true
-        purchaseDate:
-          type: string
-          format: date
-          nullable: true
-        warrantyExpiry:
-          type: string
-          format: date
-        daysRemaining:
-          type: integer
-          format: int32
-      additionalProperties: false
-    WarrantyReportResponse:
-      type: object
-      properties:
-        asOfDate:
-          type: string
-          format: date
-        expiringWithinDays:
-          type: integer
-          format: int32
-        devices:
-          type: array
-          items:
-            $ref: '#/components/schemas/WarrantyReportItem'
-          nullable: true
-      additionalProperties: false

@@ -1,101 +1,275 @@
 /**
  * Design Tokens — Tech Inventory
  * 
- * Visual direction: "Quietly elegant. Mid-2010s Apple in spirit"
- * — Minimal, typographic, uncluttered
+ * Visual direction: "Apple elegant" — macOS Settings, App Store, Apple Music
+ * — Polish trumps density; let it breathe.
  * 
  * Phase 2 T03: Expanded to ~100 tokens covering color scales, spacing,
  * typography, radii, shadows, z-index, motion. Light + dark variants.
  * 
  * D-035: Dark mode via prefers-color-scheme only (no manual toggle).
  * D-037: Mobile min 360px; breakpoints: sm 640, md 768, lg 1024, xl 1280.
+ * D-137: Apple-elegant baseline — 17px body, 44px touch targets, generous
+ *        whitespace, soft shadows, rounded shapes, antialiased rendering.
  */
 
+/**
+ * Tailwind v4 theme registration.
+ *
+ * Tailwind v4 only generates color utilities (text-primary-400, bg-warning-100,
+ * etc.) for color names registered through `@theme`. `@theme inline` keeps the
+ * value as a CSS variable reference at runtime so the dark-mode overrides
+ * defined further down (under @media prefers-color-scheme: dark) take effect
+ * without rebuilding. The actual hex values live in the :root blocks below.
+ *
+ * Without this block, all `text-{primary,success,warning,danger,info}-*` and
+ * matching bg-/border-/ring- utilities silently produce zero CSS rules, leaving
+ * elements to inherit ambient text color from the cascade (e.g. the admin
+ * Edit/Deactivate row buttons rendering as illegible dim grey on dark bg).
+ */
+@theme inline {
+	--color-primary-50: var(--app-color-primary-50);
+	--color-primary-100: var(--app-color-primary-100);
+	--color-primary-200: var(--app-color-primary-200);
+	--color-primary-300: var(--app-color-primary-300);
+	--color-primary-400: var(--app-color-primary-400);
+	--color-primary-500: var(--app-color-primary-500);
+	--color-primary-600: var(--app-color-primary-600);
+	--color-primary-700: var(--app-color-primary-700);
+	--color-primary-800: var(--app-color-primary-800);
+	--color-primary-900: var(--app-color-primary-900);
+
+	--color-neutral-50: var(--app-color-neutral-50);
+	--color-neutral-100: var(--app-color-neutral-100);
+	--color-neutral-200: var(--app-color-neutral-200);
+	--color-neutral-300: var(--app-color-neutral-300);
+	--color-neutral-400: var(--app-color-neutral-400);
+	--color-neutral-500: var(--app-color-neutral-500);
+	--color-neutral-600: var(--app-color-neutral-600);
+	--color-neutral-700: var(--app-color-neutral-700);
+	--color-neutral-800: var(--app-color-neutral-800);
+	--color-neutral-900: var(--app-color-neutral-900);
+	--color-neutral-950: var(--app-color-neutral-950);
+
+	--color-success-50: var(--app-color-success-50);
+	--color-success-100: var(--app-color-success-100);
+	--color-success-200: var(--app-color-success-200);
+	--color-success-300: var(--app-color-success-300);
+	--color-success-400: var(--app-color-success-400);
+	--color-success-500: var(--app-color-success-500);
+	--color-success-600: var(--app-color-success-600);
+	--color-success-700: var(--app-color-success-700);
+	--color-success-800: var(--app-color-success-800);
+	--color-success-900: var(--app-color-success-900);
+
+	--color-warning-50: var(--app-color-warning-50);
+	--color-warning-100: var(--app-color-warning-100);
+	--color-warning-200: var(--app-color-warning-200);
+	--color-warning-300: var(--app-color-warning-300);
+	--color-warning-400: var(--app-color-warning-400);
+	--color-warning-500: var(--app-color-warning-500);
+	--color-warning-600: var(--app-color-warning-600);
+	--color-warning-700: var(--app-color-warning-700);
+	--color-warning-800: var(--app-color-warning-800);
+	--color-warning-900: var(--app-color-warning-900);
+
+	--color-danger-50: var(--app-color-danger-50);
+	--color-danger-100: var(--app-color-danger-100);
+	--color-danger-200: var(--app-color-danger-200);
+	--color-danger-300: var(--app-color-danger-300);
+	--color-danger-400: var(--app-color-danger-400);
+	--color-danger-500: var(--app-color-danger-500);
+	--color-danger-600: var(--app-color-danger-600);
+	--color-danger-700: var(--app-color-danger-700);
+	--color-danger-800: var(--app-color-danger-800);
+	--color-danger-900: var(--app-color-danger-900);
+
+	--color-info-50: var(--app-color-info-50);
+	--color-info-100: var(--app-color-info-100);
+	--color-info-200: var(--app-color-info-200);
+	--color-info-300: var(--app-color-info-300);
+	--color-info-400: var(--app-color-info-400);
+	--color-info-500: var(--app-color-info-500);
+	--color-info-600: var(--app-color-info-600);
+	--color-info-700: var(--app-color-info-700);
+	--color-info-800: var(--app-color-info-800);
+	--color-info-900: var(--app-color-info-900);
+
+	/* F029: Semantic diff tokens for JSON audit diffs (Drake, WCAG AA verified) */
+	--color-diff-add-fg: var(--app-color-diff-add-fg);
+	--color-diff-add-bg: var(--app-color-diff-add-bg);
+	--color-diff-remove-fg: var(--app-color-diff-remove-fg);
+	--color-diff-remove-bg: var(--app-color-diff-remove-bg);
+	--color-diff-change-fg: var(--app-color-diff-change-fg);
+	--color-diff-change-bg: var(--app-color-diff-change-bg);
+}
+
 @layer base {
+	/* D-137: Apple-elegant baseline — bumps body 16px → 17px, scaling all
+	   rem-based spacing utilities ~6% for additional breathing room. */
+	html {
+		font-size: 17px;
+	}
+
+	body {
+		font-family: var(--font-sans);
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+		font-feature-settings: 'cv02', 'cv11', 'ss01';
+		letter-spacing: -0.011em;
+		text-rendering: optimizeLegibility;
+	}
+
+	h1, h2, h3, h4, h5, h6 {
+		letter-spacing: -0.022em;
+	}
+
+	/* D-137: Apple-style thin overlay scrollbars (replaces chunky default
+	   Windows/Chromium scrollbars). Track is transparent; thumb is a
+	   semi-transparent pill that darkens on hover. Firefox uses the
+	   scrollbar-* properties; Chromium/WebKit uses the pseudo-elements. */
+	* {
+		scrollbar-width: thin;
+		scrollbar-color: rgba(60, 60, 67, 0.28) transparent;
+	}
+
+	*::-webkit-scrollbar {
+		width: 10px;
+		height: 10px;
+	}
+
+	*::-webkit-scrollbar-track,
+	*::-webkit-scrollbar-corner {
+		background: transparent;
+	}
+
+	*::-webkit-scrollbar-thumb {
+		background-color: rgba(60, 60, 67, 0.28);
+		border: 2px solid transparent;
+		background-clip: content-box;
+		border-radius: 9999px;
+		transition: background-color var(--duration-fast) var(--ease-out);
+	}
+
+	*::-webkit-scrollbar-thumb:hover {
+		background-color: rgba(60, 60, 67, 0.5);
+	}
+
+	@media (prefers-color-scheme: dark) {
+		* {
+			scrollbar-color: rgba(235, 235, 245, 0.28) transparent;
+		}
+
+		*::-webkit-scrollbar-thumb {
+			background-color: rgba(235, 235, 245, 0.28);
+		}
+
+		*::-webkit-scrollbar-thumb:hover {
+			background-color: rgba(235, 235, 245, 0.5);
+		}
+	}
+
 	:root {
-		/* ===== Color Palette — Light Theme ===== */
-		
+		/* ===== Color Palette — Light Theme =====
+		 *
+		 * Source-of-truth color variables are namespaced `--app-color-*` so
+		 * Tailwind v4's `@theme inline` (top of file) can reference them
+		 * without a circular self-reference. The Tailwind-facing
+		 * `--color-{name}-{shade}` variables are emitted by Tailwind itself
+		 * and resolve to these `--app-color-*` values at runtime, which keeps
+		 * the @media (prefers-color-scheme: dark) overrides effective.
+		 */
+
 		/* Primary (accent blue) */
-		--color-primary-50: #e3f2fd;
-		--color-primary-100: #bbdefb;
-		--color-primary-200: #90caf9;
-		--color-primary-300: #64b5f6;
-		--color-primary-400: #42a5f5;
-		--color-primary-500: #0071e3; /* Brand blue */
-		--color-primary-600: #0066cc;
-		--color-primary-700: #005bb5;
-		--color-primary-800: #00509e;
-		--color-primary-900: #003d7a;
+		--app-color-primary-50: #e3f2fd;
+		--app-color-primary-100: #bbdefb;
+		--app-color-primary-200: #90caf9;
+		--app-color-primary-300: #64b5f6;
+		--app-color-primary-400: #42a5f5;
+		--app-color-primary-500: #0071e3; /* Brand blue */
+		--app-color-primary-600: #0066cc;
+		--app-color-primary-700: #005bb5;
+		--app-color-primary-800: #00509e;
+		--app-color-primary-900: #003d7a;
 
 		/* Neutral (text, borders, backgrounds) */
-		--color-neutral-50: #fafafa;
-		--color-neutral-100: #f5f5f7;
-		--color-neutral-200: #e8e8ed;
-		--color-neutral-300: #d2d2d7;
-		--color-neutral-400: #b0b0b5;
-		--color-neutral-500: #86868b;
-		--color-neutral-600: #6e6e73;
-		--color-neutral-700: #515154;
-		--color-neutral-800: #3a3a3c;
-		--color-neutral-900: #1d1d1f;
+		--app-color-neutral-50: #fafafa;
+		--app-color-neutral-100: #f5f5f7;
+		--app-color-neutral-200: #e8e8ed;
+		--app-color-neutral-300: #d2d2d7;
+		--app-color-neutral-400: #b0b0b5;
+		--app-color-neutral-500: #86868b;
+		--app-color-neutral-600: #6e6e73;
+		--app-color-neutral-700: #515154;
+		--app-color-neutral-800: #3a3a3c;
+		--app-color-neutral-900: #1d1d1f;
+		--app-color-neutral-950: #0a0a0a;
 
 		/* Success (green) */
-		--color-success-50: #e8f5e9;
-		--color-success-100: #c8e6c9;
-		--color-success-200: #a5d6a7;
-		--color-success-300: #81c784;
-		--color-success-400: #66bb6a;
-		--color-success-500: #2e7d32;
-		--color-success-600: #388e3c;
-		--color-success-700: #2e7d32;
-		--color-success-800: #1b5e20;
-		--color-success-900: #104d16;
+		--app-color-success-50: #e8f5e9;
+		--app-color-success-100: #c8e6c9;
+		--app-color-success-200: #a5d6a7;
+		--app-color-success-300: #81c784;
+		--app-color-success-400: #66bb6a;
+		--app-color-success-500: #2e7d32;
+		--app-color-success-600: #388e3c;
+		--app-color-success-700: #2e7d32;
+		--app-color-success-800: #1b5e20;
+		--app-color-success-900: #104d16;
 
 		/* Warning (yellow/orange) */
-		--color-warning-50: #fff8e1;
-		--color-warning-100: #ffecb3;
-		--color-warning-200: #ffe082;
-		--color-warning-300: #ffd54f;
-		--color-warning-400: #ffca28;
-		--color-warning-500: #ffa726;
-		--color-warning-600: #fb8c00;
-		--color-warning-700: #f57c00;
-		--color-warning-800: #ef6c00;
-		--color-warning-900: #e65100;
+		--app-color-warning-50: #fff8e1;
+		--app-color-warning-100: #ffecb3;
+		--app-color-warning-200: #ffe082;
+		--app-color-warning-300: #ffd54f;
+		--app-color-warning-400: #ffca28;
+		--app-color-warning-500: #ffa726;
+		--app-color-warning-600: #fb8c00;
+		--app-color-warning-700: #f57c00;
+		--app-color-warning-800: #ef6c00;
+		--app-color-warning-900: #e65100;
 
 		/* Danger (red) */
-		--color-danger-50: #ffebee;
-		--color-danger-100: #ffcdd2;
-		--color-danger-200: #ef9a9a;
-		--color-danger-300: #e57373;
-		--color-danger-400: #ef5350;
-		--color-danger-500: #d32f2f;
-		--color-danger-600: #c62828;
-		--color-danger-700: #b71c1c;
-		--color-danger-800: #a01010;
-		--color-danger-900: #7f0000;
+		--app-color-danger-50: #ffebee;
+		--app-color-danger-100: #ffcdd2;
+		--app-color-danger-200: #ef9a9a;
+		--app-color-danger-300: #e57373;
+		--app-color-danger-400: #ef5350;
+		--app-color-danger-500: #d32f2f;
+		--app-color-danger-600: #c62828;
+		--app-color-danger-700: #b71c1c;
+		--app-color-danger-800: #a01010;
+		--app-color-danger-900: #7f0000;
 
 		/* Info (teal) */
-		--color-info-50: #e0f2f1;
-		--color-info-100: #b2dfdb;
-		--color-info-200: #80cbc4;
-		--color-info-300: #4db6ac;
-		--color-info-400: #26a69a;
-		--color-info-500: #009688;
-		--color-info-600: #00897b;
-		--color-info-700: #00796b;
-		--color-info-800: #00695c;
-		--color-info-900: #004d40;
+		--app-color-info-50: #e0f2f1;
+		--app-color-info-100: #b2dfdb;
+		--app-color-info-200: #80cbc4;
+		--app-color-info-300: #4db6ac;
+		--app-color-info-400: #26a69a;
+		--app-color-info-500: #009688;
+		--app-color-info-600: #00897b;
+		--app-color-info-700: #00796b;
+		--app-color-info-800: #00695c;
+		--app-color-info-900: #004d40;
 
-		/* Semantic color mappings */
-		--color-text: var(--color-neutral-900);
-		--color-text-secondary: var(--color-neutral-600);
-		--color-text-muted: var(--color-neutral-500);
+		/* F029: Semantic diff tokens — light theme (Drake, WCAG AA verified) */
+		--app-color-diff-add-fg: #1b5e20; /* Success-700: rich forest green */
+		--app-color-diff-add-bg: #e8f5e9; /* Success-50: pale mint wash */
+		--app-color-diff-remove-fg: #7f0000; /* Danger-900: deep burgundy */
+		--app-color-diff-remove-bg: #ffebee; /* Danger-50: pale rose wash */
+		--app-color-diff-change-fg: #6b4423; /* Warm brown (bespoke) */
+		--app-color-diff-change-bg: #fff8e1; /* Warning-50: pale cream wash */
+
+		/* Semantic color mappings (for hand-written CSS; not Tailwind utilities) */
+		--color-text: var(--app-color-neutral-900);
+		--color-text-secondary: var(--app-color-neutral-600);
+		--color-text-muted: var(--app-color-neutral-500);
 		--color-bg: #ffffff;
-		--color-bg-secondary: var(--color-neutral-100);
-		--color-bg-tertiary: var(--color-neutral-50);
-		--color-border: var(--color-neutral-300);
-		--color-border-focus: var(--color-primary-500);
+		--color-bg-secondary: var(--app-color-neutral-100);
+		--color-bg-tertiary: var(--app-color-neutral-50);
+		--color-border: var(--app-color-neutral-300);
+		--color-border-focus: var(--app-color-primary-500);
 
 		/* ===== Spacing Scale (4px base unit) ===== */
 		--space-0: 0;
@@ -183,6 +357,9 @@
 		--ease-out: cubic-bezier(0, 0, 0.2, 1);
 		--ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
 
+		/* ===== Touch Targets (D-137 — iOS HIG min) ===== */
+		--touch-target-min: 2.75rem; /* 44px @ 16px / ~47px @ 17px root */
+
 		/* ===== Breakpoints (documented for reference) ===== */
 		/* Mobile: 360px min (D-037) */
 		/* sm: 640px */
@@ -191,59 +368,189 @@
 		/* xl: 1280px */
 	}
 
-	@media (prefers-color-scheme: dark) {
-		:root {
-			/* ===== Color Palette — Dark Theme ===== */
-			
-			/* Primary (brighter blue for dark bg) */
-			--color-primary-50: #003d7a;
-			--color-primary-100: #00509e;
-			--color-primary-200: #005bb5;
-			--color-primary-300: #0066cc;
-			--color-primary-400: #0077ed;
-			--color-primary-500: #2997ff; /* Lighter for dark mode */
-			--color-primary-600: #409cff;
-			--color-primary-700: #64b5f6;
-			--color-primary-800: #90caf9;
-			--color-primary-900: #bbdefb;
+	/* F029: Dark theme gating pattern. Both `:root[data-theme='dark']` (explicit
+	   user preference) AND `@media (prefers-color-scheme: dark) :root:not([data-theme='light'])`
+	   (system preference when not explicitly overridden to light). */
+	:root[data-theme='dark'] {
+			/* ===== Color Palette — Dark Theme =====
+			 *
+			 * IMPORTANT: shade indices keep the same direction in both themes
+			 * (50 = lightest, 900 = darkest). Components author classes with
+			 * conventional Tailwind assumptions — `text-neutral-900
+			 * dark:text-neutral-50`, `bg-primary-600 dark:bg-primary-700` —
+			 * which only work if `dark:bg-neutral-900` actually resolves to a
+			 * dark color. Previously these shades inverted in dark mode and
+			 * silently cancelled every component's `dark:` override (e.g. row
+			 * text became dark on dark, page bg became light gray on dark).
+			 *
+			 * The dark-theme palette here only RETUNES individual shades for
+			 * better contrast on dark surfaces; it never reverses ordering.
+			 * Light/dark "meaning swap" lives in the semantic tokens below
+			 * (--color-text, --color-bg, etc.) — that's the right place for
+			 * it.
+			 */
 
-			/* Neutral (inverted for dark) */
-			--color-neutral-50: #1d1d1f;
-			--color-neutral-100: #2d2d2f;
-			--color-neutral-200: #3a3a3c;
-			--color-neutral-300: #424245;
-			--color-neutral-400: #515154;
-			--color-neutral-500: #6e6e73;
-			--color-neutral-600: #86868b;
-			--color-neutral-700: #b0b0b5;
-			--color-neutral-800: #d2d2d7;
-			--color-neutral-900: #f5f5f7;
+			/* Primary — slightly brighter shades for dark surfaces, same
+			   ordering as light (50 lightest, 900 darkest). */
+			--app-color-primary-50: #e8f3ff;
+			--app-color-primary-100: #d1e6ff;
+			--app-color-primary-200: #a3cdff;
+			--app-color-primary-300: #75b3ff;
+			--app-color-primary-400: #2997ff; /* Apple SF blue, dark mode */
+			--app-color-primary-500: #0a84ff;
+			--app-color-primary-600: #0077ed;
+			--app-color-primary-700: #006adc;
+			--app-color-primary-800: #005bb5;
+			--app-color-primary-900: #00509e;
 
-			/* Success (lighter green) */
-			--color-success-500: #66bb6a;
-			--color-success-600: #81c784;
+			/* Neutral — retuned for dark mode but ordering preserved.
+			   Top shades (50/100) are kept slightly off-white so subtle
+			   surfaces (rings, dividers in dark cards) still read as bright. */
+			--app-color-neutral-50: #f5f5f7;
+			--app-color-neutral-100: #e8e8ed;
+			--app-color-neutral-200: #d2d2d7;
+			--app-color-neutral-300: #b0b0b5;
+			--app-color-neutral-400: #86868b;
+			--app-color-neutral-500: #6e6e73;
+			--app-color-neutral-600: #515154;
+			--app-color-neutral-700: #3a3a3c;
+			--app-color-neutral-800: #2d2d2f;
+			--app-color-neutral-900: #1d1d1f;
+			--app-color-neutral-950: #0a0a0a;
 
-			/* Warning (lighter orange) */
-			--color-warning-500: #ffb74d;
-			--color-warning-600: #ffa726;
+			/* Success (lighter green for visibility on dark surfaces) */
+			--app-color-success-400: #81c784;
+			--app-color-success-500: #66bb6a;
+			--app-color-success-600: #4caf50;
+
+			/* Warning (lighter orange/yellow) */
+			--app-color-warning-400: #ffd54f;
+			--app-color-warning-500: #ffb74d;
+			--app-color-warning-600: #ffa726;
 
 			/* Danger (lighter red) */
-			--color-danger-500: #ef5350;
-			--color-danger-600: #e57373;
+			--app-color-danger-400: #ef5350;
+			--app-color-danger-500: #ef5350;
+			--app-color-danger-600: #e57373;
 
 			/* Info (lighter teal) */
-			--color-info-500: #26a69a;
-			--color-info-600: #4db6ac;
+			--app-color-info-400: #4db6ac;
+			--app-color-info-500: #26a69a;
+			--app-color-info-600: #4db6ac;
 
-			/* Semantic color mappings */
-			--color-text: var(--color-neutral-900);
-			--color-text-secondary: var(--color-neutral-600);
-			--color-text-muted: var(--color-neutral-500);
-			--color-bg: #1d1d1f;
-			--color-bg-secondary: var(--color-neutral-100);
-			--color-bg-tertiary: var(--color-neutral-200);
-			--color-border: var(--color-neutral-300);
-			--color-border-focus: var(--color-primary-500);
+			/* F029: Semantic diff tokens — dark theme (Drake, WCAG AA verified) */
+			--app-color-diff-add-fg: #a5d6a7; /* Success-200: bright mint */
+			--app-color-diff-add-bg: #1b5e20; /* Success-700: dark forest green */
+			--app-color-diff-remove-fg: #ef9a9a; /* Danger-200: bright rose */
+			--app-color-diff-remove-bg: #7f0000; /* Danger-900: deep burgundy */
+			--app-color-diff-change-fg: #ffe082; /* Warning-200: bright amber */
+			--app-color-diff-change-bg: #6b4423; /* Warm brown (bespoke) */
+
+			/* Semantic color mappings — these flip meaning between themes. */
+			--color-text: var(--app-color-neutral-50);
+			--color-text-secondary: var(--app-color-neutral-300);
+			--color-text-muted: var(--app-color-neutral-400);
+			--color-bg: var(--app-color-neutral-900);
+			--color-bg-secondary: var(--app-color-neutral-800);
+			--color-bg-tertiary: var(--app-color-neutral-700);
+			--color-border: var(--app-color-neutral-700);
+			--color-border-focus: var(--app-color-primary-500);
+
+			/* Shadows (lighter for dark mode) */
+			--shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+			--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4),
+				0 2px 4px -2px rgba(0, 0, 0, 0.4);
+			--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5),
+				0 4px 6px -4px rgba(0, 0, 0, 0.5);
+			--shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6),
+				0 8px 10px -6px rgba(0, 0, 0, 0.6);
+		}
+
+	@media (prefers-color-scheme: dark) {
+		:root:not([data-theme='light']) {
+			/* ===== Color Palette — Dark Theme (system preference) =====
+			 *
+			 * IMPORTANT: shade indices keep the same direction in both themes
+			 * (50 = lightest, 900 = darkest). Components author classes with
+			 * conventional Tailwind assumptions — `text-neutral-900
+			 * dark:text-neutral-50`, `bg-primary-600 dark:bg-primary-700` —
+			 * which only work if `dark:bg-neutral-900` actually resolves to a
+			 * dark color. Previously these shades inverted in dark mode and
+			 * silently cancelled every component's `dark:` override (e.g. row
+			 * text became dark on dark, page bg became light gray on dark).
+			 *
+			 * The dark-theme palette here only RETUNES individual shades for
+			 * better contrast on dark surfaces; it never reverses ordering.
+			 * Light/dark "meaning swap" lives in the semantic tokens below
+			 * (--color-text, --color-bg, etc.) — that's the right place for
+			 * it.
+			 */
+
+			/* Primary — slightly brighter shades for dark surfaces, same
+			   ordering as light (50 lightest, 900 darkest). */
+			--app-color-primary-50: #e8f3ff;
+			--app-color-primary-100: #d1e6ff;
+			--app-color-primary-200: #a3cdff;
+			--app-color-primary-300: #75b3ff;
+			--app-color-primary-400: #2997ff; /* Apple SF blue, dark mode */
+			--app-color-primary-500: #0a84ff;
+			--app-color-primary-600: #0077ed;
+			--app-color-primary-700: #006adc;
+			--app-color-primary-800: #005bb5;
+			--app-color-primary-900: #00509e;
+
+			/* Neutral — retuned for dark mode but ordering preserved.
+			   Top shades (50/100) are kept slightly off-white so subtle
+			   surfaces (rings, dividers in dark cards) still read as bright. */
+			--app-color-neutral-50: #f5f5f7;
+			--app-color-neutral-100: #e8e8ed;
+			--app-color-neutral-200: #d2d2d7;
+			--app-color-neutral-300: #b0b0b5;
+			--app-color-neutral-400: #86868b;
+			--app-color-neutral-500: #6e6e73;
+			--app-color-neutral-600: #515154;
+			--app-color-neutral-700: #3a3a3c;
+			--app-color-neutral-800: #2d2d2f;
+			--app-color-neutral-900: #1d1d1f;
+			--app-color-neutral-950: #0a0a0a;
+
+			/* Success (lighter green for visibility on dark surfaces) */
+			--app-color-success-400: #81c784;
+			--app-color-success-500: #66bb6a;
+			--app-color-success-600: #4caf50;
+
+			/* Warning (lighter orange/yellow) */
+			--app-color-warning-400: #ffd54f;
+			--app-color-warning-500: #ffb74d;
+			--app-color-warning-600: #ffa726;
+
+			/* Danger (lighter red) */
+			--app-color-danger-400: #ef5350;
+			--app-color-danger-500: #ef5350;
+			--app-color-danger-600: #e57373;
+
+			/* Info (lighter teal) */
+			--app-color-info-400: #4db6ac;
+			--app-color-info-500: #26a69a;
+			--app-color-info-600: #4db6ac;
+
+			/* F029: Semantic diff tokens — dark theme (Drake, WCAG AA verified) */
+			--app-color-diff-add-fg: #a5d6a7; /* Success-200: bright mint */
+			--app-color-diff-add-bg: #1b5e20; /* Success-700: dark forest green */
+			--app-color-diff-remove-fg: #ef9a9a; /* Danger-200: bright rose */
+			--app-color-diff-remove-bg: #7f0000; /* Danger-900: deep burgundy */
+			--app-color-diff-change-fg: #ffe082; /* Warning-200: bright amber */
+			--app-color-diff-change-bg: #6b4423; /* Warm brown (bespoke) */
+
+			/* Semantic color mappings — these flip meaning between themes. */
+			--color-text: var(--app-color-neutral-50);
+			--color-text-secondary: var(--app-color-neutral-300);
+			--color-text-muted: var(--app-color-neutral-400);
+			--color-bg: var(--app-color-neutral-900);
+			--color-bg-secondary: var(--app-color-neutral-800);
+			--color-bg-tertiary: var(--app-color-neutral-700);
+			--color-border: var(--app-color-neutral-700);
+			--color-border-focus: var(--app-color-primary-500);
 
 			/* Shadows (lighter for dark mode) */
 			--shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);

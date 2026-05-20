@@ -144,3 +144,27 @@ AuditEvent table (append-only) is both a business requirement (PRD §F7) and a s
 **Key design**: No Update/Delete on AuditEvent. Enforced at EF Core + DB schema level.
 
 **Usage**: Admin-only query endpoint; queryable by entity type, time range, action. Enables blame attribution + pattern detection (e.g., bulk device deletes).
+
+### 2026-05-19 (DevBypass Rip) — TestAuthHandler + UseTestAuth Knob
+
+**Context:** Copilot CLI ripped the production `Auth:DevBypass` shim. I owned the backend integration-test cleanup alongside Vasquez (FE) and Hudson (E2E).
+
+**Shipped:**
+- `IntegrationTestFactory<TMarker>` gained `protected virtual bool UseTestAuth => true;`. The `TestAuthHandler` swap is now conditional. Also added missing `using Microsoft.AspNetCore.TestHost;` that the Copilot CLI WIP forgot.
+- Rewrote `Auth/AuthIntegrationTests.cs`: dropped `DevBypassEnabled_*` (the bypass no longer exists) and `ProductionWithDevBypass_ThrowsOnStartup` + `ProductionDevBypassFactory` (no startup guard exists either — Program.cs simply has no bypass code). Renamed the JWT validation tests to drop the `DevBypassDisabled_` prefix. `NoAuthFactory` and `JwtAuthFactory` now override `UseTestAuth => false` and stripped the no-op `Auth:DevBypass` config keys. Fixed the JwtAuthFactory `PostConfigure<JwtBearerOptions>` to target `ApiAuthenticationSchemes.EntraScheme` (= `"TechInventoryAuth.Entra"`) instead of the stale hardcoded `"TechInventoryAuth"` — necessary because Program.cs split the composite into a policy scheme + per-issuer handlers.
+- `Auth/LocalAuthEndpointTests.cs.LocalAuthFactory`: also overrode `UseTestAuth => false` (the local HS256 `must_change_password` gate would have been masked by TestAuthHandler), stripped the no-op `Auth:DevBypass` key, refreshed the XML doc.
+- `Controllers/OwnersControllerTests.cs`: added `using TechInventory.IntegrationTests.Support;` so `TestAuthHandler.DefaultUserId` resolves.
+- `Controllers/AuditEventsAuthorizationTests.cs` + `Support/TestAuthHandler.cs`: rephrased stale "dev-bypass handler" comments to reference `TestAuthHandler` directly.
+
+**Verified:** `dotnet build -c Release` clean; `dotnet test tests/TechInventory.IntegrationTests -c Release` → 157 passed / 5 skipped / 0 failed (the 5 skips are the pre-existing T08 JWKS-discovery deferrals + 1 unrelated OpenAPI drift skip). Unit suite: 244 passed / 0 failed.
+
+**Decision (drop to inbox):** D-XXX — `UseTestAuth` knob is the canonical opt-out for factories that need to exercise the real Entra/Local JWT pipeline. Production binary remains bypass-free; the only auth shortcut lives in the test project's `TestAuthHandler` and is per-factory opt-in.
+
+**Security audit:** The new wiring preserves default-deny (ASVS V4.1.2). Tests that assert the 401/403 paths now run through the real `TechInventoryAuth` policy scheme + Entra JwtBearer handler instead of a contrived bypass — strictly better coverage. No production code path was loosened. `Auth:Local:SeedEnabled = false` stays forced in every test host so the seed service can't accidentally provision a known-password admin in a test SQLite file.
+
+**Per instructions:** Did NOT commit. Working tree left dirty for Copilot CLI to fold into the bigger DevBypass-rip commit.
+
+**Learnings:**
+- When ripping a configuration-driven shim, `grep` the *test project* for the config key too. `Auth:DevBypass = "false"` was set defensively in 3 different factories; all three were no-ops after the rip but each was a code-smell that would mislead the next reader.
+- The `WebApplicationFactory<T>` + `ConfigureTestServices` extension lives in the `Microsoft.AspNetCore.TestHost` namespace, not `Mvc.Testing`. Easy import to miss when refactoring.
+- When Program.cs's auth registration changes shape (single scheme → composite policy scheme), every `PostConfigure<JwtBearerOptions>` in the test project needs its scheme name re-pointed. Hard-coded scheme strings are a latent bug; the `ApiAuthenticationSchemes` constant class exists for exactly this reason — use it.

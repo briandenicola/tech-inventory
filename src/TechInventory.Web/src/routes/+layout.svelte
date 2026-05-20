@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { initializeMsal, handleRedirectPromise, getActiveAccount } from '$lib/auth';
-	import { fetchCurrentUser, authStore } from '$lib/stores/auth';
+	import { fetchCurrentUser, authStore, hydrateLocalSession } from '$lib/stores/auth';
 	import '$lib/api'; // Wire MSAL token provider into API client
 	import '../app.css';
 	import { t } from '$lib/i18n';
+	import PwaUpdatePrompt from '$lib/components/PwaUpdatePrompt.svelte';
 
 	let { children } = $props();
 
@@ -13,8 +15,14 @@
 	// - initializeMsal() must be called before any other MSAL operation (v3+ requirement)
 	// - handleRedirectPromise() processes auth code from Entra redirect (if user just signed in)
 	// - If MSAL has active account, fetch /api/v1/owners/me to populate auth store (T10)
+	// F025 — local-account session (if any) is hydrated BEFORE we touch MSAL so
+	// a break-glass admin doesn't get bounced through Entra on page reload.
 	onMount(async () => {
 		try {
+			if (hydrateLocalSession()) {
+				return;
+			}
+
 			await initializeMsal();
 			const authResult = await handleRedirectPromise();
 
@@ -35,7 +43,9 @@
 						currentUser: null,
 						isAuthenticated: false,
 						isLoading: false,
-						error: null
+						error: null,
+						authMethod: null,
+						mustChangePassword: false
 					});
 				}
 			}
@@ -46,8 +56,24 @@
 				currentUser: null,
 				isAuthenticated: false,
 				isLoading: false,
-				error: error instanceof Error ? error.message : 'Auth bootstrap failed'
+				error: error instanceof Error ? error.message : 'Auth bootstrap failed',
+				authMethod: null,
+				mustChangePassword: false
 			});
+		}
+	});
+
+	// F025 — force the change-password flow for any local-auth session that
+	// still has `mustChangePassword=true`. Runs reactively on every store +
+	// route change so a refresh, deep-link, or navigation all funnel through.
+	$effect(() => {
+		const state = $authStore;
+		if (!state.isAuthenticated || state.authMethod !== 'local' || !state.mustChangePassword) {
+			return;
+		}
+		const path = $page.url.pathname;
+		if (path !== '/auth/change-password') {
+			goto('/auth/change-password');
 		}
 	});
 </script>
@@ -57,6 +83,8 @@
 <main id="main-content">
 	{@render children()}
 </main>
+
+<PwaUpdatePrompt />
 
 <style>
 	.skip-link {

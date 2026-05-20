@@ -72,7 +72,10 @@
 			]);
 			device = deviceResult as DeviceResponse;
 			deviceTags = tagResults
-				.filter((tag): tag is { id: string; name: string; color?: string | null } => !!tag.id && !!tag.name)
+				.filter(
+					(tag): tag is { id: string; name: string; color?: string | null } =>
+						!!tag.id && !!tag.name
+				)
 				.map((tag) => ({
 					id: tag.id,
 					name: tag.name,
@@ -101,7 +104,6 @@
 	$effect(() => {
 		void fetchDevice();
 	});
-
 
 	// Resolve reference data (brand, category, owner, location, network names)
 	const brandName = $derived(
@@ -268,19 +270,34 @@
 </nav>
 
 <!-- Page header -->
-<div class="mb-6 flex items-center justify-between">
-	<h1 class="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
-		{t('devices.detail.title')}
-	</h1>
+<div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+	<div class="min-w-0">
+		<!--
+			Mobile: large "Device Details" wrapped under the action row and felt
+			cramped. Use the device name as the title (truncating gracefully) with
+			a small "Device details" eyebrow, so the page identifies itself even
+			before the device loads.
+		-->
+		<p class="text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+			{t('devices.detail.title')}
+		</p>
+		<h1
+			class="mt-1 text-xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 sm:text-2xl"
+		>
+			{device?.name ?? '—'}
+		</h1>
+	</div>
 
-	<!-- Action buttons (role-aware) -->
+	<!-- Action buttons (role-aware). Mobile: horizontal scroll if overflowing. -->
 	{#if device && !isLoading}
-		<div class="flex gap-3">
+		<div
+			class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:justify-end sm:overflow-visible sm:px-0 sm:pb-0"
+		>
 			{#if canClaim}
 				<button
 					type="button"
 					onclick={() => (showClaimModal = true)}
-					class="inline-flex items-center gap-2 rounded-lg border border-primary-600 bg-white px-4 py-2 text-sm font-medium text-primary-600 transition-colors hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-primary-500 dark:bg-neutral-900 dark:text-primary-400 dark:hover:bg-neutral-800"
+					class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-primary-600 bg-white px-4 py-2 text-sm font-medium text-primary-600 transition-colors hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-primary-500 dark:bg-neutral-900 dark:text-primary-400 dark:hover:bg-neutral-800"
 				>
 					<svg
 						class="h-4 w-4"
@@ -304,7 +321,7 @@
 				<button
 					type="button"
 					onclick={() => (showReleaseModal = true)}
-					class="inline-flex items-center gap-2 rounded-lg border border-warning-600 bg-white px-4 py-2 text-sm font-medium text-warning-600 transition-colors hover:bg-warning-50 focus:outline-none focus:ring-2 focus:ring-warning-500 focus:ring-offset-2 dark:border-warning-500 dark:bg-neutral-900 dark:text-warning-400 dark:hover:bg-neutral-800"
+					class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-warning-600 bg-white px-4 py-2 text-sm font-medium text-warning-600 transition-colors hover:bg-warning-50 focus:outline-none focus:ring-2 focus:ring-warning-500 focus:ring-offset-2 dark:border-warning-500 dark:bg-neutral-900 dark:text-warning-400 dark:hover:bg-neutral-800"
 				>
 					<svg
 						class="h-4 w-4"
@@ -327,7 +344,7 @@
 			{#if canEdit}
 				<a
 					href={`/devices/${device.id}/edit`}
-					class="inline-flex items-center gap-2 rounded-lg border border-primary-600 bg-white px-4 py-2 text-sm font-medium text-primary-600 transition-colors hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-primary-500 dark:bg-neutral-900 dark:text-primary-400 dark:hover:bg-neutral-800"
+					class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-primary-600 bg-white px-4 py-2 text-sm font-medium text-primary-600 transition-colors hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-primary-500 dark:bg-neutral-900 dark:text-primary-400 dark:hover:bg-neutral-800"
 				>
 					<svg
 						class="h-4 w-4"
@@ -351,7 +368,7 @@
 				<button
 					type="button"
 					onclick={() => (showDeleteModal = true)}
-					class="inline-flex items-center gap-2 rounded-lg border border-danger-600 bg-white px-4 py-2 text-sm font-medium text-danger-600 transition-colors hover:bg-danger-50 focus:outline-none focus:ring-2 focus:ring-danger-500 focus:ring-offset-2 dark:border-danger-500 dark:bg-neutral-900 dark:text-danger-400 dark:hover:bg-neutral-800"
+					class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-danger-600 bg-white px-4 py-2 text-sm font-medium text-danger-600 transition-colors hover:bg-danger-50 focus:outline-none focus:ring-2 focus:ring-danger-500 focus:ring-offset-2 dark:border-danger-500 dark:bg-neutral-900 dark:text-danger-400 dark:hover:bg-neutral-800"
 				>
 					<svg
 						class="h-4 w-4"
@@ -446,6 +463,20 @@
 				</dd>
 			</div>
 
+			<!--
+				F034: surface every persisted device field that was previously
+				invisible on the detail page. Each row is gated on truthy value
+				so hand-entered devices with sparse data stay scannable.
+			-->
+			{#if device.model}
+				<div>
+					<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+						{t('devices.columns.model')}
+					</dt>
+					<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">{device.model}</dd>
+				</div>
+			{/if}
+
 			<!-- Brand -->
 			<div>
 				<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
@@ -509,6 +540,89 @@
 					{/if}
 				</dd>
 			</div>
+
+			<!-- F034: secondary identification + networking fields, all truthy-gated -->
+			{#if device.operatingSystem}
+				<div>
+					<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+						{t('devices.columns.operatingSystem')}
+					</dt>
+					<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">
+						{device.operatingSystem}
+					</dd>
+				</div>
+			{/if}
+
+			{#if device.version}
+				<div>
+					<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+						{t('devices.columns.version')}
+					</dt>
+					<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">{device.version}</dd>
+				</div>
+			{/if}
+
+			{#if device.ipAddress}
+				<div>
+					<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+						{t('devices.columns.ipAddress')}
+					</dt>
+					<dd class="mt-1 font-mono text-base text-neutral-900 dark:text-neutral-100">
+						{device.ipAddress}
+					</dd>
+				</div>
+			{/if}
+
+			{#if device.macAddress}
+				<div>
+					<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+						{t('devices.columns.macAddress')}
+					</dt>
+					<dd class="mt-1 font-mono text-base text-neutral-900 dark:text-neutral-100">
+						{device.macAddress}
+					</dd>
+				</div>
+			{/if}
+
+			{#if device.productUrl}
+				<div class="sm:col-span-2">
+					<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+						{t('devices.columns.productUrl')}
+					</dt>
+					<dd class="mt-1 truncate text-base text-neutral-900 dark:text-neutral-100">
+						<a
+							href={device.productUrl}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="text-primary-600 hover:text-primary-500 hover:underline dark:text-primary-400 dark:hover:text-primary-300"
+						>
+							{device.productUrl}
+						</a>
+					</dd>
+				</div>
+			{/if}
+
+			{#if device.retiredDate}
+				<div>
+					<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+						{t('devices.columns.retiredDate')}
+					</dt>
+					<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">
+						{formatDate(device.retiredDate)}
+					</dd>
+				</div>
+			{/if}
+
+			{#if device.disposalMethod}
+				<div>
+					<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+						{t('devices.columns.disposalMethod')}
+					</dt>
+					<dd class="mt-1 text-base text-neutral-900 dark:text-neutral-100">
+						{device.disposalMethod}
+					</dd>
+				</div>
+			{/if}
 		</div>
 
 		<!-- Tags -->
@@ -520,7 +634,9 @@
 				{#if deviceTags.length > 0}
 					<ul class="flex flex-wrap gap-2">
 						{#each deviceTags as tag (tag.id)}
-							<li class="inline-flex items-center gap-2 rounded-full border border-neutral-300 bg-neutral-50 px-3 py-1 text-sm text-neutral-700 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200">
+							<li
+								class="inline-flex items-center gap-2 rounded-full border border-neutral-300 bg-neutral-50 px-3 py-1 text-sm text-neutral-700 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200"
+							>
 								<span
 									class="h-2.5 w-2.5 rounded-full bg-neutral-400"
 									style:background-color={tag.color ?? undefined}
@@ -537,6 +653,17 @@
 				{/if}
 			</dd>
 		</div>
+
+		{#if device.purpose}
+			<div>
+				<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+					{t('devices.columns.purpose')}
+				</dt>
+				<dd class="mt-1 whitespace-pre-wrap text-base text-neutral-900 dark:text-neutral-100">
+					{device.purpose}
+				</dd>
+			</div>
+		{/if}
 
 		<!-- Notes (full-width) -->
 		{#if device.notes}

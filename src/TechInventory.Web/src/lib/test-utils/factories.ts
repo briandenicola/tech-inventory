@@ -141,6 +141,7 @@ export function createDeviceCreateInput(
 ): DeviceFormInput {
 	return {
 		name: 'Test Device',
+		model: '',
 		serialNumber: 'SN12345',
 		brandId: 'brand-00000000-4000-8000-000000000000',
 		categoryId: 'category-4000-8000-000000000000',

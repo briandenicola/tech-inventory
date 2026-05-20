@@ -4,6 +4,7 @@
 	import { t } from '$lib/i18n';
 	import { authStore } from '$lib/stores/auth';
 	import api from '$lib/api/client';
+	import type { NetworkResponse } from '$lib/api/types';
 	import { networkSchema, type NetworkFormData } from '$lib/schemas/network';
 	import { addToast } from '$lib/stores/toast';
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
@@ -34,18 +35,15 @@
 		};
 	});
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	let networks = $state<any[]>([]);
+	let networks = $state<NetworkResponse[]>([]);
 	let totalCount = $state(0);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 
 	let formModalOpen = $state(false);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	let editingNetwork = $state<any | null>(null);
+	let editingNetwork = $state<NetworkResponse | null>(null);
 	let deactivateModalOpen = $state(false);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	let deactivatingNetwork = $state<any | null>(null);
+	let deactivatingNetwork = $state<NetworkResponse | null>(null);
 
 	let formData = $state<NetworkFormData>({ name: '', description: '' });
 	let formErrors = $state<Record<string, string>>({});
@@ -60,11 +58,11 @@
 		error = null;
 		try {
 			const response = await api.networks.list(urlParams);
-			networks = response.items || [];
-			totalCount = response.totalCount || 0;
-		} catch (err: any) {
+			networks = response.items ?? [];
+			totalCount = response.totalCount ?? 0;
+		} catch (err: unknown) {
 			console.error('[NetworksAdmin] Load failed:', err);
-			error = err.message || 'Failed to load networks';
+			error = err instanceof Error ? err.message : 'Failed to load networks';
 		} finally {
 			loading = false;
 		}
@@ -77,11 +75,11 @@
 		formModalOpen = true;
 	}
 
-	function openEditModal(network: any) {
+	function openEditModal(network: NetworkResponse) {
 		editingNetwork = network;
 		formData = {
-			name: network.name || '',
-			description: network.description || ''
+			name: network.name ?? '',
+			description: network.description ?? ''
 		};
 		formErrors = {};
 		formModalOpen = true;
@@ -100,7 +98,7 @@
 
 		const result = networkSchema.safeParse(formData);
 		if (!result.success) {
-			result.error.errors.forEach((err) => {
+			result.error.issues.forEach((err) => {
 				if (err.path[0]) formErrors[err.path[0] as string] = err.message;
 			});
 			return;
@@ -108,7 +106,7 @@
 
 		formSubmitting = true;
 		try {
-			if (editingNetwork) {
+			if (editingNetwork?.id) {
 				await api.networks.update(editingNetwork.id, result.data);
 				addToast({ type: 'success', message: 'Network updated successfully' });
 			} else {
@@ -117,15 +115,16 @@
 			}
 			closeFormModal();
 			await loadNetworks();
-		} catch (err: any) {
+		} catch (err: unknown) {
 			console.error('[NetworksAdmin] Submit failed:', err);
-			addToast({ type: 'error', message: err.message || 'Failed to save network' });
+			const message = err instanceof Error ? err.message : 'Failed to save network';
+			addToast({ type: 'error', message });
 		} finally {
 			formSubmitting = false;
 		}
 	}
 
-	function openDeactivateModal(network: any) {
+	function openDeactivateModal(network: NetworkResponse) {
 		deactivatingNetwork = network;
 		deactivateModalOpen = true;
 	}
@@ -136,15 +135,16 @@
 	}
 
 	async function handleDeactivate() {
-		if (!deactivatingNetwork) return;
+		if (!deactivatingNetwork?.id) return;
 		try {
 			await api.networks.deactivate(deactivatingNetwork.id);
 			addToast({ type: 'success', message: t('networks.deactivate.success') });
 			closeDeactivateModal();
 			await loadNetworks();
-		} catch (err: any) {
+		} catch (err: unknown) {
 			console.error('[NetworksAdmin] Deactivate failed:', err);
-			addToast({ type: 'error', message: err.message || 'Failed to deactivate network' });
+			const message = err instanceof Error ? err.message : 'Failed to deactivate network';
+			addToast({ type: 'error', message });
 		}
 	}
 
@@ -166,8 +166,6 @@
 		else params.delete('pageSize');
 		goto(`?${params.toString()}`, { replaceState: true, keepFocus: true, noScroll: true });
 	}
-
-	const totalPages = $derived(Math.ceil(totalCount / urlParams.pageSize));
 </script>
 
 <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -337,7 +335,7 @@
 
 {#if deactivateModalOpen && deactivatingNetwork}
 	<DeactivateConfirmModal
-		entityName={deactivatingNetwork.name}
+		entityName={deactivatingNetwork.name ?? ''}
 		entityType="network"
 		onConfirm={handleDeactivate}
 		onCancel={closeDeactivateModal}

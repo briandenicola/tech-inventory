@@ -90,7 +90,6 @@ describe('locationSchema validation', () => {
 		it('rejects invalid type', () => {
 			const result = locationSchema.safeParse({
 				name: 'Living Room',
-				// @ts-expect-error Testing invalid type
 				type: 'InvalidType',
 				notes: ''
 			});
@@ -103,7 +102,6 @@ describe('locationSchema validation', () => {
 		it('rejects empty type', () => {
 			const result = locationSchema.safeParse({
 				name: 'Living Room',
-				// @ts-expect-error Testing empty type
 				type: '',
 				notes: ''
 			});

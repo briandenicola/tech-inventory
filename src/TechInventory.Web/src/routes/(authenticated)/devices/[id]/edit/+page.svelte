@@ -1,36 +1,37 @@
 <script lang="ts">
-	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { t } from '$lib/i18n';
 	import { devices } from '$lib/api/client';
-	import { showToast } from '$lib/stores/toast';
-	import { invalidateDevicesCache } from '$lib/queries/devices.svelte';
 	import DeviceForm from '$lib/components/DeviceForm.svelte';
-	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
-	import type { DeviceResponse } from '$lib/queries/devices.svelte';
+	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
+	import { invalidateDevicesCache, type DeviceResponse } from '$lib/queries/devices.svelte';
 	import type { DeviceFormInput } from '$lib/schemas/device';
+	import { registerPullToRefresh } from '$lib/stores/pullToRefresh';
+	import { fetchReferenceData } from '$lib/stores/referenceData';
+	import { showToast } from '$lib/stores/toast';
 
 	/**
 	 * T21: Device edit page — /devices/[id]/edit
-	 * 
+	 *
 	 * Pre-populate form with existing device data. Retired devices show badge;
 	 * only notes editable when retired. Submit → PUT /api/v1/devices/{id} → toast → redirect.
-	 * 
+	 *
 	 * Related: specs/002-frontend-mvp/spec.md J7
 	 */
 
 	const deviceId = $derived($page.params.id);
 
-	// Device state
 	let device = $state<DeviceResponse | null>(null);
 	let deviceTagIds = $state<string[]>([]);
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
 
-	// Fetch device
 	async function fetchDevice() {
-		if (!deviceId) return;
+		if (!deviceId) {
+			return;
+		}
 
 		isLoading = true;
 		error = null;
@@ -52,16 +53,21 @@
 		}
 	}
 
-	// Load device on mount
 	$effect(() => {
 		void fetchDevice();
 	});
 
+	$effect(() => {
+		const unregister = registerPullToRefresh($page.url.pathname, async () => {
+			await Promise.all([fetchReferenceData(), fetchDevice()]);
+		});
+		return unregister;
+	});
 
-	// Retired device logic: disable all fields except notes
 	const isRetired = $derived(device?.status === 'Retired');
-	const disabledFields = $derived(
-		isRetired
+	const tagsLocked = $derived(device?.status === 'Retired' || device?.status === 'Disposed');
+	const disabledFields = $derived.by(() => {
+		const fields = isRetired
 			? [
 					'name',
 					'serialNumber',
@@ -70,22 +76,29 @@
 					'ownerId',
 					'locationId',
 					'networkId',
-					'tagIds',
 					'purchaseDate',
 					'purchasePrice',
 					'currencyCode'
 				]
-			: []
-	);
+			: [];
 
-	// Handle submit
+		if (tagsLocked && !fields.includes('tagIds')) {
+			fields.push('tagIds');
+		}
+
+		return fields;
+	});
+
 	async function handleSubmit(data: DeviceFormInput) {
-		if (!device) return;
+		if (!device) {
+			return;
+		}
 
 		try {
 			const { tagIds, ...deviceData } = data;
 			const payload = {
 				...deviceData,
+				model: data.model || undefined,
 				ownerId: data.ownerId || undefined,
 				locationId: data.locationId || undefined,
 				networkId: data.networkId || undefined,
@@ -97,15 +110,37 @@
 			};
 
 			await devices.update(device.id, payload);
-			await devices.syncTags(device.id, tagIds);
+
+			let tagFailures = 0;
+			if (!tagsLocked) {
+				const currentDeviceId = device.id;
+				const nextTagIds = Array.from(new Set(tagIds.filter((tagId) => tagId.length > 0)));
+				const tagsToAdd = nextTagIds.filter((tagId) => !deviceTagIds.includes(tagId));
+				const tagsToRemove = deviceTagIds.filter((tagId) => !nextTagIds.includes(tagId));
+
+				if (tagsToAdd.length > 0 || tagsToRemove.length > 0) {
+					const results = await Promise.allSettled([
+						...tagsToAdd.map((tagId) => devices.addTag(currentDeviceId, tagId)),
+						...tagsToRemove.map((tagId) => devices.removeTag(currentDeviceId, tagId))
+					]);
+					tagFailures = results.filter((result) => result.status === 'rejected').length;
+				}
+
+				if (tagFailures === 0) {
+					deviceTagIds = nextTagIds;
+				}
+			}
+
 			invalidateDevicesCache();
 
 			showToast({
-				type: 'success',
-				message: `Device "${data.name}" updated successfully`
+				type: tagFailures > 0 ? 'error' : 'success',
+				message:
+					tagFailures > 0
+						? t('devices.tags.updateErrorSome', { count: tagFailures })
+						: `Device "${data.name}" updated successfully`
 			});
 
-			// Navigate back to detail page
 			goto(`/devices/${device.id}`);
 		} catch (err) {
 			console.error('[device-edit] Submit failed:', err);
@@ -114,7 +149,7 @@
 					? (err as unknown as { detail: string }).detail
 					: 'Failed to update device';
 			showToast({ type: 'error', message: errorMsg });
-			throw err; // Re-throw to keep form in submitting state
+			throw err;
 		}
 	}
 
@@ -159,10 +194,7 @@
 			</svg>
 		</li>
 		<li>
-			<a
-				href={`/devices/${deviceId}`}
-				class="hover:text-primary-600 dark:hover:text-primary-400"
-			>
+			<a href={`/devices/${deviceId}`} class="hover:text-primary-600 dark:hover:text-primary-400">
 				{device?.name ?? 'Device'}
 			</a>
 		</li>
@@ -221,11 +253,14 @@
 	<ErrorState {error} onRetry={fetchDevice} />
 {:else if device}
 	<!-- Form -->
-	<div class="rounded-lg border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+	<div
+		class="rounded-lg border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-950"
+	>
 		<DeviceForm
 			mode="edit"
 			initialData={{
 				name: device.name ?? '',
+				model: device.model ?? '',
 				serialNumber: device.serialNumber ?? '',
 				brandId: device.brandId ?? '',
 				categoryId: device.categoryId,

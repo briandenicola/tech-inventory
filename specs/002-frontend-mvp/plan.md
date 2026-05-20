@@ -2,7 +2,14 @@
 
 **Spec**: `specs/002-frontend-mvp/spec.md`
 **Tasks**: `specs/002-frontend-mvp/tasks.md`
-**Status**: Draft
+**Status**: Shipped (production-validated 2026-05-19)
+
+> **Phase note (added 2026-05-19)**: This plan was authored under the
+> pre-rewrite PRD §13 numbering. Under the current model (PRD §13 rewritten
+> 2026-05-19) this work is canonical **P2 — Frontend MVP + Auth** and is
+> shipped. Internal references to "Phase 1", "Phase 3", "Phase 4" reflect
+> the original plan; deferred items now live in `specs/_backlog/` under
+> **P4 — Continuous Iteration**.
 
 ---
 

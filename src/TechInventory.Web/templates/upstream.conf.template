@@ -1,0 +1,8 @@
+# Rendered by the nginx-unprivileged entrypoint to /etc/nginx/conf.d/upstream.conf
+# at container start. ${API_UPSTREAM} is substituted from the container env
+# (see docker-compose.yml web.environment.API_UPSTREAM, default
+# `tech-inventory-api:8080`).
+upstream techinv_api {
+    server ${API_UPSTREAM};
+    keepalive 16;
+}

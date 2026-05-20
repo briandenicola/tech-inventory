@@ -2,3 +2,25 @@ title = "Tech Inventory gitleaks configuration"
 
 [extend]
 useDefault = true
+
+# False-positive suppressions: feature-flag and configuration-key documentation
+# in markdown / runbooks. These are not credentials — they are public knob
+# names with a boolean value the operator must set. They tripped gitleaks'
+# generic-api-key heuristic because the surrounding text looks like an
+# assignment expression.
+[allowlist]
+description = "Documentation references to non-secret config knobs."
+regexTarget = "match"
+paths = [
+  # .env.e2e contains stub Entra GUIDs + a base64 placeholder signing
+  # key used ONLY by CI to satisfy compose `${VAR:?}` interpolation
+  # guards. ASPNETCORE_ENVIRONMENT=Development short-circuits to
+  # DevBypass auth so the stubs are never consulted at request time.
+  # Documented inline in .env.e2e.
+  '''\.env\.e2e$''',
+]
+regexes = [
+  '''Auth:DevBypass\s*=\s*true''',
+  '''Auth__Local__SeedEnabled\s*=\s*true''',
+  '''Auth__Local__SeedAllowInProd\s*=\s*true''',
+]

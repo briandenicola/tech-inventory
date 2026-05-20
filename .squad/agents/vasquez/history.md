@@ -34,6 +34,77 @@ Accessibility: WCAG 2.2 AA target, zero axe-core violations to merge. Browser ma
 
 ## Learnings
 
+### F029: Dark Mode Toggle & Theme Contrast Repair (2026-05-20)
+
+**Theme Toggle Implementation**:
+- Added `themePreference: 'light' | 'dark' | 'system'` to `userPrefs.ts` with localStorage persistence
+- Created `<ThemeToggle>` component matching devices view-mode toggle's segmented-control pattern (rounded-full pill container, active option gets white bg + shadow)
+- Pre-hydration script in `app.html` reads localStorage and sets `data-theme` on `<html>` BEFORE first paint to suppress FOUC
+- Script is self-contained, error-safe (try/catch around localStorage), no external imports
+
+**tokens.css Dark-Branch Gating Pattern**:
+```css
+:root[data-theme='dark'] {
+  /* Explicit user preference: dark */
+  --app-color-primary-50: #e8f3ff;
+  /* ... */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    /* System preference: dark, UNLESS user explicitly chose light */
+    --app-color-primary-50: #e8f3ff;
+    /* ... same values */
+  }
+}
+```
+This ensures: explicit `data-theme='dark'` wins, explicit `data-theme='light'` wins over system, `'system'` (or no pref) falls through to OS `prefers-color-scheme`.
+
+**Raw Color Scale Ordering Preserved**:
+- 50 = lightest, 900 = darkest in BOTH light and dark themes
+- Never reverse ordering in dark mode; only RETUNE shades for better contrast
+- "Meaning swap" (light background → dark background) lives in semantic tokens like `--color-text`, `--color-bg`, NOT in the numbered scales
+
+**Semantic Diff Tokens (Drake's WCAG AA Palette)**:
+- Six tokens: `--color-diff-add-fg/bg`, `--color-diff-remove-fg/bg`, `--color-diff-change-fg/bg`
+- Light theme: forest green on pale mint (add), deep burgundy on pale rose (remove), warm brown on pale cream (change)
+- Dark theme: bright mint on dark green (add), bright rose on burgundy (remove), bright amber on brown (change)
+- All pairs ≥6.2:1 contrast (well above AA 4.5:1 floor)
+- **Registered via `@theme inline` block** — Tailwind v4 ONLY generates color utilities (`text-*`, `bg-*`, `border-*`) for names in `@theme`; defining `--color-*` in `:root` alone produces zero CSS
+- Applied via inline `style` attributes in `AuditDiffDrawer.svelte`: `style="color: var(--color-diff-add-fg); background-color: var(--color-diff-add-bg);"`
+- Never use raw Tailwind utilities (`bg-success-50`, `text-danger-900`) for diff rendering — semantic tokens only
+
+**FOUC Suppression Test Pattern (Playwright)**:
+```typescript
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('ti.currentUserId', 'test-user');
+    localStorage.setItem('ti.userPrefs.v1.test-user', JSON.stringify({ version: 1, themePreference: 'dark' }));
+  });
+});
+
+test('sets data-theme="dark" before first paint', async ({ page }) => {
+  await page.goto('/');
+  const htmlTheme = await page.locator('html').getAttribute('data-theme');
+  expect(htmlTheme).toBe('dark');
+});
+```
+This verifies the pre-hydration script runs synchronously BEFORE SvelteKit hydration.
+
+**Axe-Core Diff Contrast Test**:
+- Created `AuditDiffDrawer.test.ts` with axe-core checks in both light and dark modes
+- Forces dark mode via `document.documentElement.dataset.theme = 'dark'` + `.classList.add('dark')`
+- Prevents future contrast regressions on the diff rendering itself
+
+**Semantic Token Strategy for Audit Log**:
+- Replaced ad-hoc Tailwind colors (`text-neutral-500`, `bg-neutral-100`) with semantic tokens where possible
+- For diff rendering specifically, used inline `style` with CSS variable references: `style="color: var(--color-diff-add-fg); ..."`
+- This keeps contrast values centralized in `tokens.css` and makes theme swaps automatic
+
+**Reference**: Drake's diff palette at `.squad/decisions/inbox/drake-f029-diff-colors.md` for future contrast work.
+
+---
+
 ### 2026-05-19 (Phase 2 Round 2) — T09, T10, T12, T13: Login + Auth Store + Protected Routes + App Shell
 
 **Shipped:**
@@ -193,6 +264,36 @@ Accessibility: WCAG 2.2 AA target, zero axe-core violations to merge. Browser ma
 
 
 
+## 2026-05-19 — DevBypass rip (frontend portion, parallel with Bishop+Hudson)
+
+**Charter:** Remove `VITE_AUTH_DEV_BYPASS` shim from SvelteKit. Local F025 username/password sign-in (`LocalLoginForm.svelte` + `/api/v1/auth/local/login`) is now the easy local-dev path; backend no longer emits the DevBypass scheme.
+
+**Changes (3 files, working tree only — no commit):**
+
+- **Deleted** `src/TechInventory.Web/src/lib/auth/dev-bypass.ts` (53 lines) — `isAuthDevBypass()` + `devBypassAccount()` shim, including the dev-admin subject `11111111-1111-1111-1111-111111111111` mirror constant.
+- **`src/lib/auth/index.ts`** — removed `./dev-bypass` import and the four `if (isAuthDevBypass()) ...` early-returns from `initializeMsal`, `handleRedirectPromise`, `getActiveAccount`, `acquireApiToken`. MSAL is now the only auth path; functions call straight through to `ensureMsalInitialized()` / `msalInstance`.
+- **`Dockerfile`** — removed the `ARG VITE_AUTH_DEV_BYPASS=false` + `ENV VITE_AUTH_DEV_BYPASS=$VITE_AUTH_DEV_BYPASS` pair (was lines 11–12) plus the 3-line explanatory comment block above them (was lines 8–10). Kills the Trivy `SecretsUsedInArgOrEnv` warnings against the build stage.
+
+**Scope check:**
+- `grep -ri "dev[_-]?bypass" src/TechInventory.Web/src` → 0 matches after the rip.
+- `grep -ri "VITE_AUTH_DEV_BYPASS" src/TechInventory.Web` → 0 matches after the rip.
+- `.env.development` had no DevBypass reference (just `VITE_API_BASE_URL`).
+- No component tests mocked the shim — nothing to update on the test side. `tests/e2e/` files containing `dev-bypass` references were left untouched per coordinator note (Hudson owns those).
+
+**Verification (all green):**
+- `pnpm install` — already up to date.
+- `pnpm run check` — svelte-check 0 errors / 0 warnings.
+- `pnpm run lint` — 0 errors.
+- `pnpm exec vitest --run` — **293 passed / 2 skipped (24 test files).** Note: `pnpm run test` uses watch mode by default in this repo (no `--run` flag in the script), so one-shot CI runs need `vitest --run`. Worth fixing the script someday but not in this rip.
+- `pnpm run build` — production build ✅ (PWA SW + adapter-static both clean, 9.42s).
+
+**Coordination state at handoff:**
+- Working tree dirty as instructed — Copilot CLI will fold these three frontend changes alongside Bishop's backend rip (DevBypassAuthenticationHandler.cs deleted + Program.cs/appsettings/integration-test factories updated) and Hudson's E2E/docs/scripts updates into one cohesive commit.
+- No new dependencies, no new env vars, no API client regen (none needed — backend DTOs untouched by this rip).
+- JWT short-claim hot-fix (commit `6b9f634`) confirmed not in scope — no decode logic touched.
+
+**Reflection:** Clean mechanical rip. The original shim was well-isolated (single `dev-bypass.ts` module + 4 inline branches in `index.ts` + 2 Dockerfile lines), which is what made deleting it a 10-minute job rather than an archaeology dig. Worth remembering as a pattern: when adding a dev-only escape hatch, isolate it in its own module + a single import site so the day someone rips it out, the diff stays tiny.
+
 ## Phase 2 Round 6b — Categories + Owners Admin (T28, T29) — Already Delivered
 
 **Charter:** Implement Categories tree view (T28) and Owners admin with role badges (T29).
@@ -252,4 +353,31 @@ Work already completed in commit `68ddbd5` (`test(web): T26 ownership modals + T
 **Charter touch:** Touched `client.ts` to add `tags` group (frontend territory; resolved false blocker from first attempt). Captured as D-088.
 
 **Decisions added:** D-088..D-094 (7 total).
+
+
+## 2026-05-20 — F030 + F031 Polish Round 2 — 4d46c86, 987c0a8
+
+**Charter:** Two distinct feature sets delivered in a single batch with grouped commits:
+
+### Commit 1 — F030 Device Tagging (4d46c86)
+- **Backend:** ListDeviceTagsQuery + GET /api/v1/devices/{id}/tags endpoint
+- **Frontend:** TagPicker.svelte (type-ahead + inline create), wired into AddDeviceModal, edit page, DeviceDetailModal
+- **Reference data:** Tags collection added to referenceDataStore
+- **i18n:** devices.tags.* keys (label, sectionLabel, inputPlaceholder, listboxLabel, noMatches, empty, removeTag, applyErrorSome, updateErrorSome)
+
+### Commit 2 — F031 Polish Round 2 (987c0a8)
+- **Search relocation:** Moved search input out of DeviceFilters drawer into devices/+page.svelte header (full-width mobile, max-w-lg desktop, 300ms debounce). Removed searchTimeout + handleSearchChange from DeviceFilters.svelte (lines 46–55 deleted). Deleted the second "<!-- Search -->" block at lines 167–180 (the FIRST "<!-- Search -->" at line 142 was actually the groupBy dropdown — mislabeled comment).
+- **Filter flyout on desktop:** DeviceFilters aside now ixed inset-y-0 left-0 z-50 at every breakpoint (no more md:sticky md:top-0). Removed md:hidden from backdrop + close button. Escape-to-close via \ keydown listener. Main layout: removed <div class="flex min-h-screen"> wrapper and <div class="flex-1 p-6"> inner wrapper — single <div class="p-6"> with floating drawer. Filter button: removed md:hidden so it shows on desktop too.
+- **Mobile view-mode toggle:** Cards (default) vs Table (horizontally scrollable). userPrefs.devicesViewMode helpers added (getDevicesViewMode, setDevicesViewMode). DeviceTable.svelte: hoisted table markup into {#snippet tableMarkup()}, rendered from both <div class="hidden md:block"> (desktop) and {#if mobileViewMode === 'table'}<div class="md:hidden"> (mobile). devices/+page.svelte: segmented toggle (two-button group, md:hidden, cards/table icons), persisted via onMount + setViewMode handler.
+- **i18n:** devices.viewMode.* keys (cards, table, toggleLabel)
+
+**Learning: userPrefs.ts is the REAL location for F022 helpers.** Brian's brief said src/lib/utils/devicesDefaults.ts but that file doesn't exist. The actual helpers live in src/lib/stores/userPrefs.ts (confirmed by reading the file before extending it). This is a common pattern: initial specs may reference file names that get refactored during earlier work. Always verify the current codebase location via grep/view before assuming the brief's path is still accurate.
+
+**Learning: Snippet-hoisting pattern for shared markup.** DeviceTable needed to render the same <table> markup in three contexts: desktop (always-visible), mobile cards (mobileViewMode === 'cards'), mobile table (mobileViewMode === 'table'). Svelte 5 runes {#snippet} blocks are perfect for this: hoist the markup into 	ableMarkup() snippet, then {@render tableMarkup()} from both desktop and mobile conditional blocks. Keeps grouping/selection/sorting logic DRY without extracting a new component. Use this pattern when markup needs to render in multiple places within the same component but behavioral context (props, state) is identical.
+
+**Learning: Commit surgery for split i18n changes.** When one file (en.json) is touched by BOTH change-sets, the cleanest split protocol is: (1) save full version with both changes, (2) temporarily remove commit-2-only changes + stage, (3) commit 1, (4) restore full version, (5) stage + commit 2. Avoids git add -p fragility and stash juggling. Copy-Item + edit tool is faster than interactive hunks for structured data like JSON.
+
+**Acceptance:** All green — pnpm run check 0 errors / 0 warnings, pnpm run lint pass, pnpm exec vitest run all green, pnpm run build success, dotnet build --nologo -v minimal 0 errors / 0 warnings.
+
+**Decisions:** ADR written to .squad/decisions/inbox/vasquez-f031-polish-round2.md covering search relocation + filter flyout rationale.
 

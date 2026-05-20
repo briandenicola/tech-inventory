@@ -4,19 +4,18 @@ These integration tests compare the committed OpenAPI document with the live doc
 
 ## What is covered
 
-- Drift detection between the running app's `/openapi/v1.json` document and the committed `openapi.yaml`
-- Happy-path response-shape validation for the main API endpoint families
-- Import/export contract scaffolding for the new endpoints once Hicks lands T39, T42, and T48
+- Drift detection between the running app's `/openapi/v1.json` document and the committed `openapi.yaml`.
+- Happy-path response-shape validation for the main API endpoint families.
+- Import/export contract assertions for the shipped endpoints (T39, T42, T48 — all merged).
 
 ## Regenerating `openapi.yaml`
-
-Use Hicks's OpenAPI export task once it lands:
 
 ```powershell
 task openapi:export
 ```
 
-If Hicks wires a different Task target, use that command instead and commit the regenerated `openapi.yaml` from the repository root.
+Commit the regenerated `openapi.yaml` from the repository root. If you change a request/response
+shape without updating `openapi.yaml`, `OpenApiDriftTests` will fail the build.
 
 ## Running the contract suite
 

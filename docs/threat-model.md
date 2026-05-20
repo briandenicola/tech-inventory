@@ -1,5 +1,14 @@
 # Threat Model — Tech Inventory v1
 
+> **Phase note (added 2026-05-19)**: Authored before the 2026-05-19 PRD §13
+> phase-model rewrite. Mitigation rows tagged `(TODO Phase 2)`,
+> `(TODO Phase 3)`, etc. use the **original** PRD §13 numbering and
+> describe planned work, not necessarily current status. Under the rewritten
+> model, any still-open mitigations roll up under **P4 — Continuous
+> Iteration** and should be promoted to `specs/_backlog/` if they are not
+> already shipped. A formal re-baseline of this threat model against the
+> shipped P0–P3 surfaces is itself a P4 candidate.
+
 **Scope**: Self-hosted family device inventory tracker (ASP.NET Core + SvelteKit PWA + SQLite).  
 **Methodology**: STRIDE per system surface.  
 **Authority**: Constitution §5 (Security), PRD §7 (NFRs — Security/Privacy), PRD §14 (Open Questions).  
@@ -16,7 +25,7 @@ This system has seven security-relevant surfaces. Each is analyzed below using S
 | 1 | **Web Client (PWA)** | SvelteKit + TypeScript + MSAL.js | Vasquez | Mobile, desktop, offline-capable |
 | 2 | **API (Backend)** | ASP.NET Core 10 + Clean Architecture | Hicks | REST `/api/v1/*`, OpenAPI spec |
 | 3 | **Database (SQLite)** | File-based EF Core, migrations | Hicks | On host, Docker volume, soft-deletes |
-| 4 | **Auth Provider** | Microsoft Entra ID (External ID tenant) | Bishop | OIDC + PKCE, token issuance |
+| 4 | **Auth Provider** | Microsoft Entra ID (Workforce tenant) + local-account fallback (F025 v1b) | Bishop | OIDC + PKCE primary; HS256 JWT local fallback per ADR D-140 |
 | 5 | **Container Host** | Docker + Compose on home LAN | Hudson | Orchestration, volume mounts, networking |
 | 6 | **Reverse Proxy** | TLS termination (external, e.g., Caddy) | Hudson | Public DNS, 443 binding, WAF (optional) |
 | 7 | **Backup Destination** | TBD (PRD §14) — second host, external drive, or off-site | TBD | Recovery point objective (RPO) 24h |
@@ -191,7 +200,7 @@ This system has seven security-relevant surfaces. Each is analyzed below using S
 
 ---
 
-### Surface 4: Auth Provider (Microsoft Entra ID — External ID)
+### Surface 4: Auth Provider (Microsoft Entra ID — Workforce tenant)
 
 #### Spoofing (Token Issuance / OIDC Vulnerabilities)
 - **Threat**: Attacker obtains Entra token via phishing, malware, or OIDC misconfiguration.
@@ -400,6 +409,26 @@ This system has seven security-relevant surfaces. Each is analyzed below using S
   - Regular host OS patching (Hudson scope).
 - **Residual Risk**: Medium (depends on home network security posture — outside v1 scope).
 
+### Threat: Entra Outage → Total Authentication Lockout
+- **Vector**: Microsoft Entra (Workforce tenant) is unreachable, misconfigured, or the household admin loses access to the directory itself. Without a fallback, every household user is locked out of the system, including the operator who would normally fix it.
+- **Mitigation** (shipped in F025 v1b per ADR D-140):
+  - Env-var-seeded local admin account (`LocalAdminSeedHostedService`) — bootstrappable without a working SPA or Entra reachability.
+  - Argon2id password hashing (OWASP 2025 baseline `m=19 456 KiB, t=2, p=1`).
+  - `TechInventoryAuth` PolicyScheme routes by JWT `iss` so local-issued tokens (issuer `techinventory-local`, 8 h) coexist with Entra tokens without disabling Entra.
+  - Force-rotation middleware: any local principal with `must_change_password=true` is blocked from everything except `POST /api/v1/auth/local/change-password`, so the seed password cannot be reused.
+  - CRITICAL log line on every startup while seed env vars are present — operationally loud nag to clear the seed once Entra is healthy again.
+  - Operator runbook in `docs/operations.md` § "Break-glass local admin (F025 v1b)".
+- **Residual Risk**: Low–Medium. The seed password becomes a high-value target while it exists; mitigated by force-rotation on first login + Argon2id + the startup nag. Rate limiting on `/api/v1/auth/local/login` and per-account lockout enforcement are deferred to F025b (tracked in `specs/_backlog/F025b-local-admin-power.md`); until then, defense relies on Argon2id cost and the small attack surface of a homelab service behind NPM.
+
+### Threat: Local Account Becomes Permanent Backdoor
+- **Vector**: Operator seeds the local admin during bootstrap and never decommissions it. Seed env vars remain in `.env`, the account stays Active, and over time the password drifts toward weakness or compromise.
+- **Mitigation**:
+  - Runbook (`docs/operations.md`) explicitly calls out the post-Entra cleanup steps: clear `Auth__Local__Seed*` env vars, restart, optionally `UPDATE Owner SET IsActive=0 WHERE IsLocalAccount=1` once Entra is fully healthy.
+  - CRITICAL-level log on every startup while seed vars are present (visible to anyone tailing logs).
+  - `Auth__Local__SeedAllowInProd` knob must be explicitly set in `Production` — the default fails closed.
+  - F025b will add an admin UI for deactivating local accounts without a SQL shell.
+- **Residual Risk**: Medium. Process discipline is the primary control until F025b ships.
+
 ---
 
 ## 4. Summary by Risk Level
@@ -462,3 +491,4 @@ None identified.
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-05-18 | Bishop | Initial STRIDE analysis; seven surfaces; ASVS L2 alignment. |
+| 1.1 | 2026-05-19 | Scribe | Surface 4 updated for Workforce tenant + F025 v1b local fallback; added cross-cutting threats "Entra Outage → Total Authentication Lockout" and "Local Account Becomes Permanent Backdoor" per ADR D-140. |

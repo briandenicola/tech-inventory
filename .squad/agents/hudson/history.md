@@ -294,3 +294,83 @@ CI quality gate must be green to merge: tests, security scans, SBOM.
 - **Compose stance:** Keep web published as `3000:80` for local prod-shape testing, but treat the external TLS proxy as the only intended public entrypoint in production.
 - **CORS defense-in-depth:** Even with same-origin proxying, `src/TechInventory.Api/appsettings.Production.json` should whitelist `https://inventory.denicolafamily.com` so accidental direct exposure still has an origin allow-list.
 - **Verification lesson:** Check tool availability first; this Windows session still lacks both `docker` and `nginx`, so container validation can be blocked even when repo-local build and config changes are ready.
+
+---
+
+## 2026-05-19 — Prod deployment plumbing (single-compose rewrite)
+
+**Branch:** `hudson/prod-deployment-plumbing` · **Commit:** `8f2661b` · **Requested by:** Brian
+
+Shipped a single-PR rewrite of the prod deployment surface, mirroring Brian's coin-collection-app compose posture. Brian's directives for this round explicitly override prior infra plans.
+
+**Files changed**
+- `.env.example` — rewritten as a tight prod template. `IMAGE_TAG`, Entra required vars, `openssl rand -base64 48` signing key, opt-in break-glass seed, `Cors__AllowedOrigins__0`, optional OTEL/Serilog. `CHANGEME_` placeholders are greppable.
+- `docker-compose.yml` — single prod-only file. GHCR images `ghcr.io/briandenicola/tech-inventory-{api,web}:${IMAGE_TAG:-latest}`. `${VAR:?msg}` for required env, `${VAR:-default}` for optional. Healthcheck-gated `depends_on`. Named volume `techinv-data`. `restart: unless-stopped`. NO hardening, NO backup sidecar, NO resource limits, NO build sections.
+- `docker-compose.prod.yml` — DELETED. Overlay folded into the single file.
+- `.github/workflows/release-images.yml` — narrowed to `v*.*.*` tag pushes only. Matrix job builds api+web for linux/amd64. Tags `:latest` AND `:${{ github.ref_name }}`. `provenance:false`, `sbom:false` (Bishop owns scanning).
+- `docs/deployment.md` — 10-section runbook: prereqs, first-time setup (full-checkout + compose-only flavors), pull/start, NPM upstream config with nginx snippet, first sign-in (Entra + break-glass + decommission), updating, version pinning, troubleshooting, ad-hoc SQLite backup, related docs.
+
+**Decisions baked in this round (Brian's explicit overrides)**
+1. Single-compose: no `prod.yml` overlay, no `dev.yml`. Local dev uses `task dev:up` (dotnet+pnpm, no docker).
+2. GHCR-only images; no local builds in the compose file.
+3. No container hardening: stripped `read_only`, `tmpfs`, `cap_drop`, `security_opt: no-new-privileges`, deploy.resources. NPM + Entra are the security boundary.
+4. No backup sidecar: Litestream service removed; Brian handles backups externally. `docs/deployment.md` §9 has an ad-hoc `sqlite3 .backup` one-liner.
+5. `${VAR:?msg}` env validation pattern for required env.
+6. `depends_on: service_healthy` web→api gating preserved.
+
+**Open questions surfaced to Brian**
+1. **Taskfile fallout** — `task up`, `task test:e2e`, `task backup:verify`, `task backup:restore`, `task clean` all reference the old compose shape (`build:` blocks or `docker-compose.prod.yml`). Will break next session. Per brief I did NOT touch Taskfile — flagged as follow-up PR.
+2. **Seed env-var naming** — brief said `SeedEmail`/`SeedDisplayName`, but code (`LocalAdminSeedHostedService.cs`) binds `Auth:Local:SeedUsername` only. Used the code-binding names. May indicate planned-but-unshipped schema change.
+3. **Release trigger scope** — narrowed to `v*.*.*` tag pushes only per brief. Previous workflow also tagged `:latest` on main push and had `workflow_dispatch`. Confirm strict tag-only is right.
+
+**Validation done**
+- `python -c "import yaml; yaml.safe_load(...)"` on both new YAML files — clean.
+- Pre-commit hook (lint + secret scan) — passed.
+- `docker compose config` — deferred (no Docker on Hudson's runtime).
+- Full `verify.ps1` skipped intentionally (config/docs-only change, full E2E rebuild has poor cost-to-signal ratio; Quality Gate reruns on PR).
+
+**PR (Brian opens manually — gh CLI not installed on runtime)**
+- Branch pushed: `hudson/prod-deployment-plumbing`
+- Open via: `https://github.com/briandenicola/tech-inventory/pull/new/hudson/prod-deployment-plumbing`
+- Pre-filled body lives at `.git/PR_BODY_HUDSON.md` (uncommitted, in .git/, won't be tracked)
+- Title: `feat(deploy): prod deployment plumbing (env, GHCR release, compose, runbook)`
+- DO NOT MERGE per brief — Brian will revise.
+
+**Refs:** D-135, D-139, D-140.
+
+
+### 2026-05-19 — DevBypass rip from E2E stack (parallel with Bishop + Vasquez)
+
+Brian asked the team to rip the entire `Auth:DevBypass` shim from production. My slice: own the E2E stack's transition from DevBypass-everywhere to F025 local-account sign-in. Worked in parallel with Bishop (backend tests / API code) and Vasquez (frontend shim removal).
+
+**Files touched (all infra/test scaffolding — no app code):**
+- `docker-compose.e2e.yml` — dropped `Auth__DevBypass: "true"` (api env) and `VITE_AUTH_DEV_BYPASS: "true"` (web build arg). Kept `ASPNETCORE_ENVIRONMENT: Development` (the seed service refuses Production without `SeedAllowInProd`; Development sidesteps that guard). Added `Auth__Local__Seed{Enabled,Username,Password,RequireChangeOnFirstLogin}` so `LocalAdminSeedHostedService` provisions a usable admin (`e2e-admin` / `e2e-admin-passw0rd-CHANGEME`) on every boot. `SeedRequireChangeOnFirstLogin=false` so the fixture can sign in without the change-password gate.
+- `.env.e2e` — rewrote the top comment. Stub Entra config stayed (compose's `${VAR:?}` interpolation guards still require it; the policy scheme routes by `iss` so stubs are never consulted). Seed creds documented as a breadcrumb pointing at docker-compose.e2e.yml as the single source of truth. The clearly-fake repeated-pattern HS256 signing key + `#gitleaks:allow` inline stayed — local sign-in actually USES it now, so it must be present and ≥32 bytes.
+- `tests/e2e/fixtures/auth.ts` — full rewrite. Seed creds exposed as `SEED_USERNAME`/`SEED_PASSWORD` constants (overridable via `E2E_SEED_USERNAME`/`E2E_SEED_PASSWORD`). New `seedLogin()` helper POSTs to `/api/v1/auth/local/login` against an ephemeral `APIRequestContext` and decodes the HS256 JWT in Node (base64url → `Buffer.from(...).toString('utf8')`). The `authenticated` fixture now does TWO things: (1) injects `ti_local_token` + `ti_local_meta` into sessionStorage via `page.addInitScript` BEFORE first navigation, so the SvelteKit root layout's `hydrateLocalSession()` picks them up cleanly; (2) overrides Playwright's default `request` fixture to attach `Authorization: Bearer <token>` so journey specs that destructure `{ adminPage, request }` (jrnys 3, 4, 5, 7, 8) keep working without per-test changes.
+- `tests/e2e/fixtures/api.ts` — header comment rewritten to describe the bearer-token flow.
+- `tests/e2e/journeys/01-sign-in.spec.ts` — full rewrite. Test 1 now asserts an unauthenticated visit to `/devices` redirects to `/auth/login` (used `page.waitForURL('**/auth/login')` to handle the root-layout-onMount → guard-redirect handoff race). Test 2 verifies root renders without `pageerror`.
+- `tests/e2e/journeys/02-sign-in-denied.spec.ts` — selectors changed from `/dev-admin/i` to `/user menu/i` (matches the button's `aria-label={t('header.userMenu')}` accessible name, which is stable across auth methods). Added a `toContainText(/local admin/i)` sanity assertion that fail-fast-detects seed misconfiguration. The `test.fixme` is now potentially implementable (since `handleSignOut()` calls `clearAuth()` which drops local-session keys); left as fixme with an updated note about Playwright's per-test `addInitScript` re-hydration making a naive implementation flaky.
+- `tests/e2e/journeys/07-detail-view.spec.ts` — one-word comment scrub ("dev-bypass identity" → "seeded local admin").
+- `tests/e2e/README.md` — Authentication section rewritten end-to-end; dropped the dual-path narrative since there's only one path now.
+- `docs/known-issues.md` — deleted the `auth-jwt-happy-path-tests` section (test names referenced `DevBypass*` integration tests that no longer exist; Bishop is concurrently deleting / rewriting those tests anyway).
+- `docs/testing.md` — three line-level scrubs: "dev-bypass JwtBearer scheme" → "local-issuer JwtBearer scheme"; E2E fixture description rewritten; auth-in-tests table rewritten.
+- `docs/deployment.md`, `docs/operations.md` — confirmed clean (no DevBypass references via grep).
+- `.env.example` — added `Auth__Local__SeedRequireChangeOnFirstLogin=true` with a comment forbidding `false` in prod.
+- `scripts/run-e2e.{sh,ps1}` — minimal scrub: removed the unused `VITE_AUTH_DEV_BYPASS=true` export (no consumer now that the build arg is gone) and rewrote the misleading "forces Development env / DevBypass" header comment. Logic flow is identical — still `--env-file .env.e2e -f docker-compose.yml -f docker-compose.e2e.yml`.
+
+**Verification:**
+- `git diff --stat` shows 13 files changed, all in my swimlane. No overlap with Bishop's modifications (DevBypassAuthenticationHandler.cs deletion, Program.cs, appsettings.json, integration tests, TestAuthHandler.cs) or Vasquez's (Dockerfile, lib/auth/index.ts, (authenticated)/+layout.svelte).
+- `npx playwright test --list` over journeys/01, 02, 03, 07 enumerates **72 tests across all 6 browser projects** with no compile errors. Pre-existing `test.todo` errors in journeys 09-12 reproduce on a clean checkout too (verified via stash/pop) — not my regression.
+- Could NOT run `task test:e2e` end-to-end: **Docker is not installed on this Windows dev host** (no docker.exe, no Docker Desktop, no WSL). Same gap I noted in the 2026-05-18 history entry. Left the working tree dirty per Brian's instruction so Copilot CLI can roll Hudson + Bishop + Vasquez into one commit; runtime verification will happen on a Docker-capable host (or in CI).
+
+**Decisions / things future-me should know:**
+- The `page.addInitScript` injection pattern is the only way that works. Tried mentally the "goto / → page.evaluate → goto /devices" sequence Brian suggested in the spawn prompt — it doesn't work because the root +layout.svelte's `onMount` only runs ONCE per page-context lifetime; subsequent client-side navigations within the same context don't re-trigger `hydrateLocalSession()`, so after the first goto's onMount marks the store unauthenticated, the second goto's (authenticated) guard sees `isAuthenticated=false` and redirects. `addInitScript` runs on EVERY navigation BEFORE any in-page script, so sessionStorage is always populated by the time hydration tries to read it. Documented this inline in the fixture.
+- The user-pill button's accessible name is the `aria-label` ("User menu"), NOT the inner displayName text. The original `/dev-admin/i` regex looked wrong even before the rip — either those tests weren't running cleanly or Playwright's accessible-name computation has fallbacks I don't fully understand. Going forward, use `/user menu/i` and assert displayName via `toContainText(...)` as a separate, explicit check. More robust to i18n + DevBypass-style identity churn.
+- The desktop user-pill is `class="hidden md:block"` — mobile projects won't see it. Journey 02 on chromium-mobile / webkit-mobile / firefox-mobile will likely fail. That's pre-existing structural debt (the mobile menu has a different DOM shape under the hamburger). Out of scope for this rip; flag if Apone hasn't picked it up.
+- Seed creds (`e2e-admin` / `e2e-admin-passw0rd-CHANGEME`) live in TWO places: `docker-compose.e2e.yml` (authoritative) and `tests/e2e/fixtures/auth.ts` (defaults, overridable via env). If Brian wants to rotate, change BOTH — or set `E2E_SEED_USERNAME` / `E2E_SEED_PASSWORD` in the env that runs Playwright.
+- Whoever runs the E2E suite first on a Docker host should expect the seed log to emit `[F025] Seeded local Admin account 'e2e-admin' with SeedRequireChangeOnFirstLogin=false (intended for dev/E2E only — never enable this in production).` That WARNING is a feature, not a bug.
+
+**Open blockers for someone with Docker:**
+1. Run `task test:e2e`. Expect journeys 01, 02 (desktop only), 03, 04, 05, 06, 07, 08, 13 to be the targets. Journeys 09, 10, 11, 12 are stubbed via `test.todo` (pre-existing, not mine).
+2. If journey 01 test 1 ("redirects to /auth/login") flakes, the timeout on `waitForURL` (currently 15s) may need a bump — the (authenticated) guard waits on the root layout's MSAL probe to finish before reading the store.
+3. If journey 02's `toContainText(/local admin/i)` fails, check api logs for the F025 seed warning — `LocalAdminSeedHostedService` writes a critical log on success.

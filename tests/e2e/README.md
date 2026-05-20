@@ -82,9 +82,23 @@ All tests enforce **localhost-only** network access. Any outbound call to a non-
 
 ## Authentication
 
-TODO: Wire once Bishop delivers Entra ID test tenant fixture OR local-dev auth bypass.
+Tests do **not** go through the real Entra redirect. The E2E stack runs the
+F025 break-glass local-account path end-to-end:
 
-See `fixtures/auth.ts` for placeholder. Reference: `docs/auth-design.md`.
+- **Local-account fixture** — `fixtures/auth.ts` exposes an `authenticated`
+  test variant. Its `adminPage` fixture POSTs the F025-seeded admin's
+  credentials to `/api/v1/auth/local/login`, decodes the returned HS256 JWT,
+  and injects both the token and the decoded meta into `sessionStorage` via
+  `page.addInitScript` (so the SvelteKit root layout's `hydrateLocalSession()`
+  picks them up on first navigation). The same fixture also overrides
+  Playwright's default `request` so journey specs that seed reference data
+  via `fixtures/api.ts` carry `Authorization: Bearer <token>` automatically.
+- **Override the seed creds** via `E2E_SEED_USERNAME` / `E2E_SEED_PASSWORD`
+  if you change them in `docker-compose.e2e.yml`.
+
+End-to-end auth design lives in `docs/auth-design.md` (Workforce tenant +
+F025 v1b §6); per-test usage of the fixture is documented inline in
+`fixtures/auth.ts`.
 
 ## Accessibility
 

@@ -1,18 +1,21 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { t } from '$lib/i18n';
 	import { devices } from '$lib/api/client';
-	import { showToast } from '$lib/stores/toast';
-	import { invalidateDevicesCache } from '$lib/queries/devices.svelte';
 	import DeviceForm from '$lib/components/DeviceForm.svelte';
+	import { invalidateDevicesCache } from '$lib/queries/devices.svelte';
 	import type { DeviceFormInput } from '$lib/schemas/device';
+	import { fetchReferenceData } from '$lib/stores/referenceData';
+	import { registerPullToRefresh } from '$lib/stores/pullToRefresh';
+	import { showToast } from '$lib/stores/toast';
 
 	/**
 	 * T20: Device create page — /devices/new
-	 * 
+	 *
 	 * Form with all device fields, Zod validation, household default currency pre-filled.
 	 * Submit → POST /api/v1/devices → toast → redirect to detail page.
-	 * 
+	 *
 	 * Related: specs/002-frontend-mvp/spec.md J6
 	 */
 
@@ -21,6 +24,7 @@
 			const { tagIds, ...deviceData } = data;
 			const payload = {
 				...deviceData,
+				model: data.model || undefined,
 				ownerId: data.ownerId || undefined,
 				locationId: data.locationId || undefined,
 				networkId: data.networkId || undefined,
@@ -32,6 +36,10 @@
 			};
 
 			const result = await devices.create(payload);
+			if (!result.id) {
+				throw new Error('Created device did not return an id');
+			}
+
 			await devices.syncTags(result.id, tagIds);
 			invalidateDevicesCache();
 
@@ -40,7 +48,6 @@
 				message: `Device "${data.name}" created successfully`
 			});
 
-			// Navigate to device detail page
 			goto(`/devices/${result.id}`);
 		} catch (err) {
 			console.error('[device-create] Submit failed:', err);
@@ -49,7 +56,7 @@
 					? (err as unknown as { detail: string }).detail
 					: 'Failed to create device';
 			showToast({ type: 'error', message: errorMsg });
-			throw err; // Re-throw to keep form in submitting state
+			throw err;
 		}
 	}
 
@@ -57,6 +64,10 @@
 		goto('/devices');
 	}
 
+	$effect(() => {
+		const unregister = registerPullToRefresh($page.url.pathname, fetchReferenceData);
+		return unregister;
+	});
 </script>
 
 <!-- Breadcrumbs -->
@@ -107,6 +118,8 @@
 </div>
 
 <!-- Form -->
-<div class="rounded-lg border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+<div
+	class="rounded-lg border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-950"
+>
 	<DeviceForm mode="create" onSubmit={handleSubmit} onCancel={handleCancel} />
 </div>

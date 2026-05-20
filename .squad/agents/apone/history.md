@@ -69,6 +69,24 @@ Playwright layout: tests in `tests/e2e/`, Page Object Model in `tests/e2e/pages/
 
 <!-- Append new learnings below. Each entry is something lasting about the project. -->
 
+### 2026-05-20: F029 Audit-Log Diff Contrast Regression Test Pattern
+
+**What happened:** Vasquez shipped F029 theme toggle + Drake's WCAG-AA-verified diff color palette. To prevent future contrast regressions on AuditDiffDrawer, Vasquez created `AuditDiffDrawer.test.ts` with axe-core checks in both light and dark modes.
+
+**Test pattern:**
+```typescript
+test('diff rendering meets WCAG AA in dark mode', async ({ container }) => {
+  document.documentElement.dataset.theme = 'dark';
+  // render AuditDiffDrawer with sample diffs
+  const results = await axe(container);
+  expect(results.violations).toHaveLength(0); // zero a11y violations
+});
+```
+
+**Key learning:** When semantic tokens are applied via CSS variables (e.g., `color: var(--color-diff-add-fg)`), axe-core will validate computed contrast at runtime. The test must explicitly set `data-theme` or `.classList.add('dark')` so CSS media queries fire correctly during test execution.
+
+**Future note:** Any new diff-like UI component using Drake's palette (diff-add-fg/bg, diff-remove-fg/bg, diff-change-fg/bg tokens) should inherit this test pattern to stay protected from contrast regressions.
+
 ### 2026-05-18: Import/export integration + OpenAPI drift patterns
 
 **Import controller test pattern:**

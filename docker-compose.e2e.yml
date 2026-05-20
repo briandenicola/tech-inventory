@@ -1,0 +1,45 @@
+# E2E override for the prod docker-compose.yml.
+#
+# - Builds api + web from local source (we want to test what's in the
+#   tree, not whatever stale image is on GHCR).
+# - Keeps ASPNETCORE_ENVIRONMENT=Development so LocalAdminSeedHostedService
+#   is willing to run without the SeedAllowInProd guard. Otherwise the
+#   compose stack would refuse to boot.
+# - Activates the F025 break-glass local-account seed so the SvelteKit PWA
+#   can sign in via POST /api/v1/auth/local/login. Playwright fixtures
+#   exchange the seeded creds for a JWT, drop it into sessionStorage, and
+#   then drive the app as the seeded admin (see tests/e2e/fixtures/auth.ts).
+# - Forces SeedRequireChangeOnFirstLogin=false so the seeded user can sign
+#   in immediately without being bounced through the change-password gate.
+#   This setting is intended for dev/E2E only — never enable it in prod.
+#
+# Used by scripts/run-e2e.{sh,ps1} together with `--env-file .env.e2e`.
+# Combined invocation:
+#   docker compose --env-file .env.e2e \
+#     -f docker-compose.yml -f docker-compose.e2e.yml up -d --build
+
+services:
+  api:
+    image: tech-inventory-api:e2e
+    build:
+      context: .
+      dockerfile: src/TechInventory.Api/Dockerfile
+    # Prod compose keeps api internal-only; the e2e harness needs to poll
+    # /health/ready from the runner host (scripts/run-e2e.{sh,ps1}) so the
+    # override publishes 8080 on the host. Web's host:3000 → container:8080
+    # mapping in the base file is unaffected.
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      # F025 — break-glass local admin seed for E2E sign-in.
+      Auth__Local__SeedEnabled: "true"
+      Auth__Local__SeedUsername: "e2e-admin"
+      Auth__Local__SeedPassword: "e2e-admin-passw0rd-CHANGEME"
+      Auth__Local__SeedRequireChangeOnFirstLogin: "false"
+
+  web:
+    image: tech-inventory-web:e2e
+    build:
+      context: .
+      dockerfile: src/TechInventory.Web/Dockerfile

@@ -1,97 +1,98 @@
-# Tech Inventory — Compose stack
+# Tech Inventory — Production compose stack
 #
-# Single-file deploy for local prod-shape testing and Brian's home-server stack.
-# Brian's external reverse proxy terminates TLS at
-# https://inventory.denicolafamily.com and forwards plain HTTP to http://<host>:3000.
-# The web container serves the SvelteKit static bundle and reverse-proxies
-# /api/* -> http://api:8080/api/* over techinv-net.
-# Set ASPNETCORE_ENVIRONMENT=Production on the host for production deploys;
-# local compose defaults stay Development for auth-bypass workflows.
+# Single-file deploy for Brian's home server. Pulls pre-built images from
+# GHCR (built by .github/workflows/release-images.yml on every `v*.*.*` tag
+# push) and brings up API + Web behind Nginx Proxy Manager at
+# https://inventory.denicolafamily.com.
 #
-# DATABASE NOTE: SQLite is a file, not a container. The `techinv-data` volume
-# is mounted into the API container at /data/. The API writes to /data/techinv.db.
-#
-# Prerequisites:
-#   - Docker & Docker Compose
-#   - .NET 10 SDK (for local builds during dev)
-#   - Node 22 + pnpm (for frontend dev/build)
-#   - Task (https://taskfile.dev)
+# Local dev does NOT use this file — use `task dev:up` for the dotnet+pnpm
+# loop. The compose-driven Taskfile targets (`task up`, `task test:e2e`,
+# `task backup:*`) still reference this file and may need rework now that
+# build sections and the prod-overlay file are gone (see open question in
+# the PR description).
 #
 # Usage:
-#   task up      — Start the stack
-#   task down    — Stop and remove everything
-#   task logs    — Tail logs
-#   task ps      — Show running services
+#   docker login ghcr.io                 # one-time
+#   docker compose pull                  # fetch latest images
+#   docker compose up -d                 # bring everything up
+#   docker compose logs -f api           # watch startup
+#
+# Versioning:
+#   Set IMAGE_TAG=v0.1.0 in .env to pin (recommended in prod).
+#   Defaults to `latest` if unset.
+#
+# Database:
+#   SQLite is a file, not a service. The named volume `techinv-data` is
+#   mounted into the API container at /data and the API writes
+#   /data/techinv.db. EF Core migrations apply on startup. There is no
+#   `db` service — that's intentional.
 
 services:
   api:
-    build:
-      context: .
-      dockerfile: src/TechInventory.Api/Dockerfile
-    container_name: techinv-api
-    image: techinv-api:dev
-    ports:
-      - "8080:8080"
+    image: ghcr.io/briandenicola/tech-inventory-api:${IMAGE_TAG:-latest}
+    container_name: tech-inventory-api
+    restart: unless-stopped
     environment:
-      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      # Force production wiring regardless of host env.
+      ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__Default: "Data Source=/data/techinv.db"
-      OTEL_EXPORTER_OTLP_ENDPOINT: ""  # Empty in dev; override for local Seq/Jaeger
+
+      # ── Entra ID (required) ──────────────────────────────────────────
+      Auth__Entra__TenantId:        ${Auth__Entra__TenantId:?Set Auth__Entra__TenantId in .env (Entra tenant GUID)}
+      Auth__Entra__ClientId:        ${Auth__Entra__ClientId:?Set Auth__Entra__ClientId in .env (Entra app client GUID)}
+      Auth__Entra__Authority:       ${Auth__Entra__Authority:?Set Auth__Entra__Authority in .env (https://login.microsoftonline.com/<tenant>/v2.0)}
+      Auth__Entra__Audiences__0:    ${Auth__Entra__Audiences__0:?Set Auth__Entra__Audiences__0 in .env (api://<client-id>)}
+      Auth__Entra__Audiences__1:    ${Auth__Entra__Audiences__1:?Set Auth__Entra__Audiences__1 in .env (bare <client-id>)}
+
+      # ── Local break-glass JWT signing key (required) ─────────────────
+      Auth__Local__SigningKey:      ${Auth__Local__SigningKey:?Set Auth__Local__SigningKey in .env (openssl rand -base64 48)}
+
+      # ── Break-glass seed (first-boot only — defaults safe-off) ──────
+      Auth__Local__SeedEnabled:     ${Auth__Local__SeedEnabled:-false}
+      Auth__Local__SeedAllowInProd: ${Auth__Local__SeedAllowInProd:-false}
+      Auth__Local__SeedUsername:    ${Auth__Local__SeedUsername:-}
+      Auth__Local__SeedPassword:    ${Auth__Local__SeedPassword:-}
+
+      # ── CORS (required: must include the public origin) ─────────────
+      Cors__AllowedOrigins__0:      ${Cors__AllowedOrigins__0:?Set Cors__AllowedOrigins__0 in .env (https://inventory.denicolafamily.com)}
+
+      # ── Observability (optional) ────────────────────────────────────
+      OTEL_EXPORTER_OTLP_ENDPOINT:  ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OpenTelemetry__OtlpEndpoint:  ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      Serilog__MinimumLevel__Default: ${Serilog__MinimumLevel__Default:-Information}
     volumes:
       - techinv-data:/data
-      - techinv-api-tmp:/tmp
-    tmpfs:
-      - /tmp
-    user: "1000:1000"
-    restart: unless-stopped
-    networks:
-      - techinv-net
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health/ready"]
       interval: 10s
       timeout: 5s
       retries: 3
-      start_period: 10s
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-        reservations:
-          memory: 256M
+      start_period: 20s
 
   web:
-    build:
-      context: .
-      dockerfile: src/TechInventory.Web/Dockerfile
-    container_name: techinv-web
-    image: techinv-web:dev
-    ports:
-      - "3000:80"
+    image: ghcr.io/briandenicola/tech-inventory-web:${IMAGE_TAG:-latest}
+    container_name: tech-inventory-web
     restart: unless-stopped
-    networks:
-      - techinv-net
+    environment:
+      # Host:port the api container resolves to on the compose / Portainer
+      # / swarm network. Default matches our `container_name: tech-inventory-api`
+      # below; override via .env if your deploy tool names the container
+      # something else (e.g. Portainer stack `mystack_api_1`).
+      API_UPSTREAM: ${API_UPSTREAM:-tech-inventory-api:8080}
+    # Host port 3000 → NPM upstream. The container listens on 8080 because
+    # we use nginx-unprivileged (uid 101, can't bind <1024).
+    ports:
+      - "3000:8080"
     depends_on:
       api:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 10s
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-        reservations:
-          memory: 128M
-
-networks:
-  techinv-net:
-    name: techinv-net
-    driver: bridge
 
 volumes:
   techinv-data:
     name: techinv-data
-  techinv-api-tmp:
-    name: techinv-api-tmp

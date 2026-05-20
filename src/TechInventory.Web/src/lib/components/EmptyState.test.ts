@@ -5,8 +5,8 @@
  * Constitution §3.4: axe-core with zero violations.
  */
 
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/svelte';
 import { axe } from 'vitest-axe';
 import EmptyState from './EmptyState.svelte';
 
@@ -18,12 +18,22 @@ describe('EmptyState', () => {
 			expect(screen.getByText(/No devices yet/i)).toBeInTheDocument();
 		});
 
-		it('renders add device CTA button', () => {
+		it('renders add device CTA link by default (no onAdd handler)', () => {
 			render(EmptyState, { props: { filtered: false } });
 			
 			const addButton = screen.getByRole('link', { name: /Add Device/i });
 			expect(addButton).toBeInTheDocument();
 			expect(addButton).toHaveAttribute('href', '/devices/new');
+		});
+
+		it('renders add device CTA as button when onAdd handler provided', async () => {
+			const onAdd = vi.fn();
+			render(EmptyState, { props: { filtered: false, onAdd } });
+
+			const addButton = screen.getByRole('button', { name: /Add Device/i });
+			expect(addButton).toBeInTheDocument();
+			await fireEvent.click(addButton);
+			expect(onAdd).toHaveBeenCalledOnce();
 		});
 
 		it('has no accessibility violations', async () => {
@@ -44,7 +54,9 @@ describe('EmptyState', () => {
 		it('does not render add device CTA when filtered', () => {
 			render(EmptyState, { props: { filtered: true } });
 			
-			const addButton = screen.queryByRole('link', { name: /Add Device/i });
+			const addLink = screen.queryByRole('link', { name: /Add Device/i });
+			const addButton = screen.queryByRole('button', { name: /Add Device/i });
+			expect(addLink).not.toBeInTheDocument();
 			expect(addButton).not.toBeInTheDocument();
 		});
 

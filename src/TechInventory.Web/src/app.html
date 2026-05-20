@@ -2,14 +2,41 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<!--
+			F026: pinch-zoom intentionally disabled (user-scalable=no, maximum-scale=1)
+			to eliminate the iOS PWA "scroll wobble" caused by accidental two-finger
+			zoom while panning. Accessibility note: dynamic type / browser font scaling
+			still works in standalone PWA mode, so WCAG 1.4.4 reflow is preserved.
+		-->
+		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 		<meta name="description" content="Tech Inventory — Your household, catalogued." />
 		<link rel="icon" href="%sveltekit.assets%/favicon.svg" type="image/svg+xml" />
 		<link rel="icon" href="%sveltekit.assets%/favicon.png" sizes="32x32" />
 		<link rel="alternate icon" href="%sveltekit.assets%/favicon.ico" sizes="48x48" />
-		<link rel="apple-touch-icon" href="%sveltekit.assets%/icons/icon-192.png" />
+		<link rel="apple-touch-icon" sizes="180x180" href="%sveltekit.assets%/icons/icon-180.png" />
 		<link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
 		<meta name="theme-color" content="#0071e3" />
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+		<meta name="apple-mobile-web-app-title" content="TechInv" />
+		<meta name="format-detection" content="telephone=no" />
+		<!-- F029: pre-hydration theme script (FOUC suppression) -->
+		<script>
+			try {
+				const stored = localStorage.getItem('ti.userPrefs.v1.' + (localStorage.getItem('ti.currentUserId') || ''));
+				if (stored) {
+					const prefs = JSON.parse(stored);
+					const theme = prefs.themePreference;
+					if (theme === 'light') {
+						document.documentElement.dataset.theme = 'light';
+					} else if (theme === 'dark') {
+						document.documentElement.dataset.theme = 'dark';
+					}
+					// else 'system' or missing → fall through to prefers-color-scheme
+				}
+			} catch {}
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

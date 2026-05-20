@@ -1,6 +1,6 @@
 /**
  * DeviceForm Component Tests — Form validation and behavior (T23)
- * 
+ *
  * Test create/edit modes, validation, disabledFields, submit/cancel handlers.
  * Constitution §3.4: axe-core zero violations
  */
@@ -60,7 +60,11 @@ describe('DeviceForm', () => {
 			networks: [createNetwork({ name: 'WiFi-Main' }), createNetwork({ name: 'WiFi-Guest' })],
 			tags: [
 				createTag({ id: '00000000-0000-4000-8000-000000000101', name: 'Travel', color: '#0ea5e9' }),
-				createTag({ id: '00000000-0000-4000-8000-000000000102', name: 'Critical', color: '#ef4444' })
+				createTag({
+					id: '00000000-0000-4000-8000-000000000102',
+					name: 'Critical',
+					color: '#ef4444'
+				})
 			],
 			isLoading: false,
 			error: null
@@ -68,7 +72,9 @@ describe('DeviceForm', () => {
 		referenceDataStore.set(refData);
 	});
 
-	const mockOnSubmit = vi.fn<(data: import('$lib/schemas/device').DeviceFormInput) => Promise<void>>(async () => {});
+	const mockOnSubmit = vi.fn<
+		(data: import('$lib/schemas/device').DeviceFormInput) => Promise<void>
+	>(async () => {});
 	const mockOnCancel = vi.fn();
 
 	const defaultProps = {
@@ -88,6 +94,10 @@ describe('DeviceForm', () => {
 
 			// Optional fields
 			expect(screen.getByLabelText(/devices.columns.serial/i)).toBeInTheDocument();
+			// F034: model is rendered as a top-level optional field so imported devices
+			// surface their model number without burying it inside the collapsible
+			// "Additional details" section.
+			expect(screen.getByLabelText(/devices.columns.model/i)).toBeInTheDocument();
 			expect(screen.getByLabelText(/devices.columns.owner/i)).toBeInTheDocument();
 			expect(screen.getByLabelText(/devices.columns.location/i)).toBeInTheDocument();
 			expect(screen.getByLabelText(/devices.columns.network/i)).toBeInTheDocument();
@@ -117,7 +127,9 @@ describe('DeviceForm', () => {
 		it('currency defaults to USD (D-070)', () => {
 			render(DeviceForm, { props: defaultProps });
 
-			const currencySelect = screen.getByLabelText(/devices.columns.currency/i) as HTMLSelectElement;
+			const currencySelect = screen.getByLabelText(
+				/devices.columns.currency/i
+			) as HTMLSelectElement;
 			expect(currencySelect.value).toBe('USD');
 		});
 
@@ -158,7 +170,9 @@ describe('DeviceForm', () => {
 			const serialInput = screen.getByLabelText(/devices.columns.serial/i) as HTMLInputElement;
 			expect(serialInput.value).toBe('SN123456');
 
-			const priceInput = screen.getByLabelText(/devices.columns.purchasePrice/i) as HTMLInputElement;
+			const priceInput = screen.getByLabelText(
+				/devices.columns.purchasePrice/i
+			) as HTMLInputElement;
 			expect(priceInput.value).toBe('999.99');
 
 			const selectedTag = screen.getByLabelText('Critical') as HTMLInputElement;
@@ -258,7 +272,9 @@ describe('DeviceForm', () => {
 
 		it('calls onSubmit with selected tagIds on valid submission', async () => {
 			const user = userEvent.setup();
-			const onSubmit = vi.fn<(data: import('$lib/schemas/device').DeviceFormInput) => Promise<void>>(async () => {});
+			const onSubmit = vi.fn<
+				(data: import('$lib/schemas/device').DeviceFormInput) => Promise<void>
+			>(async () => {});
 			const initialData = {
 				name: 'Existing Device',
 				serialNumber: 'SN123456',
@@ -302,10 +318,7 @@ describe('DeviceForm', () => {
 					expect.objectContaining({
 						name: 'Existing Device',
 						categoryId: '00000000-0000-4000-8000-000000000201',
-						tagIds: [
-							'00000000-0000-4000-8000-000000000101',
-							'00000000-0000-4000-8000-000000000102'
-						]
+						tagIds: ['00000000-0000-4000-8000-000000000101', '00000000-0000-4000-8000-000000000102']
 					})
 				);
 			});
@@ -316,9 +329,9 @@ describe('DeviceForm', () => {
 			// Root cause: bind:value on <select> doesn't trigger reactive updates in test environment
 			// Coverage: E2E tests (T46) cover form submission loading states in real browsers
 			const user = userEvent.setup();
-			const onSubmit = vi.fn<(data: import('$lib/schemas/device').DeviceFormInput) => Promise<void>>(
-				async () => new Promise((resolve) => setTimeout(resolve, 100))
-			);
+			const onSubmit = vi.fn<
+				(data: import('$lib/schemas/device').DeviceFormInput) => Promise<void>
+			>(async () => new Promise((resolve) => setTimeout(resolve, 100)));
 
 			render(DeviceForm, {
 				props: {
@@ -339,7 +352,7 @@ describe('DeviceForm', () => {
 			);
 
 			// Wait for Svelte 5 runes reactivity to settle
-			await new Promise(resolve => setTimeout(resolve, 50));
+			await new Promise((resolve) => setTimeout(resolve, 50));
 
 			const submitButton = screen.getByRole('button', { name: /common.actions.save/i });
 			await waitFor(() => expect(submitButton).not.toBeDisabled());
@@ -494,4 +507,3 @@ describe('DeviceForm', () => {
 		});
 	});
 });
-

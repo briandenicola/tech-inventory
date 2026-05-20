@@ -6,7 +6,7 @@
 	
 	Props:
 	- entityName: string (display name for confirmation message)
-	- entityType: 'brand' | 'location' | 'network' | 'tag' (for i18n lookup)
+	- entityType: 'brand' | 'category' | 'location' | 'network' | 'owner' | 'tag' (for i18n lookup)
 	- onConfirm: () => Promise<void>
 	- onCancel: () => void
 	
@@ -17,7 +17,7 @@
 
 	interface Props {
 		entityName: string;
-		entityType: 'brand' | 'location' | 'network' | 'tag';
+		entityType: 'brand' | 'category' | 'location' | 'network' | 'owner' | 'tag';
 		onConfirm: () => Promise<void>;
 		onCancel: () => void;
 	}
@@ -69,24 +69,24 @@
 >
 	<!-- Modal Card -->
 	<div
-		class="relative mx-4 w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-neutral-900"
+		class="relative mx-4 w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-neutral-900"
 	>
 		<!-- Title -->
 		<h2
 			id="deactivate-modal-title"
-			class="mb-4 text-xl font-semibold text-neutral-900 dark:text-neutral-50"
+			class="mb-4 text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-50"
 		>
 			{t(`${entityType}s.deactivate.title`)}
 		</h2>
 
 		<!-- Confirm Prompt -->
-		<p class="mb-6 text-sm text-neutral-700 dark:text-neutral-300">
+		<p class="mb-6 text-base text-neutral-700 dark:text-neutral-300">
 			{t(`${entityType}s.deactivate.confirmPrompt`)}
 		</p>
 
 		<!-- Entity Name (for reference) -->
-		<div class="mb-6 rounded-md bg-neutral-100 p-3 dark:bg-neutral-800">
-			<p class="text-sm font-medium text-neutral-900 dark:text-neutral-50">
+		<div class="mb-6 rounded-xl bg-neutral-100 p-4 dark:bg-neutral-800">
+			<p class="text-base font-medium text-neutral-900 dark:text-neutral-50">
 				{entityName}
 			</p>
 		</div>
@@ -97,7 +97,7 @@
 				type="button"
 				onclick={onCancel}
 				disabled={isSubmitting}
-				class="rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-600 dark:text-neutral-300 dark:hover:bg-neutral-800"
+				class="inline-flex min-h-11 items-center rounded-full border border-neutral-300 px-5 py-2.5 text-base font-medium text-neutral-700 transition-colors duration-150 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-600 dark:text-neutral-300 dark:hover:bg-neutral-800"
 			>
 				{t('common.actions.cancel')}
 			</button>
@@ -105,7 +105,7 @@
 				type="button"
 				onclick={handleConfirm}
 				disabled={isSubmitting}
-				class="rounded-md bg-warning-600 px-4 py-2 text-sm font-medium text-white hover:bg-warning-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-warning-700 dark:hover:bg-warning-800"
+				class="inline-flex min-h-11 items-center rounded-full bg-warning-600 px-5 py-2.5 text-base font-medium text-white transition-colors duration-150 hover:bg-warning-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-warning-700 dark:hover:bg-warning-800"
 			>
 				{isSubmitting ? t('common.states.loading') : t('common.actions.confirm')}
 			</button>

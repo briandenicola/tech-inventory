@@ -3,12 +3,22 @@
  * 
  * Per T10: Svelte writable store containing authenticated user context.
  * Populated from /api/v1/owners/me after MSAL sign-in.
+ *
+ * F025 — also populated synthetically when the user signs in via a local
+ * fallback account. Local sign-in does NOT go through /owners/me because the
+ * Owner aggregate is per-Entra-identity; the local user is its own thing.
  * 
  * Related: specs/002-frontend-mvp/spec.md §4.3, §5, J1, J13
  */
 
 import { writable } from 'svelte/store';
 import { z } from 'zod';
+import {
+	clearLocalSession,
+	getLocalSessionMeta,
+	setLocalSession,
+	type LocalSessionMeta
+} from '$lib/auth/local-session';
 
 /**
  * OwnerResponse schema (runtime validation mirror of OpenAPI)
@@ -45,6 +55,8 @@ export interface AuthState {
 	isAuthenticated: boolean;
 	isLoading: boolean;
 	error: string | null;
+	authMethod: 'entra' | 'local' | null;
+	mustChangePassword: boolean;
 }
 
 /**
@@ -54,7 +66,9 @@ const initialState: AuthState = {
 	currentUser: null,
 	isAuthenticated: false,
 	isLoading: true,
-	error: null
+	error: null,
+	authMethod: null,
+	mustChangePassword: false
 };
 
 /**
@@ -94,7 +108,9 @@ export async function fetchCurrentUser(): Promise<void> {
 			currentUser,
 			isAuthenticated: true,
 			isLoading: false,
-			error: null
+			error: null,
+			authMethod: 'entra',
+			mustChangePassword: false
 		});
 	} catch (error) {
 		console.error('[auth] Failed to fetch current user:', error);
@@ -109,19 +125,106 @@ export async function fetchCurrentUser(): Promise<void> {
 			currentUser: null,
 			isAuthenticated: false,
 			isLoading: false,
-			error: errorMessage
+			error: errorMessage,
+			authMethod: null,
+			mustChangePassword: false
 		});
 	}
+}
+
+/**
+ * F025 — sync the auth store with a local-account session that already lives
+ * in sessionStorage (e.g. after a page reload). Returns true if a local
+ * session was present and applied.
+ */
+export function hydrateLocalSession(): boolean {
+	const meta = getLocalSessionMeta();
+	if (!meta) return false;
+	applyLocalSessionMeta(meta);
+	return true;
+}
+
+/**
+ * F025 — exchange username + password for a local JWT and hydrate the store.
+ * Throws on failure so the caller can surface the error in the form.
+ */
+export async function localSignIn(username: string, password: string): Promise<LocalSessionMeta> {
+	const { localAuth } = await import('$lib/api/client');
+	const response = await localAuth.login({ username, password });
+	if (!response || !response.accessToken) {
+		throw new Error('Local sign-in returned no token.');
+	}
+
+	const meta = setLocalSession(response.accessToken);
+	applyLocalSessionMeta(meta);
+	return meta;
+}
+
+/**
+ * F025 — drop the local session and reset the store to unauthenticated.
+ */
+export function localSignOut(): void {
+	clearLocalSession();
+	authStore.set({
+		currentUser: null,
+		isAuthenticated: false,
+		isLoading: false,
+		error: null,
+		authMethod: null,
+		mustChangePassword: false
+	});
+}
+
+/**
+ * F025 — call after a successful change-password round-trip to clear the
+ * must-change flag in the in-memory store. The next page load will
+ * re-hydrate from the new JWT once /auth/local/login is invoked again.
+ */
+export function markLocalPasswordChanged(): void {
+	authStore.update((state) => ({ ...state, mustChangePassword: false }));
 }
 
 /**
  * Clear auth state (on logout)
  */
 export function clearAuth(): void {
+	clearLocalSession();
 	authStore.set({
 		currentUser: null,
 		isAuthenticated: false,
 		isLoading: false,
-		error: null
+		error: null,
+		authMethod: null,
+		mustChangePassword: false
+	});
+}
+
+/**
+ * F020 v1 — update the displayName on the current user in the store so the
+ * header chip + any other live consumers reflect a self-service rename
+ * without a hard reload. Call this AFTER a successful
+ * `api.owners.updateMyProfile(...)` round-trip.
+ */
+export function updateCurrentUserDisplayName(displayName: string): void {
+	authStore.update((state) =>
+		state.currentUser
+			? { ...state, currentUser: { ...state.currentUser, displayName } }
+			: state
+	);
+}
+
+function applyLocalSessionMeta(meta: LocalSessionMeta): void {
+	authStore.set({
+		currentUser: {
+			id: meta.subjectId,
+			entraObjectId: null,
+			displayName: meta.displayName,
+			role: meta.role
+		},
+		isAuthenticated: true,
+		isLoading: false,
+		error: null,
+		authMethod: 'local',
+		mustChangePassword: meta.mustChangePassword
 	});
 }

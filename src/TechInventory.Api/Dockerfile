@@ -7,7 +7,10 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Copy solution and project files (layer cache optimization)
-COPY TechInventory.sln ./
+# Note: repo uses the new XML solution format (`.slnx`). `dotnet restore`
+# below targets the csproj directly so the solution file is not strictly
+# required, but we copy it for parity with local `dotnet` workflows.
+COPY TechInventory.slnx ./
 COPY src/TechInventory.Domain/TechInventory.Domain.csproj ./src/TechInventory.Domain/
 COPY src/TechInventory.Application/TechInventory.Application.csproj ./src/TechInventory.Application/
 COPY src/TechInventory.Infrastructure/TechInventory.Infrastructure.csproj ./src/TechInventory.Infrastructure/
@@ -19,9 +22,14 @@ RUN dotnet restore src/TechInventory.Api/TechInventory.Api.csproj
 # Copy remaining source
 COPY src/ ./src/
 
-# Build and publish
+# Build and publish.
+# NOTE: we intentionally do NOT pass --no-restore here. With .NET 10 SDK
+# 10.0.300 we hit NETSDK1064 ("Microsoft.CodeAnalysis.Analyzers 3.11.0
+# was not found") when publish reused the obj/ from the earlier restore
+# step inside BuildKit layer cache. Re-restoring during publish is a few
+# extra seconds and avoids the analyzer-package mismatch entirely.
 WORKDIR /src/src/TechInventory.Api
-RUN dotnet publish -c Release -o /app/publish --no-restore
+RUN dotnet publish -c Release -o /app/publish
 
 # --- Runtime stage ---
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS runtime
@@ -49,8 +57,10 @@ EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
 
-# Healthcheck
+# Healthcheck — use /health/ready so the image's baked-in default matches
+# the compose override and any future DB-readiness gating added to the
+# readiness endpoint takes effect for standalone `docker run` consumers too.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health/ready || exit 1
 
 ENTRYPOINT ["dotnet", "TechInventory.Api.dll"]

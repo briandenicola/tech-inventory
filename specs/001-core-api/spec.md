@@ -1,7 +1,7 @@
 # Spec 001 — Core API
 
-**Status**: Draft
-**Phase**: 1 (Weeks 3–5) per PRD §13
+**Status**: Shipped (48/48 tasks complete)
+**Phase**: Canonical **P1 — Core API** under PRD §13 as rewritten 2026-05-19. *(Originally drafted as "Phase 1 (Weeks 3–5) per PRD §13" under the pre-rewrite numbering; the spec content is unchanged, only the phase label is reframed.)*
 **Owner**: Ripley (Lead/Architect)
 **Last Updated**: 2025-05-18
 

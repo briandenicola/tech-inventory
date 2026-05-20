@@ -1,5 +1,5 @@
 /**
- * Reference Data Store — Brands, Categories, Owners, Locations, Networks, Tags
+ * Reference Data Store — Brands, Categories, Owners, Locations, Networks
  * 
  * Per T16: Reference entities (brands, categories, etc.) are slow-changing.
  * Fetch once on component mount; cache in module-level store. Don't refetch
@@ -10,6 +10,9 @@
 
 import { writable } from 'svelte/store';
 import { brands, categories, owners, locations, networks, tags } from '$lib/api/client';
+import type { components } from '$lib/api/generated/types';
+
+type TagResponse = components['schemas']['TagResponse'];
 
 /**
  * Simple reference entity shape (name + id)
@@ -19,7 +22,9 @@ export type ReferenceEntity = {
 	name: string;
 };
 
-export type ReferenceTag = ReferenceEntity & {
+export type ReferenceTag = TagResponse & {
+	id: string;
+	name: string;
 	color: string | null;
 };
 
@@ -60,15 +65,21 @@ export async function fetchReferenceData(): Promise<void> {
 	referenceDataStore.update((state) => ({ ...state, isLoading: true, error: null }));
 
 	try {
+		// Fetch all in parallel.
+		// pageSize is capped at 200 by Application validators (see Brands/Categories/
+		// Owners/Locations/Networks/Tags ListQueryValidator) — asking for more would
+		// 400 the whole reference-data fetch and leave every dropdown empty.
 		const [brandsRes, categoriesRes, ownersRes, locationsRes, networksRes, tagsRes] = await Promise.all([
-			brands.list({ pageSize: 1000, includeInactive: false }),
-			categories.list({ pageSize: 1000, includeInactive: false }),
-			owners.list({ pageSize: 1000, includeInactive: false }),
-			locations.list({ pageSize: 1000, includeInactive: false }),
-			networks.list({ pageSize: 1000, includeInactive: false }),
-			tags.list({ pageSize: 1000, includeInactive: false })
+			brands.list({ pageSize: 200, includeInactive: false }),
+			categories.list({ pageSize: 200, includeInactive: false }),
+			owners.list({ pageSize: 200, includeInactive: false }),
+			locations.list({ pageSize: 200, includeInactive: false }),
+			networks.list({ pageSize: 200, includeInactive: false }),
+			tags.list({ pageSize: 200, includeInactive: false })
 		]);
 
+		// Extract items (each response shape: { items: [], totalCount, page, pageSize })
+		// Use type guards and nullish checks for safe property access
 		const brandsData = brandsRes.items
 			? brandsRes.items
 					.filter((b): b is { id: string; name: string } => !!b.id && !!b.name)
@@ -99,15 +110,16 @@ export async function fetchReferenceData(): Promise<void> {
 					.filter((n): n is { id: string; name: string } => !!n.id && !!n.name)
 					.map((n) => ({ id: n.id, name: n.name }))
 			: [];
-		const tagsData = tagsRes.items
-			? tagsRes.items
-					.filter((tag): tag is { id: string; name: string; color?: string | null } => !!tag.id && !!tag.name)
-					.map((tag) => ({
-						id: tag.id,
-						name: tag.name,
-						color: tag.color ?? null
-					}))
-			: [];
+		// Tags keep the generated TagResponse fields while narrowing id/name/color
+		// for components that require non-null swatches and labels.
+		const tagsData: ReferenceTag[] = (tagsRes.items ?? [])
+			.filter((tag): tag is TagResponse & { id: string; name: string } => !!tag.id && !!tag.name)
+			.map((tag) => ({
+				...tag,
+				id: tag.id,
+				name: tag.name,
+				color: tag.color ?? null
+			}));
 
 		referenceDataStore.set({
 			brands: brandsData,

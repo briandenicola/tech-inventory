@@ -129,6 +129,38 @@ public sealed class ImportsControllerTests(IntegrationTestFactory<ImportsControl
     }
 
     [Fact]
+    public async Task CommitImport_WhenOwnerColumnIsMissing_DefaultsToCurrentImporter()
+    {
+        await ResetDatabaseAsync();
+        var references = await SeedDeviceReferenceDataAsync();
+        using var client = CreateClient();
+
+        var provisionResponse = await client.GetAsync("/api/v1/owners/me");
+        provisionResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var currentOwner = await ReadJsonAsync<TechInventory.Application.Owners.OwnerResponse>(provisionResponse);
+
+        using var content = await CreateMultipartFileContentAsync(
+            "devices-owner-omitted.csv",
+            CreateCsvWithoutOwnerColumn(references.Brand.Name, references.Category.Name, references.Location.Name));
+
+        var response = await client.PostAsync("/api/v1/imports/commit", content);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var payload = await ReadJsonAsync<CommitImportResult>(response);
+        payload.ImportedRows.Should().Be(2);
+        payload.InvalidRows.Should().Be(0);
+
+        await WithDbContextAsync(async dbContext =>
+        {
+            var imported = await dbContext.Devices
+                .Where(device => device.Name == "Owner-Less Device A" || device.Name == "Owner-Less Device B")
+                .ToListAsync();
+            imported.Should().HaveCount(2);
+            imported.Should().OnlyContain(device => device.OwnerId == currentOwner.Id);
+        });
+    }
+
+    [Fact]
     public async Task CommitImport_WhenCsvReferencesMissingLookups_AutoCreatesLookups()
     {
         await ResetDatabaseAsync();
@@ -272,6 +304,13 @@ public sealed class ImportsControllerTests(IntegrationTestFactory<ImportsControl
             Environment.NewLine,
             "Title,Brand,Model,Serial Number,Category,Owner,Location,Purchase Date,Purchase Price,Status,Notes",
             "Mystery Device,Unknown Brand,Model Z,SN-300,Unknown Category,Unknown Owner,Unknown Location,2024-01-01,123.45,Active,Needs lookup creation");
+
+    private static string CreateCsvWithoutOwnerColumn(string brand, string category, string location)
+        => string.Join(
+            Environment.NewLine,
+            "Title,Brand,Model,Serial Number,Category,Location,Purchase Date,Purchase Price,Status,Notes",
+            $"Owner-Less Device A,{brand},Air,SN-A1,{category},{location},2024-03-15,799.00,Active,Imported without owner",
+            $"Owner-Less Device B,{brand},Pro,SN-A2,{category},{location},2024-04-22,1099.00,Active,Imported without owner");
 
     private static async Task<JsonNode> ReadJsonNodeAsync(HttpResponseMessage response)
     {

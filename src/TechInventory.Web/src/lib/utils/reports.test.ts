@@ -3,6 +3,7 @@ import {
 	formatDateOnly,
 	normalizeEraReport,
 	normalizeSummaryReport,
+	normalizeTimelineReport,
 	normalizeWarrantyReport,
 	sortWarrantyItems
 } from './reports';
@@ -66,6 +67,26 @@ describe('reports utils', () => {
 
 		expect(report.decades.map((item) => item.decade)).toEqual(['1990s', '2020s']);
 		expect(report.appliedCategoryId).toBe('cat-phones');
+	});
+
+	it('normalizes timeline payloads into grouped lifespan bars', () => {
+		const report = normalizeTimelineReport({
+			entries: [
+				{ deviceName: 'Surface Laptop', brand: 'Microsoft', purchaseDate: '2018-03-01', disposalDate: '2021-03-01', groupLabel: 'Computers', estimatedValue: 1200 },
+				{ deviceName: 'iPhone 15', brand: 'Apple', purchaseDate: '2023-09-22', disposalDate: null, groupLabel: 'Phones', estimatedValue: 999 }
+			],
+			asOfDate: '2026-05-20',
+			groupBy: 'Category',
+			appliedCategoryId: null
+		});
+
+		expect(report.groups.map((group) => group.label)).toEqual(['Computers', 'Phones']);
+		expect(report.minDate).toBe('2018-03-01');
+		expect(report.maxDate).toBe('2026-05-20');
+		expect(report.entries[0]).toMatchObject({ deviceName: 'Surface Laptop', isActive: false, endDate: '2021-03-01' });
+		expect(report.entries[1]).toMatchObject({ deviceName: 'iPhone 15', isActive: true, endDate: '2026-05-20' });
+		expect(report.entries[0]?.durationYears).toBeCloseTo(3, 1);
+		expect(report.entries[1]?.widthPercent).toBeGreaterThan(0);
 	});
 
 	it('sorts warranty items by expiry date ascending by default', () => {

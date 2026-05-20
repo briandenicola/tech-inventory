@@ -95,3 +95,28 @@ export interface EraReportResponse {
 	asOfDate?: string | null;
 	appliedCategoryId?: string | null;
 }
+
+export type TimelineReportGroupBy = 'Category' | 'Owner';
+
+export interface TimelineEntry {
+	deviceName?: string | null;
+	brand?: string | null;
+	purchaseDate?: string | null;
+	disposalDate?: string | null;
+	groupLabel?: string | null;
+	estimatedValue?: number | null;
+}
+
+export interface TimelineReportParams {
+	categoryId?: string | null;
+	groupBy?: TimelineReportGroupBy;
+	fromDate?: string | null;
+	toDate?: string | null;
+}
+
+export interface TimelineReportResponse {
+	entries?: TimelineEntry[] | null;
+	asOfDate?: string | null;
+	groupBy?: TimelineReportGroupBy;
+	appliedCategoryId?: string | null;
+}

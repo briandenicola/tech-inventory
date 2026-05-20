@@ -11,6 +11,8 @@ import type {
 	MergeEntityRequest,
 	MergeEntityResponse,
 	SummaryReportResponse,
+	TimelineReportParams,
+	TimelineReportResponse,
 	WarrantyReportResponse
 } from './types';
 
@@ -189,6 +191,19 @@ function buildQueryString(
 
 	const query = searchParams.toString();
 	return query ? `?${query}` : '';
+}
+
+export async function fetchTimelineReport(
+	params: TimelineReportParams = {}
+): Promise<TimelineReportResponse> {
+	return apiFetch<TimelineReportResponse>(
+		`/api/v1/reports/timeline${buildQueryString({
+			categoryId: params.categoryId,
+			groupBy: params.groupBy,
+			fromDate: params.fromDate,
+			toDate: params.toDate
+		})}`
+	);
 }
 
 /**
@@ -565,6 +580,8 @@ export const reports = {
 		apiFetch<EraReportResponse>(
 			`/api/v1/reports/eras${buildQueryString({ categoryId })}`
 		),
+
+	timeline: async (params: TimelineReportParams = {}) => fetchTimelineReport(params),
 
 	warranties: async (days: number) =>
 		apiFetch<WarrantyReportResponse>(

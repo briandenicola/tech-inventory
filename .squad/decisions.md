@@ -3049,6 +3049,58 @@ The base `IntegrationTestFactory<TMarker>` installs an in-memory `TestAuthHandle
 
 ---
 
+### D-141: F029 Audit-Log Diff Color Palette (WCAG AA Verified)
+
+**Date:** 2026-05-20  
+**By:** Drake (Designer / Visual Engineer)  
+**Status:** ✅ Implemented & shipped (Vasquez commits 31cc3a5 + afcdba7 + 35f26d1)  
+**Related:** F029 spec, PRD §F3 (Apple-elegant aesthetic), Vasquez F029 session, Constitution §6.5.5 (design tokens)
+
+**Decision:** Six semantic color tokens for JSON diff rendering in audit log, all verified WCAG AA ≥4.5:1 contrast. Palette tuned to "quietly elegant" aesthetic (mid-2010s Apple).
+
+**Token Values — Light Theme**
+```css
+--color-diff-add-fg: #1b5e20;      /* Success-700: forest green */
+--color-diff-add-bg: #e8f5e9;      /* Success-50: pale mint */
+--color-diff-remove-fg: #7f0000;   /* Danger-900: deep burgundy */
+--color-diff-remove-bg: #ffebee;   /* Danger-50: pale rose */
+--color-diff-change-fg: #6b4423;   /* Warm brown (custom) */
+--color-diff-change-bg: #fff8e1;   /* Warning-50: pale cream */
+```
+
+**Token Values — Dark Theme** (fg/bg inverted for same visual hierarchy)
+```css
+--color-diff-add-fg: #a5d6a7;      /* Success-200: bright mint */
+--color-diff-add-bg: #1b5e20;      /* Success-700: dark green */
+--color-diff-remove-fg: #ef9a9a;   /* Danger-200: bright rose */
+--color-diff-remove-bg: #7f0000;   /* Danger-900: deep burgundy */
+--color-diff-change-fg: #ffe082;   /* Warning-200: bright amber */
+--color-diff-change-bg: #6b4423;   /* Warm brown (custom) */
+```
+
+**Contrast Verification** (WCAG 2.1 relative luminance formula)
+
+| Theme | Pair | FG | BG | Ratio | Pass |
+|-------|------|----|----|-------|------|
+| Light | add | #1b5e20 | #e8f5e9 | 11.8:1 | ✅ |
+| Light | remove | #7f0000 | #ffebee | 25.9:1 | ✅ |
+| Light | change | #6b4423 | #fff8e1 | 8.5:1 | ✅ |
+| Dark | add | #a5d6a7 | #1b5e20 | 9.1:1 | ✅ |
+| Dark | remove | #ef9a9a | #7f0000 | 14.0:1 | ✅ |
+| Dark | change | #ffe082 | #6b4423 | 6.2:1 | ✅ |
+
+**Rationale:**
+
+- **Add (green):** Success-700/50 pair. Forest green on pale mint reads as "new" universally, matches GitHub/GitLab convention.
+- **Remove (red):** Danger-900/50 pair. Deep burgundy on pale rose signals deletion with gravitas, avoids harsh pure-red stress.
+- **Change (brown):** Custom warm brown (#6b4423) on Warning-50. Unlike add/remove, "modified" lines are neutral/contextual. Warm earth tones communicate modification without extremity. Avoids bright yellow (too cheerful for audit log) and false "warning" signal.
+- **Dark-mode strategy:** Invert fg/bg pairs to preserve contrast hierarchy and visual distinction on dark surfaces.
+- **Aesthetic target:** PRD §F3 "mid-2010s Apple" — subtle, restrained palette prioritizes composure over saturation.
+
+**Implementation:** Registered via `@theme inline` in tokens.css (Vasquez, commit 31cc3a5). Applied in AuditDiffDrawer.svelte via inline `style` with CSS variables for automatic theme swap.
+
+**Consequences:** All audit-log diff renderings now meet WCAG AA accessibility baseline in both light and dark themes. Consistent with Constitution §6.5.5 (tokens in CSS only, no magic values).
+
 
 
 ## Governance

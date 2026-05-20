@@ -102,6 +102,44 @@ public sealed class ReportingRepository(AppDbContext dbContext) : IReportingRepo
             .ToArray();
     }
 
+    public async Task<IReadOnlyList<EraReportDecade>> GetEraReportAsync(Guid? categoryId, CancellationToken cancellationToken)
+    {
+        var query = _dbContext.Devices
+            .AsNoTracking()
+            .Where(device => device.Status != DeviceStatus.Retired
+                             && device.Status != DeviceStatus.Disposed
+                             && device.PurchaseDate.HasValue);
+
+        if (categoryId.HasValue)
+        {
+            query = query.Where(device => device.CategoryId == categoryId.Value);
+        }
+
+        var purchasedDevices = await query
+            .Select(device => new EraReportDeviceProjection(
+                device.Name,
+                device.PurchaseDate!.Value.Year,
+                device.PurchasePrice))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return purchasedDevices
+            .GroupBy(device => GetDecadeStartYear(device.PurchaseYear))
+            .OrderByDescending(group => group.Key)
+            .Select(group => new EraReportDecade(
+                $"{group.Key}s",
+                group.Key,
+                group.Key + 9,
+                group.Count(),
+                group.Sum(device => device.PurchasePrice ?? 0m),
+                group.OrderByDescending(device => device.PurchaseYear)
+                    .ThenBy(device => device.Name)
+                    .Select(device => device.Name)
+                    .Take(3)
+                    .ToArray()))
+            .ToArray();
+    }
+
     public async Task<IReadOnlyList<InsuranceReportItem>> GetInsuranceReportItemsAsync(Guid? locationId, CancellationToken cancellationToken)
     {
         var activeDevices = _dbContext.Devices
@@ -196,4 +234,8 @@ public sealed class ReportingRepository(AppDbContext dbContext) : IReportingRepo
 
         return topCounts;
     }
+
+    private static int GetDecadeStartYear(int year) => year / 10 * 10;
+
+    private sealed record EraReportDeviceProjection(string Name, int PurchaseYear, decimal? PurchasePrice);
 }

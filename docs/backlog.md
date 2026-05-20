@@ -32,7 +32,7 @@ Extends the multi-select pattern from Devices to all reference-data admin pages.
 
 | ID | Feature | Description | Priority | Status |
 |----|---------|-------------|----------|--------|
-| F039 | Multi-select for Brands/Categories/Locations/Networks | Add checkbox multi-select to Brands, Categories, Locations, and Networks admin pages (matching Devices pattern). When multiple items selected, offer: (1) bulk delete, (2) merge into one — user picks the merge target, all references are reassigned. | P2 | Backlog |
+| F039 | Multi-select for Brands/Categories/Locations/Networks | Add checkbox multi-select to Brands, Categories, Locations, and Networks admin pages (matching Devices pattern). When multiple items selected, offer: (1) bulk delete, (2) merge into one — user picks the merge target, all references are reassigned. | P2 | Done |
 
 ---
 

@@ -6,7 +6,7 @@
 	 *  - Display name editable for the current user (PATCH /api/v1/owners/me).
 	 *  - Email/oid + role rendered read-only (Entra owns those).
 	 *
-	 * Out of scope (deferred to F020b): avatar upload, dark-mode override,
+	 * Out of scope (deferred to F020b): avatar upload,
 	 * default landing page, density, session tab. The page leaves room for
 	 * those by sectioning Profile vs future panels.
 	 */

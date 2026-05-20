@@ -7,6 +7,7 @@
 	import { t } from '$lib/i18n';
 	import { goto, invalidateAll } from '$app/navigation';
 	import PullToRefresh from '$lib/components/PullToRefresh.svelte';
+	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import ToastContainer from '$lib/components/ToastContainer.svelte';
 	import { fetchReferenceData, referenceDataStore } from '$lib/stores/referenceData';
 	import { activePullToRefresh } from '$lib/stores/pullToRefresh';
@@ -232,6 +233,12 @@
 							>
 								{t('navigation.settings')}
 							</a>
+							<div class="px-3 py-3">
+								<p class="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+									{t('settings.theme.heading')}
+								</p>
+								<ThemeToggle />
+							</div>
 							<button
 								type="button"
 								role="menuitem"
@@ -326,6 +333,13 @@
 
 					<div class="mt-2 space-y-1 border-t border-neutral-200 pt-3 dark:border-neutral-800">
 						{@render mobileNavLink('/settings', t('navigation.settings'))}
+					</div>
+
+					<div class="rounded-2xl border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900/70">
+						<p class="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+							{t('settings.theme.heading')}
+						</p>
+						<ThemeToggle />
 					</div>
 
 					<!-- Mobile: User Info + Sign Out -->

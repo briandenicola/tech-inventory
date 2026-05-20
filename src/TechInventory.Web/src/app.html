@@ -21,20 +21,15 @@
 		<meta name="apple-mobile-web-app-status-bar-style" content="default" />
 		<meta name="apple-mobile-web-app-title" content="TechInv" />
 		<meta name="format-detection" content="telephone=no" />
-		<!-- F029: pre-hydration theme script (FOUC suppression) -->
+		<!-- T08: pre-hydration theme script (FOUC suppression) -->
 		<script>
 			try {
-				const stored = localStorage.getItem('ti.userPrefs.v1.' + (localStorage.getItem('ti.currentUserId') || ''));
-				if (stored) {
-					const prefs = JSON.parse(stored);
-					const theme = prefs.themePreference;
-					if (theme === 'light') {
-						document.documentElement.dataset.theme = 'light';
-					} else if (theme === 'dark') {
-						document.documentElement.dataset.theme = 'dark';
-					}
-					// else 'system' or missing → fall through to prefers-color-scheme
-				}
+				const preference = localStorage.getItem('theme-preference') || 'system';
+				const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+				const resolvedTheme =
+					preference === 'dark' || (preference !== 'light' && prefersDark) ? 'dark' : 'light';
+				document.documentElement.dataset.theme = resolvedTheme;
+				document.documentElement.classList.toggle('dark', resolvedTheme === 'dark');
 			} catch {}
 		</script>
 		%sveltekit.head%

@@ -4,6 +4,7 @@
 	import { page } from '$app/stores';
 	import { initializeMsal, handleRedirectPromise, getActiveAccount } from '$lib/auth';
 	import { fetchCurrentUser, authStore, hydrateLocalSession } from '$lib/stores/auth';
+	import { initializeTheme } from '$lib/stores/theme.svelte';
 	import '$lib/api'; // Wire MSAL token provider into API client
 	import '../app.css';
 	import { t } from '$lib/i18n';
@@ -18,6 +19,8 @@
 	// F025 — local-account session (if any) is hydrated BEFORE we touch MSAL so
 	// a break-glass admin doesn't get bounced through Entra on page reload.
 	onMount(async () => {
+		initializeTheme();
+
 		try {
 			if (hydrateLocalSession()) {
 				return;

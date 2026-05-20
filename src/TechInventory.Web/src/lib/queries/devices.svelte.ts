@@ -1,21 +1,25 @@
 /**
  * T14: Devices List Query Hook — Svelte 5 Runes Pattern
- * 
- * useDevices() hook provides reactive server state for device list with
- * filter/sort/pagination. Auto-refetches when filters change ($derived + $effect).
- * Simple cache by serialized filter key; invalidation wired in R4 (CRUD mutations).
- * 
+ *
+ * useDevices() provides reactive server state for device list filters,
+ * sorting, pagination, and infinite-scroll page fetches.
+ *
  * Related: specs/002-frontend-mvp/spec.md §5 (Devices list), J4
  */
 
 import { devices } from '$lib/api/client';
 import { z } from 'zod';
 
+export const DEFAULT_DEVICE_PAGE_SIZE = 25;
+export const MAX_DEVICE_PAGE_SIZE = 200;
+
 /**
  * DeviceStatus enum (mirror OpenAPI spec)
  */
 export const DeviceStatus = z.enum(['Active', 'Retired', 'Disposed', 'InRepair', 'Lent']);
 export type DeviceStatus = z.infer<typeof DeviceStatus>;
+export type DeviceSort = 'name' | 'purchaseDate' | 'createdAt';
+export type DeviceSortDirection = 'asc' | 'desc';
 
 /**
  * DeviceResponse schema (runtime validation mirror of OpenAPI)
@@ -25,19 +29,25 @@ export const DeviceResponseSchema = z.object({
 	name: z.string().nullable(),
 	model: z.string().nullable(),
 	serialNumber: z.string().nullable(),
-	brandId: z.string().uuid(),
+	brandId: z.string().uuid().nullable(),
 	categoryId: z.string().uuid(),
-	ownerId: z.string().uuid(),
-	locationId: z.string().uuid(),
+	ownerId: z.string().uuid().nullable(),
+	locationId: z.string().uuid().nullable(),
 	networkId: z.string().uuid().nullable(),
-	purchaseDate: z.string().nullable(), // ISO date string
+	purchaseDate: z.string().nullable(),
 	purchasePrice: z.number().nullable(),
 	currencyCode: z.string().nullable(),
 	status: z.string().nullable(),
 	notes: z.string().nullable(),
 	retiredDate: z.string().nullable(),
 	disposalMethod: z.string().nullable(),
-	createdAt: z.string(), // ISO datetime
+	purpose: z.string().nullish(),
+	operatingSystem: z.string().nullish(),
+	ipAddress: z.string().nullish(),
+	macAddress: z.string().nullish(),
+	productUrl: z.string().nullish(),
+	version: z.string().nullish(),
+	createdAt: z.string(),
 	createdBy: z.string().nullable(),
 	modifiedAt: z.string(),
 	modifiedBy: z.string().nullable()
@@ -65,10 +75,6 @@ export type PaginatedResponse<T> = {
 
 /**
  * Device filters shape (maps to /api/v1/devices query params)
- * 
- * Note: OpenAPI uses PascalCase query params (Page, PageSize, Search, etc.)
- * but API client wrapper (client.ts) accepts camelCase and passes raw params object.
- * Our hook uses camelCase internally; wrapper maps to API shape.
  */
 export interface DeviceFilters {
 	search?: string;
@@ -80,10 +86,26 @@ export interface DeviceFilters {
 	status?: DeviceStatus[];
 	purchaseYearMin?: number;
 	purchaseYearMax?: number;
-	sort?: 'name' | 'purchaseDate' | 'createdAt';
-	sortDir?: 'asc' | 'desc';
+	sort?: DeviceSort;
+	sortDir?: DeviceSortDirection;
 	page?: number;
 	pageSize?: number;
+}
+
+interface DeviceFiltersParams {
+	Page?: number;
+	PageSize?: number;
+	Search?: string;
+	BrandId?: string;
+	CategoryId?: string;
+	OwnerId?: string;
+	LocationId?: string;
+	NetworkId?: string;
+	Status?: DeviceStatus;
+	PurchaseYearFrom?: number;
+	PurchaseYearTo?: number;
+	SortBy?: DeviceSort;
+	SortDescending?: boolean;
 }
 
 /**
@@ -96,23 +118,44 @@ export interface DevicesQueryResult {
 	refetch: () => Promise<void>;
 }
 
-/**
- * Simple in-memory cache by serialized filter key
- * Round 4 (CRUD mutations) will invalidate cache entries; for now, cache lives per filter set.
- */
+type DeviceFiltersSource = DeviceFilters | (() => DeviceFilters);
+
 const cache = new Map<string, PaginatedResponse<DeviceResponse>>();
 
-/**
- * Serialize filters to cache key (stable sort keys)
- */
-function serializeFilters(filters: DeviceFilters): string {
-	// Sort keys for stable serialization
-	const sorted = Object.keys(filters)
+export function clampDevicePage(page: number | undefined): number {
+	if (typeof page !== 'number' || !Number.isFinite(page)) {
+		return 1;
+	}
+
+	return Math.max(1, Math.floor(page));
+}
+
+export function clampDevicePageSize(pageSize: number | undefined): number {
+	if (typeof pageSize !== 'number' || !Number.isFinite(pageSize)) {
+		return DEFAULT_DEVICE_PAGE_SIZE;
+	}
+
+	return Math.min(MAX_DEVICE_PAGE_SIZE, Math.max(1, Math.floor(pageSize)));
+}
+
+export function normalizeDeviceFilters(filters: DeviceFilters): DeviceFilters {
+	return {
+		...filters,
+		page: clampDevicePage(filters.page),
+		pageSize: clampDevicePageSize(filters.pageSize),
+		sortDir: filters.sort ? (filters.sortDir ?? 'asc') : filters.sortDir,
+		status: filters.status ? [...filters.status].sort() : undefined
+	};
+}
+
+export function serializeDeviceFilters(filters: DeviceFilters): string {
+	const normalized = normalizeDeviceFilters(filters);
+	const sorted = Object.keys(normalized)
 		.sort()
 		.reduce((acc, key) => {
-			const val = filters[key as keyof DeviceFilters];
-			if (val !== undefined && val !== null) {
-				acc[key] = val;
+			const value = normalized[key as keyof DeviceFilters];
+			if (value !== undefined && value !== null) {
+				acc[key] = value;
 			}
 			return acc;
 		}, {} as Record<string, unknown>);
@@ -120,36 +163,67 @@ function serializeFilters(filters: DeviceFilters): string {
 	return JSON.stringify(sorted);
 }
 
+function resolveFilters(filters: DeviceFiltersSource): DeviceFilters {
+	return typeof filters === 'function' ? filters() : filters;
+}
+
+function buildDeviceQueryParams(filters: DeviceFilters): DeviceFiltersParams {
+	const params: DeviceFiltersParams = {
+		Page: filters.page,
+		PageSize: filters.pageSize
+	};
+
+	if (filters.search) params.Search = filters.search;
+	if (filters.brandId) params.BrandId = filters.brandId;
+	if (filters.categoryId) params.CategoryId = filters.categoryId;
+	if (filters.ownerId) params.OwnerId = filters.ownerId;
+	if (filters.locationId) params.LocationId = filters.locationId;
+	if (filters.networkId) params.NetworkId = filters.networkId;
+	if (filters.status && filters.status.length > 0) {
+		params.Status = filters.status[0];
+	}
+	if (filters.purchaseYearMin !== undefined) {
+		params.PurchaseYearFrom = filters.purchaseYearMin;
+	}
+	if (filters.purchaseYearMax !== undefined) {
+		params.PurchaseYearTo = filters.purchaseYearMax;
+	}
+	if (filters.sort) {
+		params.SortBy = filters.sort;
+		params.SortDescending = filters.sortDir === 'desc';
+	}
+
+	return params;
+}
+
+export async function fetchDevicesPage(
+	filters: DeviceFilters
+): Promise<PaginatedResponse<DeviceResponse>> {
+	const normalizedFilters = normalizeDeviceFilters(filters);
+	const response = await devices.list(buildDeviceQueryParams(normalizedFilters));
+
+	return PaginatedResponseSchema(DeviceResponseSchema).parse(response);
+}
+
 /**
  * useDevices() — Svelte 5 runes-based reactive query hook
- * 
- * Usage:
- * ```
- * let filters = $state({ page: 1, pageSize: 25, search: 'iPhone' });
- * const query = useDevices(filters);
- * 
- * $effect(() => {
- *   // query.data, query.isLoading, query.error are reactive
- * });
- * ```
- * 
- * Auto-refetches when filters change via $derived + $effect internally.
+ *
+ * Pass a closure when the filter source is itself reactive to avoid capturing
+ * only the initial object value.
  */
-export function useDevices(filters: DeviceFilters): DevicesQueryResult {
-	// Internal reactive state
+export function useDevices(filters: DeviceFiltersSource): DevicesQueryResult {
 	let data = $state<PaginatedResponse<DeviceResponse> | null>(null);
 	let isLoading = $state<boolean>(true);
 	let error = $state<string | null>(null);
 
-	// Serialize filters for cache key
-	const cacheKey = $derived(serializeFilters(filters));
+	const normalizedFilters = $derived(normalizeDeviceFilters(resolveFilters(filters)));
+	const cacheKey = $derived(serializeDeviceFilters(normalizedFilters));
 
-	// Fetch function (called on mount + filter change)
 	async function fetchDevices() {
 		isLoading = true;
 		error = null;
+		data = null;
 
-		// Check cache first
 		const cached = cache.get(cacheKey);
 		if (cached) {
 			data = cached;
@@ -158,40 +232,7 @@ export function useDevices(filters: DeviceFilters): DevicesQueryResult {
 		}
 
 		try {
-			// Map filters to API query params shape (PascalCase)
-			// OpenAPI spec uses: Page, PageSize, Search, BrandId, etc.
-			const params: Record<string, unknown> = {};
-			if (filters.page !== undefined) params.Page = filters.page;
-			if (filters.pageSize !== undefined) params.PageSize = filters.pageSize;
-			if (filters.search) params.Search = filters.search;
-			if (filters.brandId) params.BrandId = filters.brandId;
-			if (filters.categoryId) params.CategoryId = filters.categoryId;
-			if (filters.ownerId) params.OwnerId = filters.ownerId;
-			if (filters.locationId) params.LocationId = filters.locationId;
-			if (filters.networkId) params.NetworkId = filters.networkId;
-			if (filters.status && filters.status.length > 0) {
-				// API expects single Status enum, not array — take first or join?
-				// From spec: Status is single enum, not multi-select. We store as array for UI;
-				// for now, only send first status. Round 4 may need backend support for multi-status.
-				params.Status = filters.status[0];
-			}
-			if (filters.purchaseYearMin !== undefined)
-				params.PurchaseYearFrom = filters.purchaseYearMin;
-			if (filters.purchaseYearMax !== undefined) params.PurchaseYearTo = filters.purchaseYearMax;
-
-			// Sort params: SortBy (string), SortDescending (bool)
-			if (filters.sort) {
-				params.SortBy = filters.sort;
-				params.SortDescending = filters.sortDir === 'desc';
-			}
-
-			// Call API (client.ts devices.list)
-			const response = await devices.list(params);
-
-			// Validate response schema
-			const validated = PaginatedResponseSchema(DeviceResponseSchema).parse(response);
-
-			// Cache result
+			const validated = await fetchDevicesPage(normalizedFilters);
 			cache.set(cacheKey, validated);
 			data = validated;
 		} catch (err) {
@@ -202,14 +243,12 @@ export function useDevices(filters: DeviceFilters): DevicesQueryResult {
 		}
 	}
 
-	// $effect: refetch when cacheKey changes (i.e., filters change)
 	$effect(() => {
-		// Read cacheKey to establish reactive dependency
 		void cacheKey;
+		void normalizedFilters;
 		void fetchDevices();
 	});
 
-	// Expose refetch function for manual refresh
 	const refetch = async () => {
 		cache.delete(cacheKey);
 		await fetchDevices();
@@ -229,9 +268,6 @@ export function useDevices(filters: DeviceFilters): DevicesQueryResult {
 	};
 }
 
-/**
- * Clear entire devices cache (e.g., after device CRUD mutation in Round 4)
- */
 export function invalidateDevicesCache(): void {
 	cache.clear();
 }

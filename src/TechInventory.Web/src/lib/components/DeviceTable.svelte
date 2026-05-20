@@ -230,7 +230,7 @@
 <div class="md:hidden space-y-4">
 	{#each devices as device (device.id)}
 		<a
-			href="/devices/{device.id}"
+			href={`/devices/${device.id}`}
 			class="block rounded-lg border border-neutral-200 bg-white p-4 transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:bg-neutral-900"
 		>
 			<div class="flex items-start justify-between">

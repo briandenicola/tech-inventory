@@ -221,6 +221,12 @@
 			"next": "Next Page",
 			"showing": "Showing {start} to {end} of {total} devices"
 		},
+		"infiniteScroll": {
+			"loadingMore": "Loading more devices…",
+			"complete": "You’ve reached the end of the device list.",
+			"backToTop": "Back to top",
+			"loadError": "Could not load more devices."
+		},
 		"filters": {
 			"title": "Filters",
 			"searchPlaceholder": "Search devices…",

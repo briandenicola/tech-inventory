@@ -2999,6 +2999,56 @@ rotation, remove the seed env vars and restart.
 
 ---
 
+### D-034: F031 Polish Round 2 — Search Relocation + Filter Flyout
+
+**Date:** 2026-05-20  
+**Author:** Vasquez (Frontend Developer)  
+**Status:** Implemented (commits 4d46c86, 987c0a8)  
+**Related:** Field-test feedback (Brian), F022 (filter defaults), F023 (grouping), F024 (bulk select), F026 (status chip)
+
+**Decisions:**
+
+1. **Search bar relocated to page header** — moved from inside filter drawer to main `devices/+page.svelte` header, directly below title and "Add Device" button. Full-width on mobile, `md:max-w-lg` (~32rem) on desktop.
+   - **Rationale:** Search is #1 entry point for device lookup. Hiding in drawer adds friction. Aligns with OS patterns (iOS Spotlight, Gmail, Drive). On mobile, pre-F031 required open drawer → search → close drawer = 2 wasted taps.
+   - **Trade-off:** Adds ~5 lines vertical space to header (acceptable).
+
+2. **Filter panel as flyout drawer on all breakpoints** — desktop sidebar (`md:sticky md:w-80`) converted to `position: fixed` floating drawer everywhere (`w-[22rem]` mobile, `md:w-96` desktop).
+   - **Rationale:** Reclaim 320px horizontal space at all times; consistency across breakpoints (one pattern, not mobile drawer + desktop sidebar); progressive disclosure (filters secondary to list).
+   - **Trade-off:** Desktop filter access now one click slower (previously always visible). Mitigated by: low filter usage (search + status chip cover 80%+ of lookups per Brian's analytics), keyboard shortcut potential for future.
+
+3. **Escape-to-close on filter drawer** — `$effect` wires `keydown` listener on `document`; Escape calls `onClose()`. Cleanup on teardown.
+
+4. **Mobile view-mode toggle** — new toggle in header to switch between card (default) and horizontally-scrollable table layouts. Persists to `userPrefs.devicesViewMode`.
+
+**Consequences:**
+- **Positive:** Faster device lookup (search now zero-click); 320px more list real estate on desktop (~1.5 extra table columns without scroll on 1366px laptop); consistent mental model across devices; standard Escape-to-close UX.
+- **Negative:** One click slower for desktop filter access (mitigated by low usage frequency).
+- **Neutral:** No impact on URL state, F022 defaults, F024 bulk select, F023 grouping, F026 status chip.
+
+**Verification:** `pnpm check/lint/vitest/build` ✅; `dotnet build` ✅ (0 errors, 0 warnings).
+
+---
+
+### D-035: Local Auth Pipeline — `UseTestAuth` Opt-Out Canonical Pattern
+
+**Date:** 2026-05-19  
+**By:** Bishop (Security/Auth) — at Brian's direction  
+**Status:** Implemented  
+**Related:** Constitution §4, D-025 (local auth break-glass)
+
+The base `IntegrationTestFactory<TMarker>` installs an in-memory `TestAuthHandler` (default Admin) so bulk integration tests don't wrangle JWT minting. Factories exercising the **real** auth pipeline (Entra JwtBearer, policy scheme auth-type sniffing, F025 local HS256 handler, `must_change_password` gate) MUST override `protected override bool UseTestAuth => false;`.
+
+**Currently applied to:**
+- `AuthIntegrationTests.NoAuthFactory`
+- `AuthIntegrationTests.JwtAuthFactory`
+- `LocalAuthEndpointTests.LocalAuthFactory`
+
+**Rationale:** Production binary is now bypass-free (the `Auth:DevBypass` shim was deleted). All test-side shortcuts live in test project, per-factory opt-in. Preserves ASVS V4.1.2 default-deny in production; keeps 401/403 negative-path tests honest (real `TechInventoryAuth` policy + Entra/Local handlers, not mocks).
+
+**Enforcement:** When `Program.cs` changes auth registration shape, every `PostConfigure<JwtBearerOptions>` in test project must re-point at the right scheme via `ApiAuthenticationSchemes.{EntraScheme,LocalScheme}` constants — never hardcoded strings.
+
+---
+
 
 
 ## Governance

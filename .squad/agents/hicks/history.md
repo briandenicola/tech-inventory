@@ -225,3 +225,10 @@ Brian must restart API (`Ctrl+C` then `task dev:up`) to pick up new config. Afte
 
 **Decisions added:** D-095..D-112 (18 total across all three commits).
 
+## Cross-Team Updates
+
+### 2026-05-20: F030 Device Tagging — Vasquez integrated picker (Hicks' `ListDeviceTagsQuery` endpoint)
+
+**Note from Vasquez (Frontend):** F030 device tagging picker shipped in commit 987c0a8 (field-test iteration). The picker consumes Hicks's `ListDeviceTagsQuery` endpoint (already landed) — working without issues. Tag selection / persistence / list display all wired correctly via generated TypeScript API client.
+
+

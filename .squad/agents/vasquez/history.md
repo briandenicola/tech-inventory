@@ -283,3 +283,30 @@ Work already completed in commit `68ddbd5` (`test(web): T26 ownership modals + T
 
 **Decisions added:** D-088..D-094 (7 total).
 
+
+## 2026-05-20 — F030 + F031 Polish Round 2 — 4d46c86, 987c0a8
+
+**Charter:** Two distinct feature sets delivered in a single batch with grouped commits:
+
+### Commit 1 — F030 Device Tagging (4d46c86)
+- **Backend:** ListDeviceTagsQuery + GET /api/v1/devices/{id}/tags endpoint
+- **Frontend:** TagPicker.svelte (type-ahead + inline create), wired into AddDeviceModal, edit page, DeviceDetailModal
+- **Reference data:** Tags collection added to referenceDataStore
+- **i18n:** devices.tags.* keys (label, sectionLabel, inputPlaceholder, listboxLabel, noMatches, empty, removeTag, applyErrorSome, updateErrorSome)
+
+### Commit 2 — F031 Polish Round 2 (987c0a8)
+- **Search relocation:** Moved search input out of DeviceFilters drawer into devices/+page.svelte header (full-width mobile, max-w-lg desktop, 300ms debounce). Removed searchTimeout + handleSearchChange from DeviceFilters.svelte (lines 46–55 deleted). Deleted the second "<!-- Search -->" block at lines 167–180 (the FIRST "<!-- Search -->" at line 142 was actually the groupBy dropdown — mislabeled comment).
+- **Filter flyout on desktop:** DeviceFilters aside now ixed inset-y-0 left-0 z-50 at every breakpoint (no more md:sticky md:top-0). Removed md:hidden from backdrop + close button. Escape-to-close via \ keydown listener. Main layout: removed <div class="flex min-h-screen"> wrapper and <div class="flex-1 p-6"> inner wrapper — single <div class="p-6"> with floating drawer. Filter button: removed md:hidden so it shows on desktop too.
+- **Mobile view-mode toggle:** Cards (default) vs Table (horizontally scrollable). userPrefs.devicesViewMode helpers added (getDevicesViewMode, setDevicesViewMode). DeviceTable.svelte: hoisted table markup into {#snippet tableMarkup()}, rendered from both <div class="hidden md:block"> (desktop) and {#if mobileViewMode === 'table'}<div class="md:hidden"> (mobile). devices/+page.svelte: segmented toggle (two-button group, md:hidden, cards/table icons), persisted via onMount + setViewMode handler.
+- **i18n:** devices.viewMode.* keys (cards, table, toggleLabel)
+
+**Learning: userPrefs.ts is the REAL location for F022 helpers.** Brian's brief said src/lib/utils/devicesDefaults.ts but that file doesn't exist. The actual helpers live in src/lib/stores/userPrefs.ts (confirmed by reading the file before extending it). This is a common pattern: initial specs may reference file names that get refactored during earlier work. Always verify the current codebase location via grep/view before assuming the brief's path is still accurate.
+
+**Learning: Snippet-hoisting pattern for shared markup.** DeviceTable needed to render the same <table> markup in three contexts: desktop (always-visible), mobile cards (mobileViewMode === 'cards'), mobile table (mobileViewMode === 'table'). Svelte 5 runes {#snippet} blocks are perfect for this: hoist the markup into 	ableMarkup() snippet, then {@render tableMarkup()} from both desktop and mobile conditional blocks. Keeps grouping/selection/sorting logic DRY without extracting a new component. Use this pattern when markup needs to render in multiple places within the same component but behavioral context (props, state) is identical.
+
+**Learning: Commit surgery for split i18n changes.** When one file (en.json) is touched by BOTH change-sets, the cleanest split protocol is: (1) save full version with both changes, (2) temporarily remove commit-2-only changes + stage, (3) commit 1, (4) restore full version, (5) stage + commit 2. Avoids git add -p fragility and stash juggling. Copy-Item + edit tool is faster than interactive hunks for structured data like JSON.
+
+**Acceptance:** All green — pnpm run check 0 errors / 0 warnings, pnpm run lint pass, pnpm exec vitest run all green, pnpm run build success, dotnet build --nologo -v minimal 0 errors / 0 warnings.
+
+**Decisions:** ADR written to .squad/decisions/inbox/vasquez-f031-polish-round2.md covering search relocation + filter flyout rationale.
+

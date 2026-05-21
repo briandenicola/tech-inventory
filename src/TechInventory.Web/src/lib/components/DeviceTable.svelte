@@ -364,8 +364,12 @@
 			{#if isGrouped && groups}
 				{#each groups as group (group.key)}
 					{@const collapsed = isCollapsed(group.key)}
+					<!-- regression-watch: top-[210px] must equal app header (73px) + devices page
+						 sticky header height (~137px: 32px py-4 + 44px title row + 16px mt-4
+						 + 44px search input). If devices/+page.svelte sticky header changes
+						 height or top offset, update this value. -->
 					<tr
-						class="sticky top-0 z-10 border-y border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900"
+						class="sticky top-[210px] z-10 border-y border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900"
 						data-testid="device-group-header"
 					>
 						<th colspan={groupColspan} scope="colgroup" class="px-4 py-2 text-left">

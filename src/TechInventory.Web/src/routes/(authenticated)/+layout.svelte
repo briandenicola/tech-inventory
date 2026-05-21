@@ -120,7 +120,7 @@
 
 <div class="flex min-h-screen flex-col bg-neutral-50 dark:bg-neutral-900">
 	<!-- Header -->
-	<header class="sticky top-0 z-50 border-b border-neutral-200/70 bg-white/85 backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-950/85">
+	<header class="sticky top-0 z-30 border-b border-neutral-200/70 bg-white/85 backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-950/85">
 		<div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
 			<!-- Left: Logo + App Name -->
 			<a href="/devices" class="flex items-center gap-3 rounded-full px-1 py-1 outline-none focus-visible:ring-2 focus-visible:ring-primary-500">

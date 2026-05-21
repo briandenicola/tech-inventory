@@ -129,7 +129,7 @@
 	  backdrop; the dialog card re-enables pointer-events for itself.
 	- Escape is handled at the window level above.
 -->
-<div class="fixed inset-0 z-50" bind:this={modalElement}>
+<div class="fixed inset-0" style="z-index: var(--z-modal-backdrop);" bind:this={modalElement}>
 	<button
 		type="button"
 		aria-label={t('common.actions.cancel')}
@@ -137,10 +137,11 @@
 		onclick={onClose}
 	></button>
 
-	<div class="pointer-events-none relative flex h-full items-start justify-center px-4 py-10 sm:py-16">
+	<div class="pointer-events-none relative flex h-full items-center justify-center px-4 pt-[calc(env(safe-area-inset-top,0px)+4.5rem)] pb-4 sm:py-10">
 		<div
 			bind:this={dialogElement}
-			class="ti-modal-surface pointer-events-auto relative flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-neutral-900"
+			class="ti-modal-surface pointer-events-auto relative flex max-h-[85dvh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-neutral-900"
+			style="z-index: var(--z-modal);"
 			role="dialog"
 			aria-modal="true"
 			aria-labelledby="add-device-modal-title"

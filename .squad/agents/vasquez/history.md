@@ -58,6 +58,20 @@ Three consecutive Vasquez spawns (modal-scroll, fab-regression, tab-title) fixed
 
 ## Learnings
 
+### 2026-05-21 — Modal Z-Index vs App Header Stacking (follow-up to D-164)
+
+**Problem:** b3600d2 modal scroll fix worked, but modal header was hidden BEHIND the app header on iOS PWA. User could see modal body but not close/action buttons.
+
+**Root cause:** Z-index token mismatch. The app header used Tailwind `z-50` (= 50) directly, while the modal backdrop wrapper used `--z-modal-backdrop: 40`. Since the modal's outermost `fixed inset-0` creates a stacking context at z-40, ALL children (including the card at `--z-modal: 50`) are trapped below the header's z-50.
+
+**Fix (two-part):**
+1. **Z-index:** Changed app header from `z-50` → `z-30` (matches `--z-fixed` token level). This respects the design token z-scale: sticky/fixed elements (20-30) < modal-backdrop (40) < modal (50) < popover (60) < tooltip (70).
+2. **Positioning:** Added `pt-[calc(env(safe-area-inset-top,0px)+4.5rem)]` to modal positioning wrappers so even on devices where safe-area creates extra offset, the modal card clears it. Changed `max-h-[90vh]` → `max-h-[85dvh]` (dynamic viewport units for iOS toolbar collapse). Centered AddDeviceModal vertically (`items-center` instead of `items-start`).
+
+**Convention established:** App header and all sticky/fixed page-level elements MUST use design token z-indices (`--z-sticky: 20` or `--z-fixed: 30`). Never use Tailwind z-50 on page elements — that range is reserved for modals. Modal cards must account for safe-area-inset-top via padding on the positioning wrapper.
+
+---
+
 ### 2026-05-21 — CRITICAL: WebKit Containing-Block Trap & Modal Scroll Pattern (D-164, D-165, D-166)
 
 **WebKit bug 160953 — Layout properties as containing-block triggers:**
@@ -324,3 +338,8 @@ Work already completed in commit `68ddbd5` (`test(web): T26 ownership modals + T
 
 - Default document title belongs in `src/TechInventory.Web/src/app.html`; without an explicit `<title>`, browsers can fall back to showing the URL in the tab.
 - When a page already has route-local context, set its `<svelte:head><title>…</title></svelte:head>` in the route `+page.svelte` and use the `{Page} — {t('app.title')}` pattern so authenticated pages stay consistent with the app name and punctuation.
+
+### 2026-05-21 — FAB vertical alignment fix
+- **Issue:** AddDeviceFab and BackToTopFab not at same y-coordinate when both visible.
+- **Root cause:** AddDeviceFab had a `raised` prop activated by `raised={showBackToTop}` in `+page.svelte`. When BackToTopFab appeared, AddDeviceFab's bottom jumped from `var(--space-6)` to `var(--space-20, 5rem)` — a leftover from when both FABs were on the same side. Since D-129 moved them to opposite corners (left vs right), vertical stacking is unnecessary.
+- **Fix:** Removed `raised` prop from AddDeviceFab component and its usage in `+page.svelte`. Both FABs now unconditionally use `bottom: calc(env(safe-area-inset-bottom, 0px) + var(--space-6))` — identical y-coordinate, mirrored horizontally.

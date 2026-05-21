@@ -889,7 +889,6 @@
 	visible={selectedIds.size === 0 && !createModalOpen && !selectedDeviceId}
 	label={t('devices.list.addFab')}
 	onClick={() => (createModalOpen = true)}
-	raised={showBackToTop}
 />
 
 <BackToTopFab

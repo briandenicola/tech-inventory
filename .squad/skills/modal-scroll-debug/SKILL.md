@@ -59,3 +59,15 @@ Always confirm whether a scroll report targets:
 - A **drawer** (slide-in panel)
 
 Different component types have completely different scroll architectures.
+
+### 7. Modal Vertical Positioning (D-164 follow-up)
+
+Modal cards must be **centered or offset to clear fixed app headers** — anchoring at viewport top with `max-h` alone is incomplete.
+
+| # | Failure | Symptom | Fix |
+|---|---------|---------|-----|
+| 7 | Card top behind app header | Modal title/close buttons hidden or clipped | Add `pt-[calc(env(safe-area-inset-top,0px)+4.5rem)]` to positioning wrapper |
+| 8 | Z-index below app header | Entire modal or its top portion obscured by sticky header | Ensure modal wrapper z-index > header z-index (use token scale) |
+| 9 | `max-h-[90vh]` too tall on iOS | Card extends into safe-area or toolbar zone | Use `max-h-[85dvh]` (dynamic viewport units adapt to iOS toolbar) |
+
+**Key rule:** Page-level sticky/fixed elements (headers, sub-navs) MUST use z-indices from the `--z-sticky` / `--z-fixed` range (20-30). Modal backdrop starts at `--z-modal-backdrop: 40`. Never use Tailwind `z-50` on page elements — that range belongs to modals.

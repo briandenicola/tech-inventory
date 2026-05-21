@@ -4,16 +4,14 @@
 		label: string;
 		href?: string;
 		onClick?: () => void;
-		raised?: boolean;
 	}
 
-	let { visible = false, label, href, onClick, raised = false }: Props = $props();
+	let { visible = false, label, href, onClick }: Props = $props();
 
 	const fabClass =
 		'fixed left-0 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary-600 text-white shadow-xl transition-all hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 md:hidden dark:bg-primary-500 dark:hover:bg-primary-600';
-	const fabStyle = $derived(
-		`left: calc(env(safe-area-inset-left, 0px) + var(--space-6)); bottom: calc(env(safe-area-inset-bottom, 0px) + ${raised ? 'var(--space-20, 5rem)' : 'var(--space-6)'}); z-index: var(--z-fixed);`
-	);
+	const fabStyle =
+		'left: calc(env(safe-area-inset-left, 0px) + var(--space-6)); bottom: calc(env(safe-area-inset-bottom, 0px) + var(--space-6)); z-index: var(--z-fixed);';
 </script>
 
 {#if visible}

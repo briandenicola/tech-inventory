@@ -294,12 +294,12 @@
 	></button>
 
 	<div
-		class="pointer-events-none relative flex min-h-full items-end justify-center sm:items-center sm:px-4 sm:py-10"
+		class="pointer-events-none relative flex min-h-full items-end justify-center pt-[calc(env(safe-area-inset-top,0px)+4.5rem)] sm:items-center sm:px-4 sm:py-10"
 	>
 		<div
 			bind:this={dialogElement}
 			transition:fly|local={{ y: 32, duration: 180 }}
-			class="ti-modal-surface pointer-events-auto relative flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl dark:bg-neutral-950 sm:max-w-4xl sm:rounded-2xl"
+			class="ti-modal-surface pointer-events-auto relative flex max-h-[85dvh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl dark:bg-neutral-950 sm:max-w-4xl sm:rounded-2xl"
 			role="dialog"
 			aria-modal="true"
 			aria-labelledby="device-detail-modal-title"

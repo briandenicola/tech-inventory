@@ -1,15 +1,20 @@
 name: Release Container Images
 
-# Build + push API and Web images to GHCR on every semver tag push.
+# Build + push API and Web images to GHCR on:
+#   - every semver tag push (v*.*.*) → :latest + :vX.Y.Z + :sha-<short>
+#   - every main branch push          → :main + :sha-<short>
+#   - manual workflow_dispatch        → :latest + :<inputs.tag> (optional)
+#                                       + :sha-<short>
 #
-# Triggered exclusively by `v*.*.*` tag pushes (e.g. `v0.1.0`, `v1.2.3`).
-# Each run produces two images, each tagged with both `:latest` and the
-# semver tag (`:vX.Y.Z`):
+# Image namespace:
+#   ghcr.io/briandenicola/tech-inventory-api:<tag>
+#   ghcr.io/briandenicola/tech-inventory-web:<tag>
 #
-#   ghcr.io/briandenicola/tech-inventory-api:latest
-#   ghcr.io/briandenicola/tech-inventory-api:vX.Y.Z
-#   ghcr.io/briandenicola/tech-inventory-web:latest
-#   ghcr.io/briandenicola/tech-inventory-web:vX.Y.Z
+# :latest deliberately tracks the most recent SEMVER RELEASE — NOT main
+# HEAD — so a home server pinning :latest always pulls tested release
+# builds. Main builds get :main for rolling "latest dev" access, plus
+# :sha-<short> for immutable per-commit deploys (Brian's preferred
+# IMAGE_TAG pinning pattern for staged rollouts).
 #
 # linux/amd64 only — Brian's home server is x86_64. Adding arm64 would
 # double build time for no current consumer; revisit when there is one.
@@ -19,13 +24,16 @@ name: Release Container Images
 
 on:
   push:
+    branches:
+      - main
     tags:
       - "v*.*.*"
   # Manual trigger from the Actions UI / `gh workflow run`. Useful for
-  # rebuilding `:latest` off main without cutting a fresh tag (e.g. after
-  # a security patch lands and you want the home server to pick it up).
-  # Optionally pass a `tag` input to also publish a named tag alongside
-  # `:latest` (defaults to empty → only `:latest` is pushed).
+  # rebuilding `:latest` off a specific commit without cutting a fresh
+  # tag (e.g. after a security patch lands and you want the home server
+  # to pick it up). Optionally pass a `tag` input to also publish a
+  # named tag alongside `:latest` (defaults to empty → only `:latest`
+  # is pushed, alongside the always-on `:sha-<short>`).
   workflow_dispatch:
     inputs:
       tag:
@@ -77,17 +85,26 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}-${{ matrix.image.name }}
-          # On tag pushes (`v*.*.*`): publish `:latest` + `:vX.Y.Z`.
-          # On workflow_dispatch: publish `:latest`, plus `:<inputs.tag>`
-          # if the operator provided one. `enable=` keeps the second
-          # tag from materialising as a literal `:` when no input is set.
+          # Tag rules per trigger:
+          #   - Tag push (v*.*.*):    :latest, :vX.Y.Z, :sha-<short>
+          #   - Main push:            :main, :sha-<short>   (NO :latest)
+          #   - workflow_dispatch:    :latest, :<inputs.tag>?, :sha-<short>
+          #
+          # `:latest` is intentionally gated to tag pushes + manual dispatch
+          # so home-server pulls of `:latest` always resolve to a tested
+          # release build, not whatever just merged to main.
+          #
+          # `github.ref_name` resolves to "vX.Y.Z" on tag push and "main"
+          # on main push, so the `${{ github.ref_name }}` line covers both
+          # the semver tag and the rolling :main tag with one rule.
+          #
           # `:sha-<short>` is published on every run so the downstream
           # Container Image Security Scan workflow can pull a
           # deterministic, race-free tag for whatever commit triggered
           # this run (it resolves the upstream head_sha → short SHA →
           # `sha-<short>` tag).
           tags: |
-            type=raw,value=latest
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
             type=raw,value=${{ github.ref_name }},enable=${{ github.event_name == 'push' }}
             type=raw,value=${{ inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' && inputs.tag != '' }}
             type=sha,format=short

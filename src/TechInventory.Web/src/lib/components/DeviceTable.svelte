@@ -166,7 +166,7 @@
 				<!-- Name (sortable, sticky for horizontal-scroll context) -->
 				<th
 					scope="col"
-					class="sticky left-0 z-20 bg-neutral-50 dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
+					class="sticky left-0 z-10 bg-neutral-50 dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
 					aria-sort={getAriaSort('name')}
 				>
 					<button
@@ -329,7 +329,7 @@
 							/>
 						</td>
 					{/if}
-					<td class="sticky left-0 z-20 border-r border-neutral-200 dark:border-neutral-800 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] {selected ? 'bg-primary-500/10' : 'bg-white dark:bg-neutral-950'} group-hover/row:bg-neutral-50 dark:group-hover/row:bg-neutral-900 px-4 py-4 text-sm font-medium text-neutral-900 dark:text-neutral-50">
+					<td class="sticky left-0 z-10 border-r border-neutral-200 dark:border-neutral-800 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] {selected ? 'bg-primary-500/10' : 'bg-white dark:bg-neutral-950'} group-hover/row:bg-neutral-50 dark:group-hover/row:bg-neutral-900 px-4 py-4 text-sm font-medium text-neutral-900 dark:text-neutral-50">
 						<div class="flex flex-col">
 							<span>{device.name || '—'}</span>
 							{#if device.model}

@@ -133,7 +133,9 @@
 			<!-- regression-watch: Desktop primary nav links removed per design rule (hamburger-only).
 				 Regression history: dd52e98 removed, 1de8da8 re-introduced. Do NOT restore. -->
 
-			<!-- Right: Unified user menu (display name + role + dropdown) -->
+			<!-- Right cluster: user menu + hamburger grouped together -->
+			<div class="flex items-center gap-2">
+			<!-- Desktop user menu (display name + role + dropdown) -->
 			<div class="relative hidden md:block">
 				{#if currentUser}
 					<button
@@ -267,30 +269,11 @@
 					{/if}
 				</svg>
 			</button>
+			</div>
 		</div>
 
-		{#if visibleAdminNavItems.length > 0}
-			<nav
-				class="hidden border-t border-neutral-200 bg-neutral-50 md:block dark:border-neutral-800 dark:bg-neutral-900/70"
-				aria-label="Admin navigation"
-			>
-				<div class="mx-auto flex max-w-7xl flex-wrap gap-2 px-4 py-3 sm:px-6 lg:px-8">
-					{#each visibleAdminNavItems as item (item.href)}
-						<a
-							href={item.href}
-							class="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-neutral-700 transition-colors hover:bg-white hover:text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-primary-400"
-							class:bg-white={isNavItemActive($page.url.pathname, item)}
-							class:text-primary-600={isNavItemActive($page.url.pathname, item)}
-							class:shadow-sm={isNavItemActive($page.url.pathname, item)}
-							class:dark:bg-neutral-800={isNavItemActive($page.url.pathname, item)}
-							class:dark:text-primary-400={isNavItemActive($page.url.pathname, item)}
-						>
-							{t(item.labelKey)}
-						</a>
-					{/each}
-				</div>
-			</nav>
-		{/if}
+		<!-- secondary admin nav removed — admin links live in hamburger + user menu
+			 (D-160-style rule extension). -->
 
 		<!-- Hamburger Menu (expanded — visible on all screen sizes) -->
 		{#if mobileMenuOpen}

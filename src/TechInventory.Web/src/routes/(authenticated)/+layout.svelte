@@ -130,19 +130,8 @@
 				</span>
 			</a>
 
-			<!-- Desktop Nav (hidden on mobile) -->
-			<nav class="hidden gap-6 md:flex" aria-label="Primary navigation">
-				{#each visiblePrimaryNavItems as item (item.href)}
-					<a
-						href={item.href}
-						class="text-sm font-medium text-neutral-700 hover:text-primary-600 dark:text-neutral-300 dark:hover:text-primary-400"
-						class:text-primary-600={isNavItemActive($page.url.pathname, item)}
-						class:dark:text-primary-400={isNavItemActive($page.url.pathname, item)}
-					>
-						{t(item.labelKey)}
-					</a>
-				{/each}
-			</nav>
+			<!-- regression-watch: Desktop primary nav links removed per design rule (hamburger-only).
+				 Regression history: dd52e98 removed, 1de8da8 re-introduced. Do NOT restore. -->
 
 			<!-- Right: Unified user menu (display name + role + dropdown) -->
 			<div class="relative hidden md:block">
@@ -233,12 +222,6 @@
 							>
 								{t('navigation.settings')}
 							</a>
-							<div class="px-3 py-3">
-								<p class="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-									{t('settings.theme.heading')}
-								</p>
-								<ThemeToggle />
-							</div>
 							<button
 								type="button"
 								role="menuitem"
@@ -252,10 +235,10 @@
 				{/if}
 			</div>
 
-			<!-- Mobile: Hamburger Menu Button -->
+			<!-- Hamburger Menu Button (all screen sizes — primary nav is hamburger-only) -->
 			<button
 				type="button"
-				class="inline-flex h-11 w-11 items-center justify-center rounded-full text-neutral-700 transition-colors hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-neutral-300 dark:hover:bg-neutral-800 md:hidden"
+				class="inline-flex h-11 w-11 items-center justify-center rounded-full text-neutral-700 transition-colors hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-neutral-300 dark:hover:bg-neutral-800"
 				onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
 				aria-label={mobileMenuOpen ? t('header.closeMenu') : t('header.menu')}
 				aria-expanded={mobileMenuOpen}
@@ -309,11 +292,11 @@
 			</nav>
 		{/if}
 
-		<!-- Mobile Menu (expanded) -->
+		<!-- Hamburger Menu (expanded — visible on all screen sizes) -->
 		{#if mobileMenuOpen}
 			<nav
-				class="border-t border-neutral-200/70 bg-white/95 px-4 py-4 backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-950/95 md:hidden"
-				aria-label="Mobile navigation"
+				class="border-t border-neutral-200/70 bg-white/95 px-4 py-4 backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-950/95"
+				aria-label="Primary navigation"
 			>
 				<div class="flex flex-col gap-1.5">
 					{#each visiblePrimaryNavItems as item (item.href)}

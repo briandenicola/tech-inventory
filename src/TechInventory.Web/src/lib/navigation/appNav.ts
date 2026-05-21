@@ -24,15 +24,15 @@ export const primaryNavItems = [
 		activePaths: ['/reports']
 	},
 	{
-		href: '/import',
+		href: '/admin/import',
 		labelKey: 'navigation.imports',
-		activePaths: ['/import'],
+		activePaths: ['/admin/import'],
 		roles: memberRoles
 	},
 	{
-		href: '/export',
+		href: '/admin/export',
 		labelKey: 'navigation.exports',
-		activePaths: ['/export']
+		activePaths: ['/admin/export']
 	},
 	{
 		href: '/admin/audit',

@@ -256,3 +256,12 @@ Work already completed in commit `68ddbd5` (`test(web): T26 ownership modals + T
 - Adding `@types/node` and `"node"` to `tsconfig.json` cleared the lingering `DeviceAuditTrail.test.ts` type-check blocker, so `pnpm run check` is green again for frontend work.
 - Delivery: reusable merge modal on brands/categories/locations, new `/reports` dashboard with summary cards + warranty expiry list, Reports navigation entry, targeted tests green (including follow-up `WarrantyExpiryPanel` accessibility coverage), full `pnpm exec vitest run` green, build green.
 
+### 2026-05-21 (Bug Bash Batch 4) — Desktop nav cleanup (3 fixes)
+
+- **Regression root cause:** Commit `1de8da8` (bug bash — 6 UI fixes) created `appNav.ts` with a `primaryNavItems` array and the authenticated layout rendered them in a `<nav class="hidden gap-6 md:flex">` desktop strip. This re-introduced the nav links that `dd52e98` had previously removed.
+- **Fix 4.1:** Removed the entire Desktop Nav `<nav>` block; made the hamburger button and its panel visible on all screen sizes (removed `md:hidden`). Added `<!-- regression-watch -->` comment at the deletion site.
+- **Fix 4.2:** Stripped the APPEARANCE section (ThemeToggle inline pills) from the desktop user-menu dropdown. Canonical location: `/settings` page only. ThemeToggle import kept because the hamburger menu still uses it.
+- **Fix 4.3:** Updated Import/Export hrefs in `appNav.ts` from `/import` → `/admin/import` and `/export` → `/admin/export`. Routes confirmed to exist at `src/TechInventory.Web/src/routes/(authenticated)/admin/{import,export}/+page.svelte`.
+- **Cascade lint:** No orphaned imports or dead code — `ThemeToggle`, `primaryNavItems`, `isNavItemActive` all still referenced elsewhere.
+- **Lesson:** When creating new navigation config files during a refactor, always cross-check the previous commit history for "remove from top-nav" fixes. The `git log --oneline -- <file>` pattern catches these regressions early.
+

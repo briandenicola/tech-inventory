@@ -78,6 +78,13 @@ Accessibility: WCAG 2.2 AA target, zero axe-core violations to merge. Browser ma
 
 - When a user asks for a small change (e.g., "remove the Merge button"), do exactly that — do not introduce a new pattern/component family (e.g., ResponsiveListCard + ActionOverflowMenu) that touches unrelated surfaces in the same commit.
 - The pre-commit baseline reference pattern (`git show <commit>^:<path>`) is the safest way to get the exact file content before an over-scoped commit for surgical reverts.
+
+### 2026-05-21 — devices page polish (bug-bash session)
+
+- Sticky page headers inside a layout `<main>` with `px-4` need negative margins (`-mx-4`) to go full-bleed, then re-apply internal padding. Otherwise you get a gap between the sticky edge and the viewport.
+- On iOS PWA in dark mode, the `<body>` background leaks through safe-area insets. If only a wrapper div sets `dark:bg-neutral-900` but body is unstyled, a black strip appears at viewport edges. Fix: set matching bg on `html` and `body` via app.css.
+- When removing toolbar UI (status chip) that duplicates filter-panel functionality, verify the filter panel has equivalent controls BEFORE deleting. Here: DeviceFilters.svelte already had status multi-select checkboxes (lines 328-347).
+- Filter count badge on the filter toggle button gives discovery affordance when the panel is collapsed. Compute from the same signals as `hasActiveFilters` but as a numeric count.
 - After reverting, always check for orphaned components with `rg` — the card-restyle introduced `ResponsiveListCard.svelte` and `ActionOverflowMenu.svelte` that had zero consumers once the admin pages reverted.
 - Bulk merge infrastructure (`openBulkMergeModal`, `MergeEntityModal`, `ReferenceDataBulkBar`) is independent of per-row merge buttons; removing `openSingleMergeModal` and its button leaves the "Merge Selected" toolbar working.
 

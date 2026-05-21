@@ -3,6 +3,19 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Task 5: Match body bg to app shell to prevent dark strip on iOS PWA safe-area edges */
+html,
+body {
+	background-color: theme('colors.neutral.50');
+}
+
+:where(.dark) html,
+:where(.dark) body,
+html.dark,
+html.dark body {
+	background-color: theme('colors.neutral.900');
+}
+
 @layer components {
 	.ti-modal-backdrop {
 		background: rgb(10 10 10 / 0.6);

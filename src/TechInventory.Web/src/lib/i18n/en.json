@@ -98,7 +98,6 @@
 		},
 		"sessionExpired": "Your session has expired. Please sign in again.",
 		"accessDenied": "Access denied. You do not have permission to view this page.",
-		"welcomeMessage": "Welcome back, {name}!",
 		"unauthorized": "You must be signed in to access this page.",
 		"local": {
 			"useLocalAccount": "Use a local account instead",
@@ -157,12 +156,6 @@
 			"addFab": "Add device",
 			"emptyState": "No devices yet. Add your first device to get started.",
 			"emptyFiltered": "No devices match your filters."
-		},
-		"statusChip": {
-			"showingActive": "Showing Active only",
-			"showAll": "Show all statuses",
-			"showingAll": "Showing all statuses",
-			"activeOnly": "Show Active only"
 		},
 		"viewMode": {
 			"cards": "Cards",

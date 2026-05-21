@@ -245,14 +245,21 @@
 		)
 	);
 
-	// F026: toggle between the implicit-Active default and the explicit
-	// show-all sentinel from the header chip.
-	function showAllStatuses() {
-		updateFilters({ ...urlFilters, status: undefined, page: 1 });
-	}
-	function restoreActiveDefault() {
-		updateFilters({ ...urlFilters, status: ['Active'], page: 1 });
-	}
+	// Count of active filters for badge display on the Filter button
+	const activeFilterCount = $derived.by(() => {
+		let count = 0;
+		if (urlFilters.search) count++;
+		if (urlFilters.brandId) count++;
+		if (urlFilters.categoryId) count++;
+		if (urlFilters.ownerId) count++;
+		if (urlFilters.locationId) count++;
+		if (urlFilters.networkId) count++;
+		if (!statusIsImplicitActive && urlFilters.status && urlFilters.status.length > 0) count++;
+		if (showingAllStatuses) count++;
+		if (urlFilters.purchaseYearMin) count++;
+		if (urlFilters.purchaseYearMax) count++;
+		return count;
+	});
 
 	// F022: per-user default view persistence (localStorage).
 	// Apply a stored default exactly once on first mount when the URL is bare;
@@ -588,196 +595,165 @@
 />
 
 <!-- Main content -->
-<div class="p-6">
-	<!-- Header -->
+<div class="-mt-8 flex flex-col">
+	<!-- Sticky page header (below app header) -->
 	<div
-		class="mb-6 flex items-start justify-between gap-4 border-b border-neutral-200 pb-4 dark:border-neutral-800"
+		class="sticky top-[73px] z-30 -mx-4 border-b border-neutral-200/70 bg-white/85 backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-900/85 sm:-mx-6 lg:-mx-8"
 	>
-		<div>
-			<h1 class="text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-50">
-				{t('devices.list.title')}
-			</h1>
-			{#if currentUser}
-				<p class="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
-					{t('auth.welcomeMessage', { name: currentUser.displayName })}
-				</p>
-			{/if}
-		</div>
+		<div class="px-4 pt-4 pb-4 sm:px-6 lg:px-8">
+			<!-- Header row -->
+			<div class="flex items-center justify-between gap-4">
+				<h1 class="text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-50">
+					{t('devices.list.title')}
+				</h1>
 
-		<!-- Right-side actions -->
-		<div class="flex items-center gap-2">
-			<!-- Mobile view-mode toggle (cards vs table) -->
-			<div
-				class="md:hidden inline-flex items-center rounded-full bg-neutral-100 p-1 dark:bg-neutral-800"
-				role="group"
-				aria-label={t('devices.viewMode.toggleLabel')}
-			>
-				<button
-					type="button"
-					onclick={() => setViewMode('cards')}
-					aria-pressed={mobileViewMode === 'cards'}
-					class="min-h-11 px-3 rounded-full transition-colors {mobileViewMode === 'cards'
-						? 'bg-white shadow-sm text-neutral-900 dark:bg-neutral-700 dark:text-neutral-50'
-						: 'text-neutral-600 dark:text-neutral-400'}"
-				>
-					<svg
-						class="h-5 w-5"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-						aria-hidden="true"
+				<!-- Right-side actions -->
+				<div class="flex items-center gap-2">
+					<!-- Mobile view-mode toggle (cards vs table) -->
+					<div
+						class="md:hidden inline-flex items-center rounded-full bg-neutral-100 p-1 dark:bg-neutral-800"
+						role="group"
+						aria-label={t('devices.viewMode.toggleLabel')}
 					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M4 6h6v6H4zM14 6h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"
-						/>
-					</svg>
-					<span class="sr-only">{t('devices.viewMode.cards')}</span>
-				</button>
-				<button
-					type="button"
-					onclick={() => setViewMode('table')}
-					aria-pressed={mobileViewMode === 'table'}
-					class="min-h-11 px-3 rounded-full transition-colors {mobileViewMode === 'table'
-						? 'bg-white shadow-sm text-neutral-900 dark:bg-neutral-700 dark:text-neutral-50'
-						: 'text-neutral-600 dark:text-neutral-400'}"
-				>
-					<svg
-						class="h-5 w-5"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-						aria-hidden="true"
+						<button
+							type="button"
+							onclick={() => setViewMode('cards')}
+							aria-pressed={mobileViewMode === 'cards'}
+							class="min-h-11 px-3 rounded-full transition-colors {mobileViewMode === 'cards'
+								? 'bg-white shadow-sm text-neutral-900 dark:bg-neutral-700 dark:text-neutral-50'
+								: 'text-neutral-600 dark:text-neutral-400'}"
+						>
+							<svg
+								class="h-5 w-5"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+								aria-hidden="true"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M4 6h6v6H4zM14 6h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"
+								/>
+							</svg>
+							<span class="sr-only">{t('devices.viewMode.cards')}</span>
+						</button>
+						<button
+							type="button"
+							onclick={() => setViewMode('table')}
+							aria-pressed={mobileViewMode === 'table'}
+							class="min-h-11 px-3 rounded-full transition-colors {mobileViewMode === 'table'
+								? 'bg-white shadow-sm text-neutral-900 dark:bg-neutral-700 dark:text-neutral-50'
+								: 'text-neutral-600 dark:text-neutral-400'}"
+						>
+							<svg
+								class="h-5 w-5"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+								aria-hidden="true"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M3 5h18M3 12h18M3 19h18"
+								/>
+							</svg>
+							<span class="sr-only">{t('devices.viewMode.table')}</span>
+						</button>
+					</div>
+
+					<!-- Filter button with active count badge -->
+					<button
+						type="button"
+						onclick={() => (filtersOpen = !filtersOpen)}
+						class="relative inline-flex items-center gap-2 rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-200 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
+						aria-expanded={filtersOpen}
 					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M3 5h18M3 12h18M3 19h18"
-						/>
-					</svg>
-					<span class="sr-only">{t('devices.viewMode.table')}</span>
-				</button>
+						<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+							/>
+						</svg>
+						{t('devices.filters.filterButton')}
+						{#if activeFilterCount > 0}
+							<span class="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary-600 text-xs font-bold text-white dark:bg-primary-500">
+								{activeFilterCount}
+							</span>
+						{/if}
+					</button>
+
+					<!-- Add Device CTA (desktop only; mobile uses the FAB below) -->
+					<button
+						type="button"
+						onclick={() => (createModalOpen = true)}
+						class="hidden md:inline-flex min-h-11 items-center gap-2 rounded-full bg-primary-600 px-5 py-2.5 text-base font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600"
+					>
+						<svg
+							class="h-5 w-5"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+							aria-hidden="true"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M12 4v16m8-8H4"
+							/>
+						</svg>
+						{t('devices.list.addButton')}
+					</button>
+				</div>
 			</div>
 
-			<!-- Mobile filter button -->
-			<button
-				type="button"
-				onclick={() => (filtersOpen = !filtersOpen)}
-				class="inline-flex items-center gap-2 rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-200 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
-				aria-expanded={filtersOpen}
-			>
-				<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+			<!-- Search input -->
+			<div class="mt-4 w-full md:max-w-lg">
+				<div class="relative">
+					<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+						<svg
+							class="h-5 w-5 text-neutral-400 dark:text-neutral-500"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+							aria-hidden="true"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+							/>
+						</svg>
+					</div>
+					<input
+						type="search"
+						value={urlFilters.search || ''}
+						oninput={(e) => {
+							const target = e.target as HTMLInputElement;
+							const value = target.value;
+							if (searchTimeout) clearTimeout(searchTimeout);
+							searchTimeout = setTimeout(() => {
+								updateFilters({ ...urlFilters, search: value || undefined, page: 1 });
+							}, 300);
+						}}
+						placeholder={t('devices.filters.searchPlaceholder')}
+						aria-label={t('devices.filters.searchPlaceholder')}
+						class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 pl-11 pr-4 py-2.5 text-base text-neutral-900 placeholder:text-neutral-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-400 dark:focus:bg-neutral-900"
 					/>
-				</svg>
-				{t('devices.filters.filterButton')}
-			</button>
-
-			<!-- Add Device CTA (desktop only; mobile uses the FAB below) -->
-			<button
-				type="button"
-				onclick={() => (createModalOpen = true)}
-				class="hidden md:inline-flex min-h-11 items-center gap-2 rounded-full bg-primary-600 px-5 py-2.5 text-base font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600"
-			>
-				<svg
-					class="h-5 w-5"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-					aria-hidden="true"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M12 4v16m8-8H4"
-					/>
-				</svg>
-				{t('devices.list.addButton')}
-			</button>
+				</div>
+			</div>
 		</div>
 	</div>
 
-	<!-- Search input -->
-	<div class="mb-4 w-full md:max-w-lg">
-		<div class="relative">
-			<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-				<svg
-					class="h-5 w-5 text-neutral-400 dark:text-neutral-500"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-					aria-hidden="true"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-					/>
-				</svg>
-			</div>
-			<input
-				type="search"
-				value={urlFilters.search || ''}
-				oninput={(e) => {
-					const target = e.target as HTMLInputElement;
-					const value = target.value;
-					if (searchTimeout) clearTimeout(searchTimeout);
-					searchTimeout = setTimeout(() => {
-						updateFilters({ ...urlFilters, search: value || undefined, page: 1 });
-					}, 300);
-				}}
-				placeholder={t('devices.filters.searchPlaceholder')}
-				aria-label={t('devices.filters.searchPlaceholder')}
-				class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 pl-11 pr-4 py-2.5 text-base text-neutral-900 placeholder:text-neutral-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-400 dark:focus:bg-neutral-900"
-			/>
-		</div>
-	</div>
-
-	<!--
-			F026: status-filter chip. The implicit Active default is invisible by
-			itself, so we surface it as a chip with a one-tap escape hatch. When the
-			user has opted into "all", the chip flips to offer the reverse action.
-		-->
-	{#if statusIsImplicitActive}
-		<div class="mb-4 flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
-			<span
-				class="inline-flex items-center rounded-full bg-success-100 px-3 py-1 text-xs font-medium text-success-800 dark:bg-success-900 dark:text-success-100"
-			>
-				{t('devices.statusChip.showingActive')}
-			</span>
-			<button
-				type="button"
-				onclick={showAllStatuses}
-				class="rounded-full px-2 py-1 text-sm font-medium text-primary-700 underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-primary-300"
-			>
-				{t('devices.statusChip.showAll')}
-			</button>
-		</div>
-	{:else if showingAllStatuses}
-		<div class="mb-4 flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
-			<span
-				class="inline-flex items-center rounded-full bg-neutral-200 px-3 py-1 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200"
-			>
-				{t('devices.statusChip.showingAll')}
-			</span>
-			<button
-				type="button"
-				onclick={restoreActiveDefault}
-				class="rounded-full px-2 py-1 text-sm font-medium text-primary-700 underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-primary-300"
-			>
-				{t('devices.statusChip.activeOnly')}
-			</button>
-		</div>
-	{/if}
+	<!-- Scrollable content area -->
+	<div class="pt-4">
 
 	<!-- Content: loading / error / empty / success -->
 	{#if query.isLoading}
@@ -862,6 +838,7 @@
 			</div>
 		{/if}
 	{/if}
+	</div>
 </div>
 
 {#if createModalOpen}

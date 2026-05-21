@@ -99,7 +99,7 @@ Published to [GitHub Container Registry](https://github.com/briandenicola?tab=pa
 | API   | [`ghcr.io/briandenicola/tech-inventory-api`](https://github.com/users/briandenicola/packages/container/package/tech-inventory-api) | `docker pull ghcr.io/briandenicola/tech-inventory-api:latest` |
 | Web   | [`ghcr.io/briandenicola/tech-inventory-web`](https://github.com/users/briandenicola/packages/container/package/tech-inventory-web) | `docker pull ghcr.io/briandenicola/tech-inventory-web:latest` |
 
-Pin a release by setting `IMAGE_TAG=v0.1.0` in `.env`. See [`docs/deployment.md`](docs/deployment.md) for the full home-server deploy runbook.
+Pin a release by setting `IMAGE_TAG=v1.0.0` in `.env`. See [`docs/deployment.md`](docs/deployment.md) for the full home-server deploy runbook.
 
 ## Documentation
 

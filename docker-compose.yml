@@ -18,7 +18,7 @@
 #   docker compose logs -f api           # watch startup
 #
 # Versioning:
-#   Set IMAGE_TAG=v0.1.0 in .env to pin (recommended in prod).
+#   Set IMAGE_TAG=v1.0.0 in .env to pin (recommended in prod).
 #   Defaults to `latest` if unset.
 #
 # Database:

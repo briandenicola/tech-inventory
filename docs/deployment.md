@@ -209,7 +209,7 @@ removed knobs).
 
 ```bash
 # In .env:
-IMAGE_TAG=v0.1.0
+IMAGE_TAG=v1.0.0
 ```
 
 Then `docker compose up -d` deploys *exactly that build* and survives

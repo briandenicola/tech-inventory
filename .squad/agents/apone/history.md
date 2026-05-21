@@ -313,3 +313,16 @@ test('diff rendering meets WCAG AA in dark mode', async ({ container }) => {
 **Forward rule per D-129:** All future Apone spawn prompts include hard "STAY IN YOUR LANE — TEST FILES ONLY" reminder.
 
 **Reflection:** Charter nit de-escalation deferred in favor of urgent work acceptance. Process improvement flagged: Coordinator pre-flight should grep `git log --stat -- <target-files>` before spawning to detect already-shipped work. Vasquez's parallel code archaeology + retroactive decision documentation (D-116..D-122) resolves the breach pragmatically.
+
+## Cross-Agent Pattern: PullToRefresh Deadzone (2026-05-21, D-129)
+
+**Consumers:** All pages with `PullToRefresh` component — authenticated layout, admin pages (brands, categories, locations, networks, owners, tags), devices list, device detail, reports, and new/edit device pages.
+
+**Pattern for E2E testing:** When testing scroll on pages with PullToRefresh at `scrollY === 0`, expect a 10px deadzone before the pull-to-refresh gesture activates. iOS PWA touch events have ~1–2px micro-movements at finger contact; without deadzone, `preventDefault()` fires immediately, blocking native scroll permanently for that touch.
+
+**Test approach:**
+- Device detail page scroll test: scroll up with 5px motion (should pass through, not trigger PTR)
+- Device detail page scroll test: scroll up with 15px motion (should trigger PTR gesture, then reset and scroll)
+- Verify no scroll deadlock on iOS PWA (WebKit only project)
+
+**Root cause documented:** D-129. Vasquez's fix in `PullToRefresh.svelte` adds `if (Math.abs(delta) < 10) return;` before `preventDefault()` to preserve scroll control during the ambiguous threshold phase.

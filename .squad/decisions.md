@@ -3725,6 +3725,58 @@ The content wrapper unconditionally applied `transform: translateY(0px)` and `wi
 
 ---
 
+### D-128: FAB Props Drift — Dual-Pattern Component Support
+
+**Date:** 2026-05-21  
+**Author:** Vasquez (Frontend Developer)  
+**Status:** Implemented & verified  
+**Related:** Issue: AddDeviceFab doesn't fire on tap; D-137 modal-based add flow regression
+
+**Decision:** Components that serve as create affordances must accept BOTH navigation-based (href-driven) and callback-based (onClick-driven) patterns.
+
+**Root Cause:** D-137 migrated add-device flow from `/devices/new` route to inline modal (`createModalOpen = true`). Page updated to pass `onClick={() => (createModalOpen = true)}` to AddDeviceFab, but the component's `Props` interface only accepted `href: string`. In Svelte 5, undeclared `onClick` prop silently dropped, and `href` resolved to `undefined` — making the `<a>` tag render without an `href` attribute. Link with no href is not interactive; tapping does nothing.
+
+**Solution:** Updated `AddDeviceFab.svelte`:
+- Optional `onClick?: () => void` handler
+- Optional `raised?: boolean` prop to shift FAB up when `BackToTopFab` is visible
+- When `onClick` is provided: render `<button>` (semantic, event-driven)
+- When `href` is provided: render `<a>` (deep-linkable, navigation-driven)
+- One component, two patterns, no friction
+
+**Implications:**
+- All FAB-like create affordances should follow this dual-pattern approach
+- Route-based and modal-based flows can coexist without component branching
+- Related affordances (desktop header link, mobile FAB) stay visually/functionally aligned
+
+---
+
+### D-129: PullToRefresh Deadzone — iOS Touch-Event Precision
+
+**Date:** 2026-05-21  
+**Author:** Vasquez (Frontend Developer)  
+**Status:** Implemented & verified  
+**Related:** Issue: Device detail page scroll blocked on iOS PWA
+
+**Decision:** PullToRefresh must not call `preventDefault()` until after a 10px downward threshold is crossed.
+
+**Root Cause:** iOS WebKit has micro-movements at finger contact (~1-2px) before the user's actual gesture direction becomes clear. PullToRefresh's non-passive `touchmove` listener called `preventDefault()` on ANY positive delta when `scrollY === 0`. Per iOS WebKit behavior, once `preventDefault()` fires on a touchmove, the entire gesture is classified as "handled by JS" and native scroll is permanently blocked for that touch. This happens every time because the first touch event almost always produces a tiny positive delta before the user moves their finger up to scroll.
+
+**Solution:** Added 10px deadzone threshold in `PullToRefresh.svelte`:
+- `0–10px`: No `preventDefault()`, browser retains scroll control
+- If user's intent is to scroll (finger moves up, delta turns negative): `resetPullState()` fires, scroll proceeds
+- If user sustains downward pull past 10px: commit to PTR gesture, call `preventDefault()`
+
+**Why devices list wasn't affected:** After initial load, users interact at `scrollY > 0` (content below fold). The `shouldTrackPull` check exits immediately for `scrollY > 0`, so the touchmove handler never engages. Device detail always starts at `scrollY = 0`, so deadzone matters.
+
+**Empirical basis:** 10px threshold is derived from iOS touch-event precision and matches observed micro-movement range across test devices.
+
+**Implications:**
+- Any page with PullToRefresh at scroll origin (0,0) must apply this deadzone
+- Pattern: `if (Math.abs(delta) < 10) return;` before `preventDefault()`
+- Fixes iOS PWA scroll lock without disabling pull-to-refresh functionality
+
+---
+
 ## Governance
 
 - All meaningful changes require team consensus

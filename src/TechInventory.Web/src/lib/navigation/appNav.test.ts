@@ -17,8 +17,7 @@ describe('appNav', () => {
 		expect(getVisibleNavItems(primaryNavItems, 'Member').map((item) => item.href)).toEqual([
 			'/devices',
 			'/reports',
-			'/admin/import',
-			'/admin/export'
+			'/admin/import'
 		]);
 	});
 

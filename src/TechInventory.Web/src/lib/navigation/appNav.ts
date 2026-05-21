@@ -32,7 +32,8 @@ export const primaryNavItems = [
 	{
 		href: '/admin/export',
 		labelKey: 'navigation.exports',
-		activePaths: ['/admin/export']
+		activePaths: ['/admin/export'],
+		roles: adminRoles
 	},
 	{
 		href: '/admin/audit',

@@ -18,6 +18,12 @@ import type {
 	WarrantyReportResponse
 } from './types';
 
+interface BlobDownloadResult {
+	blob: Blob;
+	fileName: string | null;
+	contentType: string | null;
+}
+
 /**
  * Type helpers to extract request/response types from OpenAPI paths
  */
@@ -174,6 +180,76 @@ async function apiFetch<TResponse>(
 	}
 
 	return response.json();
+}
+
+function parseContentDispositionFileName(headerValue: string | null): string | null {
+	if (!headerValue) {
+		return null;
+	}
+
+	const utf8Match = headerValue.match(/filename\*\s*=\s*UTF-8''([^;]+)/i);
+	if (utf8Match?.[1]) {
+		try {
+			return decodeURIComponent(utf8Match[1].trim().replace(/^"|"$/g, ''));
+		} catch {
+			return utf8Match[1].trim().replace(/^"|"$/g, '');
+		}
+	}
+
+	const fileNameMatch = headerValue.match(/filename\s*=\s*"?([^";]+)"?/i);
+	return fileNameMatch?.[1]?.trim() ?? null;
+}
+
+async function apiFetchBlob(
+	path: string,
+	options: RequestInit = {}
+): Promise<BlobDownloadResult> {
+	const url = `${clientConfig.baseUrl}${path}`;
+	const headers: Record<string, string> = {
+		...(options.headers as Record<string, string> | undefined)
+	};
+
+	if (clientConfig.getAuthToken) {
+		const token = await clientConfig.getAuthToken();
+		if (token) {
+			headers['Authorization'] = `Bearer ${token}`;
+		}
+	}
+
+	const response = await fetch(url, {
+		...options,
+		headers
+	});
+
+	if (!response.ok) {
+		const contentType = response.headers.get('content-type') ?? '';
+		if (contentType.includes('json')) {
+			const errorBody = (await response.json()) as {
+				title?: string;
+				detail?: string;
+				status?: number;
+				instance?: string;
+				errors?: Record<string, string[]>;
+			};
+
+			throw new ApiError(
+				errorBody.status ?? response.status,
+				errorBody.title ?? response.statusText,
+				errorBody.detail,
+				errorBody.instance,
+				errorBody.errors
+			);
+		}
+
+		const detail = (await response.text()) || undefined;
+		throw new ApiError(response.status, response.statusText, detail, url);
+	}
+
+	return {
+		blob: await response.blob(),
+		fileName: parseContentDispositionFileName(response.headers.get('content-disposition')),
+		contentType: response.headers.get('content-type')
+	};
 }
 
 /**
@@ -618,7 +694,11 @@ export const reports = {
 	warranties: async (days: number) =>
 		apiFetch<WarrantyReportResponse>(
 			`/api/v1/reports/warranties${buildQueryString({ ExpiringWithinDays: days, days })}`
-		)
+		),
+
+	insurance: async (
+		params?: paths['/api/v1/reports/insurance']['get']['parameters']['query']
+	) => apiFetchBlob(`/api/v1/reports/insurance${buildQueryString(params)}`)
 };
 
 // F025 — local-account fallback endpoints. Kept narrow on purpose; admin-side

@@ -61,6 +61,12 @@ Two rapid spawns fixed alignment issues exposed by the triple PWA fix. Both are 
 
 ## Learnings
 
+### 2026-05-21 — Insurance Export Surface Belongs to Admin Export
+
+Insurance CSV looked reusable as a report card, but the product meaning mattered more than the component shape: it is an admin data export, so it belongs on `/admin/export`, not `/reports`. Relocating it was cheap because the download utility and API wiring were already isolated; the real cost was moving the surface, strings, and test ownership to the admin export seam.
+
+---
+
 ### 2026-05-21 — Z-Index Canonical Layering & Vestigial Props (D-167, D-168)
 
 **Z-index violation (D-167):** App header used raw `z-50` (above modal backdrop `z-40`), trapping modal content in inescapable stacking context. Modal headers hidden behind app header on iOS PWA. Established canonical ladder: sticky (20) < fixed (30) < modal-backdrop (40) < modal (50) < popover (60) < tooltip (70). Page headers MUST use z-30 or lower; never use `z-50` on page elements.
@@ -377,3 +383,9 @@ Work already completed in commit `68ddbd5` (`test(web): T26 ownership modals + T
 - MSAL `sessionStorage` is per-tab, so second-tab auto-entry needs `msalInstance.ssoSilent(loginRequest)` when the new tab has no cached account yet but the Entra browser session still exists.
 - Explicit logout must suppress silent SSO until the next deliberate sign-in click; pair that suppression flag with `clearCache()` fallback so a failed `logoutRedirect()` cannot immediately auto-log the same Entra user back in.
 - Protected-route load guards are not enough by themselves on a fresh deep link; add a client-side redirect backstop in `(authenticated)/+layout.svelte` once `authStore.isLoading` settles.
+
+## Learnings — 2026-05-21 Insurance export trigger
+
+- The reports surface already uses self-contained cards for specialized report workflows (`EraReportCard`, `TimelineReport`, `WarrantyExpiryPanel`), so adding insurance export as another card on `/reports` keeps discovery and layout consistent without inventing a new route.
+- For authenticated CSV downloads, the useful seam is a typed client method that returns both the `Blob` and a parsed `Content-Disposition` filename; UI code should stay focused on role gating, filter state, and status messaging.
+- iOS/WebKit is happier when blob downloads append a temporary anchor to `document.body`, click it, and delay `URL.revokeObjectURL(...)` cleanup instead of revoking immediately in the same tick.

@@ -1,15 +1,15 @@
 <!--
-	/admin/export — Devices export (T38)
+	/admin/export — Admin export hub (T38)
 
-	Format radio (CSV/JSON) + filter panel mirroring /devices list filters.
-	Calls GET /api/v1/exports/devices?... which returns a binary blob; we save
-	with a timestamped filename like `devices-2026-05-19T08-30-00Z.csv`.
+	Primary section exports device inventory in CSV/JSON with list-style filters.
+	Secondary section offers the insurance CSV export for admin-only household records.
 
 	Refs: PRD F4, spec.md J11.
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import InsuranceExportCard from './InsuranceExportCard.svelte';
 	import { t } from '$lib/i18n';
 	import { authStore } from '$lib/stores/auth';
 	import { exports as exportsApi } from '$lib/api/client';
@@ -348,4 +348,11 @@
 			</div>
 		{/if}
 	</section>
+
+	<div class="mt-8">
+		<InsuranceExportCard
+			locations={refData.locations}
+			locationsLoading={refData.isLoading && refData.locations.length === 0}
+		/>
+	</div>
 </div>

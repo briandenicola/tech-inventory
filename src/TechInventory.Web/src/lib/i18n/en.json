@@ -422,7 +422,22 @@
 		"downloadButton": "Download Export",
 		"filterTitle": "Filter Devices",
 		"success": "Export downloaded successfully",
-		"emptyState": "No devices to export with current filters"
+		"emptyState": "No devices to export with current filters",
+		"insurance": {
+			"title": "Insurance Export",
+			"description": "Download the current active-device inventory as a CSV for household insurance records.",
+			"note": "Optional location filter; the export includes the server-generated timestamp and total row.",
+			"filterLabel": "Location filter",
+			"allLocations": "All locations",
+			"loadingLocations": "Loading locations…",
+			"downloadButton": "Download insurance CSV",
+			"downloadingButton": "Preparing CSV…",
+			"downloading": "Preparing your insurance CSV download…",
+			"idle": "Choose an optional location, then download the latest insurance CSV.",
+			"success": "Insurance export ready to save: {fileName}",
+			"error": "Could not download the insurance export right now.",
+			"defaultFilename": "insurance-export.csv"
+		}
 	},
 	"reports": {
 		"title": "Reports",

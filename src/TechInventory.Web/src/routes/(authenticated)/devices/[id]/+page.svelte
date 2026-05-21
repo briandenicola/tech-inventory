@@ -247,6 +247,10 @@
 	}
 </script>
 
+<svelte:head>
+	<title>{t('devices.detail.title')} — {t('app.title')}</title>
+</svelte:head>
+
 <!-- Breadcrumbs -->
 <div class="pb-24">
 <nav class="mb-4 flex text-sm text-neutral-600 dark:text-neutral-400" aria-label="Breadcrumb">

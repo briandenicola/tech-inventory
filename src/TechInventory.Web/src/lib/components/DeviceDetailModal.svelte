@@ -299,7 +299,7 @@
 		<div
 			bind:this={dialogElement}
 			transition:fly|local={{ y: 32, duration: 180 }}
-			class="ti-modal-surface pointer-events-auto relative flex w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl dark:bg-neutral-950 sm:max-w-4xl sm:rounded-2xl"
+			class="ti-modal-surface pointer-events-auto relative flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl dark:bg-neutral-950 sm:max-w-4xl sm:rounded-2xl"
 			role="dialog"
 			aria-modal="true"
 			aria-labelledby="device-detail-modal-title"
@@ -307,7 +307,7 @@
 			style="z-index: var(--z-modal);"
 		>
 			<div
-				class="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-neutral-200/70 bg-white/95 px-5 py-4 backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-950/95 sm:px-6 sm:py-5"
+				class="shrink-0 sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-neutral-200/70 bg-white/95 px-5 py-4 backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-950/95 sm:px-6 sm:py-5"
 			>
 				<div class="min-w-0 flex-1">
 					<p
@@ -360,7 +360,7 @@
 				</div>
 			</div>
 
-			<div class="overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
+			<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6 sm:py-6">
 				{#if isLoading}
 					<LoadingSkeleton rows={6} />
 				{:else if notFound}

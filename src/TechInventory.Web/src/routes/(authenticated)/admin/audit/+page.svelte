@@ -208,7 +208,7 @@
 </script>
 
 <svelte:head>
-	<title>{t('admin.audit.list.title')} · {t('app.title')}</title>
+	<title>{t('admin.audit.list.title')} — {t('app.title')}</title>
 </svelte:head>
 
 <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">

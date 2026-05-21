@@ -137,19 +137,18 @@
 		onclick={onClose}
 	></button>
 
-	<div class="pointer-events-none relative h-full overflow-y-auto">
-		<div class="flex min-h-full items-start justify-center px-4 py-10 sm:py-16">
-			<div
-				bind:this={dialogElement}
-				class="ti-modal-surface pointer-events-auto relative w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-neutral-900"
-				role="dialog"
-				aria-modal="true"
-				aria-labelledby="add-device-modal-title"
-				tabindex="-1"
-			>
-				<!-- Sticky header -->
+	<div class="pointer-events-none relative flex h-full items-start justify-center px-4 py-10 sm:py-16">
+		<div
+			bind:this={dialogElement}
+			class="ti-modal-surface pointer-events-auto relative flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-neutral-900"
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="add-device-modal-title"
+			tabindex="-1"
+		>
+				<!-- Fixed header (outside scroll area) -->
 				<div
-					class="sticky top-0 z-10 flex items-center justify-between border-b border-neutral-200/70 bg-white/95 px-6 py-5 backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-900/95"
+					class="flex shrink-0 items-center justify-between border-b border-neutral-200/70 bg-white px-6 py-5 dark:border-neutral-800/70 dark:bg-neutral-900"
 				>
 					<div>
 						<h2
@@ -185,8 +184,8 @@
 					</button>
 				</div>
 
-				<!-- Form body -->
-				<div class="px-6 py-6">
+				<!-- Form body (scrollable) -->
+				<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-6">
 					<!--
 						F030 tag picker. Lives above DeviceForm so it's visible without
 						scrolling and so the user can curate tags before saving. Tags
@@ -210,7 +209,6 @@
 
 					<DeviceForm mode="create" onSubmit={handleSubmit} onCancel={onClose} />
 				</div>
-			</div>
 		</div>
 	</div>
 </div>

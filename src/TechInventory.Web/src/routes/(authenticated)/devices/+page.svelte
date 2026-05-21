@@ -582,6 +582,10 @@
 	const canBulkDelete = $derived(currentUser?.role === 'Admin');
 </script>
 
+<svelte:head>
+	<title>{t('devices.list.title')} — {t('app.title')}</title>
+</svelte:head>
+
 <!-- Filters sidebar (floats over as drawer on all breakpoints) -->
 <DeviceFilters
 	filters={urlFilters}

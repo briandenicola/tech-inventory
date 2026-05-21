@@ -200,9 +200,16 @@
 		</div>
 	</div>
 
+	<!-- regression-watch: This div must NEVER have transform, will-change, filter,
+		 backdrop-filter, or contain when isActive is false — any of those creates a
+		 CSS containing block that traps position:fixed descendants (FABs, modals).
+		 WebKit additionally treats transition-property:transform as a containing-block
+		 trigger even without an active transform value (WebKit bug 160953). -->
 	<div
 		data-testid="pull-to-refresh-content"
-		class="transition-transform duration-200 ease-out"
+		class:transition-transform={isActive}
+		class:duration-200={isActive}
+		class:ease-out={isActive}
 		class:will-change-transform={isActive}
 		class:transition-none={isPulling}
 		style={isActive ? `transform: translateY(${indicatorHeight}px);` : ''}

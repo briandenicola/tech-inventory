@@ -90,6 +90,10 @@
 	}
 </script>
 
+<svelte:head>
+	<title>{t('reports.title')} — {t('app.title')}</title>
+</svelte:head>
+
 <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
 	<div class="mb-8 space-y-2">
 		<h1 class="text-3xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-50">{t('reports.title')}</h1>

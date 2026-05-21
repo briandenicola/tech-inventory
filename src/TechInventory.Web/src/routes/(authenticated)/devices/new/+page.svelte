@@ -70,6 +70,10 @@
 	});
 </script>
 
+<svelte:head>
+	<title>{t('devices.create.title')} — {t('app.title')}</title>
+</svelte:head>
+
 <!-- Breadcrumbs -->
 <nav class="mb-4 flex text-sm text-neutral-600 dark:text-neutral-400" aria-label="Breadcrumb">
 	<ol class="flex items-center space-x-2">

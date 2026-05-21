@@ -93,7 +93,7 @@
 </script>
 
 <svelte:head>
-	<title>{t('settings.title')} · {t('app.title')}</title>
+	<title>{t('settings.title')} — {t('app.title')}</title>
 </svelte:head>
 
 <div class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">

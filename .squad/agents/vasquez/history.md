@@ -418,6 +418,13 @@ This verifies the pre-hydration script runs synchronously BEFORE SvelteKit hydra
 ## Learnings
 
 - **Safe-area alignment:** When two FABs must sit at consistent heights on iOS PWA, both must use `calc(env(safe-area-inset-*) + ...)` — mixing Tailwind utility classes with inline safe-area styles causes vertical drift.
+
+### 2026-05-21 — PWA Bug Bash Batch 3
+
+- **FAB onClick vs href:** When a page-level create flow migrates from navigation to modal, the FAB component MUST be updated to accept `onClick` alongside `href`. Svelte 5 silently drops undeclared props — an `<a href={undefined}>` renders as a non-interactive element with no error. Always check Props interfaces when changing affordance patterns.
+- **PullToRefresh scroll blocking on iOS:** A non-passive `touchmove` listener that calls `preventDefault()` on even 1px of positive delta will permanently block native scroll for that gesture on iOS WebKit. The fix is a deadzone (~10px) before committing to the pull gesture. The devices list page was unaffected because users are always at `scrollY > 0` where PTR disengages immediately.
+- **Admin page double-padding:** The authenticated layout's `<main>` already provides `max-w-7xl px-4 sm:px-6 lg:px-8`. Admin pages that add their own matching wrapper get double padding (64px total on 375px viewport = ~17% wasted). Use `-mt-8` wrapper only, inherit layout padding.
+- **Pill → text-link for row actions:** Bordered pill buttons in table rows are too wide for mobile. Text links (`text-primary-600 hover:underline`) fit on one line and maintain 44px tap targets via the row's natural padding height.
 - **Flex overflow prevention:** `inline-flex` containers with fixed padding can exceed parent width. Fix: `w-full max-w-full` on container + `flex-1 min-w-0` on children.
 - **Sticky header offset values:** Main header is ~73px on mobile. Desktop admin pages have sub-nav adding ~69px → `md:top-[142px]`. Both need backdrop-blur for visual separation.
 - **Per-page vs shared table component:** For 5-6 pages with slightly different columns, inline tables with a shared sticky-header pattern are simpler than a generic component with render props/slots. Extract only when >3 pages share identical column structure.

@@ -220,14 +220,14 @@
 	}
 
 	const primaryActionButtonClass =
-		'inline-flex min-h-11 items-center rounded-full border border-primary-300 px-4 py-2 text-sm font-medium text-primary-700 transition-colors hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-primary-800 dark:text-primary-300 dark:hover:bg-primary-950';
+		'text-sm font-medium text-primary-600 hover:text-primary-700 hover:underline dark:text-primary-400 dark:hover:text-primary-300';
 	const warningActionButtonClass =
-		'inline-flex min-h-11 items-center rounded-full border border-warning-300 px-4 py-2 text-sm font-medium text-warning-700 transition-colors hover:bg-warning-50 focus:outline-none focus:ring-2 focus:ring-warning-500 dark:border-warning-800 dark:text-warning-300 dark:hover:bg-warning-950';
+		'text-sm font-medium text-warning-600 hover:text-warning-700 hover:underline dark:text-warning-400 dark:hover:text-warning-300';
 	const primarySolidButtonClass =
 		'inline-flex min-h-11 items-center justify-center rounded-full bg-primary-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-700 dark:hover:bg-primary-800';
 </script>
 
-<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+<div class="-mt-8">
 	<!-- Sticky page header -->
 	<div class="sticky top-[73px] z-30 -mx-4 sm:-mx-6 lg:-mx-8 border-b border-neutral-200/70 bg-white/85 backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-900/85 md:top-[142px]">
 		<div class="flex items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
@@ -298,7 +298,7 @@
 									</span>
 								</td>
 								<td class="px-4 py-3 text-right">
-									<div class="flex flex-wrap justify-end gap-2">
+									<div class="flex items-center justify-end gap-3">
 										{@render ownerActionButtons(owner)}
 									</div>
 								</td>

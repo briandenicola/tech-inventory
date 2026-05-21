@@ -15,6 +15,7 @@
 	let startY = $state<number | null>(null);
 	let pullDistance = $state(0);
 	let isPulling = $state(false);
+	const pullDeadzone = 10;
 	let isRefreshing = $state(false);
 	let canRefresh = $state(false);
 
@@ -62,7 +63,6 @@
 		}
 
 		startY = event.touches[0]?.clientY ?? null;
-		isPulling = startY !== null;
 		pullDistance = 0;
 		canRefresh = false;
 	}
@@ -85,6 +85,13 @@
 		const delta = currentY - startY;
 		if (delta <= 0) {
 			resetPullState();
+			return;
+		}
+
+		// Deadzone: don't claim the gesture until the user has clearly committed
+		// to pulling down. This prevents iOS WebKit from blocking native scroll
+		// when a micro-movement (common at touch start) briefly goes positive.
+		if (delta < pullDeadzone) {
 			return;
 		}
 

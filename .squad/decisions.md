@@ -3777,6 +3777,66 @@ The content wrapper unconditionally applied `transform: translateY(0px)` and `wi
 
 ---
 
+### D-160: Desktop Primary Navigation Is Hamburger-Only (Regression-Watch Pattern)
+
+**Date:** 2026-05-21  
+**Author:** Vasquez (Frontend Developer), PWA Bug Bash Batch 4  
+**Status:** ✅ Implemented & verified (commit `454b954`)  
+**Related:** `.squad/agents/vasquez/history.md`, `src/TechInventory.Web/src/routes/+layout.svelte`, `src/TechInventory.Web/src/lib/navigation/appNav.ts`
+
+**Rule:** The primary navigation links (Devices, Reports, Import, Export, Audit Log) MUST NOT appear as a horizontal link strip in the desktop header. They are accessible **only** via the hamburger menu (visible on all screen sizes).
+
+**Regression History:**
+- `dd52e98` — first fix: removed duplicate Import/Export from top nav
+- `1de8da8` — bug bash re-introduced the full `<nav class="hidden gap-6 md:flex">` desktop nav strip when creating `appNav.ts` + refactoring layout
+- This batch (Batch 4) — removed again with `<!-- regression-watch -->` comment as guardrail
+
+**Enforcement:** HTML comment `<!-- regression-watch -->` placed at the exact location in the code. Any future refactor MUST check for this comment before adding desktop nav links. Pattern to adopt team-wide: use `<!-- regression-watch -->` on any component/layout change that has been reverted more than once.
+
+**Implications:**
+- Navigation architecture is hamburger-first; desktop layout must not expand nav strip without explicit ADR change
+- Regression-watch pattern now available for any other nav/layout refactoring in the codebase
+
+---
+
+### D-161: Canonical Theme Toggle Location Is /settings Only
+
+**Date:** 2026-05-21  
+**Author:** Vasquez (Frontend Developer), PWA Bug Bash Batch 4  
+**Status:** ✅ Implemented & verified (commit `454b954`)  
+**Related:** D-160, `src/TechInventory.Web/src/lib/navigation/appNav.ts`
+
+**Rule:** The ThemeToggle component's canonical (and only desktop-dropdown) location is the `/settings` page. The user-menu dropdown on desktop MUST NOT contain an inline APPEARANCE section with theme pill buttons. The hamburger menu retains a ThemeToggle for quick mobile access.
+
+**Rationale:** Avoids user confusion about which toggle is authoritative and reduces dropdown bloat. Consolidating theme control to one canonical location improves discoverability and maintainability.
+
+**Implications:**
+- Desktop user menu dropdown is simplified; theme control removed
+- Mobile hamburger menu still provides quick theme access (touch-friendly)
+- Settings page becomes the single source of truth for appearance preferences
+
+---
+
+### D-162: Admin Routes Use /admin/ Prefix (Import/Export at /admin/import, /admin/export)
+
+**Date:** 2026-05-21  
+**Author:** Vasquez (Frontend Developer), PWA Bug Bash Batch 4  
+**Status:** ✅ Implemented & verified (commit `454b954`)  
+**Related:** D-160, D-161, `src/TechInventory.Web/src/lib/navigation/appNav.ts`
+
+**Rule:** Import and Export pages live at `/admin/import` and `/admin/export`. All navigation links MUST use these paths. The bare `/import` and `/export` routes do NOT exist and will 404.
+
+**Implementation:** Updated `src/TechInventory.Web/src/lib/navigation/appNav.ts` href and activePaths to route through `/admin/` prefix. Ensures consistency with other admin surfaces (categories, owners) and provides clear visual/URL hierarchy.
+
+**Rationale:** Centralizes admin functionality behind a consistent path structure, making the distinction between user-facing and admin surfaces obvious to both operators and future maintainers.
+
+**Implications:**
+- All future admin pages should follow the `/admin/` prefix convention
+- User-facing routes (devices, reports) remain at root level
+- Clear mental model for route organization: `/` = user, `/admin/` = operator
+
+---
+
 ## Governance
 
 - All meaningful changes require team consensus

@@ -4,6 +4,22 @@ Append-only log. Newest entries at the top.
 
 ---
 
+## 2026-05-21 — PWA Bug-Bash Close-Out
+
+- Multi-day bug-bash session complete: 8 commits shipped addressing field-test findings (inventory.denicolafamily.com mobile + desktop PWA regressions and polish gaps).
+- **Batch 1:** Reverted over-scoped admin restyle (9259137); preserved merge-button removal from F039.
+- **Batch 2+4:** Implemented pull-to-refresh gesture with visual spinner and improved deadzone tuning (39eb0c5).
+- **Batch Imp 1–2:** Polished devices page (sticky header, full-width, responsive admin tables) — added `ActionOverflowMenu.svelte`, `ResponsiveListCard.svelte`, responsive card pattern on mobile while preserving desktop table/tree layouts (406f225 + bd01c94).
+- **Decision inbox flush (8ab5e5a):** All 19 entries (D-142..D-159) merged into `.squad/decisions.md`; inbox cleared.
+- **Batch PWA 3 (97a3931):** Fixed FAB Props drift (D-128) by centralizing AddDeviceFab logic; wired audit log nav link; full-width admin tables; fixed PullToRefresh deadzone (D-129); added safe-area offsets to FAB.
+- **Batch PWA 4 (454b954):** Fixed desktop nav regression (hidden hamburger), removed duplicate theme persistence, admin import/export URL cleanup; regression-watch flag added (D-162).
+- **Session decisions:** D-160 (FAB Props pattern), D-161 (PullToRefresh tuning), D-162 (desktop nav regression watch) merged in 518f470.
+- **Key learnings:** (1) FAB rendering via prop-drilling causes sync drift — centralize in single component, control visibility at page level; (2) Touch gesture thresholds are iterative field-test parameters (deadzone tuning); (3) Cascade lint discipline needed for multi-subsystem refactors to avoid collateral-damage to nav/theme; (4) Narrow diffs when rolling back multi-area changes.
+- **Test status:** `pnpm run lint` ✅, `pnpm run check` ✅, full Vitest run ✅ (338 passed / 1 skipped), `pnpm run build` ✅. Awaiting Brian's verification of 454b954 on desktop before proceeding to remaining P003-PWA tasks (T11–T16) or new backlog.
+- Session log: `.squad/log/2026-05-21T14-32-41Z-bug-bash-close-out.md`. Decisions.md now 212KB; archived older entries recommended for next session.
+
+---
+
 ## 2026-05-20 — Vasquez device add FAB regression fix
 
 - Restored the `/devices` create entry point as a route-linked pattern: new `src\TechInventory.Web\src\lib\components\DeviceListAddActions.svelte` now pairs the desktop header link with the mobile `AddDeviceFab.svelte`, and the FAB itself is an anchor to `/devices/new` pinned bottom-left with safe-area-aware offsets.

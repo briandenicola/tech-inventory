@@ -3387,6 +3387,344 @@ The base `IntegrationTestFactory<TMarker>` installs an in-memory `TestAuthHandle
 
 ---
 
+---
+
+## Backlog Flush — 19 Decisions Merged (2026-05-20 PWA Bug Bash)
+
+The following 19 decisions from `.squad/decisions/inbox/` have been merged into this document (2026-05-20 field-test session).
+
+---
+
+### D-142: User Directive — Multi-Select Reference Data Admin
+
+**Date:** 2026-05-20T20:08Z  
+**Submitted By:** Brian (via Copilot)  
+**Type:** Feature Request  
+**Status:** Backlog
+
+**Request:** For Brands, Categories, Locations, Networks admin pages — add multi-select like Devices. When multiple selected, actions are: (1) bulk delete, (2) merge into one (user picks merge target, all FK references reassigned).
+
+**Rationale:** User request — extends existing Devices multi-select pattern to all reference data entities.
+
+**Implementation notes:** Pattern already exists in F039 bulk operations (D-039 series); this captures future enhancement for comprehensive admin bulk actions.
+
+---
+
+### D-143: User Directive — PWA Mobile UX Fixes
+
+**Date:** 2026-05-20T20:14Z  
+**Submitted By:** Brian (via Copilot)  
+**Type:** UX Improvement + Bug Report  
+**Status:** Backlog
+
+**Issues Captured:**
+
+1. The (+) FAB to add a new device is missing in PWA mode — must be restored.
+2. Device details should be a modal/bottom sheet, not a full page navigation.
+3. The Options menu (Edit, Release Ownership, View Change History, etc.) should be a hamburger/kebab overflow menu in PWA mode.
+
+**Rationale:** User request — captured for team memory. Phone-first experience is the primary use case.
+
+**Implementation status:** D-125 (FAB convention) and D-126 (mobile rendering pattern) address #1 + #3. #2 (device details modal) deferred to future UX round.
+
+---
+
+### D-144: User Directive — Device Details Layout Customization
+
+**Date:** 2026-05-20T20:16Z  
+**Submitted By:** Brian (via Copilot)  
+**Type:** Feature Request  
+**Status:** Backlog
+
+**Request:** Device details should be displayed in a horizontal key-value table format ("Column Name | Property Value") not label-stacked-above-value. Additionally, admins should be able to configure column display order from an admin settings screen.
+
+**Rationale:** User request — captured for team memory. Readability and admin customization for device views.
+
+**Implementation status:** F044 (household display settings) addresses the admin settings capability; frontend display format can be revisited when T10+ audit/display spec lands.
+
+---
+
+### D-145: User Directive — Skip Local Validation During Bug Bash
+
+**Date:** 2026-05-20T24:51Z (malformed timestamp; treated as end-of-day)  
+**Submitted By:** Brian (via Copilot)  
+**Type:** Process Directive  
+**Status:** ✅ Completed (this session only)
+
+**Decision:** During the PWA bug-bash recovery session, spawn prompts should KEEP the squad protocol (history append, decision drop, skill extraction) but SKIP the local validation steps (`pnpm run check`, `pnpm exec vitest`). Brian will verify each fix directly in the live PWA on his phone.
+
+**Rationale:** User feedback — `pnpm run check` adds 60–90s per agent run. For tight one-file edits where the human will eyeball the diff and test live, local validation is the bottleneck. Squad housekeeping is preserved because the value (decisions, skills, history) compounds across sessions.
+
+**Scope:** This bug-bash recovery session only. Default behavior outside this session: include validation as usual.
+
+**Status:** Completed post-bug-bash; revert to full validation in next session.
+
+---
+
+### D-146: Hicks — Era Report Sample Ordering (F035)
+
+**Date:** 2026-05-20  
+**Proposed by:** Hicks (Backend)  
+**Status:** Implemented  
+**Related:** F035-T01/T02, `src\TechInventory.Infrastructure\Persistence\Repositories\ReportingRepository.cs`
+
+**Decision:** Frozen era-report payload requires `sampleDevices`, but it did not define how those names should be ordered within a decade. The frontend decade card and backend tests both need a deterministic order so the report does not appear to shuffle between requests.
+
+**Ordering:** `sampleDevices` within each decade ordered by **purchase year descending**, then **device name ascending**, returning only the first **three** names.
+
+**Rationale:** Most-recent-first keeps each decade summary representative of the newest devices in that bucket, which reads better for the nostalgic report card. The name tie-break removes nondeterminism that would otherwise come from database/default collection ordering.
+
+---
+
+### D-147: Hicks — F037 Historical Timeline Implementation Note
+
+**Date:** 2026-05-20  
+**Context:** F037 backend contract requires `estimatedValue` and `disposalDate`, but the current domain model only persists `PurchasePrice` and a single lifecycle end date (`RetiredDate`).
+
+**Decision:**
+
+For timeline v1:
+1. `estimatedValue` is sourced from `Device.PurchasePrice` and emitted as a numeric value (`0.00` when purchase price is missing).
+2. `disposalDate` is sourced from `Device.RetiredDate` for both `Retired` and `Disposed` statuses.
+
+**Rationale:** Keeps the frozen `/api/v1/reports/timeline` response implementable without schema changes. Avoids inventing a second date field or a new valuation column outside an approved spec/ADR. Preserves future flexibility: a later valuation feature can replace the timeline's numeric source without changing the endpoint shape.
+
+**Follow-up:** If/when the product adds current-value tracking, switch `estimatedValue` to that persisted source.
+
+---
+
+### D-148: Hicks — Shared Bulk Ops + Deepest-First Category Delete for F039
+
+**Date:** 2026-05-20  
+**Proposed by:** Hicks (Backend)  
+**Status:** Implemented  
+**Related:** F039, `src\TechInventory.Application\BulkOperations\`
+
+**Decision:** Keep the backend surface **resource-oriented and per-entity**, matching the existing merge pattern, while extracting only the shared bulk-operation primitives into `src\TechInventory.Application\BulkOperations\`.
+
+For category bulk delete specifically, process selected categories **deepest-first** before cascading descendant deactivation.
+
+**Rationale:** Per-entity commands/controllers keep category-specific rules explicit instead of burying them in a generic handler. A small shared bulk-operation seam removes duplication without coupling the API surface to devices. Deepest-first ordering lets one batch include both a parent and its child atomically without double-updating the child.
+
+---
+
+### D-149: Hicks — Household Settings Store for F044 Display Settings
+
+**Date:** 2026-05-20  
+**Proposed by:** Hicks (Backend)  
+**Status:** Implemented  
+**Related:** F044, `src\TechInventory.Application\Settings\`
+
+**Decision:** Persist household display settings in a generic `HouseholdSettings` table keyed by **`(HouseholdId, Key)`**, with the ordered identifiers stored as JSON array strings in `Value`.
+
+For F044 v1:
+1. `device-list-columns` stores the ordered device-list column identifiers.
+2. `device-detail-fields` stores the ordered device-detail field identifiers.
+3. Missing rows are seeded from the default catalog on first `GET /api/v1/settings/display`.
+
+**Rationale:** Keeps the persistence seam reusable for future household-scoped settings instead of creating a dedicated table per feature. JSON arrays preserve user-controlled ordering naturally, which is the core requirement for display-column preferences.
+
+---
+
+### D-150: Vasquez + Bishop — Silent SSO Bootstrap on App Load
+
+**Date:** 2026-05-20  
+**Proposed by:** Vasquez (Frontend) + Bishop (Security/Auth)  
+**Status:** Proposed  
+**Related:** D-002, D-010, `specs/002-frontend-mvp/spec.md` §4.1/§4.3/§5
+
+**Decision:** Adopt a **silent-first auth bootstrap** for Entra sessions:
+
+1. On app load, the root web layout must run `handleRedirectPromise()` and then attempt `msalInstance.acquireTokenSilent()` with the cached MSAL account before revealing `/auth/login`.
+2. If silent acquisition succeeds, hydrate the existing auth store via `/api/v1/owners/me` and route auth entry pages to `/devices`.
+3. If MSAL reports `interaction_required`, `login_required`, `consent_required`, or no cached account exists, treat that as a normal unauthenticated state and show the login page/button.
+4. Local break-glass sessions continue to hydrate first from sessionStorage and are not sent through Entra.
+
+**Rationale:** Brian wants an iOS-style experience where returning users re-enter the app automatically whenever MSAL still has a valid silent path. Doing the silent attempt in the root layout eliminates the login-page flash and keeps the UX consistent on reloads, deep links, and redirect returns.
+
+**Security / Bishop guidance:** Tokens remain in MSAL only; no custom token persistence, no localStorage. MSAL cache stays in `sessionStorage`/memory. PKCE remains on the normal redirect flow. Silent bootstrap only changes UX timing; it does not loosen server-side default-deny or role enforcement.
+
+---
+
+### D-151: Vasquez — D-126 Superseded — Sticky-Column Scroll Context for Devices
+
+**Date:** 2026-05-21  
+**Author:** Vasquez (Frontend Developer)  
+**Status:** Proposed  
+**Related:** D-126 (supersedes), devices page sticky column scroll
+
+**Decision:** For the devices page:
+- **Restore** the user-toggleable `mobileViewMode: 'cards' | 'table'` — both views are valid UX.
+- **Fix the scroll-context problem** by making the Name column sticky in the mobile horizontal-scroll table.
+- D-126's "Split Responsive" pattern (always cards on mobile) remains valid for admin lookup pages where the data is simpler.
+
+**Sticky-Column Technique (Reusable):**
+
+When a mobile-friendly table requires horizontal scroll but one column provides essential row-identification context:
+
+```html
+<th class="sticky left-0 z-20 bg-neutral-50 dark:bg-neutral-900
+           border-r border-neutral-200 dark:border-neutral-800
+           shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">
+```
+
+Key requirements:
+1. **Solid background** — content scrolls underneath
+2. **Inherit row states** — hover, selected must show through
+3. **Visual pin indicator** — border + subtle shadow
+4. **z-index** — `z-20` keeps sticky cells above adjacent scrolled cells
+
+**Relation to Admin Revert:** Commit `9259137` reverted admin-page cards-only conversion. This decision is the devices-side counterpart: both restore user agency (toggle) and solve the root problem (scroll context) rather than removing the feature.
+
+---
+
+### D-152: Vasquez — Device Detail Surfaces Share One Mobile-First Pattern
+
+**Date:** 2026-05-20  
+**Related backlog:** F040, F041, F042, F043
+
+**Decision:** Use one shared device-detail presentation stack across `/devices` and `/devices/[id]`:
+1. Open list-row details from a `?device=` URL param into `DeviceDetailModal.svelte`
+2. Render device facts through `DeviceDetailFields.svelte`
+3. Hide edit/claim/release/history/delete behind `DeviceActionsMenu.svelte`
+
+**Rationale:** Field testing showed that context loss and action clutter were part of the same mobile UX problem. Sharing the modal/body/action primitives keeps the installed PWA and the deep-link route visually aligned while still preserving a direct page fallback.
+
+**Implications:**
+- Mobile gets a bottom sheet for details and a bottom action sheet for device actions.
+- Desktop gets the same content in a centered modal plus dropdown overflow menu.
+- Future device-detail fields/actions should be added to the shared components first, not duplicated in route-specific markup.
+
+---
+
+### D-153: Vasquez — Devices Page Polish — Bug Bash Recovery
+
+**Date:** 2026-05-21  
+**Status:** Proposed  
+**Agent:** Vasquez (Frontend Developer)  
+**Scope:** `src/TechInventory.Web/src/routes/(authenticated)/devices/+page.svelte`
+
+**Summary:** Five targeted UI fixes on the `/devices` page to achieve "CLEAN. CONSISTENT. ELEGANT."
+
+**Changes & Rationale:**
+
+1. **Welcome greeting removed** — Deleted `currentUser.displayName` greeting below page title; user name already in app header.
+2. **Status chip + "Show all statuses" toggle removed** — DeviceFilters panel already exposes full status multi-select; toolbar chip was redundant.
+3. **Filter panel hidden by default** — Added `activeFilterCount` badge on Filter button for at-a-glance visibility.
+4. **Sticky page header + search bar** — Wrapped h1 "Devices" + actions + search in `sticky top-[73px] z-30` container for accessibility during scroll.
+5. **Dark strip at left edge fixed** — Added `background-color` rules to `html` and `body` in `app.css` matching light/dark theme, eliminating safe-area contrast strip on iOS PWA.
+
+---
+
+### D-154: Vasquez — Era Report Card Owns Its Own Fetch/Filter State
+
+**Date:** 2026-05-20  
+**Status:** Proposed
+
+**Decision:** Implement the first F035 era/decade report as a self-contained `EraReportCard.svelte` on `/reports`.
+
+- The existing reports page keeps route-level ownership of the summary + warranty panels.
+- `EraReportCard` owns its own API call to `GET /api/v1/reports/eras`, category filter UI, loading/error/empty states, and responsive mobile-card/desktop-table rendering.
+- Category options come from the shared `referenceDataStore`.
+
+**Rationale:** Keeps `/reports` route from turning into one oversized orchestration file as reports accumulate. Each future report card can stay testable and independently iterable while composing cleanly into the shared reports dashboard.
+
+---
+
+### D-155: Vasquez — F037 Timeline Composition Decision
+
+**Date:** 2026-05-20  
+**Context:** F037 needed proportional lifespan bars, category filtering, and a group-by toggle on `/reports`.
+
+**Decision:** Keep `TimelineReport.svelte` self-contained for fetch/filter state, move lifespan normalization into `src/TechInventory.Web/src/lib/utils/reports.ts`, and render each device row through a tiny `TimelineBar.svelte` primitive.
+
+**Rationale:** This keeps timeline math unit-testable, keeps `/routes/(authenticated)/reports/+page.svelte` lean as more report cards land, and lets mobile/desktop renderers share one normalized view model.
+
+**Consequences:** Future timeline-like report cards can reuse the normalization pattern without adding a chart dependency.
+
+---
+
+### D-156: Vasquez — Shared Bulk UI + Client-Side Repeated Merges for F039
+
+**Date:** 2026-05-20  
+**Status:** Implemented  
+**Related:** F039, reference-data bulk actions
+
+**Decision:** Use one shared frontend seam for reference-data bulk actions:
+
+1. `ReferenceDataBulkBar.svelte` for the sticky selected-count + action bar
+2. `BulkDeleteReferenceModal.svelte` for guarded bulk deletion with preflight device counts
+3. `MergeEntityModal.svelte` in a new `sourceEntities` bulk mode for both single and multi-source merges
+
+Implement bulk merge client-side by repeatedly calling the existing single-source merge endpoint for each selected source into the chosen target.
+
+**Rationale:**
+- Four admin pages stay visually and behaviorally aligned.
+- Reusing the existing merge modal avoids a second destructive/confirm flow.
+- Repeated single-source merges minimize contract churn; backend endpoints already own validation/reassignment/audit.
+
+---
+
+### D-157: Vasquez — PWA Bug Bash Fixes Round 2
+
+**Date:** 2025-06-20  
+**Agent:** Vasquez (Frontend Developer)  
+**Scope:** Fixes 2.1, 2.2, 2.3 from Brian's live phone bug bash
+
+**Decisions:**
+
+1. **Admin pages: cards → compact tables** — Replace card/table dual layout with single compact `<table>` that works at all viewports. Keep per-page inline tables rather than shared component.
+
+2. **FAB alignment + device detail scroll** — Use `calc(env(safe-area-inset-*) + var(--space-6))` for both FABs (AddDevice bottom-left, BackToTop bottom-right) instead of mixing Tailwind with inline styles. Add `pb-24` wrapper to device detail page content.
+
+3. **ThemeToggle pill overflow** — Constrain toggle with `w-full max-w-full` on container and `flex-1 min-w-0` on each button so they shrink proportionally.
+
+**Status:** Fixes dirty in working tree for Brian's live phone testing. No commits made intentionally.
+
+---
+
+### D-158: Vasquez — PullToRefresh Containing Block Fix
+
+**Date:** 2026-05-21  
+**Author:** Vasquez  
+**Status:** Proposed  
+
+**Context:** Two PWA bugs traced to a single root cause in `PullToRefresh.svelte`:
+
+- **Bug 2** — DeviceDetailModal: backdrop fades page but modal panel never appears (pinned to bottom of multi-thousand-pixel containing block).
+- **Bug 4** — AddDeviceFab: button renders to DOM but positioned at bottom of scroll content, far below viewport.
+
+The content wrapper unconditionally applied `transform: translateY(0px)` and `will-change-transform` at rest. Per CSS Transforms Level 1 §3, both properties establish a new containing block for `position: fixed` descendants, breaking every modal and FAB.
+
+**Decision:** The PullToRefresh content wrapper must NOT create a containing block at rest:
+
+1. **At rest** (no active pull): no `transform` style attribute, no `will-change-transform` class.
+2. **While pulling/settling**: `transform` and `will-change-transform` applied for the slide animation.
+3. `transition-transform` class stays always so snap-back animation plays naturally.
+
+**Implementation:** A `$derived` boolean `isActive = isPulling || indicatorHeight > 0` gates the `style` and `class:will-change-transform` attributes on the wrapper.
+
+---
+
+### D-159: Vasquez — Responsive Admin Tables (P003-T06)
+
+**Date:** 2026-05-20  
+**Related:** Admin reference-entity pages
+
+**Decision:** Use **Option A** for admin surfaces:
+- below `md`: single-column cards
+- `md+`: keep semantic tables for flat entities
+- `md+` categories keep the existing tree view; only mobile flattens to cards
+
+**Rationale:** Admin entities are data-light and action-heavy. Cards keep Edit / Merge / Deactivate visible without sideways scrolling, while desktop tables preserve scanability.
+
+**Implementation notes:**
+- Shared wrapper: `src/TechInventory.Web/src/lib/components/admin/ResponsiveAdminList.svelte`
+- Categories stay custom (tree structure differs from flat table)
+- Touch targets enforced with `min-h-11` / `h-11` on controls
+
+---
+
 ## Governance
 
 - All meaningful changes require team consensus

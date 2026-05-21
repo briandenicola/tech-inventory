@@ -49,24 +49,25 @@ Two rapid spawns fixed alignment issues exposed by the triple PWA fix. Both are 
 
 **Session log:** `.squad/log/2026-05-21T16-25-00Z-modal-fab-followup.md`. Orchestration logs: `.squad/orchestration-log/2026-05-21T16-24-{00,40}Z-vasquez-{modal-position,fab-align}.md`.
 
-**2026-05-21 (Desktop header cleanup — spawn pair, prior to triple fix):** 
-1. **vasquez-user-menu-right (148s):** Grouped desktop user menu + hamburger into single right-aligned flex container. Orchestration log: `.squad/orchestration-log/2026-05-21T15-10-00Z-vasquez-user-menu-right.md`.
-2. **vasquez-kill-admin-strip (83s):** Removed redundant admin sub-nav strip; extends D-160 to D-163 blanket rule. Orchestration log: `.squad/orchestration-log/2026-05-21T15-11-00Z-vasquez-kill-admin-strip.md`.
+## Earlier Work
 
-**2026-05-21 (Desktop header cleanup — spawn pair):** 
-1. **vasquez-user-menu-right (148s):** Grouped the desktop user menu ("Brian Denicola | Admin" pill + chevron) and hamburger button into a single right-aligned flex container (`flex items-center gap-2`) in `+layout.svelte`. Previously they were separate flex children of the `justify-between` header bar, causing the user menu to float toward the center. Mobile layout unchanged — user menu is `hidden md:block` so on small screens only the hamburger appears as before. Orchestration log: `.squad/orchestration-log/2026-05-21T15-10-00Z-vasquez-user-menu-right.md`.
-2. **vasquez-kill-admin-strip (83s):** Removed the redundant 22-line admin sub-nav strip (`<nav aria-label="Admin navigation">`) from `+layout.svelte` (lines 275–296). This strip duplicated links already reachable from hamburger menu ADMIN section + user-menu dropdown ADMIN section. Extends D-160 rule to blanket policy: **"No duplicate navigation surfaces on desktop, period."** Decision D-163 documents the extension; sentinel comment added to flag rule for future developers. Orchestration log: `.squad/orchestration-log/2026-05-21T15-11-00Z-vasquez-kill-admin-strip.md`. Commit `a255f08` (both changes combined).
+**2026-05-21 (Desktop header cleanup — spawn pair):** Grouped user menu + hamburger into single right-aligned flex container (`flex items-center gap-2`). Removed redundant 22-line admin sub-nav strip that duplicated hamburger menu + user-menu dropdown links. Extends D-160 to D-163 blanket rule: "No duplicate navigation surfaces on desktop, period." (Spawn pair: `vasquez-user-menu-right` 148s + `vasquez-kill-admin-strip` 83s, commit `a255f08`)
 
-**2026-05-20 (PWA Bug Bash):** Parallel 6-agent run (Vasquez × 6) fixed critical PWA UI regressions. (1) Removed per-item Merge button from admin lookup (Brands/Categories/Locations/Networks) — consolidated merge entry to bulk-action bar only (D-122). (2) Fixed dark-mode modal ghosting via Tailwind v4 token registration (950 semantic shades) + standardized modal backdrop/surface layering (D-123, skill: modal-rendering). (3) Rebuilt `/devices` filter drawer as mobile sheet pattern with `h-dvh`, sticky header/footer, body scroll lock, dialog semantics (D-124). (4) Restored Add Device FAB on `/devices` using bottom-left anchor-based FAB convention with role-aware visibility (D-125). (5) Implemented mobile stacked-card rendering for `/devices` and admin pages — primary ID heading + dt/dd pairs below, `md+` tables preserved (D-126, skill: responsive-list-rendering). (6) Retired redundant `/admin` hub page; top-level Admin nav now routes directly to `/admin/audit` (D-127). All validation green (399 vitest passed, 1 skipped). Orchestration logs: `.squad/orchestration-log/2026-05-20T22-30-{00..05}Z-vasquez-*`.
+**2026-05-20 (PWA Bug Bash):** Parallel 6-agent Vasquez run fixed 6 critical PWA UI regressions: (1) Consolidated merge button to bulk-action bar (D-122), (2) Fixed dark-mode modal ghosting + standardized layering (D-123), (3) Rebuilt filter drawer as mobile sheet pattern (D-124), (4) Restored Add Device FAB with role-aware visibility (D-125), (5) Implemented mobile stacked-card rendering (D-126), (6) Retired redundant `/admin` hub (D-127). All 399 Vitest passed.
 
-**2026-05-20 (F039):** Reference-data admin bulk actions shipped.Added shared `ReferenceDataBulkBar.svelte`, `BulkDeleteReferenceModal.svelte`, and `referenceSelection.ts`; extended `MergeEntityModal.svelte` + `referenceMerge.ts` for multi-source and network merges; wired Brands/Categories/Locations/Networks admin pages for checkbox multi-select, select-all, bulk delete, and bulk merge; added temporary typed client wrappers for the new backend endpoints; validation green (`pnpm run check`, `pnpm run lint`, focused Vitest, full `pnpm exec vitest run`, `pnpm run build`), and repo `scripts\verify.ps1` still only stops at the known missing-`docker` Playwright step in this environment.
+**2026-05-20 (F039):** Reference-data admin bulk actions. Added shared `ReferenceDataBulkBar.svelte`, `BulkDeleteReferenceModal.svelte`, extended `MergeEntityModal.svelte` for multi-source + network merges, wired multi-select/select-all/bulk-delete/bulk-merge across Brands/Categories/Locations/Networks pages. Validation green.
 
-**2026-05-18 (Phase 1 Round 1):** ESLint token-storage gate deployed. Custom inline rule in `src/TechInventory.Web/eslint.config.js` bans `localStorage.setItem/getItem/removeItem` for token-like keys (verified via test fixture). MSAL cache location pinned to `sessionStorage` in `src/lib/auth/msal.ts`. Decision D-011 documents path-aware ESLint custom rule pattern for future frontend security gates. Token-storage four-gate enforcement (D-010) coordinated with Hudson (pre-commit hook), Apone (Playwright E2E), and Bishop (code review checklist). `pnpm lint` gate active and verified.
-
-**2026-05-18 (Phase 1 Round 2):** Vite config type-error fix deployed. Moved `@ts-expect-error` directive from import line to precise plugins array location (Vite v6 / vitest pnpm dependency conflict). Frontend type-checking pipeline unblocked: `pnpm run check` ✅, `pnpm run lint` ✅. Verify pipeline gate now green, allowing Hicks's Domain work and Apone's test contracts to proceed without frontend blockage.
-
+**2026-05-18 (Phase 1 Round 1–2):** ESLint token-storage gate (custom rule bans `localStorage.setItem` for token keys, D-011) + Vite config type-error fix (moved `@ts-expect-error` to plugins array, Vite v6 pnpm conflict). Frontend pipeline unblocked (`pnpm run check` ✅, `pnpm run lint` ✅).
 
 ## Learnings
+
+### 2026-05-21 — Z-Index Canonical Layering & Vestigial Props (D-167, D-168)
+
+**Z-index violation (D-167):** App header used raw `z-50` (above modal backdrop `z-40`), trapping modal content in inescapable stacking context. Modal headers hidden behind app header on iOS PWA. Established canonical ladder: sticky (20) < fixed (30) < modal-backdrop (40) < modal (50) < popover (60) < tooltip (70). Page headers MUST use z-30 or lower; never use `z-50` on page elements.
+
+**Vestigial prop cleanup (D-168):** AddDeviceFab had `raised` prop from pre-D-129 era when FABs needed height differentiation to prevent overlap. After D-129 repositioned FABs to opposite corners, prop was dead code. Removed entirely; both FABs now use identical `bottom: calc(env(safe-area-inset-bottom, 0px) + var(--space-6))` positioning. Pattern: when design decisions supersede a component's purpose, aggressively prune vestigial code instead of leaving it to fossilize.
+
+---
 
 ### 2026-05-21 — Modal Z-Index vs App Header Stacking (follow-up to D-164)
 

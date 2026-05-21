@@ -7,12 +7,56 @@
  * Related: specs/002-frontend-mvp/spec.md §4.1, docs/auth-design.md §3
  */
 
-import { msalInstance, apiTokenRequest, ensureMsalInitialized } from './msal';
+import { msalInstance, apiTokenRequest, ensureMsalInitialized, loginRequest } from './msal';
 import type {
 	AccountInfo,
 	AuthenticationResult,
 	InteractionRequiredAuthError
 } from '@azure/msal-browser';
+
+const SILENT_SSO_SUPPRESS_KEY = 'ti_silent_sso_suppressed';
+
+export interface TryAcquireApiTokenSilentOptions {
+	timeoutMs?: number;
+}
+
+export function suppressSilentSso(): void {
+	if (typeof sessionStorage === 'undefined') return;
+	sessionStorage.setItem(SILENT_SSO_SUPPRESS_KEY, 'true');
+}
+
+export function clearSilentSsoSuppression(): void {
+	if (typeof sessionStorage === 'undefined') return;
+	sessionStorage.removeItem(SILENT_SSO_SUPPRESS_KEY);
+}
+
+function isSilentSsoSuppressed(): boolean {
+	if (typeof sessionStorage === 'undefined') return false;
+	return sessionStorage.getItem(SILENT_SSO_SUPPRESS_KEY) === 'true';
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs?: number): Promise<T> {
+	if (!timeoutMs || timeoutMs <= 0) {
+		return await promise;
+	}
+
+	return await new Promise<T>((resolve, reject) => {
+		const timeoutId = setTimeout(() => {
+			reject(new Error('Silent auth attempt timed out'));
+		}, timeoutMs);
+
+		void promise.then(
+			(value) => {
+				clearTimeout(timeoutId);
+				resolve(value);
+			},
+			(error: unknown) => {
+				clearTimeout(timeoutId);
+				reject(error);
+			}
+		);
+	});
+}
 
 /**
  * Initialize MSAL instance (required in v3+ before any other MSAL call).
@@ -33,7 +77,12 @@ export async function initializeMsal(): Promise<void> {
  */
 export async function handleRedirectPromise(): Promise<AuthenticationResult | null> {
 	await ensureMsalInitialized();
-	return await msalInstance.handleRedirectPromise();
+	const result = await msalInstance.handleRedirectPromise();
+	if (result?.account) {
+		msalInstance.setActiveAccount(result.account);
+		clearSilentSsoSuppression();
+	}
+	return result;
 }
 
 /**
@@ -94,6 +143,7 @@ export async function acquireApiToken(): Promise<string | null> {
 	};
 
 	console.info('[auth] Silent token acquisition failed; redirecting to Entra for interactive auth');
+	clearSilentSsoSuppression();
 	// This will redirect the user to Entra; they'll return via handleRedirectPromise
 	// The calling code won't receive a response — redirect is a full navigation
 	await msalInstance.acquireTokenRedirect(request);
@@ -101,22 +151,31 @@ export async function acquireApiToken(): Promise<string | null> {
 	return null;
 }
 
-export async function tryAcquireApiTokenSilent(): Promise<AuthenticationResult | null> {
+export async function tryAcquireApiTokenSilent(
+	options: TryAcquireApiTokenSilentOptions = {}
+): Promise<AuthenticationResult | null> {
 	await ensureMsalInitialized();
-	const account = getActiveAccount();
-
-	if (!account) {
+	if (isSilentSsoSuppressed()) {
 		return null;
 	}
 
-	const request = {
-		...apiTokenRequest,
-		account
-	};
+	const account = getActiveAccount();
 
 	try {
-		const result = await msalInstance.acquireTokenSilent(request);
-		msalInstance.setActiveAccount(result.account ?? account);
+		const result = account
+			? await withTimeout(
+					msalInstance.acquireTokenSilent({
+						...apiTokenRequest,
+						account
+					}),
+					options.timeoutMs
+			  )
+			: await withTimeout(msalInstance.ssoSilent(loginRequest), options.timeoutMs);
+		const resolvedAccount = result.account ?? account;
+		if (resolvedAccount) {
+			msalInstance.setActiveAccount(resolvedAccount);
+		}
+		clearSilentSsoSuppression();
 		return result;
 	} catch (error) {
 		if (isInteractionRequiredError(error)) {

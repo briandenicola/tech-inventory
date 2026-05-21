@@ -371,3 +371,9 @@ Work already completed in commit `68ddbd5` (`test(web): T26 ownership modals + T
 - **Breakpoint:** `md` (768px) — matches the user menu pill's `hidden md:block`. Below md = mobile (hamburger only). At/above md = desktop (user dropdown only).
 - **Decision:** Filed D-164 superseding D-163 — "Desktop: user menu dropdown is sole nav entry. Mobile: hamburger overlay is sole nav entry. Never both on same viewport."
 - **Files changed:** `+layout.svelte`, `.squad/decisions/inbox/vasquez-nav-single-entry.md`.
+## Learnings — 2026-05-21 F038 silent SSO close-out
+
+- Root silent SSO needs a bounded bootstrap window (`3s`) so network or hidden-iframe stalls drop back to the login button instead of trapping `/auth/login` on an endless splash.
+- MSAL `sessionStorage` is per-tab, so second-tab auto-entry needs `msalInstance.ssoSilent(loginRequest)` when the new tab has no cached account yet but the Entra browser session still exists.
+- Explicit logout must suppress silent SSO until the next deliberate sign-in click; pair that suppression flag with `clearCache()` fallback so a failed `logoutRedirect()` cannot immediately auto-log the same Entra user back in.
+- Protected-route load guards are not enough by themselves on a fresh deep link; add a client-side redirect backstop in `(authenticated)/+layout.svelte` once `authStore.isLoading` settles.

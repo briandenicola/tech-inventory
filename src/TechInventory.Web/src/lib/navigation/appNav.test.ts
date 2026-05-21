@@ -17,8 +17,8 @@ describe('appNav', () => {
 		expect(getVisibleNavItems(primaryNavItems, 'Member').map((item) => item.href)).toEqual([
 			'/devices',
 			'/reports',
-			'/import',
-			'/export'
+			'/admin/import',
+			'/admin/export'
 		]);
 	});
 
@@ -26,8 +26,8 @@ describe('appNav', () => {
 		expect(getVisibleNavItems(primaryNavItems, 'Admin').map((item) => item.href)).toEqual([
 			'/devices',
 			'/reports',
-			'/import',
-			'/export',
+			'/admin/import',
+			'/admin/export',
 			'/admin/audit'
 		]);
 	});
@@ -46,7 +46,7 @@ describe('appNav', () => {
 	it('marks the audit-log leaf route and admin sub-routes as active in the correct places', () => {
 		const reportsItem = primaryNavItems.find((item) => item.href === '/reports');
 		const auditItem = primaryNavItems.find((item) => item.href === '/admin/audit');
-		const exportItem = primaryNavItems.find((item) => item.href === '/export');
+		const exportItem = primaryNavItems.find((item) => item.href === '/admin/export');
 
 		expect(isNavItemActive('/devices/123/edit', primaryNavItems[0])).toBe(true);
 		expect(reportsItem).toBeDefined();
@@ -56,6 +56,6 @@ describe('appNav', () => {
 		expect(isNavItemActive('/admin/audit', auditItem!)).toBe(true);
 		expect(isNavItemActive('/admin/owners', auditItem!)).toBe(false);
 		expect(isNavItemActive('/admin/owners', adminNavItems[4])).toBe(true);
-		expect(isNavItemActive('/export', exportItem!)).toBe(true);
+		expect(isNavItemActive('/admin/export', exportItem!)).toBe(true);
 	});
 });

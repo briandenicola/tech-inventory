@@ -1,15 +1,19 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { authStore } from '$lib/stores/auth';
+	import { suppressSilentSso } from '$lib/auth';
+	import { authStore, clearAuth } from '$lib/stores/auth';
 	import { msalInstance } from '$lib/auth/msal';
 	import { ensureMsalInitialized } from '$lib/auth/msal';
-	import { clearAuth } from '$lib/stores/auth';
 	import { t } from '$lib/i18n';
 	import { goto, invalidateAll } from '$app/navigation';
 	import PullToRefresh from '$lib/components/PullToRefresh.svelte';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import ToastContainer from '$lib/components/ToastContainer.svelte';
-	import { fetchReferenceData, referenceDataStore } from '$lib/stores/referenceData';
+	import {
+		clearReferenceData,
+		fetchReferenceData,
+		referenceDataStore
+	} from '$lib/stores/referenceData';
 	import { activePullToRefresh } from '$lib/stores/pullToRefresh';
 	import {
 		adminNavItems,
@@ -29,6 +33,7 @@
 
 	let mobileMenuOpen = $state(false);
 	let userMenuOpen = $state(false);
+	let isSigningOut = $state(false);
 	let userMenuTrigger = $state<HTMLButtonElement | undefined>(undefined);
 
 	// Derive auth state from store
@@ -49,23 +54,33 @@
 	// MSAL so the IdP session + cookies are cleared.
 	async function handleSignOut() {
 		const authMethod = $authStore.authMethod;
+		isSigningOut = true;
+		suppressSilentSso();
+		clearAuth();
+		clearReferenceData();
 
 		if (authMethod === 'local') {
-			clearAuth();
 			await goto('/auth/login');
 			return;
 		}
 
 		try {
-			clearAuth();
 			await ensureMsalInitialized();
+			const account = msalInstance.getActiveAccount() ?? msalInstance.getAllAccounts()[0] ?? undefined;
 			await msalInstance.logoutRedirect({
+				account,
 				postLogoutRedirectUri: window.location.origin
 			});
 		} catch (error) {
 			console.error('[auth] Sign-out failed:', error);
+			try {
+				await msalInstance.clearCache();
+				msalInstance.setActiveAccount(null);
+			} catch (cacheError) {
+				console.error('[auth] Failed to clear MSAL cache after sign-out:', cacheError);
+			}
 			// Fallback: navigate to login even if MSAL logout fails
-			goto('/auth/login');
+			await goto('/auth/login');
 		}
 	}
 
@@ -75,6 +90,19 @@
 		$page.url.pathname; // Trigger effect on route change
 		mobileMenuOpen = false;
 		userMenuOpen = false;
+	});
+
+	// Client-side backstop for fresh loads into protected routes: the load
+	// function lets the shell render while the root auth bootstrap is still
+	// resolving, so redirect once loading finishes if no session survived.
+	$effect(() => {
+		const state = $authStore;
+		if (isSigningOut || state.isLoading) {
+			return;
+		}
+		if (!state.isAuthenticated || !state.currentUser) {
+			goto('/auth/login');
+		}
 	});
 
 	// Hydrate reference data (brands, categories, owners, locations, networks)

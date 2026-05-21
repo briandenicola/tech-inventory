@@ -7,6 +7,7 @@ const {
 	getActiveMsalAccount,
 	setActiveAccount,
 	acquireTokenSilent,
+	ssoSilent,
 	acquireTokenRedirect,
 	handleRedirectPromise
 } = vi.hoisted(() => ({
@@ -15,18 +16,21 @@ const {
 	getActiveMsalAccount: vi.fn(),
 	setActiveAccount: vi.fn(),
 	acquireTokenSilent: vi.fn(),
+	ssoSilent: vi.fn(),
 	acquireTokenRedirect: vi.fn(),
 	handleRedirectPromise: vi.fn()
 }));
 
 vi.mock('./msal', () => ({
 	apiTokenRequest: { scopes: ['api://tech-inventory/access_as_user'] },
+	loginRequest: { scopes: ['api://tech-inventory/access_as_user', 'openid', 'profile'] },
 	ensureMsalInitialized,
 	msalInstance: {
 		getAllAccounts,
 		getActiveAccount: getActiveMsalAccount,
 		setActiveAccount,
 		acquireTokenSilent,
+		ssoSilent,
 		acquireTokenRedirect,
 		handleRedirectPromise
 	}
@@ -75,7 +79,9 @@ describe('auth helpers', () => {
 		getAllAccounts.mockReturnValue([]);
 		getActiveMsalAccount.mockReturnValue(null);
 		setActiveAccount.mockReturnValue(undefined);
+		sessionStorage.clear();
 		acquireTokenSilent.mockResolvedValue(authResult);
+		ssoSilent.mockResolvedValue(authResult);
 		acquireTokenRedirect.mockResolvedValue(undefined);
 		handleRedirectPromise.mockResolvedValue(null);
 	});
@@ -97,12 +103,28 @@ describe('auth helpers', () => {
 		});
 	});
 
+	it('falls back to ssoSilent when this tab has no cached MSAL account yet', async () => {
+		await expect(tryAcquireApiTokenSilent()).resolves.toEqual(authResult);
+		expect(ssoSilent).toHaveBeenCalledWith({
+			scopes: ['api://tech-inventory/access_as_user', 'openid', 'profile']
+		});
+		expect(setActiveAccount).toHaveBeenCalledWith(account);
+	});
+
 	it('treats interaction_required as a non-fatal silent sign-in miss', async () => {
 		getAllAccounts.mockReturnValue([account]);
 		acquireTokenSilent.mockRejectedValue({ errorCode: 'interaction_required' });
 
 		await expect(tryAcquireApiTokenSilent()).resolves.toBeNull();
 		expect(acquireTokenRedirect).not.toHaveBeenCalled();
+	});
+
+	it('skips silent SSO after an explicit sign-out suppression flag', async () => {
+		sessionStorage.setItem('ti_silent_sso_suppressed', 'true');
+
+		await expect(tryAcquireApiTokenSilent()).resolves.toBeNull();
+		expect(acquireTokenSilent).not.toHaveBeenCalled();
+		expect(ssoSilent).not.toHaveBeenCalled();
 	});
 
 	it('falls back to interactive redirect for API calls after a silent miss', async () => {
@@ -121,5 +143,6 @@ describe('auth helpers', () => {
 
 		await expect(handleAuthRedirectPromise()).resolves.toEqual(authResult);
 		expect(ensureMsalInitialized).toHaveBeenCalled();
+		expect(setActiveAccount).toHaveBeenCalledWith(account);
 	});
 });

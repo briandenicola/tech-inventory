@@ -10,6 +10,7 @@
 	import { t } from '$lib/i18n';
 	import PwaUpdatePrompt from '$lib/components/PwaUpdatePrompt.svelte';
 
+	const SILENT_SSO_TIMEOUT_MS = 3000;
 	let { children } = $props();
 
 	function setUnauthenticatedState(error: string | null = null) {
@@ -42,7 +43,8 @@
 
 			await initializeMsal();
 			const authResult = await handleRedirectPromise();
-			const silentResult = authResult ?? (await tryAcquireApiTokenSilent());
+			const silentResult =
+				authResult ?? (await tryAcquireApiTokenSilent({ timeoutMs: SILENT_SSO_TIMEOUT_MS }));
 
 			if (silentResult?.account) {
 				await fetchCurrentUser();

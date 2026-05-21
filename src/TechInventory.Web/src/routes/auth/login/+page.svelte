@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { clearSilentSsoSuppression } from '$lib/auth';
 	import { msalInstance, loginRequest, ensureMsalInitialized } from '$lib/auth/msal';
 	import { authStore } from '$lib/stores/auth';
 	import { t } from '$lib/i18n';
@@ -38,6 +39,7 @@
 	async function handleSignIn() {
 		try {
 			isRedirecting = true;
+			clearSilentSsoSuppression();
 			await ensureMsalInitialized();
 			// Per T09 DoD + J1: Call loginRedirect with API scope + OIDC scopes.
 			// PKCE is maintained by MSAL's redirect flow.

@@ -52,6 +52,7 @@ test-results/
 .squad/log/
 .squad/decisions/inbox/*
 !.squad/decisions/inbox/vasquez-relative-api-url.md
+!.squad/decisions/inbox/vasquez-silent-sso-timeout.md
 .squad/sessions/
 # Squad: SubSquad activation file (local to this machine)
 .squad-workstream

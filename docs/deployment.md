@@ -205,22 +205,49 @@ removed knobs).
 
 ## 7. Pinning versions
 
-`IMAGE_TAG=latest` is the lazy default. For real production stability:
+The `.env` `IMAGE_TAG` variable controls which image gets deployed. Three strategies:
+
+**Strategy A — Production (Recommended)**
+
+Pin to a specific semver release. `:latest` tracks the most recent released build, not main HEAD:
 
 ```bash
 # In .env:
 IMAGE_TAG=v1.0.0
 ```
 
-Then `docker compose up -d` deploys *exactly that build* and survives
-re-creates without surprise upgrades. Update the value when you decide to
-move forward; revert to the previous tag to roll back:
+Then `docker compose up -d` deploys *exactly that build* and survives re-creates without surprise upgrades. Update when you decide to move forward:
 
 ```bash
-# Roll back:
-sed -i 's/^IMAGE_TAG=.*/IMAGE_TAG=v0.0.9/' .env
+# Upgrade to next release:
+sed -i 's/^IMAGE_TAG=.*/IMAGE_TAG=v1.0.1/' .env
 docker compose pull
 docker compose up -d
+
+# Roll back:
+sed -i 's/^IMAGE_TAG=.*/IMAGE_TAG=v1.0.0/' .env
+docker compose pull
+docker compose up -d
+```
+
+**Strategy B — Development (Rolling)**
+
+Track the latest main branch build:
+
+```bash
+# In .env:
+IMAGE_TAG=main
+```
+
+This pulls `:main` tag from GHCR, which is updated on every `main` branch push (includes CI-validated but potentially unreleased code).
+
+**Strategy C — Git SHA Staging**
+
+Pin to a specific commit SHA for testing before promotion to a release:
+
+```bash
+# In .env:
+IMAGE_TAG=sha-abc1234   # (where abc1234 is the short commit SHA from GHCR)
 ```
 
 > **Schema-incompatible rollbacks**: if the rollback target predates a

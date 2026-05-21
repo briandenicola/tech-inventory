@@ -266,7 +266,51 @@ Family Member (SvelteKit PWA)
 
 ---
 
-## 6. Local Admin Bootstrap (PRD §F5)
+## 6. Silent SSO Bootstrap (F038)
+
+**Status**: F038 shipped. The app now auto-logs returning users via cached Entra sessions.
+
+### Design
+
+On app load (root `+layout.svelte`), **before rendering the page**:
+
+1. Call `handleRedirectPromise()` to check for a post-sign-in callback.
+2. Attempt `msalInstance.acquireTokenSilent()` with the cached account (if one exists).
+3. If acquisition succeeds within **3 seconds**, hydrate the auth store via `GET /api/v1/owners/me` and route to `/devices`.
+4. If acquisition fails (no cached account, `interaction_required`, `login_required`, `consent_required`) or times out, treat as unauthenticated and show the login page.
+5. Local break-glass sessions (from F025 v1b) continue to hydrate from sessionStorage and skip Entra entirely.
+
+### UX Flow
+
+| Scenario | Result |
+|----------|--------|
+| **Returning user** (MSAL cache valid) | 3s silent auth → dashboard (no login page shown) |
+| **Returning user** (MSAL cache expired) | 3s timeout → login page shown (user clicks MSAL button → completes OAuth → dashboard) |
+| **First visit** (no MSAL cache) | 3s timeout → login page shown |
+| **Entra outage** (silent fails fast) | 3s timeout → login page shown (user can switch to local account) |
+| **Local break-glass user** | sessionStorage token checked on root layout → dashboard (Entra skipped) |
+
+### Multi-Tab Behavior
+
+- When **tab A** signs out → all tabs' MSAL caches are cleared (browser-level storage).
+- When **tab B** signs in → MSAL cache is updated.
+- If **tab A** was idle during sign-in in tab B → next route change in tab A triggers silent acquisition, which succeeds because tab B's sign-in updated the shared MSAL cache.
+- Result: sign-out is global; sign-in is global; no ghost sessions between tabs.
+
+### Timeout & Fallback
+
+The 3-second timeout is a UX balance:
+- **Too short** (<1s): fast connection users get needlessly prompted; PWA feels sluggish.
+- **Too long** (>5s): users on slow networks wait too long before being able to manually sign in.
+- **3 seconds**: typical silent acquisition completes in <500ms on a cached account; timeout allows for network jitter and offline detection.
+
+If silent acquisition doesn't complete in 3s, the app treats that as "no valid session" and shows the login page. The user can:
+- Wait for page to load fully and click "Sign In" to try again.
+- Switch to "Use a local account instead" if Entra is down.
+
+---
+
+## 7. Local Admin Bootstrap (PRD §F5)
 
 **Status**: F025 v1b shipped. The original spec proposal in this section
 described a bcrypt-hashed local account with a web bootstrap page; the
@@ -337,7 +381,7 @@ which env vars to set, NPM forwarding) are in
 
 ---
 
-## 7. Threats Addressed
+## 8. Threats Addressed
 
 | Surface | Threat | Addressed By |
 |---------|--------|--------------|

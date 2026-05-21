@@ -92,12 +92,20 @@ Run `task hooks:install` once per clone. It downloads the pinned `gitleaks` bina
 
 ## Container Images
 
-Published to [GitHub Container Registry](https://github.com/briandenicola?tab=packages&repo_name=tech-inventory) on every `v*.*.*` tag push via [`release-images.yml`](.github/workflows/release-images.yml). Both images are publicly pullable (no `docker login` required).
+Published to [GitHub Container Registry](https://github.com/briandenicola?tab=packages&repo_name=tech-inventory) via [`release-images.yml`](.github/workflows/release-images.yml). Both images are publicly pullable (no `docker login` required).
 
-| Image | Registry link | Pull command |
+**Image Tagging Strategy:**
+- **Tag push** (`v*.*.*`): `:latest`, `:vX.Y.Z` (release), `:sha-<short>` (git commit)
+- **Main branch push**: `:main` (rolling dev), `:sha-<short>` (git commit)  
+  - Note: `:latest` is pinned to semver releases only, not main HEAD
+- **Workflow dispatch**: `:latest`, `:<inputs.tag>` (custom tag), `:sha-<short>`
+
+For production, pin to a specific release tag (e.g., `IMAGE_TAG=v1.0.0`) in `.env` — see `docs/deployment.md` §7.
+
+| Image | Registry link | Example pull |
 |-------|---------------|--------------|
-| API   | [`ghcr.io/briandenicola/tech-inventory-api`](https://github.com/users/briandenicola/packages/container/package/tech-inventory-api) | `docker pull ghcr.io/briandenicola/tech-inventory-api:latest` |
-| Web   | [`ghcr.io/briandenicola/tech-inventory-web`](https://github.com/users/briandenicola/packages/container/package/tech-inventory-web) | `docker pull ghcr.io/briandenicola/tech-inventory-web:latest` |
+| API   | [`ghcr.io/briandenicola/tech-inventory-api`](https://github.com/users/briandenicola/packages/container/package/tech-inventory-api) | `docker pull ghcr.io/briandenicola/tech-inventory-api:v1.0.0` |
+| Web   | [`ghcr.io/briandenicola/tech-inventory-web`](https://github.com/users/briandenicola/packages/container/package/tech-inventory-web) | `docker pull ghcr.io/briandenicola/tech-inventory-web:v1.0.0` |
 
 Pin a release by setting `IMAGE_TAG=v1.0.0` in `.env`. See [`docs/deployment.md`](docs/deployment.md) for the full home-server deploy runbook.
 

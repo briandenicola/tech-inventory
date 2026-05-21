@@ -4,6 +4,19 @@ Append-only log. Newest entries at the top.
 
 ---
 
+## 2026-05-21 — v1.0 Shipped + Documentation Alignment
+
+- **v1.0 Release**: Version bumped 0.1.0 → 1.0.0 (commit `0e6ef92`). All v1 features complete.
+- **CI Release Images**: release-images workflow now applies semantic tag strategy: `:vX.Y.Z` (release), `:main` (rolling dev), `:sha-<short>` (commit), with `:latest` pinned to semver releases only (not main HEAD).
+- **F038 Silent SSO shipped** (commits `788268c` + follow-ups): Root auth bootstrap restores cached Entra sessions with a 3-second timeout, multi-tab behavior consistent, logout clears both MSAL + local state. 7 focused auth tests passing.
+- **Insurance CSV Export** (commit `89102b6`): `/admin/export` endpoint wired; reusable blobDownload utility + skill captured.
+- **Backlog cleanup**: F035, F037 marked Done; F036, F044 closed as not required.
+- **Docs alignment** (this session): Updated README.md (IMAGE_TAG strategy), docs/backlog.md (F038 3s timeout noted), docs/auth-design.md (silent SSO §6 added), docs/deployment.md (three IMAGE_TAG strategies documented), docs/prd.md (status → v1.0), .copilot-state.md (phase state updated). All other docs confirmed accurate.
+- **Key stale facts removed**: "lazy default" IMAGE_TAG references updated; PRD status was "Draft v0.1", now "v1.0".
+- **Skills captured**: .squad/skills/csv-download-trigger/, .squad/skills/msal-silent-sso-checklist/, .squad/skills/modal-scroll-debug/, .squad/skills/fixed-position-containing-block/.
+
+---
+
 ## 2026-05-21 — PWA Bug-Bash Close-Out
 
 - Multi-day bug-bash session complete: 8 commits shipped addressing field-test findings (inventory.denicolafamily.com mobile + desktop PWA regressions and polish gaps).

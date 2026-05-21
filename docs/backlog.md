@@ -22,7 +22,7 @@ Extensions to OIDC/MSAL integration.
 
 | ID | Feature | Description | Priority | Status |
 |----|---------|-------------|----------|--------|
-| F038 | Silent SSO auto-login | Root auth bootstrap now restores cached Entra sessions before showing `/auth/login`, falls back to sign-in after a short silent-SSO timeout, and keeps logout / second-tab behavior consistent without storing tokens outside MSAL sessionStorage. | P2 | Done |
+| F038 | Silent SSO auto-login | Root auth bootstrap now restores cached Entra sessions before showing `/auth/login`, falls back to sign-in after a 3-second silent-SSO timeout, and keeps logout / second-tab behavior consistent without storing tokens outside MSAL sessionStorage. | P2 | Done |
 
 ---
 

@@ -1,8 +1,8 @@
 # Tech Inventory — Product Requirements Document
 
-**Status**: Draft v0.1
+**Status**: v1.0 (shipped 2026-05-21)
 **Owner**: Brian Denicola
-**Last Updated**: 2025-05-17
+**Last Updated**: 2026-05-21
 
 ---
 

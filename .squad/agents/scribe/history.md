@@ -241,3 +241,36 @@ Apone's commit message + T33 inbox BOTH falsely claimed "Categories/Owners defer
 
 **Notes:** All 24 Taskfile targets now cross-platform. Inbox file deleted post-merge.
 
+---
+
+## 2026-05-21 (Phase 2 Round 19) — Modal Z-Index & FAB Alignment Followup (Vasquez)
+
+**Inbox merged:** 3 files → 2 decisions
+- `vasquez-modal-positioning.md` → D-167 (canonical z-index layering)
+- `vasquez-modal-scroll-roots.md` → merged content into decisions (disambiguation rule noted)
+- `vasquez-fab-containing-block.md` → merged content into decisions (containing-block trap pattern noted)
+
+**Decision ledger:** D-001 → D-168 (168 total)
+
+**Spawns documented:** 
+- Orchestration log: `2026-05-21T16-24-00Z-vasquez-modal-position.md` (338s, modal z-index fix + safe-area padding)
+- Orchestration log: `2026-05-21T16-24-40Z-vasquez-fab-align.md` (92s, FAB `raised` prop cleanup)
+- Session log: `2026-05-21T16-25-00Z-modal-fab-followup.md` (combined summary)
+
+**Key findings:**
+1. **Z-index canonical layering (D-167):** Page headers MUST use z-30 or lower; modal backdrops z-40; toast z-50. Raw `z-50` classes on page-level elements violate this ladder.
+2. **Vestigial prop cleanup (D-168):** When design decisions supersede a component's purpose (e.g., D-129 repositioned FABs → `raised` prop no longer needed), aggressively remove dead code instead of leaving it to fossilize.
+3. **Disambiguation rule codified:** Scroll bug reports must explicitly state component scope (route page vs modal vs drawer) to avoid fixing wrong component.
+
+**Decisions created:** D-167, D-168
+
+**Decisions archived:** No archive needed (decisions.md = 221 KB, just over threshold; will monitor for next round)
+
+**Tasks flipped:** NONE (post-release PWA polish, not T-task)
+
+**Commits shipped:** cd07fbf (already committed by Brian, shipped to origin/main)
+
+**History entries:** Scribe R19 (this entry)
+
+**Notes:** This was a two-spawn followup to the triple PWA fix (b3600d2, 2532cf2). The modal scroll fix (D-164) exposed deeper z-index layering violations and revealed vestigial prop debt. Both issues now codified as decisions for future PWA work.
+

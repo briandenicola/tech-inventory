@@ -4017,6 +4017,63 @@ The content wrapper unconditionally applied `transform: translateY(0px)` and `wi
 
 ---
 
+### D-167: Canonical Z-Index Layering — Header z-30, Modal Backdrop z-40, Toast z-50
+
+**Date:** 2026-05-21  
+**Author:** Vasquez  
+**Status:** Decided  
+**Related:** Orchestration log `2026-05-21T16-24-00Z-vasquez-modal-position.md`, D-164
+
+**Problem:** App header used Tailwind's raw `z-50` class directly, placing it ABOVE the modal backdrop's `--z-modal-backdrop: 40`. Since the modal card's z-50 is scoped inside the z-40 parent stacking context, it couldn't escape. Result: modal headers (title, close button) rendered behind the app header on iOS PWA.
+
+**Decision:** Enforce canonical z-index layering ladder — page-level elements MUST use lower z-indices than overlays:
+- **z-10–z-20:** Sticky elements (e.g., sticky column headers)
+- **z-30:** Fixed page-level elements (app header, footers, toolbars)
+- **z-40:** Modal backdrop wrappers
+- **z-50:** Toast/snackbar (above modals for system notifications)
+- **z-60:** Popover (above toast for multi-layered overlays)
+- **z-70:** Tooltip (topmost layer)
+
+**Implications:**
+- Page headers MUST use `z-30` or lower, NEVER `z-40` or above
+- Modal components use design tokens (`--z-modal-backdrop: 40`) instead of raw Tailwind `z-*` classes
+- Future modal/drawer/overlay work adheres to this ladder
+- Code review should flag any raw `z-50` or above on page-level elements as violations
+
+**Enforcement:**
+- ESLint rule (future): warn on `z-50` classes on page-level selectors
+- Design token guidance in component docs
+- Pre-commit hook checks for stacking context violations
+
+---
+
+### D-168: Vestigial Props — Aggressive Cleanup When Layout Decision Superseded
+
+**Date:** 2026-05-21  
+**Author:** Vasquez  
+**Status:** Decided  
+**Related:** Orchestration log `2026-05-21T16-24-40Z-vasquez-fab-align.md`, D-129
+
+**Problem:** AddDeviceFab component had a `raised` prop from pre-D-129 era, when both FABs needed height differentiation to prevent overlap (AddDevice above BackToTop). After D-129 repositioned FABs to opposite corners (AddDevice bottom-right, BackToTop bottom-left), the overlap risk disappeared, but the `raised` prop lingered as dead code. This caused FAB misalignment after the D-129 repositioning landed.
+
+**Decision:** When a design decision (e.g., D-129) supersedes the need for a component prop or CSS pattern, aggressively prune the vestigial code instead of leaving it to fossilize. Vestigial code manifests as:
+- Magic CSS values (`bottom: calc(...) + extra-offset`)
+- Conditional props that only trigger in obsolete scenarios (`raised={true}`)
+- CSS classes that served a prior design phase but conflict with the new one
+
+**Process:**
+1. After design decision lands, audit components that implement the old pattern
+2. Remove dead conditionals, props, and CSS immediately
+3. Run visual regression suite on all viewports
+4. Document the cleanup in commit message or decision record
+
+**Enforcement:**
+- Code review: flag orphaned conditionals during design-token refactors
+- Scribe/documentation: call out vestigial prop patterns as anti-patterns in team history
+- Test strategy: visual regression testing on iOS PWA for layout changes
+
+---
+
 ## Governance
 
 - All meaningful changes require team consensus

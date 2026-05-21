@@ -39,6 +39,16 @@ Three consecutive Vasquez spawns (modal-scroll, fab-regression, tab-title) fixed
 
 **Outcome:** Session log at `.squad/log/2026-05-21T15-49-37Z-triple-pwa-fix.md`. Orchestration logs at `.squad/orchestration-log/2026-05-21T15-49-37Z-vasquez-{modal-scroll,fab-regression,tab-title}.md`.
 
+**2026-05-21 (FOLLOWUP: Modal Z-Index & FAB Alignment — cd07fbf):**
+
+Two rapid spawns fixed alignment issues exposed by the triple PWA fix. Both are polish-level corrections that codified deeper conventions:
+
+1. **vasquez-modal-position (338s, D-167):** Modal headers now fully visible on iOS; no longer trapped behind app header. **Root cause deeper than positioning:** The canonical z-index layering rule was violated. App header was using raw `z-50` (above modal backdrop `z-40`), creating an inescapable stacking context that trapped modal content. Fix: lowered header to `z-30`, enforced canonical ladder (sticky 20 < fixed 30 < modal-backdrop 40 < modal 50 < popover 60 < tooltip 70). Added safe-area-aware top padding to clear notch + status bar. Changed max-h to `85dvh` (dynamic viewport units instead of static `vh` for iOS toolbar collapse). **Decision D-167 codified the z-index ladder for all future modal/overlay work.**
+
+2. **vasquez-fab-align (92s, D-168):** Both FABs now vertically aligned despite D-129 repositioning them to opposite corners (AddDevice bottom-right, BackToTop bottom-left). **Root cause: vestigial `raised` prop** from pre-D-129 era when FABs needed height differentiation to prevent overlap. After D-129, prop was dead code causing misalignment. Fix: removed prop entirely; both FABs now use identical `bottom: calc(env(safe-area-inset-bottom, 0px) + var(--space-6))` positioning. **Decision D-168 establishes pattern: when design decisions supersede a component's purpose, aggressively prune vestigial code.**
+
+**Session log:** `.squad/log/2026-05-21T16-25-00Z-modal-fab-followup.md`. Orchestration logs: `.squad/orchestration-log/2026-05-21T16-24-{00,40}Z-vasquez-{modal-position,fab-align}.md`.
+
 **2026-05-21 (Desktop header cleanup — spawn pair, prior to triple fix):** 
 1. **vasquez-user-menu-right (148s):** Grouped desktop user menu + hamburger into single right-aligned flex container. Orchestration log: `.squad/orchestration-log/2026-05-21T15-10-00Z-vasquez-user-menu-right.md`.
 2. **vasquez-kill-admin-strip (83s):** Removed redundant admin sub-nav strip; extends D-160 to D-163 blanket rule. Orchestration log: `.squad/orchestration-log/2026-05-21T15-11-00Z-vasquez-kill-admin-strip.md`.

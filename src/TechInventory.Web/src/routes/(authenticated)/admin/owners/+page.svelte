@@ -233,7 +233,7 @@
 
 <div class="-mt-8">
 	<!-- Sticky page header -->
-	<div class="sticky top-[73px] z-30 -mx-4 sm:-mx-6 lg:-mx-8 border-b border-neutral-200/70 bg-white/85 backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-900/85 md:top-[142px]">
+	<div class="sticky top-[73px] z-20 -mx-4 sm:-mx-6 lg:-mx-8 border-b border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 md:top-[142px]">
 		<div class="flex items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
 			<h1 class="text-xl font-bold text-neutral-900 dark:text-neutral-50 sm:text-2xl">
 				{t('admin.owners.list.title')}

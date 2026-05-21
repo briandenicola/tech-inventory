@@ -602,7 +602,7 @@
 <div class="-mt-8 flex flex-col">
 	<!-- Sticky page header (below app header) -->
 	<div
-		class="sticky top-[73px] z-30 -mx-4 border-b border-neutral-200/70 bg-white/85 backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-900/85 sm:-mx-6 lg:-mx-8"
+		class="sticky top-[73px] z-20 -mx-4 border-b border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 sm:-mx-6 lg:-mx-8"
 	>
 		<div class="px-4 pt-4 pb-4 sm:px-6 lg:px-8">
 			<!-- Header row -->

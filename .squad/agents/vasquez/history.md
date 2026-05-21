@@ -354,3 +354,20 @@ Work already completed in commit `68ddbd5` (`test(web): T26 ownership modals + T
 - **Issue:** AddDeviceFab and BackToTopFab not at same y-coordinate when both visible.
 - **Root cause:** AddDeviceFab had a `raised` prop activated by `raised={showBackToTop}` in `+page.svelte`. When BackToTopFab appeared, AddDeviceFab's bottom jumped from `var(--space-6)` to `var(--space-20, 5rem)` — a leftover from when both FABs were on the same side. Since D-129 moved them to opposite corners (left vs right), vertical stacking is unnecessary.
 - **Fix:** Removed `raised` prop from AddDeviceFab component and its usage in `+page.svelte`. Both FABs now unconditionally use `bottom: calc(env(safe-area-inset-bottom, 0px) + var(--space-6))` — identical y-coordinate, mirrored horizontally.
+
+### 2026-05-22 — Header z-index bleed-through fix
+
+- **Issue:** After D-167 lowered app header to z-30, scrolling content (list rows, section headers) visibly bled through the header on desktop due to translucent background.
+- **Root cause:** Two problems: (1) App header used `bg-white/85 backdrop-blur-md` (translucent), so content scrolling beneath was visible as ghosting. (2) All admin page sticky section headers used `z-30` — same as the header — causing them to render at the same layer and clip through.
+- **Fix:** Made app header background fully opaque (`bg-white dark:bg-neutral-950`, no backdrop-blur). Lowered all sticky section headers from `z-20` (brands, categories, networks, tags, locations, owners, devices) and made their backgrounds opaque too. Hierarchy now: content z-0, in-page sticky z-20, app header z-30, modal backdrop z-40, modal/toast z-50.
+- **Files changed:** `+layout.svelte`, `admin/brands/+page.svelte`, `admin/categories/+page.svelte`, `admin/networks/+page.svelte`, `admin/tags/+page.svelte`, `admin/locations/+page.svelte`, `admin/owners/+page.svelte`, `devices/+page.svelte`.
+
+---
+
+### Desktop Nav Consolidation (2025-07-25)
+
+- **Task:** Consolidate two desktop nav menus (hamburger + user dropdown) into a single user menu dropdown.
+- **Changes:** (1) Added `md:hidden` to hamburger button — hides it on desktop, keeps it on mobile. (2) Injected `visiblePrimaryNavItems` (Devices, Reports, Import, Export, Audit Log) into the user menu dropdown above the ADMIN section with a separator between them. (3) Updated comments to reflect mobile-only hamburger.
+- **Breakpoint:** `md` (768px) — matches the user menu pill's `hidden md:block`. Below md = mobile (hamburger only). At/above md = desktop (user dropdown only).
+- **Decision:** Filed D-164 superseding D-163 — "Desktop: user menu dropdown is sole nav entry. Mobile: hamburger overlay is sole nav entry. Never both on same viewport."
+- **Files changed:** `+layout.svelte`, `.squad/decisions/inbox/vasquez-nav-single-entry.md`.

@@ -120,7 +120,7 @@
 
 <div class="flex min-h-screen flex-col bg-neutral-50 dark:bg-neutral-900">
 	<!-- Header -->
-	<header class="sticky top-0 z-30 border-b border-neutral-200/70 bg-white/85 backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-950/85">
+	<header class="sticky top-0 z-30 border-b border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
 		<div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
 			<!-- Left: Logo + App Name -->
 			<a href="/devices" class="flex items-center gap-3 rounded-full px-1 py-1 outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
@@ -185,7 +185,27 @@
 							role="menu"
 							aria-label={t('header.userMenu')}
 						>
+							<!-- Primary nav items (desktop sole nav entry point) -->
+							{#each visiblePrimaryNavItems as item (item.href)}
+								{@const active = isNavItemActive($page.url.pathname, item)}
+								<a
+									href={item.href}
+									role="menuitem"
+									class="flex min-h-11 items-center rounded-xl px-3 py-2.5 text-base font-medium transition-colors duration-150"
+									class:bg-primary-50={active}
+									class:text-primary-700={active}
+									class:dark:bg-primary-900={active}
+									class:dark:text-primary-200={active}
+									class:text-neutral-700={!active}
+									class:hover:bg-neutral-100={!active}
+									class:dark:text-neutral-300={!active}
+									class:dark:hover:bg-neutral-800={!active}
+								>
+									{t(item.labelKey)}
+								</a>
+							{/each}
 							{#if visibleAdminNavItems.length > 0}
+								<hr class="my-2 border-t border-neutral-200 dark:border-neutral-800" />
 								<div class="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
 									{t('navigation.admin')}
 								</div>
@@ -207,8 +227,8 @@
 										{t(item.labelKey)}
 									</a>
 								{/each}
-								<hr class="my-2 border-t border-neutral-200 dark:border-neutral-800" />
 							{/if}
+							<hr class="my-2 border-t border-neutral-200 dark:border-neutral-800" />
 							<a
 								href="/settings"
 								role="menuitem"
@@ -237,10 +257,10 @@
 				{/if}
 			</div>
 
-			<!-- Hamburger Menu Button (all screen sizes — primary nav is hamburger-only) -->
+			<!-- Hamburger Menu Button (mobile only — desktop uses user menu as sole nav entry) -->
 			<button
 				type="button"
-				class="inline-flex h-11 w-11 items-center justify-center rounded-full text-neutral-700 transition-colors hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-neutral-300 dark:hover:bg-neutral-800"
+				class="inline-flex h-11 w-11 items-center justify-center rounded-full text-neutral-700 transition-colors hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-neutral-300 dark:hover:bg-neutral-800 md:hidden"
 				onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
 				aria-label={mobileMenuOpen ? t('header.closeMenu') : t('header.menu')}
 				aria-expanded={mobileMenuOpen}
@@ -275,7 +295,7 @@
 		<!-- secondary admin nav removed — admin links live in hamburger + user menu
 			 (D-160-style rule extension). -->
 
-		<!-- Hamburger Menu (expanded — visible on all screen sizes) -->
+		<!-- Hamburger Menu (expanded — mobile only, hidden on md+ via button hide) -->
 		{#if mobileMenuOpen}
 			<nav
 				class="border-t border-neutral-200/70 bg-white/95 px-4 py-4 backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-950/95"

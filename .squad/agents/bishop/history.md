@@ -112,6 +112,33 @@ Open question resolved (PRD §14): "External ID vs. Workforce tenant — which i
 
 Seven surfaces analyzed: Web Client, API, Database, Auth Provider (Entra External ID), Container Host, Reverse Proxy, Backup Destination.
 
+---
+
+### 🔴 CRITICAL PATTERN — 2026-05-21: WebKit bug 160953 — Layout Containing-Block Trap
+
+**Context:** Vasquez discovered a critical WebKit rendering bug during PWA iOS testing (session `.squad/log/2026-05-21T15-49-37Z-triple-pwa-fix.md`).
+
+**The Bug:** In WebKit (iOS Safari, PWA standalone), the CSS properties below create a **containing block** for `position: fixed` descendants **even when NOT actively used** (bug 160953):
+- `transition-property: transform` (from Tailwind `transition-transform` class) ⚠️ MOST INSIDIOUS — appears inert but ALWAYS active in WebKit
+- `will-change: transform | filter | perspective` (if present at rest)
+- `transform: [any value except none]` (if present at rest)
+- `filter`, `backdrop-filter`, `perspective` (if present at rest)
+- `contain: paint | layout | strict | content` (if present at rest)
+- `content-visibility: auto` (if present at rest)
+
+**Impact:** When these properties exist on a layout wrapper, all `position: fixed` descendants (FABs, modals, bulk-action bars) re-parent from the viewport to that wrapper instead of staying viewport-anchored. Result: fixed elements appear mid-page and scroll with content.
+
+**Real case:** PullToRefresh content wrapper had `transition-transform duration-200 ease-out` as **static Tailwind classes**. This created a WebKit containing block, trapping every FAB and modal in `(authenticated)/+layout.svelte`. Appeared as FABs mid-page over device cards. Latent bug from commit 39eb0c5, discovered 2026-05-21.
+
+**Solution Pattern:**
+- Derive an `isActive` boolean
+- Apply transform-related classes ONLY when active via Svelte `class:` directives
+- At rest: ZERO transform-related CSS = no containing block = fixed descendants resolve to viewport ✅
+
+**For Bishop:** This pattern is critical for any layout changes you make. If you add new layout wrappers or modify existing ones, ensure no at-rest containing-block triggers exist. Test on iOS PWA standalone before merge.
+
+**Reference:** `.squad/decisions/D-165` (decision + full spec), `.squad/skills/fixed-position-containing-block/SKILL.md` (deep-dive), `.squad/orchestration-log/2026-05-21T15-49-37Z-vasquez-fab-regression.md` (session notes).
+
 Key high-residual-risk areas (require monitoring):
 - **API BOLA/RBAC bypass**: Mitigated by code review + automated tests, not automated enforcement.
 - **Host compromise**: Depends on Hudson's OS hardening (non-root containers + read-only FS mitigate).

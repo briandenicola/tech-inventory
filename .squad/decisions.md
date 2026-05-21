@@ -3837,6 +3837,40 @@ The content wrapper unconditionally applied `transform: translateY(0px)` and `wi
 
 ---
 
+### D-163: No Duplicate Nav Surfaces on Desktop — Hamburger + User-Menu Only (Extends D-160)
+
+**Date:** 2026-05-21  
+**Author:** Vasquez (Frontend Developer)  
+**Status:** ✅ Implemented & verified (commit `a255f08`)  
+**Related:** D-160 (Desktop primary nav is hamburger-only), vasquez-admin-strip-removed.md  
+
+**Context:** D-160 established that desktop primary navigation lives in the hamburger menu only (no inline links in header bar). However, a secondary **admin nav strip** (`<nav aria-label="Admin navigation">` with links to Brands, Categories, Locations, Networks, Owners, Tags) survived because it was scoped as "admin" rather than "primary." This strip duplicated links already present in:
+1. Hamburger menu → ADMIN section
+2. User-menu dropdown → ADMIN section
+
+**Extension:** Generalize D-160 to a blanket rule for ALL nav surfaces:
+
+> **No duplicate navigation surfaces on desktop, period.**  
+> The hamburger menu and user-menu dropdown are the ONLY navigation entry points.  
+> No secondary nav bars, tab strips, or inline link rows in the header/sub-header area.
+
+**Implementation:** Removed the 22-line admin sub-nav strip from `src/TechInventory.Web/src/routes/+layout.svelte` (lines 275–296). No cascade lint issues; `visibleAdminNavItems` has other consumers.
+
+**Rationale:** 
+- Single-purpose app shell: header hosts only app branding, user auth trigger, and menu toggles
+- Consolidates navigation into two well-defined, predictable surfaces
+- Reduces cognitive load for new users learning the layout
+- Prevents future drift where features add their own local navs (e.g., tabbed settings, workflow steps)
+
+**Consequences:**
+- Any future feature adding admin or power-user pages MUST route through existing menus, not introduce new header chrome
+- If a future spec calls for a secondary nav (e.g., tabbed admin settings), it MUST be scoped INSIDE the page content area, not the app shell
+- Sentinel comment added to `+layout.svelte` flagging this rule for future developers
+
+**Enforcement:** Code review checklist includes "no secondary nav chrome in header"
+
+---
+
 ## Governance
 
 - All meaningful changes require team consensus

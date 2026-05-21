@@ -81,6 +81,15 @@ Accessibility: WCAG 2.2 AA target, zero axe-core violations to merge. Browser ma
 - After reverting, always check for orphaned components with `rg` — the card-restyle introduced `ResponsiveListCard.svelte` and `ActionOverflowMenu.svelte` that had zero consumers once the admin pages reverted.
 - Bulk merge infrastructure (`openBulkMergeModal`, `MergeEntityModal`, `ReferenceDataBulkBar`) is independent of per-row merge buttons; removing `openSingleMergeModal` and its button leaves the "Merge Selected" toolbar working.
 
+### 2026-05-21 — sticky first column for mobile horizontal-scroll tables
+
+- When the user's complaint is "I lose context when scrolling right", the fix is `sticky left-0 z-20` on the identifier column — NOT deleting the scrollable view entirely.
+- Sticky cells MUST have a solid background (`bg-white dark:bg-neutral-950` or conditional) because content scrolls underneath; transparent background = visual chaos where text overlaps.
+- Sticky cells must inherit the row's hover/selected state or they look detached from the row. Use Tailwind `group/row` on `<tr>` + `group-hover/row:bg-*` on the sticky `<td>`, plus conditional `{selected ? 'bg-primary-500/10' : 'bg-white dark:bg-neutral-950'}`.
+- A subtle right-edge visual (`border-r border-neutral-200 dark:border-neutral-800 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]`) signals the pin boundary without heavy decoration.
+- The header `<th>` needs the same sticky + background treatment as the body `<td>` — forgetting the header makes the sort button scroll away.
+- Anti-pattern: eliminating a user-toggleable feature to "avoid" a UX problem. Fix the problem in-place; users chose that mode for a reason.
+
 ### 2026-05-20 (F039) — reference-data bulk actions
 
 - A tiny shared Set helper (`referenceSelection.ts`) is enough to keep checkbox multi-select logic aligned across admin pages; once select/toggle/select-all live in one place, Brands/Locations/Networks can stay nearly identical and Categories only has to solve its tree-specific rendering.

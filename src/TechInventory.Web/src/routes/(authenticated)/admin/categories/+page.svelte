@@ -23,8 +23,6 @@
 	} from '$lib/utils/referenceMerge';
 	import {
 		clearReferenceSelection,
-		getVisibleReferenceSelectionState,
-		toggleAllVisibleReferenceSelections,
 		toggleReferenceSelection
 	} from '$lib/utils/referenceSelection';
 
@@ -147,16 +145,6 @@
 
 		return categories.filter((c) => (c.id ? matchingIds.has(c.id) || ancestorIds.has(c.id) : false));
 	});
-	const visibleCategoryIds = $derived(
-		displayedCategories
-			.map((category) => category.id)
-			.filter((categoryId): categoryId is string => !!categoryId)
-	);
-	const selectionState = $derived(
-		getVisibleReferenceSelectionState(selectedIds, visibleCategoryIds)
-	);
-	const allVisibleSelected = $derived(selectionState.allVisibleSelected);
-	const someVisibleSelected = $derived(selectionState.someVisibleSelected);
 	const selectedCategories = $derived.by(() =>
 		displayedCategories.filter(
 			(category): category is CategoryResponse & { id: string; name: string } =>
@@ -371,32 +359,8 @@
 		}
 	}
 
-	// Toggle inactive
-	function toggleInactive() {
-		const params = new URLSearchParams($page.url.searchParams);
-		if (urlParams.includeInactive) {
-			params.delete('includeInactive');
-		} else {
-			params.set('includeInactive', 'true');
-		}
-		goto(`?${params.toString()}`, { replaceState: true, keepFocus: true, noScroll: true });
-	}
-
-	function setIndeterminate(node: HTMLInputElement, value: boolean) {
-		node.indeterminate = value;
-		return {
-			update(next: boolean) {
-				node.indeterminate = next;
-			}
-		};
-	}
-
 	function toggleSelect(id: string) {
 		selectedIds = toggleReferenceSelection(selectedIds, id);
-	}
-
-	function toggleSelectAllVisible() {
-		selectedIds = toggleAllVisibleReferenceSelections(selectedIds, visibleCategoryIds);
 	}
 
 	function clearSelection() {
@@ -454,23 +418,12 @@
 </script>
 
 <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-	<!-- Header -->
-	<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-		<div>
-			<h1 class="text-2xl font-bold text-neutral-900 dark:text-neutral-50">
+	<!-- Sticky page header -->
+	<div class="sticky top-[73px] z-30 -mx-4 sm:-mx-6 lg:-mx-8 border-b border-neutral-200/70 bg-white/85 backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-900/85 md:top-[142px]">
+		<div class="flex items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+			<h1 class="text-xl font-bold text-neutral-900 dark:text-neutral-50 sm:text-2xl">
 				{t('admin.categories.list.title')}
 			</h1>
-		</div>
-		<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-			<label class="flex min-h-11 items-center gap-3 text-sm text-neutral-700 dark:text-neutral-300">
-				<input
-					type="checkbox"
-					checked={urlParams.includeInactive}
-					onchange={toggleInactive}
-					class="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
-				/>
-				{t('admin.categories.list.showInactive')}
-			</label>
 			<button type="button" onclick={openAddModal} class={primarySolidButtonClass}>
 				{t('admin.categories.list.addButton')}
 			</button>
@@ -478,27 +431,13 @@
 	</div>
 
 	<!-- Search -->
-	<div class="mb-4 space-y-4">
+	<div class="mt-6 mb-4">
 		<input
 			type="text"
 			bind:value={searchQuery}
 			placeholder={t('admin.categories.list.searchPlaceholder')}
 			class="block min-h-11 w-full rounded-md border border-neutral-300 px-4 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
 		/>
-
-		{#if displayedCategories.length > 0}
-			<div class="flex items-center gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-700 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-300">
-				<input
-					type="checkbox"
-					class="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
-					checked={allVisibleSelected}
-					use:setIndeterminate={!allVisibleSelected && someVisibleSelected}
-					onchange={toggleSelectAllVisible}
-					aria-label={t('admin.bulk.selectAllVisible')}
-				/>
-				<span>{t('admin.bulk.selectAllVisible')}</span>
-			</div>
-		{/if}
 	</div>
 
 	<!-- Loading -->

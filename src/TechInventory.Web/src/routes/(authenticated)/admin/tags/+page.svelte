@@ -12,7 +12,7 @@
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import PaginationControls from '$lib/components/PaginationControls.svelte';
 	import DeactivateConfirmModal from '$lib/components/admin/DeactivateConfirmModal.svelte';
-	import ResponsiveAdminList from '$lib/components/admin/ResponsiveAdminList.svelte';
+
 
 	/**
 	 * T32: Tags Admin — paginated list with Add/Edit/Deactivate
@@ -156,16 +156,6 @@
 		}
 	}
 
-	function toggleInactive() {
-		const params = new URLSearchParams($page.url.searchParams);
-		if (urlParams.includeInactive) {
-			params.delete('includeInactive');
-		} else {
-			params.set('includeInactive', 'true');
-		}
-		goto(`?${params.toString()}`, { replaceState: true, keepFocus: true, noScroll: true });
-	}
-
 	function handlePageChange(newPage: number, newPageSize: number) {
 		const params = new URLSearchParams($page.url.searchParams);
 		if (newPage !== 1) params.set('page', newPage.toString());
@@ -184,20 +174,12 @@
 </script>
 
 <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-	<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-		<h1 class="text-2xl font-bold text-neutral-900 dark:text-neutral-50">
-			{t('tags.list.title')}
-		</h1>
-		<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-			<label class="flex min-h-11 items-center gap-3 text-sm text-neutral-700 dark:text-neutral-300">
-				<input
-					type="checkbox"
-					checked={urlParams.includeInactive}
-					onchange={toggleInactive}
-					class="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
-				/>
-				{t('tags.list.showInactive')}
-			</label>
+	<!-- Sticky page header -->
+	<div class="sticky top-[73px] z-30 -mx-4 sm:-mx-6 lg:-mx-8 border-b border-neutral-200/70 bg-white/85 backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-900/85 md:top-[142px]">
+		<div class="flex items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+			<h1 class="text-xl font-bold text-neutral-900 dark:text-neutral-50 sm:text-2xl">
+				{t('tags.list.title')}
+			</h1>
 			<button type="button" onclick={openAddModal} class={primarySolidButtonClass}>
 				{t('tags.list.addButton')}
 			</button>
@@ -205,12 +187,16 @@
 	</div>
 
 	{#if loading}
-		<LoadingSkeleton />
+		<div class="mt-6">
+			<LoadingSkeleton />
+		</div>
 	{:else if error}
-		<ErrorState {error} onRetry={loadTags} />
+		<div class="mt-6">
+			<ErrorState {error} onRetry={loadTags} />
+		</div>
 	{:else if tags.length === 0}
 		<div
-			class="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-neutral-200 bg-white p-12 text-center dark:border-neutral-800 dark:bg-neutral-950"
+			class="mt-6 flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-neutral-200 bg-white p-12 text-center dark:border-neutral-800 dark:bg-neutral-950"
 		>
 			<svg
 				class="h-16 w-16 text-neutral-400 dark:text-neutral-600"
@@ -231,54 +217,41 @@
 			</p>
 		</div>
 	{:else}
-		<ResponsiveAdminList
-			items={tags}
-			tableLabel={t('tags.list.title')}
-			cardsLabel={t('tags.list.title')}
-			keyExtractor={(tag) => tag.id ?? tag.name ?? ''}
-		>
-			{#snippet tableHead()}
-				<th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">{t('tags.columns.name')}</th>
-				<th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">{t('tags.columns.color')}</th>
-				<th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">{t('common.labels.actions')}</th>
-			{/snippet}
-
-			{#snippet desktopRow(tag: TagResponse)}
-				<tr class="hover:bg-neutral-50 dark:hover:bg-neutral-900">
-					<td class="whitespace-nowrap px-4 py-3 text-sm font-medium text-neutral-900 dark:text-neutral-50">{tag.name}</td>
-					<td class="px-4 py-3">
-						<span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium text-white" style="background-color: {tag.color}">
-							{tag.name}
-						</span>
-					</td>
-					<td class="px-4 py-3 text-right">
-						<div class="flex flex-wrap justify-end gap-2">
-							{@render tagActionButtons(tag)}
-						</div>
-					</td>
-				</tr>
-			{/snippet}
-
-			{#snippet mobileCard(tag: TagResponse)}
-				<article class="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
-					<div class="flex items-start justify-between gap-3">
-						<div class="min-w-0">
-							<h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-50">{tag.name}</h2>
-							<div class="mt-2 flex items-center gap-2">
-								<span class="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t('tags.columns.color')}:</span>
-								<span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium text-white" style="background-color: {tag.color}">{tag.name}</span>
-							</div>
-						</div>
-						{#if !tag.isActive}
-							<span class="inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200">{t('common.states.inactive')}</span>
-						{/if}
-					</div>
-					<div class="mt-4 flex flex-wrap gap-2">
-						{@render tagActionButtons(tag)}
-					</div>
-				</article>
-			{/snippet}
-		</ResponsiveAdminList>
+		<div class="mt-6 overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+			<div class="overflow-x-auto">
+				<table class="min-w-full divide-y divide-neutral-200 dark:divide-neutral-800">
+					<caption class="sr-only">{t('tags.list.title')}</caption>
+					<thead class="bg-neutral-50 dark:bg-neutral-900">
+						<tr>
+							<th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">{t('tags.columns.name')}</th>
+							<th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">{t('common.labels.actions')}</th>
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-neutral-200 dark:divide-neutral-800">
+						{#each tags as tag (tag.id ?? tag.name ?? '')}
+							<tr class="hover:bg-neutral-50 dark:hover:bg-neutral-900">
+								<td class="px-4 py-3 text-sm font-medium text-neutral-900 dark:text-neutral-50">
+									<span class="inline-flex items-center gap-2">
+										{#if tag.color}
+											<span class="inline-block h-3 w-3 rounded-full" style="background-color: {tag.color}"></span>
+										{/if}
+										{tag.name}
+									</span>
+									{#if !tag.isActive}
+										<span class="ml-2 inline-flex rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">{t('common.states.inactive')}</span>
+									{/if}
+								</td>
+								<td class="px-4 py-3 text-right">
+									<div class="flex flex-wrap justify-end gap-2">
+										{@render tagActionButtons(tag)}
+									</div>
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+		</div>
 
 		<div class="mt-6">
 			<PaginationControls

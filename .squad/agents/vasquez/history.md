@@ -404,6 +404,24 @@ This verifies the pre-hydration script runs synchronously BEFORE SvelteKit hydra
 - **Commit:** ef8fe33 — `feat(web): refresh OpenAPI types + Brand-nullable form support`
 - **Trigger:** Hicks Phase A (commits 46f6042 + 8fe885f + 6cf0bc3) extended backend Device schema with nullable BrandId + 6 new fields. Frontend Zod + form required mirroring.
 - **Phase 1 — Codegen:** Ran `pnpm run generate:client`. Result: types.ts already current (Hicks regenerated openapi.yaml in 6cf0bc3). No diff. D-113.
+
+## PWA Bug Bash — Round 2 Fixes (2025-06-20)
+
+**Summary:**
+- Fixed ThemeToggle pill overflow on narrow viewports (flex-1 min-w-0 constraint)
+- Fixed BackToTopFab safe-area misalignment vs AddDeviceFab (matched calc() pattern)
+- Added pb-24 breathing room to device detail page for scroll trigger on iOS PWA
+- Converted 5 admin pages (brands, locations, networks, owners, tags) from card+table dual layout to compact single-table layout with sticky headers
+- Simplified categories page header (removed Show Inactive toggle, kept search + tree)
+- Removed dead `ResponsiveAdminList` imports from all converted pages
+
+## Learnings
+
+- **Safe-area alignment:** When two FABs must sit at consistent heights on iOS PWA, both must use `calc(env(safe-area-inset-*) + ...)` — mixing Tailwind utility classes with inline safe-area styles causes vertical drift.
+- **Flex overflow prevention:** `inline-flex` containers with fixed padding can exceed parent width. Fix: `w-full max-w-full` on container + `flex-1 min-w-0` on children.
+- **Sticky header offset values:** Main header is ~73px on mobile. Desktop admin pages have sub-nav adding ~69px → `md:top-[142px]`. Both need backdrop-blur for visual separation.
+- **Per-page vs shared table component:** For 5-6 pages with slightly different columns, inline tables with a shared sticky-header pattern are simpler than a generic component with render props/slots. Extract only when >3 pages share identical column structure.
+- **Categories tree is special:** Hierarchical data with expand/collapse and indentation doesn't fit the flat table pattern. Keep its existing tree-row rendering but still apply the sticky header + search simplification.
 - **Phase 2 — Brand nullable:** Updated `src/lib/schemas/device.ts` brandId to `z.string().uuid('Invalid brand ID').optional().or(z.literal(''))`. DeviceForm: removed red asterisk, changed placeholder "-- Select Brand --" → "-- No Brand --". D-114.
 - **Phase 3 — 6 extended fields:** Added purpose/operatingSystem/ipAddress/macAddress/productUrl/version to formData state (lines 49–54) + collapsible `<details>` "Additional details (optional)" section (lines 365–467). All optional, max-length matching backend FluentValidation. 13 i18n keys added under `devices.form.*`. D-115.
 

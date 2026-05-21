@@ -248,6 +248,7 @@
 </script>
 
 <!-- Breadcrumbs -->
+<div class="pb-24">
 <nav class="mb-4 flex text-sm text-neutral-600 dark:text-neutral-400" aria-label="Breadcrumb">
 	<ol class="flex items-center space-x-2">
 		<li>
@@ -409,3 +410,4 @@
 		}}
 	/>
 {/if}
+</div>

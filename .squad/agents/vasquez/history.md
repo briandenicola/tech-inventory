@@ -383,6 +383,12 @@ This verifies the pre-hydration script runs synchronously BEFORE SvelteKit hydra
 - **Phase 1 — Codegen:** Ran `pnpm run generate:client`. Result: types.ts already current (Hicks regenerated openapi.yaml in 6cf0bc3). No diff. D-113.
 - **Phase 2 — Brand nullable:** Updated `src/lib/schemas/device.ts` brandId to `z.string().uuid('Invalid brand ID').optional().or(z.literal(''))`. DeviceForm: removed red asterisk, changed placeholder "-- Select Brand --" → "-- No Brand --". D-114.
 - **Phase 3 — 6 extended fields:** Added purpose/operatingSystem/ipAddress/macAddress/productUrl/version to formData state (lines 49–54) + collapsible `<details>` "Additional details (optional)" section (lines 365–467). All optional, max-length matching backend FluentValidation. 13 i18n keys added under `devices.form.*`. D-115.
+
+### 2026-05-21 — PullToRefresh containing-block trap (Bug 2 + Bug 4)
+
+- `transform: translateY(0px)` and `will-change: transform` BOTH unconditionally establish a new containing block for `position: fixed` descendants (CSS Transforms L1 §3, CSS Will Change L1 §3). The PullToRefresh content wrapper was applying both at rest, trapping every modal and FAB inside `(authenticated)/+layout.svelte` so they resolved against the multi-thousand-pixel scroll content instead of the viewport.
+- Fix pattern: derive an `isActive` boolean (`isPulling || indicatorHeight > 0`) and conditionally apply `transform` style and `will-change-transform` class ONLY when active. At rest, the wrapper has neither — no containing block. The CSS `transition-transform` class stays always (it's inert without a transform property) so the snap-back animation from `translateY(Xpx)` → `none` still plays via normal CSS transition behavior.
+- Regression test: proxy-test the DOM attributes (inline transform style + will-change-transform class) rather than the containing-block algorithm itself, since JSDOM cannot model CSS layout.
 - **Test updates:** Removed now-invalid "rejects missing brandId" test. Updated "rejects non-UUID brandId" expectation. Extended `createDeviceCreateInput` factory with 6 new fields (default `''`).
 - **Result:** Vitest 148 passed / 2 skipped (was 149/2 — net -1 from deleted brand-required test).
 - **Diff:** +180 / -17 lines across 5 files.

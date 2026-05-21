@@ -20,6 +20,7 @@
 
 	const isEnabled = $derived(isCoarsePointer && typeof onRefresh === 'function');
 	const indicatorHeight = $derived(isRefreshing ? pullThreshold : pullDistance);
+	const isActive = $derived(isPulling || indicatorHeight > 0);
 	const progress = $derived(Math.min(indicatorHeight / pullThreshold, 1));
 	const statusMessage = $derived.by(() => {
 		if (isRefreshing) {
@@ -193,9 +194,11 @@
 	</div>
 
 	<div
-		class="transition-transform duration-200 ease-out will-change-transform"
+		data-testid="pull-to-refresh-content"
+		class="transition-transform duration-200 ease-out"
+		class:will-change-transform={isActive}
 		class:transition-none={isPulling}
-		style={`transform: translateY(${indicatorHeight}px);`}
+		style={isActive ? `transform: translateY(${indicatorHeight}px);` : ''}
 	>
 		{#if children}
 			{@render children()}

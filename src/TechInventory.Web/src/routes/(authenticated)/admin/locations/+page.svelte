@@ -17,9 +17,9 @@
 	import ReferenceDataBulkBar from '$lib/components/ReferenceDataBulkBar.svelte';
 	import DeactivateConfirmModal from '$lib/components/admin/DeactivateConfirmModal.svelte';
 	import ResponsiveAdminList from '$lib/components/admin/ResponsiveAdminList.svelte';
-	import ResponsiveListCard from '$lib/components/ResponsiveListCard.svelte';
 	import {
 		fetchReferenceDeviceCount,
+		mergeReferenceEntities,
 		mergeReferenceEntitySelection,
 		type MergeEntityOption
 	} from '$lib/utils/referenceMerge';
@@ -73,6 +73,7 @@
 	let formData = $state<LocationFormData>({ name: '', type: 'Home', notes: '' });
 	let formErrors = $state<Record<string, string>>({});
 	let formSubmitting = $state(false);
+
 
 	const visibleLocationIds = $derived(
 		locations.map((location) => location.id).filter((locationId): locationId is string => !!locationId)
@@ -268,20 +269,37 @@
 		mergeSubmitting = true;
 		mergeError = null;
 		const targetLocation = mergeTargetOptions.find((location) => location.id === targetId);
+		const isBulkMerge = mergeSourceLocations.length > 1;
 
 		try {
-			const mergedCount = await mergeReferenceEntitySelection(
-				'location',
-				mergeSourceLocations.map((location) => location.id),
-				targetId
-			);
-			addToast({
-				type: 'success',
-				message: t('admin.bulk.mergeSuccess', {
-					target: targetLocation?.name ?? '',
-					count: mergedCount
-				})
-			});
+			if (isBulkMerge) {
+				const mergedCount = await mergeReferenceEntitySelection(
+					'location',
+					mergeSourceLocations.map((location) => location.id),
+					targetId
+				);
+				addToast({
+					type: 'success',
+					message: t('admin.bulk.mergeSuccess', {
+						target: targetLocation?.name ?? '',
+						count: mergedCount
+					})
+				});
+			} else {
+				const sourceLocation = mergeSourceLocations[0];
+				const response = await mergeReferenceEntities('location', {
+					sourceId: sourceLocation.id,
+					targetId
+				});
+				addToast({
+					type: 'success',
+					message: t('admin.merge.success', {
+						source: sourceLocation.name,
+						target: targetLocation?.name ?? '',
+						count: response.mergedCount
+					})
+				});
+			}
 			closeMergeModal();
 			clearSelection();
 			await Promise.all([loadLocations(), fetchReferenceData()]);
@@ -337,56 +355,6 @@
 		clearSelection();
 		bulkDeleteModalOpen = false;
 		await Promise.all([loadLocations(), fetchReferenceData()]);
-	}
-
-	const inactiveBadge = {
-		text: t('common.states.inactive'),
-		className:
-			'inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200'
-	};
-
-	function getLocationCardFields(location: LocationResponse) {
-		return [
-			{
-				key: 'type',
-				label: t('locations.columns.type'),
-				value: t(`locations.types.${(location.type ?? 'Home').toLowerCase()}`)
-			},
-			{
-				key: 'description',
-				label: t('locations.columns.description'),
-				value: (location as LocationResponse & { notes?: string | null }).notes ?? null,
-				valueClass: 'break-words'
-			}
-		];
-	}
-
-	function getLocationActionItems(location: LocationResponse) {
-		const actionKey = location.id ?? location.name ?? 'location';
-		const items: Array<{
-			id: string;
-			label: string;
-			onSelect: () => void;
-			tone: 'primary' | 'warning';
-		}> = [
-			{
-				id: `edit-${actionKey}`,
-				label: t('common.actions.edit'),
-				onSelect: () => openEditModal(location),
-				tone: 'primary' as const
-			}
-		];
-
-		if (location.isActive) {
-			items.push({
-				id: `deactivate-${actionKey}`,
-				label: t('common.actions.deactivate'),
-				onSelect: () => openDeactivateModal(location),
-				tone: 'warning' as const
-			});
-		}
-
-		return items;
 	}
 
 	const primaryActionButtonClass =
@@ -502,19 +470,37 @@
 
 			{#snippet mobileCard(location: LocationResponse)}
 				{@const selected = location.id ? selectedIds.has(location.id) : false}
-				<ResponsiveListCard
-					title={location.name ?? '—'}
-					titleId={`location-card-${location.id ?? 'item'}`}
-					selected={selected}
-					checked={selected}
-					selectLabel={location.id ? t('admin.bulk.selectRow', { name: location.name ?? '' }) : null}
-					onToggleSelect={location.id ? () => toggleSelect(location.id ?? '') : undefined}
-					badge={!location.isActive ? inactiveBadge : null}
-					fields={getLocationCardFields(location)}
-					actionItems={getLocationActionItems(location)}
-					actionMenuLabel={t('common.actions.moreActions')}
-					actionMenuTitle={t('common.labels.actions')}
-				/>
+				<article class="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950 {selected ? 'border-primary-400 bg-primary-50/70 dark:border-primary-700 dark:bg-primary-950/20' : ''}">
+					<div class="flex items-start justify-between gap-3">
+						<div class="flex min-w-0 items-start gap-3">
+							{#if location.id}
+								<input
+									type="checkbox"
+									class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
+									checked={selected}
+									onchange={() => toggleSelect(location.id ?? '')}
+									aria-label={t('admin.bulk.selectRow', { name: location.name ?? '' })}
+								/>
+							{/if}
+							<div class="min-w-0">
+							<h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-50">{location.name}</h2>
+							<p class="mt-2 text-sm text-neutral-700 dark:text-neutral-300">
+								<span class="font-medium text-neutral-500 dark:text-neutral-400">{t('locations.columns.type')}:</span>
+								{t(`locations.types.${(location.type ?? 'Home').toLowerCase()}`)}
+							</p>
+							</div>
+						</div>
+						{#if !location.isActive}
+							<span class="inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200">{t('common.states.inactive')}</span>
+						{/if}
+					</div>
+					{#if (location as LocationResponse & { notes?: string | null }).notes}
+						<p class="mt-3 break-words text-sm text-neutral-700 dark:text-neutral-300">{(location as LocationResponse & { notes?: string | null }).notes}</p>
+					{/if}
+					<div class="mt-4 flex flex-wrap gap-2">
+						{@render locationActionButtons(location)}
+					</div>
+				</article>
 			{/snippet}
 		</ResponsiveAdminList>
 
@@ -543,6 +529,7 @@
 {#if mergeModalOpen && mergeSourceLocations.length > 0}
 	<MergeEntityModal
 		entityType="location"
+		sourceEntity={mergeSourceLocations[0] ?? null}
 		sourceEntities={mergeSourceLocations}
 		entities={mergeTargetOptions}
 		isOpen={mergeModalOpen}

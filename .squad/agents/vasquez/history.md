@@ -74,6 +74,13 @@ Accessibility: WCAG 2.2 AA target, zero axe-core violations to merge. Browser ma
 - After removing the card-level Merge affordance, the follow-up cleanup lives in page-local single-merge code: `openSingleMergeModal`, any single-source toast branch, `sourceEntity` prop usage, and i18n strings like `common.actions.merge` / `admin.merge.success`. The shared `MergeEntityModal.svelte` and `referenceMerge.ts` bulk orchestration stay in place because `Merge Selected` still depends on them.
 - Scope delivered: `src/TechInventory.Web/src/routes/(authenticated)/admin/{brands,categories,locations,networks}/+page.svelte`, `src/TechInventory.Web/src/lib/utils/referenceMerge.ts`, `src/TechInventory.Web/src/lib/i18n/en.json`, and new coverage in `src/TechInventory.Web/src/routes/(authenticated)/admin/lookup-actions.test.ts`.
 
+### 2026-05-21 — D-126 revert (card-restyle over-scope)
+
+- When a user asks for a small change (e.g., "remove the Merge button"), do exactly that — do not introduce a new pattern/component family (e.g., ResponsiveListCard + ActionOverflowMenu) that touches unrelated surfaces in the same commit.
+- The pre-commit baseline reference pattern (`git show <commit>^:<path>`) is the safest way to get the exact file content before an over-scoped commit for surgical reverts.
+- After reverting, always check for orphaned components with `rg` — the card-restyle introduced `ResponsiveListCard.svelte` and `ActionOverflowMenu.svelte` that had zero consumers once the admin pages reverted.
+- Bulk merge infrastructure (`openBulkMergeModal`, `MergeEntityModal`, `ReferenceDataBulkBar`) is independent of per-row merge buttons; removing `openSingleMergeModal` and its button leaves the "Merge Selected" toolbar working.
+
 ### 2026-05-20 (F039) — reference-data bulk actions
 
 - A tiny shared Set helper (`referenceSelection.ts`) is enough to keep checkbox multi-select logic aligned across admin pages; once select/toggle/select-all live in one place, Brands/Locations/Networks can stay nearly identical and Categories only has to solve its tree-specific rendering.

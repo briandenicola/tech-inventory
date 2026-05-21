@@ -17,9 +17,9 @@
 	import ReferenceDataBulkBar from '$lib/components/ReferenceDataBulkBar.svelte';
 	import DeactivateConfirmModal from '$lib/components/admin/DeactivateConfirmModal.svelte';
 	import ResponsiveAdminList from '$lib/components/admin/ResponsiveAdminList.svelte';
-	import ResponsiveListCard from '$lib/components/ResponsiveListCard.svelte';
 	import {
 		fetchReferenceDeviceCount,
+		mergeReferenceEntities,
 		mergeReferenceEntitySelection,
 		type MergeEntityOption
 	} from '$lib/utils/referenceMerge';
@@ -73,6 +73,7 @@
 	let formData = $state<NetworkFormData>({ name: '', description: '' });
 	let formErrors = $state<Record<string, string>>({});
 	let formSubmitting = $state(false);
+
 
 	const visibleNetworkIds = $derived(
 		networks.map((network) => network.id).filter((networkId): networkId is string => !!networkId)
@@ -264,20 +265,37 @@
 		mergeSubmitting = true;
 		mergeError = null;
 		const targetNetwork = mergeTargetOptions.find((network) => network.id === targetId);
+		const isBulkMerge = mergeSourceNetworks.length > 1;
 
 		try {
-			const mergedCount = await mergeReferenceEntitySelection(
-				'network',
-				mergeSourceNetworks.map((network) => network.id),
-				targetId
-			);
-			addToast({
-				type: 'success',
-				message: t('admin.bulk.mergeSuccess', {
-					target: targetNetwork?.name ?? '',
-					count: mergedCount
-				})
-			});
+			if (isBulkMerge) {
+				const mergedCount = await mergeReferenceEntitySelection(
+					'network',
+					mergeSourceNetworks.map((network) => network.id),
+					targetId
+				);
+				addToast({
+					type: 'success',
+					message: t('admin.bulk.mergeSuccess', {
+						target: targetNetwork?.name ?? '',
+						count: mergedCount
+					})
+				});
+			} else {
+				const sourceNetwork = mergeSourceNetworks[0];
+				const response = await mergeReferenceEntities('network', {
+					sourceId: sourceNetwork.id,
+					targetId
+				});
+				addToast({
+					type: 'success',
+					message: t('admin.merge.success', {
+						source: sourceNetwork.name,
+						target: targetNetwork?.name ?? '',
+						count: response.mergedCount
+					})
+				});
+			}
 			closeMergeModal();
 			clearSelection();
 			await Promise.all([loadNetworks(), fetchReferenceData()]);
@@ -333,51 +351,6 @@
 		clearSelection();
 		bulkDeleteModalOpen = false;
 		await Promise.all([loadNetworks(), fetchReferenceData()]);
-	}
-
-	const inactiveBadge = {
-		text: t('common.states.inactive'),
-		className:
-			'inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200'
-	};
-
-	function getNetworkCardFields(network: NetworkResponse) {
-		return [
-			{
-				key: 'description',
-				label: t('networks.columns.description'),
-				value: network.description ?? null,
-				valueClass: 'break-words'
-			}
-		];
-	}
-
-	function getNetworkActionItems(network: NetworkResponse) {
-		const actionKey = network.id ?? network.name ?? 'network';
-		const items: Array<{
-			id: string;
-			label: string;
-			onSelect: () => void;
-			tone: 'primary' | 'warning';
-		}> = [
-			{
-				id: `edit-${actionKey}`,
-				label: t('common.actions.edit'),
-				onSelect: () => openEditModal(network),
-				tone: 'primary' as const
-			}
-		];
-
-		if (network.isActive) {
-			items.push({
-				id: `deactivate-${actionKey}`,
-				label: t('common.actions.deactivate'),
-				onSelect: () => openDeactivateModal(network),
-				tone: 'warning' as const
-			});
-		}
-
-		return items;
 	}
 
 	const primaryActionButtonClass =
@@ -491,19 +464,31 @@
 
 			{#snippet mobileCard(network: NetworkResponse)}
 				{@const selected = network.id ? selectedIds.has(network.id) : false}
-				<ResponsiveListCard
-					title={network.name ?? '—'}
-					titleId={`network-card-${network.id ?? 'item'}`}
-					selected={selected}
-					checked={selected}
-					selectLabel={network.id ? t('admin.bulk.selectRow', { name: network.name ?? '' }) : null}
-					onToggleSelect={network.id ? () => toggleSelect(network.id ?? '') : undefined}
-					badge={!network.isActive ? inactiveBadge : null}
-					fields={getNetworkCardFields(network)}
-					actionItems={getNetworkActionItems(network)}
-					actionMenuLabel={t('common.actions.moreActions')}
-					actionMenuTitle={t('common.labels.actions')}
-				/>
+				<article class="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950 {selected ? 'border-primary-400 bg-primary-50/70 dark:border-primary-700 dark:bg-primary-950/20' : ''}">
+					<div class="flex items-start justify-between gap-3">
+						<div class="flex min-w-0 items-start gap-3">
+							{#if network.id}
+								<input
+									type="checkbox"
+									class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
+									checked={selected}
+									onchange={() => toggleSelect(network.id ?? '')}
+									aria-label={t('admin.bulk.selectRow', { name: network.name ?? '' })}
+								/>
+							{/if}
+							<h2 class="min-w-0 text-base font-semibold text-neutral-900 dark:text-neutral-50">{network.name}</h2>
+						</div>
+						{#if !network.isActive}
+							<span class="inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200">{t('common.states.inactive')}</span>
+						{/if}
+					</div>
+					{#if network.description}
+						<p class="mt-3 break-words text-sm text-neutral-700 dark:text-neutral-300">{network.description}</p>
+					{/if}
+					<div class="mt-4 flex flex-wrap gap-2">
+						{@render networkActionButtons(network)}
+					</div>
+				</article>
 			{/snippet}
 		</ResponsiveAdminList>
 
@@ -532,6 +517,7 @@
 {#if mergeModalOpen && mergeSourceNetworks.length > 0}
 	<MergeEntityModal
 		entityType="network"
+		sourceEntity={mergeSourceNetworks[0] ?? null}
 		sourceEntities={mergeSourceNetworks}
 		entities={mergeTargetOptions}
 		isOpen={mergeModalOpen}

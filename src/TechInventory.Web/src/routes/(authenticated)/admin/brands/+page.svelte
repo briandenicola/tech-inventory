@@ -17,9 +17,9 @@
 	import ReferenceDataBulkBar from '$lib/components/ReferenceDataBulkBar.svelte';
 	import DeactivateConfirmModal from '$lib/components/admin/DeactivateConfirmModal.svelte';
 	import ResponsiveAdminList from '$lib/components/admin/ResponsiveAdminList.svelte';
-	import ResponsiveListCard from '$lib/components/ResponsiveListCard.svelte';
 	import {
 		fetchReferenceDeviceCount,
+		mergeReferenceEntities,
 		mergeReferenceEntitySelection,
 		type MergeEntityOption
 	} from '$lib/utils/referenceMerge';
@@ -87,7 +87,7 @@
 	let formErrors = $state<Record<string, string>>({});
 	let formSubmitting = $state(false);
 
-	const visibleBrandIds = $derived(
+	const visibleBrandIds= $derived(
 		brands.map((brand) => brand.id).filter((brandId): brandId is string => !!brandId)
 	);
 	const selectionState = $derived(getVisibleReferenceSelectionState(selectedIds, visibleBrandIds));
@@ -286,20 +286,37 @@
 		mergeSubmitting = true;
 		mergeError = null;
 		const targetBrand = mergeTargetOptions.find((brand) => brand.id === targetId);
+		const isBulkMerge = mergeSourceBrands.length > 1;
 
 		try {
-			const mergedCount = await mergeReferenceEntitySelection(
-				'brand',
-				mergeSourceBrands.map((brand) => brand.id),
-				targetId
-			);
-			addToast({
-				type: 'success',
-				message: t('admin.bulk.mergeSuccess', {
-					target: targetBrand?.name ?? '',
-					count: mergedCount
-				})
-			});
+			if (isBulkMerge) {
+				const mergedCount = await mergeReferenceEntitySelection(
+					'brand',
+					mergeSourceBrands.map((brand) => brand.id),
+					targetId
+				);
+				addToast({
+					type: 'success',
+					message: t('admin.bulk.mergeSuccess', {
+						target: targetBrand?.name ?? '',
+						count: mergedCount
+					})
+				});
+			} else {
+				const sourceBrand = mergeSourceBrands[0];
+				const response = await mergeReferenceEntities('brand', {
+					sourceId: sourceBrand.id,
+					targetId
+				});
+				addToast({
+					type: 'success',
+					message: t('admin.merge.success', {
+						source: sourceBrand.name,
+						target: targetBrand?.name ?? '',
+						count: response.mergedCount
+					})
+				});
+			}
 			closeMergeModal();
 			clearSelection();
 			await Promise.all([loadBrands(), fetchReferenceData()]);
@@ -357,57 +374,6 @@
 		clearSelection();
 		bulkDeleteModalOpen = false;
 		await Promise.all([loadBrands(), fetchReferenceData()]);
-	}
-
-	const inactiveBadge = {
-		text: t('common.states.inactive'),
-		className:
-			'inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200'
-	};
-
-	function getBrandCardFields(brand: BrandResponse) {
-		return [
-			{
-				key: 'website',
-				label: t('brands.columns.website'),
-				value: brand.website ?? null,
-				href: brand.website ?? undefined
-			},
-			{
-				key: 'notes',
-				label: t('brands.columns.notes'),
-				value: brand.notes ?? null,
-				valueClass: 'break-words'
-			}
-		];
-	}
-
-	function getBrandActionItems(brand: BrandResponse) {
-		const actionKey = brand.id ?? brand.name ?? 'brand';
-		const items: Array<{
-			id: string;
-			label: string;
-			onSelect: () => void;
-			tone: 'primary' | 'warning';
-		}> = [
-			{
-				id: `edit-${actionKey}`,
-				label: t('common.actions.edit'),
-				onSelect: () => openEditModal(brand),
-				tone: 'primary' as const
-			}
-		];
-
-		if (brand.isActive) {
-			items.push({
-				id: `deactivate-${actionKey}`,
-				label: t('common.actions.deactivate'),
-				onSelect: () => openDeactivateModal(brand),
-				tone: 'warning' as const
-			});
-		}
-
-		return items;
 	}
 
 	const primaryActionButtonClass =
@@ -562,19 +528,45 @@
 
 			{#snippet mobileCard(brand: BrandResponse)}
 				{@const selected = brand.id ? selectedIds.has(brand.id) : false}
-				<ResponsiveListCard
-					title={brand.name ?? '—'}
-					titleId={`brand-card-${brand.id ?? 'item'}`}
-					selected={selected}
-					checked={selected}
-					selectLabel={brand.id ? t('admin.bulk.selectRow', { name: brand.name ?? '' }) : null}
-					onToggleSelect={brand.id ? () => toggleSelect(brand.id ?? '') : undefined}
-					badge={!brand.isActive ? inactiveBadge : null}
-					fields={getBrandCardFields(brand)}
-					actionItems={getBrandActionItems(brand)}
-					actionMenuLabel={t('common.actions.moreActions')}
-					actionMenuTitle={t('common.labels.actions')}
-				/>
+				<article class="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950 {selected ? 'border-primary-400 bg-primary-50/70 dark:border-primary-700 dark:bg-primary-950/20' : ''}">
+					<div class="flex items-start justify-between gap-3">
+						<div class="flex min-w-0 items-start gap-3">
+							{#if brand.id}
+								<input
+									type="checkbox"
+									class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
+									checked={selected}
+									onchange={() => toggleSelect(brand.id ?? '')}
+									aria-label={t('admin.bulk.selectRow', { name: brand.name ?? '' })}
+								/>
+							{/if}
+							<div class="min-w-0">
+							<h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-50">{brand.name}</h2>
+							{#if brand.website}
+								<a
+									href={brand.website}
+									target="_blank"
+									rel="noopener noreferrer"
+									class="mt-2 block break-all text-sm text-primary-600 hover:underline dark:text-primary-400"
+								>
+									{brand.website}
+								</a>
+							{/if}
+							</div>
+						</div>
+						{#if !brand.isActive}
+							<span class="inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200">
+								{t('common.states.inactive')}
+							</span>
+						{/if}
+					</div>
+					{#if brand.notes}
+						<p class="mt-3 break-words text-sm text-neutral-700 dark:text-neutral-300">{brand.notes}</p>
+					{/if}
+					<div class="mt-4 flex flex-wrap gap-2">
+						{@render brandActionButtons(brand)}
+					</div>
+				</article>
 			{/snippet}
 		</ResponsiveAdminList>
 
@@ -603,6 +595,7 @@
 {#if mergeModalOpen && mergeSourceBrands.length > 0}
 	<MergeEntityModal
 		entityType="brand"
+		sourceEntity={mergeSourceBrands[0] ?? null}
 		sourceEntities={mergeSourceBrands}
 		entities={mergeTargetOptions}
 		isOpen={mergeModalOpen}

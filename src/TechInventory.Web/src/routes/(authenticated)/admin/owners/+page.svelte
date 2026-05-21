@@ -13,7 +13,6 @@
 	import PaginationControls from '$lib/components/PaginationControls.svelte';
 	import DeactivateConfirmModal from '$lib/components/admin/DeactivateConfirmModal.svelte';
 	import ResponsiveAdminList from '$lib/components/admin/ResponsiveAdminList.svelte';
-	import ResponsiveListCard from '$lib/components/ResponsiveListCard.svelte';
 
 	/**
 	 * T29: Owners Admin — list with role badge + deactivate 409 guard
@@ -231,58 +230,6 @@
 		return 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200';
 	}
 
-	const inactiveBadge = {
-		text: t('common.states.inactive'),
-		className:
-			'inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200'
-	};
-
-	function getOwnerCardFields(owner: OwnerResponse) {
-		return [
-			{
-				key: 'role',
-				label: t('admin.owners.columns.role'),
-				chipText: t(`admin.owners.roles.${(owner.role ?? 'Member').toLowerCase()}`),
-				chipClass: `inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${getRoleBadgeClass(owner.role)}`
-			},
-			{
-				key: 'entraObjectId',
-				label: t('admin.owners.columns.entraObjectId'),
-				value: owner.entraObjectId ?? null,
-				monospace: true,
-				valueClass: 'break-all'
-			}
-		];
-	}
-
-	function getOwnerActionItems(owner: OwnerResponse) {
-		const actionKey = owner.id ?? owner.displayName ?? 'owner';
-		const items: Array<{
-			id: string;
-			label: string;
-			onSelect: () => void;
-			tone: 'primary' | 'warning';
-		}> = [
-			{
-				id: `edit-${actionKey}`,
-				label: t('common.actions.edit'),
-				onSelect: () => openEditModal(owner),
-				tone: 'primary' as const
-			}
-		];
-
-		if (owner.isActive) {
-			items.push({
-				id: `deactivate-${actionKey}`,
-				label: t('common.actions.deactivate'),
-				onSelect: () => openDeactivateModal(owner),
-				tone: 'warning' as const
-			});
-		}
-
-		return items;
-	}
-
 	const primaryActionButtonClass =
 		'inline-flex min-h-11 items-center rounded-full border border-primary-300 px-4 py-2 text-sm font-medium text-primary-700 transition-colors hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-primary-800 dark:text-primary-300 dark:hover:bg-primary-950';
 	const warningActionButtonClass =
@@ -379,15 +326,26 @@
 			{/snippet}
 
 			{#snippet mobileCard(owner: OwnerResponse)}
-				<ResponsiveListCard
-					title={owner.displayName ?? '—'}
-					titleId={`owner-card-${owner.id ?? 'item'}`}
-					badge={!owner.isActive ? inactiveBadge : null}
-					fields={getOwnerCardFields(owner)}
-					actionItems={getOwnerActionItems(owner)}
-					actionMenuLabel={t('common.actions.moreActions')}
-					actionMenuTitle={t('common.labels.actions')}
-				/>
+				<article class="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
+					<div class="flex items-start justify-between gap-3">
+						<div class="min-w-0">
+							<h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-50">{owner.displayName}</h2>
+							<div class="mt-2 flex flex-wrap items-center gap-2">
+								<span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold {getRoleBadgeClass(owner.role)}">{t(`admin.owners.roles.${(owner.role ?? 'Member').toLowerCase()}`)}</span>
+								{#if !owner.isActive}
+									<span class="inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200">{t('common.states.inactive')}</span>
+								{/if}
+							</div>
+						</div>
+					</div>
+					<p class="mt-3 break-all text-sm text-neutral-700 dark:text-neutral-300">
+						<span class="font-medium text-neutral-500 dark:text-neutral-400">{t('admin.owners.columns.entraObjectId')}:</span>
+						{owner.entraObjectId || '—'}
+					</p>
+					<div class="mt-4 flex flex-wrap gap-2">
+						{@render ownerActionButtons(owner)}
+					</div>
+				</article>
 			{/snippet}
 		</ResponsiveAdminList>
 

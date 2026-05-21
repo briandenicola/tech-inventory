@@ -15,9 +15,9 @@
 	import MergeEntityModal from '$lib/components/MergeEntityModal.svelte';
 	import ReferenceDataBulkBar from '$lib/components/ReferenceDataBulkBar.svelte';
 	import DeactivateConfirmModal from '$lib/components/admin/DeactivateConfirmModal.svelte';
-	import ResponsiveListCard from '$lib/components/ResponsiveListCard.svelte';
 	import {
 		fetchReferenceDeviceCount,
+		mergeReferenceEntities,
 		mergeReferenceEntitySelection,
 		type MergeEntityOption
 	} from '$lib/utils/referenceMerge';
@@ -89,6 +89,7 @@
 	let formData = $state<CategoryFormData>({ name: '', parentId: '', icon: '', depth: 1 });
 	let formErrors = $state<Record<string, string>>({});
 	let formSubmitting = $state(false);
+
 
 
 	// Load categories on mount + URL params change
@@ -328,20 +329,37 @@
 		mergeSubmitting = true;
 		mergeError = null;
 		const targetCategory = mergeTargetOptions.find((category) => category.id === targetId);
+		const isBulkMerge = mergeSourceCategories.length > 1;
 
 		try {
-			const mergedCount = await mergeReferenceEntitySelection(
-				'category',
-				mergeSourceCategories.map((category) => category.id),
-				targetId
-			);
-			addToast({
-				type: 'success',
-				message: t('admin.bulk.mergeSuccess', {
-					target: targetCategory?.name ?? '',
-					count: mergedCount
-				})
-			});
+			if (isBulkMerge) {
+				const mergedCount = await mergeReferenceEntitySelection(
+					'category',
+					mergeSourceCategories.map((category) => category.id),
+					targetId
+				);
+				addToast({
+					type: 'success',
+					message: t('admin.bulk.mergeSuccess', {
+						target: targetCategory?.name ?? '',
+						count: mergedCount
+					})
+				});
+			} else {
+				const sourceCategory = mergeSourceCategories[0];
+				const response = await mergeReferenceEntities('category', {
+					sourceId: sourceCategory.id,
+					targetId
+				});
+				addToast({
+					type: 'success',
+					message: t('admin.merge.success', {
+						source: sourceCategory.name,
+						target: targetCategory?.name ?? '',
+						count: response.mergedCount
+					})
+				});
+			}
 			closeMergeModal();
 			clearSelection();
 			await Promise.all([loadCategories(), fetchReferenceData()]);
@@ -425,50 +443,6 @@
 		}
 
 		return categories.find((category) => category.id === parentId)?.name ?? null;
-	}
-
-	const inactiveBadge = {
-		text: t('common.states.inactive'),
-		className:
-			'inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200'
-	};
-
-	function getCategoryCardFields(category: CategoryResponse) {
-		return [
-			{
-				key: 'parent',
-				label: t('categories.columns.parent'),
-				value: getParentName(category.parentId)
-			}
-		];
-	}
-
-	function getCategoryActionItems(category: CategoryResponse) {
-		const actionKey = category.id ?? category.name ?? 'category';
-		const items: Array<{
-			id: string;
-			label: string;
-			onSelect: () => void;
-			tone: 'primary' | 'warning';
-		}> = [
-			{
-				id: `edit-${actionKey}`,
-				label: t('common.actions.edit'),
-				onSelect: () => openEditModal(category),
-				tone: 'primary' as const
-			}
-		];
-
-		if (category.isActive) {
-			items.push({
-				id: `deactivate-${actionKey}`,
-				label: t('common.actions.deactivate'),
-				onSelect: () => openDeactivateModal(category),
-				tone: 'warning' as const
-			});
-		}
-
-		return items;
 	}
 
 	const primaryActionButtonClass =
@@ -559,20 +533,41 @@
 			{#each displayedCategories as category (category.id)}
 				{@const selected = category.id ? selectedIds.has(category.id) : false}
 				<div role="listitem">
-					<ResponsiveListCard
-						title={category.name ?? '—'}
-						titleId={`category-card-${category.id ?? 'item'}`}
-						titlePrefix={category.icon ?? null}
-						selected={selected}
-						checked={selected}
-						selectLabel={category.id ? t('admin.bulk.selectRow', { name: category.name ?? '' }) : null}
-						onToggleSelect={category.id ? () => toggleSelect(category.id ?? '') : undefined}
-						badge={!category.isActive ? inactiveBadge : null}
-						fields={getCategoryCardFields(category)}
-						actionItems={getCategoryActionItems(category)}
-						actionMenuLabel={t('common.actions.moreActions')}
-						actionMenuTitle={t('common.labels.actions')}
-					/>
+					<article class="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950 {selected ? 'border-primary-400 bg-primary-50/70 dark:border-primary-700 dark:bg-primary-950/20' : ''}">
+						<div class="flex items-start justify-between gap-3">
+							<div class="flex min-w-0 items-start gap-3">
+								{#if category.id}
+									<input
+										type="checkbox"
+										class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
+										checked={selected}
+										onchange={() => toggleSelect(category.id ?? '')}
+										aria-label={t('admin.bulk.selectRow', { name: category.name ?? '' })}
+									/>
+								{/if}
+								<div class="min-w-0">
+									<div class="flex items-center gap-2">
+										{#if category.icon}
+											<span class="text-lg" aria-hidden="true">{category.icon}</span>
+										{/if}
+										<h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-50">{category.name}</h2>
+									</div>
+									{#if getParentName(category.parentId)}
+										<p class="mt-2 text-sm text-neutral-700 dark:text-neutral-300">
+											<span class="font-medium text-neutral-500 dark:text-neutral-400">{t('categories.columns.parent')}:</span>
+											{getParentName(category.parentId)}
+										</p>
+									{/if}
+								</div>
+							</div>
+							{#if !category.isActive}
+								<span class="inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200">{t('common.states.inactive')}</span>
+							{/if}
+						</div>
+						<div class="mt-4 flex flex-wrap gap-2">
+							{@render categoryActionButtons(category)}
+						</div>
+					</article>
 				</div>
 			{/each}
 		</div>
@@ -611,6 +606,7 @@
 {#if mergeModalOpen && mergeSourceCategories.length > 0}
 	<MergeEntityModal
 		entityType="category"
+		sourceEntity={mergeSourceCategories[0] ?? null}
 		sourceEntities={mergeSourceCategories}
 		entities={mergeTargetOptions}
 		isOpen={mergeModalOpen}

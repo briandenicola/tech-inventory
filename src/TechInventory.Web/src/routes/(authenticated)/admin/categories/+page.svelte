@@ -401,14 +401,6 @@
 		return displayedCategories.some((c) => c.parentId === categoryId);
 	}
 
-	function getParentName(parentId: string | null | undefined) {
-		if (!parentId) {
-			return null;
-		}
-
-		return categories.find((category) => category.id === parentId)?.name ?? null;
-	}
-
 	const primaryActionButtonClass =
 		'text-sm font-medium text-primary-600 hover:text-primary-700 hover:underline dark:text-primary-400 dark:hover:text-primary-300';
 	const warningActionButtonClass =
@@ -472,50 +464,7 @@
 			</p>
 		</div>
 	{:else}
-		<div class="grid gap-3 md:hidden" role="list" aria-label={t('admin.categories.list.title')}>
-			{#each displayedCategories as category (category.id)}
-				{@const selected = category.id ? selectedIds.has(category.id) : false}
-				<div role="listitem">
-					<article class="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950 {selected ? 'border-primary-400 bg-primary-50/70 dark:border-primary-700 dark:bg-primary-950/20' : ''}">
-						<div class="flex items-start justify-between gap-3">
-							<div class="flex min-w-0 items-start gap-3">
-								{#if category.id}
-									<input
-										type="checkbox"
-										class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
-										checked={selected}
-										onchange={() => toggleSelect(category.id ?? '')}
-										aria-label={t('admin.bulk.selectRow', { name: category.name ?? '' })}
-									/>
-								{/if}
-								<div class="min-w-0">
-									<div class="flex items-center gap-2">
-										{#if category.icon}
-											<span class="text-lg" aria-hidden="true">{category.icon}</span>
-										{/if}
-										<h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-50">{category.name}</h2>
-									</div>
-									{#if getParentName(category.parentId)}
-										<p class="mt-2 text-sm text-neutral-700 dark:text-neutral-300">
-											<span class="font-medium text-neutral-500 dark:text-neutral-400">{t('categories.columns.parent')}:</span>
-											{getParentName(category.parentId)}
-										</p>
-									{/if}
-								</div>
-							</div>
-							{#if !category.isActive}
-								<span class="inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200">{t('common.states.inactive')}</span>
-							{/if}
-						</div>
-						<div class="mt-4 flex flex-wrap gap-3">
-							{@render categoryActionButtons(category)}
-						</div>
-					</article>
-				</div>
-			{/each}
-		</div>
-
-		<div class="hidden overflow-hidden rounded-lg border border-neutral-200 bg-white shadow dark:border-neutral-800 dark:bg-neutral-950 md:block">
+		<div class="mt-6 overflow-hidden rounded-lg border border-neutral-200 bg-white shadow dark:border-neutral-800 dark:bg-neutral-950">
 			<div class="divide-y divide-neutral-200 dark:divide-neutral-800">
 				{#each displayedCategories.filter((c) => c.parentId === null) as category (category.id)}
 					{@render categoryRow(category, 0)}

@@ -25,7 +25,5 @@ html.dark body {
 
 	.ti-modal-surface {
 		isolation: isolate;
-		-webkit-backface-visibility: hidden;
-		backface-visibility: hidden;
 	}
 }

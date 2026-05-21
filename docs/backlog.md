@@ -52,15 +52,15 @@ Fixes and improvements for the progressive web app (phone-first) experience.
 
 ## Future Work (Unscheduled)
 
-The following items are candidates for future scheduling but lack committed owners or timelines:
+**Closed — not pursued post-v1.0.** The following candidates were evaluated and deferred indefinitely. They remain here as historical record of decisions made.
 
-- **Custom icon set** — If app scales to 50+ unique icons, consider a dedicated icon component library (e.g., `<Icon name="hamburger" />`). Currently inline SVG in layout components is the right abstraction.
-- **High-contrast mode variant** — WCAG AAA requires 7:1 contrast; current neutral-700/neutral-300 is ~4.6:1 (AA compliant). A future accessibility pass could add `forced-colors: active` media query support for Windows High Contrast Mode.
-- **Animated hamburger→X morph** — Visually richer but adds 20+ lines of SVG/CSS. Current toggle (swap paths) is simpler and meets PRD "tasteful, never trendy."
-- **Backend tree-aware category search** — Deferred; client-side filter sufficient for v1 (<100 categories expected).
-- **Fuzzy matching for search** — Deferred; exact substring match covers 95% of use cases.
-- **Persistent desktop rail** — Rejected for now; single-household app, phone-first use case. Consistency over desktop density.
+- **Custom icon set** — Inline SVG in layout components is the right abstraction at current scale.
+- **High-contrast mode variant** — Current neutral-700/neutral-300 is AA compliant (~4.6:1). WCAG AAA / Windows High Contrast Mode not pursued.
+- **Animated hamburger→X morph** — Current toggle (swap paths) meets PRD "tasteful, never trendy."
+- **Backend tree-aware category search** — Client-side filter sufficient (<100 categories).
+- **Fuzzy matching for search** — Exact substring match covers 95% of use cases.
+- **Persistent desktop rail** — Phone-first single-household app; consistency over desktop density.
 
 ---
 
-**Last updated:** 2026-05-21 by Brian (F035, F037 → Done; F036, F044 → Closed — not required)
+**Last updated:** 2026-05-21 by Brian — v1.0 shipped. F038 is the only remaining active backlog item; Future Work parking lot closed (not pursued).

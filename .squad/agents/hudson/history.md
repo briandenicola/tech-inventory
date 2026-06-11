@@ -374,3 +374,9 @@ Brian asked the team to rip the entire `Auth:DevBypass` shim from production. My
 1. Run `task test:e2e`. Expect journeys 01, 02 (desktop only), 03, 04, 05, 06, 07, 08, 13 to be the targets. Journeys 09, 10, 11, 12 are stubbed via `test.todo` (pre-existing, not mine).
 2. If journey 01 test 1 ("redirects to /auth/login") flakes, the timeout on `waitForURL` (currently 15s) may need a bump — the (authenticated) guard waits on the root layout's MSAL probe to finish before reading the store.
 3. If journey 02's `toContainText(/local admin/i)` fails, check api logs for the F025 seed warning — `LocalAdminSeedHostedService` writes a critical log on success.
+
+### 2026-06-11 — Image Tagging & Corepack Policy Shift
+
+- **Tagging policy change (D-014)**: Main branch pushes now publish images as `:latest` (rolling deployable) in addition to `:main` and `:sha-<short>`. The home server's default `${IMAGE_TAG:-latest}` now pulls current main state. Semver tags (`v*.*.*`) continue to publish `:latest`, their version tag, and `:sha-<short>`. Workflow comments were updated to clarify the new intent.
+- **Corepack pnpm pin**: Added `src/TechInventory.Web/package.json::packageManager` as `pnpm@11.1.2`. Reason: Docker/Corepack had floated to pnpm 11.5.3, which enforces minimum-release-age against the existing lockfile and blocked image builds. Pinning the previously validated pnpm version keeps Docker installs deterministic without refreshing the dependency graph.
+- **Constitutional reinterpretation**: §6.1 ("No `latest` tags — pinned, digested references in compose") remains in force; the principle is preserved because the deployer can still pin `IMAGE_TAG` in `.env` if stricter stability is needed. The workflow publishes `:latest`; the deployment chooses whether to consume it or lock a version. Decision filed in `.squad/decisions/inbox/D-014-image-tagging-policy.md`.

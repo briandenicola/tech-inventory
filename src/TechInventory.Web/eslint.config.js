@@ -197,7 +197,10 @@ export default [
 			security: securityPlugin
 		},
 		rules: {
-			'security/no-auth-token-localstorage': 'error'
+			'security/no-auth-token-localstorage': 'error',
+			// eslint-plugin-svelte v3 enables this for .svelte.ts runes files too;
+			// migrate mutable built-ins to SvelteMap/SvelteSet separately.
+			'svelte/prefer-svelte-reactivity': 'off'
 		}
 	},
 	prettier,
@@ -219,7 +222,17 @@ export default [
 		},
 		rules: {
 			// Downgrade Svelte compiler warnings to ESLint warnings (Constitution D-072: intentional runes patterns)
-			'svelte/valid-compile': 'warn'
+			'svelte/valid-compile': 'warn',
+			// eslint-plugin-svelte v3 enables these rules by default; migrate
+			// route resolution patterns separately.
+			'svelte/no-navigation-without-resolve': 'off',
+			'svelte/require-each-key': 'off'
+		}
+	},
+	{
+		files: ['**/*.svelte.ts'],
+		languageOptions: {
+			parser: ts.parser
 		}
 	},
 	{

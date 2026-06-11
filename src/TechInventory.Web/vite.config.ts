@@ -55,9 +55,7 @@ const pwa = SvelteKitPWA({
 
 export default defineConfig({
 	plugins: [
-		// @ts-expect-error -- vite-plugin-pwa peers on vite@5, repo runs vite@6; types are structurally compatible
 		tailwindcss(),
-		// @ts-expect-error -- vite version peer mismatch (see above)
 		sveltekit(),
 		...pwa
 	],

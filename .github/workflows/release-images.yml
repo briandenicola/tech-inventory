@@ -1,20 +1,18 @@
 name: Release Container Images
 
 # Build + push API and Web images to GHCR on:
-#   - every semver tag push (v*.*.*) → :latest + :vX.Y.Z + :sha-<short>
-#   - every main branch push          → :main + :sha-<short>
-#   - manual workflow_dispatch        → :latest + :<inputs.tag> (optional)
+#   - every semver tag push (v*.*.*) -> :latest + :vX.Y.Z + :sha-<short>
+#   - every main branch push          -> :latest + :main + :sha-<short>
+#   - manual workflow_dispatch        -> :latest + :<inputs.tag> (optional)
 #                                       + :sha-<short>
 #
 # Image namespace:
 #   ghcr.io/briandenicola/tech-inventory-api:<tag>
 #   ghcr.io/briandenicola/tech-inventory-web:<tag>
 #
-# :latest deliberately tracks the most recent SEMVER RELEASE — NOT main
-# HEAD — so a home server pinning :latest always pulls tested release
-# builds. Main builds get :main for rolling "latest dev" access, plus
-# :sha-<short> for immutable per-commit deploys (Brian's preferred
-# IMAGE_TAG pinning pattern for staged rollouts).
+# :latest tracks main HEAD so the default Docker Compose IMAGE_TAG pulls the
+# newest deployed build. Main builds also get :main and :sha-<short> tags for
+# rolling and immutable deploys.
 #
 # linux/amd64 only — Brian's home server is x86_64. Adding arm64 would
 # double build time for no current consumer; revisit when there is one.
@@ -41,13 +39,13 @@ on:
         required: false
         default: ""
 
-permissions:
-  contents: read
-  packages: write          # required to push to ghcr.io/<owner>/<image>
-
 env:
   REGISTRY: ghcr.io
   IMAGE_NAMESPACE: ${{ github.repository_owner }}/tech-inventory
+
+permissions:
+  contents: read
+  packages: write          # required to push to ghcr.io/<owner>/<image>
 
 jobs:
   build:
@@ -87,12 +85,11 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}-${{ matrix.image.name }}
           # Tag rules per trigger:
           #   - Tag push (v*.*.*):    :latest, :vX.Y.Z, :sha-<short>
-          #   - Main push:            :main, :sha-<short>   (NO :latest)
+          #   - Main push:            :latest, :main, :sha-<short>
           #   - workflow_dispatch:    :latest, :<inputs.tag>?, :sha-<short>
           #
-          # `:latest` is intentionally gated to tag pushes + manual dispatch
-          # so home-server pulls of `:latest` always resolve to a tested
-          # release build, not whatever just merged to main.
+          # `:latest` intentionally tracks main because docker-compose.yml
+          # defaults IMAGE_TAG to latest for the home-server deployment.
           #
           # `github.ref_name` resolves to "vX.Y.Z" on tag push and "main"
           # on main push, so the `${{ github.ref_name }}` line covers both
@@ -104,7 +101,7 @@ jobs:
           # this run (it resolves the upstream head_sha → short SHA →
           # `sha-<short>` tag).
           tags: |
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
             type=raw,value=${{ github.ref_name }},enable=${{ github.event_name == 'push' }}
             type=raw,value=${{ inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' && inputs.tag != '' }}
             type=sha,format=short

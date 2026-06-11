@@ -1,5 +1,4 @@
 <script lang="ts" generics="T">
-	/* eslint-disable no-undef */
 	import type { Snippet } from 'svelte';
 
 	interface Props {

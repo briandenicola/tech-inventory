@@ -7,7 +7,7 @@
  * - name: required, max 200
  * - model: optional, max 200 (F034)
  * - serial: optional, max 100
- * - brandId: optional UUID (nullable per D-095)
+ * - brandId: required UUID (API contract enforces this)
  * - categoryId: required UUID
  * - ownerId: optional UUID
  * - locationId: optional UUID
@@ -43,7 +43,7 @@ const deviceBaseSchema = z.object({
 		.max(100, 'Serial number must be 100 characters or less')
 		.optional()
 		.or(z.literal('')),
-	brandId: z.string().uuid('Invalid brand ID').optional().or(z.literal('')),
+	brandId: z.string().min(1, 'Brand is required').uuid('Invalid brand ID'),
 	categoryId: z.string().uuid('Category is required'),
 	ownerId: z.string().uuid().optional().or(z.literal('')),
 	locationId: z.string().uuid().optional().or(z.literal('')),

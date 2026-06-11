@@ -389,3 +389,36 @@ Work already completed in commit `68ddbd5` (`test(web): T26 ownership modals + T
 - The reports surface already uses self-contained cards for specialized report workflows (`EraReportCard`, `TimelineReport`, `WarrantyExpiryPanel`), so adding insurance export as another card on `/reports` keeps discovery and layout consistent without inventing a new route.
 - For authenticated CSV downloads, the useful seam is a typed client method that returns both the `Blob` and a parsed `Content-Disposition` filename; UI code should stay focused on role gating, filter state, and status messaging.
 - iOS/WebKit is happier when blob downloads append a temporary anchor to `document.body`, click it, and delay `URL.revokeObjectURL(...)` cleanup instead of revoking immediately in the same tick.
+
+## Learnings — 2026-06-11 Device form UI regression fixes
+
+### Issue 1: Brand field validation silent failure
+- **Problem:** Device create failed with 400 when brand unset, but only a generic red toast showed — no inline field-level error.
+- **Root cause:** Zod schema defined brandId as optional (.optional().or(z.literal(''))) but the API contract requires it. The disconnect meant client validation passed, server validation failed, and the generic catch-all toast in AddDeviceModal/+page.svelte hid the actual constraint.
+- **Fix:** Made brandId required in deviceFormSchema (z.string().uuid('Brand is required').min(1, 'Brand is required')), added red asterisk to Brand label, updated placeholder from "-- No Brand --" to "-- Select Brand --".
+- **Key lesson:** When the API returns 400 on submit but Zod validation doesn't catch it, the schema is out of sync with the backend contract. Consult backend FluentValidation rules and update Zod accordingly. Inline errors > silent failures.
+
+### Issue 2: Desktop table missing explicit Actions column
+- **Problem:** Desktop device table had no explicit affordance for row actions — entire row was clickable but users expected a visible button or link.
+- **Root cause:** DeviceTable snippet desktopRow had 6 columns (Name, Brand, Category, Owner, Status, Purchase Date) but no dedicated Actions cell. The row onclick handler opened the device detail, but the click target was ambiguous.
+- **Fix:** Added Actions column (7th cell) with a "View" button containing chevron-right icon and explicit aria-label. Incremented groupColspan from 6/7 to 7/8. Updated DeviceTable.test.ts to expect 7 cells per row. Added i18n keys common.actions.view and common.actions.viewDetails.
+- **Key lesson:** Desktop tables should have an explicit Actions column even when row click works — it signals interactivity and provides accessible labeling. Mobile cards can rely on the entire card being tappable, but desktop row actions benefit from a visible button/link.
+
+### Issue 3: Duplicate tag UI in new-item modal
+- **Problem:** AddDeviceModal showed two tag pickers: one at the top of the modal body, and another inside DeviceForm.
+- **Root cause:** AddDeviceModal historically managed tags separately (F030 pattern: apply tags after device exists via separate POST /devices/{id}/tags). When DeviceForm gained DeviceTagSelector internally, the AddDeviceModal top-level TagPicker became redundant.
+- **Fix:** Removed TagPicker import, selectedTagIds state, availableTags derived, and the top tag picker markup from AddDeviceModal. DeviceForm already handles tagIds in its formData, so the parent modal should only pass onSubmit and let the form handle tags internally. Updated /devices/new +page.svelte to also handle tags via DeviceForm.
+- **Key lesson:** When a child component gains internal state management for a field, remove parallel state management in the parent. DeviceForm is the single source of truth for tag selection; callers must NOT duplicate tag UI or state.
+
+### Test infrastructure learnings
+- **Svelte 5 select binding limitation:** Tests that provide initialData with select-backed fields (brandId, categoryId) may fail in jsdom because bind:value on <select> doesn't reflect initialData in test environment. This is a known Svelte 5 + jsdom limitation (T23). Skip these tests with .skip() and rely on E2E (T46) to cover select-based form submission in real browsers.
+- **Regression test value:** The brand validation test ("shows accessible brand-required error on submit when brand is omitted") caught a real user-facing issue. Regression tests that encode user-reported bugs prevent them from reoccurring. Always add a regression test when fixing a UX failure.
+- **Selector precision:** When asserting on error messages, query for p.text-danger-600, p.text-danger-400 not .text-danger-600, .text-danger-400 — the latter can match the label's red asterisk <span class="text-danger-600">*</span> instead of the error paragraph.
+
+### Key files
+- src/TechInventory.Web/src/lib/schemas/device.ts — Zod schema for client validation
+- src/TechInventory.Web/src/lib/components/DeviceForm.svelte — Shared create/edit form with inline validation
+- src/TechInventory.Web/src/lib/components/AddDeviceModal.svelte — Modal wrapper around DeviceForm (simplified to remove duplicate tag management)
+- src/TechInventory.Web/src/lib/components/DeviceTable.svelte — Desktop table with explicit Actions column
+- src/TechInventory.Web/src/lib/i18n/en.json — i18n catalog (added view/viewDetails keys)
+- src/TechInventory.Web/src/routes/(authenticated)/devices/new/+page.svelte — Create page that uses DeviceForm internally

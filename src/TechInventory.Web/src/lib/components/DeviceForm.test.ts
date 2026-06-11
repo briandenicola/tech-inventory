@@ -47,14 +47,23 @@ vi.mock('$lib/stores/referenceData', async () => {
 
 import { referenceDataStore } from '$lib/stores/referenceData';
 
+const testBrandId = '00000000-0000-4000-8000-000000000301';
+const testCategoryId = '00000000-0000-4000-8000-000000000201';
+
 describe('DeviceForm', () => {
 	beforeEach(() => {
 		resetFactories();
 
 		// Populate reference data store with test data
 		const refData: ReferenceDataState = {
-			brands: [createBrand({ name: 'Apple' }), createBrand({ name: 'Dell' })],
-			categories: [createCategory({ name: 'Laptop' }), createCategory({ name: 'Phone' })],
+			brands: [
+				createBrand({ id: testBrandId, name: 'Apple' }),
+				createBrand({ id: '00000000-0000-4000-8000-000000000302', name: 'Dell' })
+			],
+			categories: [
+				createCategory({ id: testCategoryId, name: 'Laptop' }),
+				createCategory({ id: '00000000-0000-4000-8000-000000000202', name: 'Phone' })
+			],
 			owners: [createOwner({ name: 'Alice' }), createOwner({ name: 'Bob' })],
 			locations: [createLocation({ name: 'Office' }), createLocation({ name: 'Home' })],
 			networks: [createNetwork({ name: 'WiFi-Main' }), createNetwork({ name: 'WiFi-Guest' })],
@@ -108,6 +117,24 @@ describe('DeviceForm', () => {
 			expect(screen.getByLabelText(/devices.columns.purchasePrice/i)).toBeInTheDocument();
 			expect(screen.getByLabelText(/devices.columns.currency/i)).toBeInTheDocument();
 			expect(screen.getByLabelText(/devices.columns.notes/i)).toBeInTheDocument();
+		});
+
+		it('renders exactly one tag selector (regression: duplicate tag UI)', () => {
+			// Regression test: User reported duplicate tag pickers appearing in the
+			// new item view. DeviceForm should render exactly one DeviceTagSelector.
+			// Callers (like AddDeviceModal) must NOT add a second tag picker above the form.
+			render(DeviceForm, { props: defaultProps });
+
+			// Should find exactly one role="group" with name matching tags
+			const tagGroups = screen.getAllByRole('group', { name: /devices.form.tags/i });
+			expect(tagGroups).toHaveLength(1);
+
+			// Tag checkboxes should appear once
+			const travelCheckboxes = screen.getAllByLabelText('Travel');
+			expect(travelCheckboxes).toHaveLength(1);
+
+			const criticalCheckboxes = screen.getAllByLabelText('Critical');
+			expect(criticalCheckboxes).toHaveLength(1);
 		});
 
 		it('starts with empty form', () => {
@@ -242,6 +269,71 @@ describe('DeviceForm', () => {
 				expect(screen.queryByText(/required/i)).not.toBeInTheDocument();
 			});
 		});
+
+		it('shows accessible brand-required error on submit when brand is omitted (regression: brand-missing create failure)', async () => {
+			// Regression test: User reported that device create fails with generic
+			// red toast when brand is not defined but no field-level error shows
+			// the brand-required constraint. This test ensures the form validates
+			// brandId and displays a clear accessible error message.
+			const user = userEvent.setup();
+			const onSubmit = vi.fn<
+				(data: import('$lib/schemas/device').DeviceFormInput) => Promise<void>
+			>(async () => {});
+
+			render(DeviceForm, {
+				props: {
+					...defaultProps,
+					onSubmit
+				}
+			});
+
+			// Fill name and category (required fields), but omit brand
+			const nameInput = screen.getByLabelText(/devices.columns.name/i);
+			await user.type(nameInput, 'Test Device');
+
+			const categorySelect = screen.getByLabelText(/devices.columns.category/i);
+			await user.selectOptions(categorySelect, [testCategoryId]);
+
+			// Submit form without selecting brand
+			const submitButton = screen.getByRole('button', { name: /common.actions.save/i });
+			await user.click(submitButton);
+
+			// Should show brand-required error (Zod schema: "Brand is required")
+			await waitFor(() => {
+				expect(screen.getByText(/Brand is required/i)).toBeInTheDocument();
+			});
+
+			// Verify error appears below the brand field for accessibility
+			const brandSelect = screen.getByLabelText(/devices.columns.brand/i);
+			const brandField = brandSelect.closest('div');
+			const brandFieldError = brandField?.querySelector('p.text-danger-600, p.text-danger-400');
+			expect(brandFieldError).toBeInTheDocument();
+			// The error <p> tag contains only "Brand is required", not the label asterisk
+			expect(brandFieldError).toHaveTextContent('Brand is required');
+
+			// onSubmit should NOT have been called because validation failed
+			expect(onSubmit).not.toHaveBeenCalled();
+		});
+
+		it('shows accessible brand-required error on blur when brand is omitted (regression: brand-missing create failure)', async () => {
+			// Second assertion: brand field should also validate on blur so the user
+			// gets immediate feedback before submit.
+			const user = userEvent.setup();
+			render(DeviceForm, { props: defaultProps });
+
+			const brandSelect = screen.getByLabelText(/devices.columns.brand/i);
+
+			// Focus brand field and blur without selecting a value
+			await user.click(brandSelect);
+			await user.tab();
+
+			// Should show error after blur
+			await waitFor(() => {
+				const errorMsg = screen.getByText('Brand is required');
+				expect(errorMsg).toBeInTheDocument();
+				expect(errorMsg).toHaveClass('text-danger-600');
+			});
+		});
 	});
 
 	describe('submit behavior', () => {
@@ -259,10 +351,10 @@ describe('DeviceForm', () => {
 			await user.type(nameInput, 'New Device');
 
 			const brandSelect = screen.getByLabelText(/devices.columns.brand/i);
-			await user.selectOptions(brandSelect, ['brand-00000000-0000-0000-000000000000']);
+			await user.selectOptions(brandSelect, [testBrandId]);
 
 			const categorySelect = screen.getByLabelText(/devices.columns.category/i);
-			await user.selectOptions(categorySelect, ['category-000000-0000-0000-000000000000']);
+			await user.selectOptions(categorySelect, [testCategoryId]);
 
 			// Submit should still be enabled (validation on submit, not button state)
 			await waitFor(() => {
@@ -278,8 +370,8 @@ describe('DeviceForm', () => {
 			const initialData = {
 				name: 'Existing Device',
 				serialNumber: 'SN123456',
-				brandId: '',
-				categoryId: '00000000-0000-4000-8000-000000000201',
+				brandId: testBrandId,
+				categoryId: testCategoryId,
 				ownerId: '',
 				locationId: '',
 				networkId: '',
@@ -295,6 +387,11 @@ describe('DeviceForm', () => {
 				productUrl: '',
 				version: ''
 			};
+			referenceDataStore.update((state) => ({
+				...state,
+				brands: [createBrand({ id: testBrandId, name: 'Valid Brand' })],
+				categories: [createCategory({ id: testCategoryId, name: 'Valid Category' })]
+			}));
 
 			render(DeviceForm, {
 				props: {
@@ -317,7 +414,8 @@ describe('DeviceForm', () => {
 				expect(onSubmit).toHaveBeenCalledWith(
 					expect.objectContaining({
 						name: 'Existing Device',
-						categoryId: '00000000-0000-4000-8000-000000000201',
+						brandId: testBrandId,
+						categoryId: testCategoryId,
 						tagIds: ['00000000-0000-4000-8000-000000000101', '00000000-0000-4000-8000-000000000102']
 					})
 				);
@@ -344,11 +442,11 @@ describe('DeviceForm', () => {
 			await user.type(screen.getByLabelText(/devices.columns.name/i), 'Test');
 			await user.selectOptions(
 				screen.getByLabelText(/devices.columns.brand/i),
-				'brand-00000000-0000-0000-000000000000'
+				testBrandId
 			);
 			await user.selectOptions(
 				screen.getByLabelText(/devices.columns.category/i),
-				'category-000000-0000-000000000000'
+				testCategoryId
 			);
 
 			// Wait for Svelte 5 runes reactivity to settle

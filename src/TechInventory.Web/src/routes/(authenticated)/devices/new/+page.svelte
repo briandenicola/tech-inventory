@@ -40,7 +40,10 @@
 				throw new Error('Created device did not return an id');
 			}
 
-			await devices.syncTags(result.id, tagIds);
+			// F030: Apply tags after device exists
+			if (tagIds.length > 0) {
+				await devices.syncTags(result.id, tagIds);
+			}
 			invalidateDevicesCache();
 
 			showToast({

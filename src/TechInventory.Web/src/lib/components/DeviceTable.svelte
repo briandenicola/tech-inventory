@@ -53,7 +53,7 @@
 
 	const refData = $derived($referenceDataStore);
 	const isGrouped = $derived(Array.isArray(groups) && groups.length > 0);
-	const groupColspan = $derived(selectable ? 7 : 6);
+	const groupColspan = $derived(selectable ? 8 : 7);
 
 	function isSelected(id: string): boolean {
 		return selectedIds?.has(id) ?? false;
@@ -304,6 +304,14 @@
 						{/if}
 					</button>
 				</th>
+
+				<!-- Actions (non-sortable) -->
+				<th
+					scope="col"
+					class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
+				>
+					{t('common.labels.actions')}
+				</th>
 			</tr>
 		</thead>
 		<tbody class="divide-y divide-neutral-200 bg-white dark:divide-neutral-800 dark:bg-neutral-950">
@@ -357,6 +365,33 @@
 					</td>
 					<td class="px-4 py-4 text-sm text-neutral-700 dark:text-neutral-300">
 						{formatDate(device.purchaseDate)}
+					</td>
+					<td class="px-4 py-4 text-right">
+						<button
+							type="button"
+							onclick={(e) => {
+								e.stopPropagation();
+								openDevice(device.id);
+							}}
+							class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+							aria-label={t('common.actions.viewDetails', { name: device.name || device.id })}
+						>
+							{t('common.actions.view')}
+							<svg
+								class="h-4 w-4"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+								aria-hidden="true"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M9 5l7 7-7 7"
+								/>
+							</svg>
+						</button>
 					</td>
 				</tr>
 			{/snippet}

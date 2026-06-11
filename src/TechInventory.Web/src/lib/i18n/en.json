@@ -36,7 +36,9 @@
 			"retry": "Retry",
 			"deactivate": "Deactivate",
 			"moreActions": "More actions",
-			"select": "Select…"
+			"select": "Select…",
+			"view": "View",
+			"viewDetails": "View details for {name}"
 		},
 		"nouns": {
 			"device": "Device",

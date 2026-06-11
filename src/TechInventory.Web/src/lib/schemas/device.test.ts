@@ -156,6 +156,20 @@ describe('deviceCreateSchema', () => {
 	});
 
 	describe('brandId and categoryId validation', () => {
+		it('rejects missing brandId', () => {
+			const payload = {
+				name: 'Device',
+				brandId: '',
+				categoryId: '87654321-4321-4321-8321-cba987654321'
+			};
+
+			const result = deviceCreateSchema.safeParse(payload);
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				expect(result.error.issues[0].message).toContain('Brand is required');
+			}
+		});
+
 		it('rejects missing categoryId', () => {
 			const payload = {
 				name: 'Device',

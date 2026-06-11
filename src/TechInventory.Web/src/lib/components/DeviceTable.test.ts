@@ -59,6 +59,45 @@ describe('DeviceTable', () => {
 			expect(tbody).toBeInTheDocument();
 			expect(tbody?.children.length).toBe(0);
 		});
+
+		it('desktop table keeps row actions within table structure (regression: broken desktop layout)', () => {
+			// Regression test: User reported bad UI in desktop view with broken row
+			// action/selection affordance. This test ensures the desktop table
+			// maintains semantic table structure: each row is a <tr> with proper <td>
+			// cells, and click handlers work within table DOM.
+			const devices = createDeviceList(2);
+			const onOpenDevice = vi.fn();
+			const props = {
+				...defaultProps,
+				devices,
+				onOpenDevice
+			};
+
+			render(DeviceTable, { props });
+
+			const table = screen.getByRole('table');
+			const tbody = table.querySelector('tbody');
+			expect(tbody).toBeInTheDocument();
+
+			// Should have rows as direct tbody children
+			const rows = tbody!.querySelectorAll('tr');
+			expect(rows.length).toBe(2);
+
+			// Each row should be clickable (cursor-pointer class applied)
+			rows.forEach((row) => {
+				expect(row).toHaveClass('cursor-pointer');
+			});
+
+			// Verify table semantic structure: each row has expected <td> count
+			// D-038 order: Name, Brand, Category, Owner, Status, Purchase Date, Actions = 7 columns
+			const firstRowCells = rows[0].querySelectorAll('td');
+			expect(firstRowCells.length).toBe(7);
+
+			// Name cell should be first and sticky (for horizontal scroll)
+			const nameCell = firstRowCells[0];
+			expect(nameCell).toHaveClass('sticky');
+			expect(nameCell.textContent).toContain(devices[0].name);
+		});
 	});
 
 	describe('column order (D-038)', () => {

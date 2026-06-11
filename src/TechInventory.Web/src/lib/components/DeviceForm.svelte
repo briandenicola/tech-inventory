@@ -137,7 +137,7 @@
 				const newErrors: Record<string, string> = {};
 				zodError.issues.forEach((issue) => {
 					const field = issue.path[0] as string;
-					newErrors[field] = issue.message;
+					newErrors[field] ??= issue.message;
 				});
 				errors = newErrors;
 			} else {
@@ -233,7 +233,7 @@
 	<!-- Brand -->
 	<div>
 		<label for="brandId" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
-			{t('devices.columns.brand')}
+			{t('devices.columns.brand')} <span class="text-danger-600">*</span>
 		</label>
 		<select
 			id="brandId"
@@ -242,7 +242,7 @@
 			disabled={isDisabled('brandId')}
 			class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors hover:border-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:hover:border-neutral-600 dark:focus:border-primary-500 dark:disabled:bg-neutral-900"
 		>
-			<option value="">-- No Brand --</option>
+			<option value="">-- Select Brand --</option>
 			{#each refData.brands as brand (brand.id)}
 				<option value={brand.id}>{brand.name}</option>
 			{/each}

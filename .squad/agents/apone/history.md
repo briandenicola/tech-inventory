@@ -87,6 +87,70 @@ test('diff rendering meets WCAG AA in dark mode', async ({ container }) => {
 
 **Future note:** Any new diff-like UI component using Drake's palette (diff-add-fg/bg, diff-remove-fg/bg, diff-change-fg/bg tokens) should inherit this test pattern to stay protected from contrast regressions.
 
+### 2026-06-11: Device Create Regression Tests — Brand Validation & Duplicate Tag UI
+
+**What happened:** User reported three regressions: (1) device create fails with generic red toast when brand is missing but no field-level error shows the constraint, (2) duplicate tag pickers in new-item view, (3) broken desktop DeviceTable row action/selection affordance.
+
+**Test pattern for brand-required validation:**
+```typescript
+// Test on submit: fill name + category, omit brand, submit, assert error displays
+await waitFor(() => {
+  const errorMsg = screen.getByText('Brand is required');
+  expect(errorMsg).toBeInTheDocument();
+  expect(errorMsg).toHaveClass('text-danger-600');
+});
+expect(onSubmit).not.toHaveBeenCalled(); // validation blocks submission
+```
+
+**Test pattern for blur validation:**
+```typescript
+// Focus brand field and blur without selecting a value
+await user.click(brandSelect);
+await user.tab();
+await waitFor(() => {
+  expect(screen.getByText('Brand is required')).toBeInTheDocument();
+});
+```
+
+**Key learnings:**
+- When a form shows validation errors via conditional `{#if touched.fieldName && errors.fieldName}` blocks, tests must use `waitFor()` because error DOM appears asynchronously after user events.
+- The Zod schema (`deviceFormSchema`) defines `brandId: z.string().uuid('Brand is required').min(1, 'Brand is required')`, so the exact error message text "Brand is required" can be asserted in tests.
+- DeviceForm.svelte already had the required asterisk for brand (`<span class="text-danger-600">*</span>`) — Vasquez fixed the UI during the same session.
+
+**Test pattern for duplicate tag picker:**
+```typescript
+// Verify only ONE tag group exists
+const tagGroups = screen.getAllByRole('group', { name: /devices.form.tags/i });
+expect(tagGroups).toHaveLength(1);
+// Verify each tag appears exactly once
+const travelCheckboxes = screen.getAllByLabelText('Travel');
+expect(travelCheckboxes).toHaveLength(1);
+```
+
+**Key learning:** DeviceForm has its own `<DeviceTagSelector>` component (line 350). Callers like AddDeviceModal must NOT add a second tag picker above the form — that creates duplicate UI. The test locks this constraint.
+
+**Test pattern for desktop table structure:**
+```typescript
+// Verify table has semantic <tbody> with <tr> children
+const tbody = table.querySelector('tbody');
+const rows = tbody!.querySelectorAll('tr');
+expect(rows.length).toBe(2); // two device rows
+rows.forEach((row) => expect(row).toHaveClass('cursor-pointer'));
+// Verify correct column count (D-038 order: Name, Brand, Category, Owner, Status, Purchase Date = 6 columns)
+const firstRowCells = rows[0].querySelectorAll('td');
+expect(firstRowCells.length).toBe(6);
+// Name cell should be first and sticky
+const nameCell = firstRowCells[0];
+expect(nameCell).toHaveClass('sticky');
+expect(nameCell.textContent).toContain(devices[0].name);
+```
+
+**Files touched:**
+- `src/TechInventory.Web/src/lib/components/DeviceForm.test.ts` — added 3 regression tests (brand-required on submit + blur, duplicate tag UI guard)
+- `src/TechInventory.Web/src/lib/components/DeviceTable.test.ts` — added 1 regression test (desktop table structure)
+
+**Tests green:** All 24 DeviceForm + 16 DeviceTable tests pass. Two DeviceForm tests remain skipped (pre-existing, unrelated to this work). Pre-existing TypeScript error in DeviceTable.svelte (line 377: `device.name` null handling) noted but left for Vasquez to fix (test-only charter).
+
 ### 2026-05-18: Import/export integration + OpenAPI drift patterns
 
 **Import controller test pattern:**

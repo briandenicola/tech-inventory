@@ -98,6 +98,58 @@ describe('DeviceTable', () => {
 			expect(nameCell).toHaveClass('sticky');
 			expect(nameCell.textContent).toContain(devices[0].name);
 		});
+
+		it('renders grouped desktop headers as normal rows so they do not overlap the first device row', () => {
+			const devices = createDeviceList(2);
+
+			render(DeviceTable, {
+				props: {
+					...defaultProps,
+					devices,
+					groups: [
+						{
+							key: 'category-appliance',
+							label: 'Appliance',
+							count: devices.length,
+							devices,
+							isUnknown: false
+						}
+					]
+				}
+			});
+
+			const groupHeader = screen.getByTestId('device-group-header');
+			expect(groupHeader).not.toHaveClass('sticky');
+			expect(groupHeader).not.toHaveClass('top-[210px]');
+			expect(groupHeader).not.toHaveClass('z-10');
+			expect(groupHeader).not.toHaveClass('z-20');
+
+			const groupHeaderCell = groupHeader.querySelector('th');
+			expect(groupHeaderCell).toHaveAttribute('scope', 'colgroup');
+			expect(groupHeaderCell).toHaveAttribute('colspan', '7');
+		});
+
+		it('keeps only the Name column sticky for horizontal scrolling', () => {
+			const devices = createDeviceList(2);
+
+			render(DeviceTable, { props: { ...defaultProps, devices } });
+
+			const nameHeader = screen.getByRole('columnheader', { name: /Name/i });
+			expect(nameHeader).toHaveClass('sticky');
+			expect(nameHeader).toHaveClass('left-0');
+			expect(nameHeader).toHaveClass('z-10');
+
+			const firstDataRow = screen.getAllByRole('row')[1];
+			const nameCell = firstDataRow.querySelector('td:first-child');
+			expect(nameCell).toHaveClass('sticky');
+			expect(nameCell).toHaveClass('left-0');
+			expect(nameCell).toHaveClass('z-10');
+
+			const nonNameCells = Array.from(firstDataRow.querySelectorAll('td')).slice(1);
+			for (const cell of nonNameCells) {
+				expect(cell).not.toHaveClass('sticky');
+			}
+		});
 	});
 
 	describe('column order (D-038)', () => {

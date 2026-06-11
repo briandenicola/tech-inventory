@@ -4,8 +4,8 @@
 
 	Per T15: Paginated table with columns: Name, Brand, Category, Owner, Status, Purchase Date.
 	Per T17: Sortable columns (Name, Purchase Date, Created At) with aria-sort + URL-backed.
-	Per F023: When `groups` is provided, rows are partitioned under sticky/collapsible group
-	headers; current sort still applies inside each group.
+	Per F023: When `groups` is provided, rows are partitioned under collapsible
+	group headers; current sort still applies inside each group.
 
 	Mobile (360px+): Stacks as cards. Desktop: Full table.
 	Semantic <table> for accessibility: <thead>, <tbody>, <th scope="col">, <caption>.
@@ -399,12 +399,8 @@
 			{#if isGrouped && groups}
 				{#each groups as group (group.key)}
 					{@const collapsed = isCollapsed(group.key)}
-					<!-- regression-watch: top-[210px] must equal app header (73px) + devices page
-						 sticky header height (~137px: 32px py-4 + 44px title row + 16px mt-4
-						 + 44px search input). If devices/+page.svelte sticky header changes
-						 height or top offset, update this value. -->
 					<tr
-						class="sticky top-[210px] z-10 border-y border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900"
+						class="border-y border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900"
 						data-testid="device-group-header"
 					>
 						<th colspan={groupColspan} scope="colgroup" class="px-4 py-2 text-left">

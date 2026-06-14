@@ -304,6 +304,9 @@
 			"backToTop": "Back to top",
 			"loadError": "Could not load more devices."
 		},
+		"grouped": {
+			"loadError": "Could not load grouped devices."
+		},
 		"filters": {
 			"title": "Filters",
 			"searchPlaceholder": "Search devices…",

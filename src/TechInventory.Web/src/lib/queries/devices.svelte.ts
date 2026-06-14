@@ -200,6 +200,9 @@ function buildDeviceQueryParams(filters: DeviceFilters): DeviceFiltersParams {
 	if (filters.ownerId) params.OwnerId = filters.ownerId;
 	if (filters.locationId) params.LocationId = filters.locationId;
 	if (filters.networkId) params.NetworkId = filters.networkId;
+	// F026: status round-trip for backend.
+	//   undefined or []           → omit Status param (backend will default or use IncludeAllStatuses if present)
+	//   ['Active', 'Retired', ...] → send first status value
 	if (filters.status && filters.status.length > 0) {
 		params.Status = filters.status[0];
 	}
@@ -224,6 +227,49 @@ export async function fetchDevicesPage(
 	const response = await devices.list(buildDeviceQueryParams(normalizedFilters));
 
 	return PaginatedResponseSchema(DeviceResponseSchema).parse(response);
+}
+
+/**
+ * Fetch all pages of devices for the given filters (grouped mode).
+ * 
+ * Grouped mode needs the full matching result set to correctly partition
+ * devices into groups. For a household scale of 500-1000 devices, this
+ * fetches multiple pages (200 per page max) and merges them.
+ * 
+ * @param filters Base filters for the query
+ * @returns Combined paginated response with all items
+ */
+export async function fetchAllDevicesForGrouping(
+	filters: DeviceFilters
+): Promise<PaginatedResponse<DeviceResponse>> {
+	const pageSize = MAX_DEVICE_PAGE_SIZE; // 200
+
+	// Fetch first page to get total count
+	const firstPage = await fetchDevicesPage({ ...filters, page: 1, pageSize });
+	const totalCount = firstPage.totalCount;
+	const allItems = [...(firstPage.items ?? [])];
+
+	// If there are more pages, fetch them in parallel
+	if (totalCount > pageSize) {
+		const totalPages = Math.ceil(totalCount / pageSize);
+		const remainingPagePromises = [];
+
+		for (let page = 2; page <= totalPages; page++) {
+			remainingPagePromises.push(fetchDevicesPage({ ...filters, page, pageSize }));
+		}
+
+		const remainingPages = await Promise.all(remainingPagePromises);
+		for (const pageResult of remainingPages) {
+			allItems.push(...(pageResult.items ?? []));
+		}
+	}
+
+	return {
+		items: allItems,
+		totalCount,
+		page: 1,
+		pageSize: allItems.length
+	};
 }
 
 /**

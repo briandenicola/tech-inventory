@@ -6,6 +6,7 @@
 	import { authStore } from '$lib/stores/auth';
 	import {
 		fetchDevicesPage,
+		fetchAllDevicesForGrouping,
 		invalidateDevicesCache,
 		serializeDeviceFilters,
 		useDevices,
@@ -64,6 +65,13 @@
 	let activeInfiniteKey = $state('');
 	let sentinel = $state<HTMLDivElement | null>(null);
 
+	// Grouped mode state: loading all pages for complete grouping
+	let groupedDevices = $state<DeviceResponse[]>([]);
+	let groupedTotalCount = $state(0);
+	let isLoadingGrouped = $state(false);
+	let groupedError = $state<string | null>(null);
+	let activeGroupedKey = $state('');
+
 	// F026: Active-default status filter.
 	//
 	// Behaviour:
@@ -119,12 +127,14 @@
 	const showingAllStatuses = $derived($page.url.searchParams.get('status') === STATUS_ALL_SENTINEL);
 
 	// Devices query (reactive — pass a getter so filter changes propagate).
-	// Infinite scroll keeps the API on page 1 and progressively appends pages on
-	// the client unless grouping is active or reduced motion requests the classic
-	// pagination fallback.
+	// Grouped mode uses a separate loading path via fetchAllDevicesForGrouping,
+	// so the standard query stays on page 1 with a small page size for the initial
+	// load only. Infinite scroll keeps the API on page 1 and progressively appends
+	// pages on the client unless reduced motion requests the classic pagination fallback.
 	const queryFilters = $derived.by(() => {
 		if (urlFilters.groupBy) {
-			return { ...urlFilters, page: 1, pageSize: 200 };
+			// Grouped mode: query is only for the loading state, actual data comes from groupedDevices
+			return { ...urlFilters, page: 1, pageSize: 25 };
 		}
 
 		return prefersReducedMotion ? urlFilters : { ...urlFilters, page: 1 };
@@ -132,8 +142,13 @@
 	const query = useDevices(() => queryFilters);
 	const infiniteBaseFilters = $derived.by(() => ({ ...urlFilters, page: 1 }));
 	const infiniteFiltersKey = $derived(serializeDeviceFilters(infiniteBaseFilters));
+	const groupedFiltersKey = $derived(serializeDeviceFilters({ ...urlFilters, page: 1 }));
 	const displayedDevices = $derived.by(() => {
-		if (urlFilters.groupBy || prefersReducedMotion) {
+		if (urlFilters.groupBy) {
+			return groupedDevices;
+		}
+		
+		if (prefersReducedMotion) {
 			return query.data?.items ?? [];
 		}
 
@@ -329,9 +344,9 @@
 	// Pulls reference data for human-readable labels (Category/Owner names).
 	const refData = $derived($referenceDataStore);
 	const groupedView = $derived.by(() => {
-		if (!urlFilters.groupBy || !query.data?.items) return undefined;
+		if (!urlFilters.groupBy || groupedDevices.length === 0) return undefined;
 		return groupDevices(
-			query.data.items,
+			groupedDevices,
 			urlFilters.groupBy,
 			{ categories: refData.categories, owners: refData.owners },
 			t('devices.groups.unknown')
@@ -374,7 +389,35 @@
 			totalCount = 0;
 		}
 
+		if (urlFilters.groupBy) {
+			activeGroupedKey = '';
+			groupedDevices = [];
+			groupedTotalCount = 0;
+			groupedError = null;
+		}
+
 		await query.refetch();
+	}
+
+	async function loadGroupedDevices() {
+		if (!urlFilters.groupBy || isLoadingGrouped) {
+			return;
+		}
+
+		isLoadingGrouped = true;
+		groupedError = null;
+
+		try {
+			const result = await fetchAllDevicesForGrouping(urlFilters);
+			groupedDevices = result.items ?? [];
+			groupedTotalCount = result.totalCount;
+		} catch (err) {
+			groupedError = err instanceof Error ? err.message : t('devices.grouped.loadError');
+			groupedDevices = [];
+			groupedTotalCount = 0;
+		} finally {
+			isLoadingGrouped = false;
+		}
 	}
 
 	function scrollToTop() {
@@ -391,6 +434,24 @@
 	$effect(() => {
 		const unregister = registerPullToRefresh($page.url.pathname, refreshDevicesList);
 		return unregister;
+	});
+
+	// Effect: Load all devices when grouped mode is active
+	$effect(() => {
+		if (!urlFilters.groupBy) {
+			return;
+		}
+
+		const key = groupedFiltersKey;
+		if (key === activeGroupedKey) {
+			return;
+		}
+
+		activeGroupedKey = key;
+		groupedDevices = [];
+		groupedTotalCount = 0;
+		groupedError = null;
+		void loadGroupedDevices();
 	});
 
 	$effect(() => {
@@ -760,10 +821,10 @@
 	<div class="pt-4">
 
 	<!-- Content: loading / error / empty / success -->
-	{#if query.isLoading}
+	{#if query.isLoading || (urlFilters.groupBy && isLoadingGrouped)}
 		<LoadingSkeleton rows={7} />
-	{:else if query.error}
-		<ErrorState error={query.error} onRetry={refreshDevicesList} />
+	{:else if query.error || (urlFilters.groupBy && groupedError)}
+		<ErrorState error={query.error || groupedError || 'Unknown error'} onRetry={refreshDevicesList} />
 	{:else if displayedDevices.length === 0}
 		<EmptyState filtered={hasActiveFilters} onAdd={() => (createModalOpen = true)} />
 	{:else}
@@ -784,7 +845,12 @@
 		/>
 
 		{#if urlFilters.groupBy}
-			<!-- Grouped mode renders a single expanded page. -->
+			<!-- Grouped mode renders a single expanded page with all matching devices. -->
+			<div class="mt-6 text-center text-sm text-neutral-600 dark:text-neutral-400">
+				{#if groupedTotalCount > 0}
+					Showing all {groupedTotalCount} {groupedTotalCount === 1 ? 'device' : 'devices'}
+				{/if}
+			</div>
 		{:else if prefersReducedMotion}
 			<PaginationControls
 				currentPage={query.data?.page ?? urlFilters.page ?? 1}

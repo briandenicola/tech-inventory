@@ -6,6 +6,7 @@ import {
 	clampDevicePage,
 	clampDevicePageSize,
 	fetchDevicesPage,
+	fetchAllDevicesForGrouping,
 	serializeDeviceFilters
 } from './devices.svelte';
 
@@ -93,5 +94,185 @@ describe('devices query helpers', () => {
 		});
 		expect(response.pageSize).toBe(MAX_DEVICE_PAGE_SIZE);
 		expect(response.items?.[0]?.name).toBe('Router');
+	});
+
+	it('omits Status param when status filter is undefined', async () => {
+		mockedList.mockResolvedValue(sampleResponse);
+
+		await fetchDevicesPage({
+			page: 1,
+			pageSize: 25,
+			status: undefined
+		});
+
+		const call = mockedList.mock.calls[0][0];
+		expect(call).not.toHaveProperty('Status');
+	});
+
+	it('omits Status param when status filter is empty array', async () => {
+		mockedList.mockResolvedValue(sampleResponse);
+
+		await fetchDevicesPage({
+			page: 1,
+			pageSize: 25,
+			status: []
+		});
+
+		const call = mockedList.mock.calls[0][0];
+		expect(call).not.toHaveProperty('Status');
+	});
+
+	describe('fetchAllDevicesForGrouping', () => {
+		it('fetches only first page when total count is under 200', async () => {
+			mockedList.mockResolvedValue({
+				...sampleResponse,
+				totalCount: 150,
+				pageSize: MAX_DEVICE_PAGE_SIZE
+			});
+
+			const result = await fetchAllDevicesForGrouping({
+				page: 1,
+				pageSize: 25,
+				status: ['Active']
+			});
+
+			expect(mockedList).toHaveBeenCalledTimes(1);
+			expect(result.totalCount).toBe(150);
+			expect(result.items?.length).toBe(1);
+		});
+
+		it('fetches multiple pages when total count exceeds 200', async () => {
+			// First page response - using single valid device repeated
+			const firstPageItems = Array.from({ length: 200 }, () => ({
+				...sampleResponse.items[0]
+			}));
+
+			// Second page response
+			const secondPageItems = Array.from({ length: 150 }, () => ({
+				...sampleResponse.items[0]
+			}));
+
+			mockedList
+				.mockResolvedValueOnce({
+					items: firstPageItems,
+					totalCount: 350,
+					page: 1,
+					pageSize: MAX_DEVICE_PAGE_SIZE
+				})
+				.mockResolvedValueOnce({
+					items: secondPageItems,
+					totalCount: 350,
+					page: 2,
+					pageSize: MAX_DEVICE_PAGE_SIZE
+				});
+
+			const result = await fetchAllDevicesForGrouping({
+				page: 1,
+				pageSize: 25,
+				status: ['Active']
+			});
+
+			expect(mockedList).toHaveBeenCalledTimes(2);
+			expect(mockedList).toHaveBeenNthCalledWith(1, {
+				Page: 1,
+				PageSize: MAX_DEVICE_PAGE_SIZE,
+				Status: 'Active'
+			});
+			expect(mockedList).toHaveBeenNthCalledWith(2, {
+				Page: 2,
+				PageSize: MAX_DEVICE_PAGE_SIZE,
+				Status: 'Active'
+			});
+			expect(result.totalCount).toBe(350);
+			expect(result.items?.length).toBe(350);
+			expect(result.page).toBe(1);
+			expect(result.pageSize).toBe(350);
+		});
+
+		it('fetches three pages when total count exceeds 400', async () => {
+			const page1 = Array.from({ length: 200 }, () => ({
+				...sampleResponse.items[0]
+			}));
+
+			const page2 = Array.from({ length: 200 }, () => ({
+				...sampleResponse.items[0]
+			}));
+
+			const page3 = Array.from({ length: 100 }, () => ({
+				...sampleResponse.items[0]
+			}));
+
+			mockedList
+				.mockResolvedValueOnce({
+					items: page1,
+					totalCount: 500,
+					page: 1,
+					pageSize: MAX_DEVICE_PAGE_SIZE
+				})
+				.mockResolvedValueOnce({
+					items: page2,
+					totalCount: 500,
+					page: 2,
+					pageSize: MAX_DEVICE_PAGE_SIZE
+				})
+				.mockResolvedValueOnce({
+					items: page3,
+					totalCount: 500,
+					page: 3,
+					pageSize: MAX_DEVICE_PAGE_SIZE
+				});
+
+			const result = await fetchAllDevicesForGrouping({
+				page: 1,
+				pageSize: 25,
+				brandId: 'brand-123'
+			});
+
+			expect(mockedList).toHaveBeenCalledTimes(3);
+			expect(result.totalCount).toBe(500);
+			expect(result.items?.length).toBe(500);
+		});
+
+		it('preserves filters when fetching multiple pages', async () => {
+			mockedList
+				.mockResolvedValueOnce({
+					items: Array.from({ length: 200 }, () => ({ ...sampleResponse.items[0] })),
+					totalCount: 250,
+					page: 1,
+					pageSize: MAX_DEVICE_PAGE_SIZE
+				})
+				.mockResolvedValueOnce({
+					items: Array.from({ length: 50 }, () => ({ ...sampleResponse.items[0] })),
+					totalCount: 250,
+					page: 2,
+					pageSize: MAX_DEVICE_PAGE_SIZE
+				});
+
+			await fetchAllDevicesForGrouping({
+				page: 1,
+				pageSize: 25,
+				search: 'laptop',
+				brandId: 'brand-123',
+				categoryId: 'cat-456',
+				status: ['Active', 'Retired']
+			});
+
+			expect(mockedList).toHaveBeenNthCalledWith(1, {
+				Page: 1,
+				PageSize: MAX_DEVICE_PAGE_SIZE,
+				Search: 'laptop',
+				BrandId: 'brand-123',
+				CategoryId: 'cat-456',
+				Status: 'Active'
+			});
+			expect(mockedList).toHaveBeenNthCalledWith(2, {
+				Page: 2,
+				PageSize: MAX_DEVICE_PAGE_SIZE,
+				Search: 'laptop',
+				BrandId: 'brand-123',
+				CategoryId: 'cat-456',
+				Status: 'Active'
+			});
+		});
 	});
 });

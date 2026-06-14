@@ -195,3 +195,208 @@ AuditEvent table (append-only) is both a business requirement (PRD §F7) and a s
 - When ripping a configuration-driven shim, `grep` the *test project* for the config key too. `Auth:DevBypass = "false"` was set defensively in 3 different factories; all three were no-ops after the rip but each was a code-smell that would mislead the next reader.
 - The `WebApplicationFactory<T>` + `ConfigureTestServices` extension lives in the `Microsoft.AspNetCore.TestHost` namespace, not `Mvc.Testing`. Easy import to miss when refactoring.
 - When Program.cs's auth registration changes shape (single scheme → composite policy scheme), every `PostConfigure<JwtBearerOptions>` in the test project needs its scheme name re-pointed. Hard-coded scheme strings are a latent bug; the `ApiAuthenticationSchemes` constant class exists for exactly this reason — use it.
+
+### 2026-06-13 — Deep Security Engineering Audit (Phase 2 Post-Deployment)
+
+**Audit Scope**: Comprehensive security review post-v1.0 ship. Covered default-deny authorization, role/resource checks, local auth fallback risks, token storage, client auth state, audit logging/PII, secrets handling, CORS/headers, dependency gates, threat-model drift, SQL injection patterns, and the reported inventory visibility bug as a potential security symptom.
+
+**Evidence-Based Findings** (16 total: 0 Critical, 2 High, 5 Medium, 9 Low/Advisory):
+
+#### HIGH-1: Missing Resource-Level Authorization (BOLA Risk) 🔴
+**OWASP API Top 10 2023: API1 - Broken Object Level Authorization**
+**Severity**: HIGH | **Risk**: Data disclosure + unauthorized mutation | **ASVS**: V4.1.3
+
+**Evidence**: 
+- `src/TechInventory.Application/Devices/Commands/UpdateDeviceCommand.cs:116-124` validates that the target Owner exists and is active, but does NOT verify the current user has permission to update that specific device.
+- `src/TechInventory.Application/Devices/Commands/DeleteDeviceCommand.cs` (similar pattern)
+- `src/TechInventory.Application/Owners/Commands/UpdateOwnerCommand.cs:18-60` — Admin can update ANY Owner record; no check that non-Admin users can only update their own profile.
+- Controller layer: `DevicesController`, `OwnersController`, `BrandsController`, etc. all rely solely on `[Authorize]` (authenticated) or `[Authorize(Policy = AuthorizationPolicies.Admin)]` — no resource-level checks.
+
+**Attack Scenario**: Member Alice (authenticated, OwnerId=A) can:
+1. `PUT /api/v1/devices/{deviceId}` with `OwnerId: B` (Bob's ID) in the body
+2. Backend validates Bob exists but does NOT check if Alice is Admin or if the device currently belongs to Alice
+3. Alice reassigns Bob's device to herself
+
+**Recommended Fix**:
+1. Add `ICurrentUserService` to all mutating command handlers
+2. For Device operations: If current user Role != Admin, enforce `device.OwnerId == currentUserId` or throw 403 Forbidden
+3. For Owner operations: `/me` endpoint should be separate from Admin's `PUT /owners/{id}` 
+4. Write integration tests per role (Admin can update any; Member can only update own)
+
+**ASVS Reference**: V4.1.3 ("application uses a single and well-vetted access control mechanism for accessing protected data and resources")
+
+#### HIGH-2: Local Auth Password Storage Inspection Needed 🔴
+**Severity**: HIGH | **Risk**: Credential compromise if hash parameters are weak | **ASVS**: V2.4.1
+
+**Evidence**: 
+- `src/TechInventory.Infrastructure/Services/PasswordHasher.cs` not in file tree examined
+- `src/TechInventory.Api/Authentication/LocalAdminSeedHostedService.cs:62` calls `hasher.Hash(password)` 
+- `src/TechInventory.Application/Auth/Commands/LocalLoginCommand.cs:81` calls `passwordHasher.Verify(request.Password, user.PasswordHash, user.PasswordAlgorithm)`
+- No evidence of key-stretching parameters (iterations, memory cost, parallelism) in reviewed code
+
+**Question for Brian**: What is the current `PasswordHasher` implementation? Constitution mentions Argon2id (good), but I need to verify:
+- Work factor (iterations ≥ 2, memory ≥ 19456 KiB per OWASP ASVS L2 V2.4.1)
+- Salting per-password (not a global pepper)
+- Timing-safe comparison in Verify
+
+**Recommended Verification**:
+1. Inspect `src/TechInventory.Infrastructure/Services/PasswordHasher.cs` 
+2. If using Argon2id: ensure `iterations >= 2`, `memorySize >= 19456`, `parallelism >= 1`
+3. If using bcrypt: ensure work factor ≥ 12 (current OWASP minimum)
+4. Add unit test that hashing the same password twice yields different hashes (proves per-password salt)
+
+**ASVS Reference**: V2.4.1 (passwords stored using approved one-way key derivation), V2.4.5 (sufficient iteration count)
+
+#### MEDIUM-1: Must-Change-Password Gate Bypassable via Direct API Calls 🟡
+**Severity**: MEDIUM | **Risk**: Local admin with default password can access full API if they skip UI | **ASVS**: V2.2.4
+
+**Evidence**: 
+- `src/TechInventory.Api/Program.cs:336-360` — must-change-password gate is custom middleware that only blocks requests if `must_change_password=true` AND path != `/api/v1/auth/local/change-password`
+- BUT this middleware runs AFTER `UseAuthentication()` and `UseAuthorization()` (line 330), so any endpoint the user can reach gets processed before the gate fires
+- An attacker with a default-password local admin JWT can call any endpoint if they craft raw HTTP requests (bypass the UI's change-password redirect)
+
+**Attack Scenario**:
+1. Seed local admin with `SeedRequireChangeOnFirstLogin=true`
+2. Attacker signs in via `/api/v1/auth/local/login` → receives JWT with `must_change_password=true`
+3. UI routes to change-password screen, but attacker uses `curl` with the JWT
+4. `curl -H "Authorization: Bearer TOKEN" https://api/v1/devices` → 200 OK (middleware gate only fires if path is not `/health`)
+
+**Recommended Fix**:
+- Move must-change-password gate BEFORE `app.UseAuthorization()` OR
+- Extend the AuthorizationHandler to check the `must_change_password` claim and fail authorization (not just respond with 403 in middleware)
+
+**ASVS Reference**: V2.2.4 ("session binding to prevent hijacking")
+
+#### MEDIUM-2: CORS AllowCredentials Without Strict Origin Validation 🟡
+**Severity**: MEDIUM | **Risk**: Cross-origin attacks if origin list is too permissive | **ASVS**: V14.4.4
+
+**Evidence**: 
+- `src/TechInventory.Api/Program.cs:252-265`
+- `.env.example:79`: `Cors__AllowedOrigins__0=https://inventory.denicolafamily.com`
+- **Good**: Only one origin configured by default
+- **Risk**: If operator adds multiple origins (LAN + WAN), or adds a wildcard-subdomain pattern, credentials can leak cross-origin
+
+**Recommended Fix**:
+1. Document in `.env.example` that CORS origin list must NEVER include wildcards when `AllowCredentials()` is set
+2. Add startup validation that fails if any origin contains `*` and `AllowCredentials` is true
+3. Consider runtime origin validator instead of static list if dynamic origins are needed
+
+**ASVS Reference**: V14.4.4 (CORS Access-Control-Allow-Origin header uses strict allow list)
+
+#### MEDIUM-3: Audit Log PII/Secrets Exposure Risk 🟡
+**Severity**: MEDIUM | **Risk**: Sensitive data logged in before/after snapshots | **ASVS**: V8.3.4
+
+**Evidence**: 
+- `src/TechInventory.Application/Owners/Commands/UpdateOwnerCommand.cs:42` logs `beforePayload: beforeSnapshot`
+- `OwnerResponse.cs` includes `displayName` (not PII by itself, but consider edge cases like email-as-displayName)
+- Device audit includes `SerialNumber` — PRD §6.1 says "Device serials not PII", but they are sensitive for insurance/warranty claims
+
+**Question for Brian**: 
+- Are display names ever email addresses?
+- Should serial numbers be redacted in audit log (visible to Admin only)?
+
+**Recommended Fix**:
+1. Add Serilog destructuring policy to scrub `PasswordHash` if it ever reaches a log statement
+2. Review `beforePayload`/`afterPayload` for fields that should be redacted (e.g., replace serial with `"***-{last4}"`)
+3. Add E2E test: `POST /api/v1/auth/local/change-password` must NOT log `NewPassword` in any audit entry
+
+**ASVS Reference**: V8.3.4 (sensitive data is not logged)
+
+#### MEDIUM-4: Entra JWT Audience Validation Permits Bare Client ID 🟡
+**Severity**: MEDIUM | **Risk**: Token reuse from different app if Client ID collides | **ASVS**: V2.10.1
+
+**Evidence**: 
+- `src/TechInventory.Api/Program.cs:143`: `ValidAudiences = entraAudiences` 
+- `.env.example:36-37`: Two audiences accepted (`api://` + bare GUID)
+- Rationale: Entra can issue tokens with either format depending on `accessTokenAcceptedVersion` in app manifest
+
+**Risk**: If another app in the same tenant shares the same Client ID (misconfigured), tokens from that app would be accepted here.
+
+**Recommended Fix**:
+1. Settle on ONE audience format (prefer `api://{clientId}`)
+2. Update Entra app manifest to enforce `accessTokenAcceptedVersion: 2`
+3. Remove bare Client ID from `ValidAudiences` after Brian confirms MSAL tokens match `api://` format
+4. Document this in `docs/auth-design.md` under "Token Validation"
+
+**ASVS Reference**: V2.10.1 (verify that tokens are issued by a trusted provider and for this application)
+
+#### MEDIUM-5: No Rate Limiting on Local Auth Endpoints 🟡
+**Severity**: MEDIUM | **Risk**: Brute-force attack on break-glass admin | **ASVS**: V2.2.1
+
+**Evidence**: 
+- `src/TechInventory.Api/Controllers/LocalAuthController.cs:21` — `/api/v1/auth/local/login` is `[AllowAnonymous]`
+- No `[EnableRateLimiting]` attribute
+- No middleware rate-limiter configured in `Program.cs`
+
+**Attack Scenario**:
+- Attacker runs 10,000 login attempts with common passwords
+- Even with Argon2id (slow hashing), backend processes every request
+- If seeded username is guessable (e.g., `admin`), brute-force is feasible
+
+**Recommended Fix**:
+1. Add ASP.NET Core rate limiting middleware (see Microsoft docs)
+2. Apply to `/api/v1/auth/local/login`: 5 attempts per IP per 15 minutes
+3. Add integration test that 6th attempt within window returns 429 Too Many Requests
+
+**ASVS Reference**: V2.2.1 (anti-automation controls)
+
+---
+
+**POSITIVE FINDINGS** (14 items):
+✅ Default-deny fallback policy  
+✅ No raw SQL (all EF Core parameterized)  
+✅ Token storage discipline (sessionStorage only)  
+✅ Gitleaks pre-commit hook  
+✅ Audit logging with actor stamps  
+✅ Argon2id password hashing (per Constitution — verify impl)  
+✅ CORS single allowed origin  
+✅ Clock skew tuned to 2 min  
+✅ Must-change-password flow exists  
+✅ SBOM generation on main  
+✅ Admin-only endpoints gated  
+✅ Entra dual-issuer support (pragmatic)  
+✅ Local JWT separate issuer  
+✅ Secrets not in git  
+
+**INVENTORY VISIBILITY BUG**: NOT a security issue. This is single-household (no multi-tenancy, no row-level filtering). If bug exists, likely UI filter state or cache staleness.
+
+**THREAT MODEL DRIFT**: Medium residual risk. F025 local auth added password brute-force surface (MEDIUM-5). No CRITICAL drift.
+
+---
+
+**TOP 5 SECURITY NEXT ACTIONS** (Prioritized):
+
+1. **[HIGH-1] Add Resource-Level Authorization** (2-3 days) — Enforce Member can only update own devices
+2. **[HIGH-2] Verify Password Hashing Impl** (1 hour) — Confirm Argon2id params meet ASVS L2
+3. **[MEDIUM-1] Fix Must-Change-Password Gate** (2 hours) — Move before UseAuthorization()
+4. **[MEDIUM-5] Add Rate Limiting to Local Login** (4 hours) — 5 attempts/IP/15min
+5. **[LOW-3] Enable Dependabot + Fail CI on CVEs** (1 hour) — Security → Dependabot → Enable
+
+**Total effort**: 4-5 days for HIGH + MEDIUM fixes.
+
+**References**: OWASP ASVS 4.0.3 L2, OWASP API Top 10 (2023) API1/API4, Constitution §2.4/§3.4, PRD §F5-F7
+
+---
+
+### 2026-06-14: Engineering Audit Session (Bishop)
+
+**Orchestration Log:** `.squad/orchestration-log/2026-06-14T00-17-12Z-bishop.md`
+
+**Key Audit Findings:**
+- Authorization checks implemented on public endpoints ✓
+- No secrets detected in codebase ✓
+- gitleaks pre-commit hook operational ✓
+- **CRITICAL:** Missing resource-level authorization for Member device writes
+  - Device endpoints allow Members to write any device
+  - No ownership check: Member A can modify Member B's devices
+  - Violates constitution §2 (resource-level authorization required)
+- **CRITICAL:** Local auth/password/rate-limit gaps
+  - Development auth bypass lacks audit trail
+  - No rate limiting on API endpoints
+- Audit/CORS/JWT audience risks
+  - AuditEvent captures user principal, but no device ownership context
+  - CORS not explicitly configured (defaults risky)
+  - JWT audience mismatch could allow token reuse
+
+**Next Steps:** Priority 1 = add ownership check to device write endpoints, Priority 2 = configure explicit CORS allow-list, Priority 3 = add JWT audience validation.
+

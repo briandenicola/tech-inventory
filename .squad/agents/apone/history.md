@@ -48,6 +48,67 @@ Test commands:
 - `npx playwright test tests/e2e/mytest.spec.ts`
 - `task test` (full suite against running stack)
 
+---
+
+## 2026-06-13: Deep Quality Engineering Audit (Post-v1.0)
+
+**Session**: Deep quality audit requested by Brian  
+**Deliverable**: `.squad/agents/apone/deep-quality-audit-2026-06-13.md`  
+
+**Key Findings**:
+1. **Monitor bug has no regression test** — critical gap across all layers (unit/integration/E2E)
+2. **Filter + groupBy interactions untested** — E2E has URL-backed filters but not combined with grouped views
+3. **Lighthouse CI not wired** — violates constitution §9 performance mandate
+4. **E2E retries mask flakiness** — `retries: 2` in CI hides bugs instead of fixing them
+5. **Repository brandId filtering lacks explicit test** — backend integration tests cover status but not brand filtering
+
+**Test Pyramid Health**: B+ (Good with specific gaps)
+- ✅ 147 test files (45 backend unit + 43 backend integration + 45 frontend unit + 14 E2E)
+- ✅ axe-core zero violations on 11 routes
+- ✅ Contract tests prevent OpenAPI drift
+- ❌ Performance tests missing (Lighthouse CI referenced but not implemented)
+- ❌ Grouped view + filter interactions untested
+
+**Architecture Strengths** (preserve these):
+- Test pyramid ratio ~6:3:1 (ideal)
+- No mocked DB in integration tests (constitution compliance)
+- axe-core enforced via Playwright
+- Contract tests validate runtime vs. committed OpenAPI spec
+
+**Critical Seams Identified**:
+1. `DeviceRepository.ApplyFilters` (lines 191-258) — brandId filtering untested
+2. `groupDevices` utility + `DeviceTable.svelte` — grouped rendering with active filters untested
+3. `devices/+page.svelte` filter + groupBy URL synchronization — no E2E coverage for combinations
+
+**Regression Test Strategy for Monitor Bug**:
+- **Unit**: `groupDevices.test.ts` — add test for pre-filtered devices
+- **Integration**: `DeviceRepositoryIntegrationTests.cs` — add brandId filter test
+- **E2E**: New `15-brand-filter-grouped.spec.ts` — create device → filter by brand → group by category → verify visibility
+
+**Top 5 Recommended Actions**:
+1. 🔴 Add monitor bug regression tests (E2E + integration + unit)
+2. 🔴 Wire Lighthouse CI (`tests/lighthouse/`, `task test:perf`)
+3. 🟡 Set E2E retries to 0 in CI (enforce "flaky is failing")
+4. 🟡 Add contract test for query param filtering
+5. 🟢 Document filter + groupBy test strategy in `docs/testing.md`
+
+**Design Questions Raised**:
+- Performance budget for grouped view (FCP < 2s?)
+- Should contract tests validate query params or just schemas?
+- What's the target coverage for filter × groupBy combinations (18 total, test 3 critical paths?)
+- Who owns regression tests when prod bugs found (QA first, or pair with dev?)
+
+**Learnings**:
+- **E2E retry antipattern**: Retries in CI hide flakiness instead of fixing root cause — should be 0 in CI per constitution
+- **Grouped view is complex seam**: Client-side partitioning after server-side filtering creates multiple failure modes
+- **Reference data freshness matters**: `referenceDataStore` must refresh after CRUD ops or grouped view breaks
+- **Contract tests are narrowly scoped**: Current tests validate response schemas but not query param acceptance
+- **Performance testing gap is systemic**: Lighthouse CI mandated in constitution but not implemented — likely deferred from v1.0 scope
+
+**Next Session Hook**:
+- Implement monitor bug regression suite (start with E2E, work down to unit)
+- Wire Lighthouse CI baseline before post-v1.0 features ship
+
 Playwright layout: tests in `tests/e2e/`, Page Object Model in `tests/e2e/pages/`. Test user provisioned via documented Entra test tenant fixture OR documented local-dev auth bypass (bypass NEVER in prod builds — enforced at API layer).
 
 ## Recent Updates
@@ -390,3 +451,24 @@ expect(nameCell.textContent).toContain(devices[0].name);
 - Verify no scroll deadlock on iOS PWA (WebKit only project)
 
 **Root cause documented:** D-129. Vasquez's fix in `PullToRefresh.svelte` adds `if (Math.abs(delta) < 10) return;` before `preventDefault()` to preserve scroll control during the ambiguous threshold phase.
+
+---
+
+### 2026-06-14: Engineering Audit Session (Apone)
+
+**Orchestration Log:** `.squad/orchestration-log/2026-06-14T00-17-12Z-apone.md`
+
+**Key Audit Findings:**
+- 85% minimum line coverage achieved on Domain + Application layers ✓
+- Test infrastructure (xUnit, Vitest, Playwright) well configured ✓
+- Accessibility checks partially integrated ✓
+- **CRITICAL:** No regression coverage for create/filter/grouped visibility path
+- E2E regression suite gap: combined create→filter→grouped-view end-to-end path lacks protection
+- **CRITICAL:** Lighthouse CI missing — no automated performance regression detection
+- E2E retries hiding flakiness — passed tests on retry don't indicate root cause
+
+**Decisions Merged:**
+- D-174: Regression Test Patterns for Device Create Form Validation
+
+**Next Steps:** Add E2E regression test for create→filter→grouped flow, configure Lighthouse CI, audit E2E retry logs for hidden failures.
+

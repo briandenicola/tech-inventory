@@ -40,3 +40,35 @@ Reference repos (`docs/references.md`): **R1 drinks-and-desserts** (MediatR hand
   - Insurance export is CSV-first; PDF deferred (ADR needed if Brian wants PDF later).
   - Infinite scroll supersedes pagination but keeps a11y fallback for `prefers-reduced-motion`.
   - Rounds A+B+D can parallelize from day one; C depends on backend work from Hicks.
+
+- **2026-06-13 — Post-v1.0 Architecture Audit**: Conducted comprehensive codebase review post-v1.0 ship (Brian's request for deep engineering analysis). Key findings:
+  - **CRITICAL BUG IDENTIFIED**: DeviceRepository lines 228-235 enforce implicit "Status != Disposed" filter when no explicit status filter provided. Frontend defaults to `status: ['Active']` on bare URLs (F026 feature), sending explicit filter. When user clicks "All statuses" (status=all sentinel), frontend passes `undefined` to API, backend applies "not Disposed" filter server-side. Result: Disposed devices never visible even when explicitly requested. Root cause: misaligned filter contract — frontend "all" means "send nothing", backend "nothing" means "exclude Disposed". Fix requires either (1) frontend send explicit all-status array, or (2) backend accept sentinel param, or (3) align on undefined=all convention.
+  - **Architecture compliance**: Domain layer **zero** framework dependencies (✓ constitution §2.2). No EF/DbContext leakage into Domain or Application. Controllers **thin** (largest: DevicesController 313 lines, 90% DTOs; no business logic). Repository pattern enforced; no raw SQL anywhere. MediatR pipelines operational (ValidationBehavior → handler → AuditBehavior). Clean Architecture dependency flow: Api → Infrastructure → Application → Domain (✓).
+  - **Component health**: Frontend largest components DeviceTable.svelte (596 lines), DeviceForm.svelte (590 lines) both **exceed** constitution §6.5.4 200-line guideline but are single-purpose with clear state boundaries; not god components but should be refactored into composition patterns for maintainability. Other components under limit.
+  - **API client discipline**: Constitution §6.5.2 requires generated client, no hand-written fetch. Found 3 fetch calls in `client.ts` (lines 141, 219, 654) — all are **wrapper infrastructure** (apiFetch helper, blob download, raw endpoint call), not business-domain calls. Actual domain calls go through typed `devices.list()` etc. Pattern is compliant but blurs the line; worth ADR clarification on "generated client" scope (does it mean zero fetch usage, or zero domain-fetch usage?).
+  - **Test coverage**: 88 backend test files, 52 frontend test files. Strong coverage foundation. No behavioral test gaps identified in spot-check, but constitution §Testing requires 85% line coverage on Domain+Application — recommend CI coverage gate validation.
+  - **Missing patterns**: No ADR directory found (constitution violations require ADR per §Preamble). Several design decisions in .copilot-state.md / history.md should graduate to formal ADRs (e.g., MediatR pipeline choice, AuditBehavior sequencing, per-device currency strategy).
+  - **Pagination concern**: DeviceRepository.ListAsync (lines 27-39) loads full result set from DB, then does **in-memory** pagination via `ToPagedResultAsync` → `MergeTrackedAsync` → `ToListAsync()` + skip/take. At scale (1000+ devices) this will degrade; recommend server-side pagination via `Skip().Take()` on IQueryable before materialization. Current impl works because it merges EF Local tracker (unsaved adds/updates), but that pattern should only apply to reference entities (brands, categories), not paginated device lists.
+  - **Soft-delete alignment**: All entities use `IsActive` flag (Brand, Category, Location, Network) or status enum (Device). Audit table is append-only. ✓ Constitution §4.3.
+  - **Observability**: Serilog + OpenTelemetry wired in Api project. Structured logging present. No PII leakage spotted in sampled log statements. ✓ Constitution §3.5.
+
+---
+
+### 2026-06-14: Engineering Audit Session
+
+**Orchestration Log:** `.squad/orchestration-log/2026-06-14T00-17-12Z-ripley.md`
+
+**Key Audit Findings:**
+- Architecture correctly enforced (Domain → Application → Infrastructure → Api)
+- Critical device list filter contract risk identified (filter semantics divergence between UI/API/Domain)
+- In-memory pagination flagged as high-risk for scalability
+- Large frontend components exceed guidelines but acceptable for now
+- API client / ADR process gaps documented
+
+**Deliverables:**
+- 6 orchestration logs created (one per team agent)
+- 6 new decisions merged to decisions.md (D-168.1, D-169, D-170, D-171, D-172, D-173, D-174)
+- Inbox decisions cleared (8 files deleted)
+- Session log at `.squad/log/2026-06-14T00-17-12Z-engineering-audit.md`
+
+**Status:** Audit complete. Findings logged for team review and prioritization.

@@ -4074,6 +4074,268 @@ The content wrapper unconditionally applied `transform: translateY(0px)` and `wi
 
 ---
 
+### D-168.1: App Header Background Must Be Fully Opaque (Z-Index Hygiene Update)
+
+**Date:** 2026-06-13  
+**Author:** Vasquez (Frontend Developer)  
+**Status:** Applied  
+**Related:** D-167 (canonical z-index layering)  
+**Amendment to:** D-167
+
+**Context:** After D-167 set the app header to z-30, scrolling content was visibly bleeding through due to the header's translucent background (`bg-white/85 backdrop-blur-md`). The blur effect created a frosted-glass appearance showing content underneath.
+
+**Rule Update:** The app header's background MUST be fully opaque — no opacity modifiers (`/80`, `/85`, `/90`, `/95`), no `backdrop-blur-*`. This ensures scrolling content is completely hidden beneath the header regardless of z-index proximity.
+
+**Rationale:** Translucent headers rely on sufficient z-index separation to look good. At z-30 with in-page sticky elements at z-20, the visual gap is too small for translucency to work without ghosting artifacts. Opaque is the only reliable solution.
+
+**Updated Canonical Z-Index Layers:**
+| Layer | z-index | Background requirement |
+|-------|---------|----------------------|
+| Page content | z-0 (default) | — |
+| In-page sticky headers | z-10 or z-20 | Opaque |
+| App header | z-30 | **Opaque (mandatory)** |
+| Bulk action bars (fixed bottom) | z-30 | May use /95 (no content scrolls behind) |
+| Modal backdrop | z-40 | — |
+| Modal / Toast | z-50 | — |
+
+---
+
+### D-169: Silent SSO Bootstrap Timeout
+
+**Proposed by:** Vasquez (Frontend Developer)  
+**Date:** 2026-06-13  
+**Status:** Approved  
+**Related:** D-150 (Silent SSO Bootstrap), D-050, F038  
+
+**Decision**
+
+- Apply a `3000ms` timeout to the root-layout silent SSO bootstrap before the login page is revealed.
+- Keep the timeout scoped to first-load bootstrap only; normal mid-session token refresh keeps MSAL's default timing.
+- If the timeout elapses, treat the user as unauthenticated for UX purposes and show the sign-in button/local fallback instead of spinning forever.
+
+**Rationale**
+
+Silent SSO is a polish feature, not something that should trap the app behind an indefinite splash when Entra or the iframe path is unavailable. Three seconds is long enough to restore a healthy cached session on normal networks, but short enough that a cold start without a session still feels responsive.
+
+**Implications**
+
+- `tryAcquireApiTokenSilent(...)` accepts an optional timeout for bootstrap callers.
+- The login page keeps its existing delayed spinner (`600ms`) so no-session visits still feel like a quick miss rather than a broken load.
+- Future silent-auth work should preserve the same rule: bounded bootstrap, unbounded mid-session refresh.
+
+---
+
+### D-170: Desktop Single Nav Entry Point (Supersedes D-163)
+
+**Proposed by:** Vasquez (Frontend Developer)  
+**Date:** 2026-06-13  
+**Status:** Approved  
+**Supersedes:** D-163 (no duplicate nav surfaces on desktop)  
+**Related:** D-160 (hamburger-only regression-watch)  
+
+**Decision**
+
+- **Desktop (md+ breakpoint):** The user menu dropdown is the **sole** navigation entry point. The hamburger button is hidden via `md:hidden`. The dropdown contains: primary nav items → separator → ADMIN section → separator → Settings → Sign Out.
+- **Mobile (<md breakpoint):** The hamburger overlay is the **sole** navigation entry point. The user menu pill is hidden via `hidden md:block`.
+- **Never both on the same viewport.**
+
+**Rationale**
+
+Brian requested consolidation — two menus on desktop was confusing. The user menu pill already identifies the user and role; adding primary nav items to its dropdown eliminates the need for a second button. Mobile retains the hamburger because full-screen overlay is superior UX on small touch screens.
+
+**Implications**
+
+- Hamburger button class gains `md:hidden`
+- User menu dropdown gains `visiblePrimaryNavItems` section above ADMIN
+- D-160 regression-watch narrowed: hamburger must remain on mobile, must NOT appear on desktop
+- Future nav additions go into `appNav.ts` arrays — they auto-surface in both mobile hamburger and desktop dropdown
+
+---
+
+### D-171: Insurance Export Lives on `/admin/export`
+
+**Proposed by:** Vasquez (Frontend Developer)  
+**Direction by:** Brian  
+**Date:** 2026-06-13  
+**Status:** Applied  
+**Related:** D-160, P003-T10, Issue #16  
+
+**Decision**
+
+- Surface the insurance CSV export from the existing admin export hub at `/admin/export`.
+- Keep `/reports` focused on user-facing reporting surfaces: summary, warranties, era, and timeline.
+- Treat insurance export as an admin data operation, not a report card in the reporting dashboard sense.
+
+**Rationale**
+
+Brian clarified that the insurance CSV is an administrative export alongside import/export/audit workflows, not a user-facing report. Reusing the download behavior was still correct, but the placement needed to align with the admin-only information architecture.
+
+**Implications**
+
+- `src/TechInventory.Web/src/routes/(authenticated)/admin/export/+page.svelte` is the canonical surface for insurance export.
+- The insurance UI should match the admin export page rhythm and i18n namespace (`export.insurance.*`).
+- `/reports` should not regain admin-only export affordances unless product direction changes again.
+
+---
+
+### D-172: Device Form UI Regression Fixes
+
+**Date:** 2026-06-13  
+**Author:** Vasquez (Frontend Developer)  
+**Status:** Implemented  
+
+**Context**
+
+Three UI regressions were reported in device creation/listing flows:
+
+1. **Brand validation silent failure:** Device create returned 400 when brand unset, but only showed generic red toast with no field-level error.
+2. **Desktop table layout:** Device table lacked explicit action affordance — entire row clickable but no visible button/link to signal interactivity.
+3. **Duplicate tag UI:** New-item modal (AddDeviceModal) rendered two tag pickers — one above DeviceForm and one inside it.
+
+**Decision**
+
+#### 1. Brand Field: Required with Inline Validation
+
+- **Changed:** Made `brandId` required in Zod schema (`z.string().uuid('Brand is required').min(1, 'Brand is required')`).
+- **UI Changes:** Added red asterisk (*) to Brand label, changed placeholder from "-- No Brand --" to "-- Select Brand --".
+- **Rationale:** Client-side validation must mirror backend FluentValidation rules. The API contract requires brandId; the Zod schema must enforce this before submission. Inline errors are accessible and prevent silent 400 failures.
+
+#### 2. Desktop Table: Explicit Actions Column
+
+- **Changed:** Added Actions column (7th cell) to DeviceTable desktopRow snippet with "View" button, chevron-right icon, and explicit aria-label.
+- **Incremented:** `groupColspan` from 6/7 to 7/8 (accounts for optional selection checkbox).
+- **i18n:** Added `common.actions.view` ("View") and `common.actions.viewDetails` ("View details for {name}").
+- **Rationale:** Desktop tables benefit from explicit action affordances even when the entire row is clickable. The button signals interactivity, provides accessible labeling (`aria-label`), and prevents confusion when users expect a visible click target.
+
+#### 3. Tag Management: DeviceForm Owns Tag State
+
+- **Changed:** Removed duplicate TagPicker from AddDeviceModal. DeviceForm already has DeviceTagSelector internally; the modal should not manage parallel tag state.
+- **Simplified:** AddDeviceModal now passes `onSubmit` to DeviceForm and lets the form handle tags. Removed `selectedTagIds` state, `availableTags` derived, and separate tag POST logic.
+- **Updated:** /devices/new +page.svelte also delegates tag handling to DeviceForm.
+- **Rationale:** Single source of truth for tag selection. When a child component gains internal state management for a field, the parent must not duplicate that state.
+
+**Impact**
+
+- Brand validation error now shows immediately on blur and on submit — clear, accessible feedback.
+- Desktop device table has explicit "View" button with aria-label — clearer interactivity signal.
+- New-item flows (modal + page) show single tag selector — less UI clutter, consistent experience.
+
+---
+
+### D-173: Main Branch Image Tagging Policy Shift
+
+**Decision:** Main branch pushes now publish container images tagged as `:latest` (rolling deployable) instead of `:main`.
+
+**Date:** 2026-06-13  
+**Agent:** Hudson (DevOps / Platform)  
+**Status:** Approved  
+
+**Context**
+
+The release workflow previously maintained a "semver release only" tagging strategy:
+- `:latest` → only on semver tags (`v*.*.*`) or manual dispatch (tested releases)
+- `:main` → rolling main branch builds (development state)
+
+Home server deployments defaulted to `${IMAGE_TAG:-latest}`, so they'd pull tested releases only. Semver tags received no `:latest` tag overlay.
+
+**User Request:** "Image tag should be latest, not main." (2026-06-11)
+
+**Decision**
+
+**Policy change**: Main branch pushes now publish both the `:latest` tag and the commit SHA tag. This makes the home server's default `${IMAGE_TAG:-latest}` pull the current main state (always-on deployable), not a frozen semver release.
+
+**Implication**: The home server is now a "rolling deployment" of main. Every merge to main automatically becomes the production image. Stabilization relies on CI/test gates, not on an explicit release cut.
+
+**Changes**
+
+1. `.github/workflows/release-images.yml` — Tag metadata logic updated:
+   - Line 104 now enables `:latest` for both main branch (`github.ref == 'refs/heads/main'`) and tag pushes
+   - Line 105 now publishes only the ref name (e.g., `v1.0.0`) on tag pushes (no `:latest` overlay on tag push)
+   - Comments clarified (D-168 reference updated)
+
+2. `src/TechInventory.Web/package.json` — Corepack pnpm pin:
+   - `packageManager` added as `pnpm@11.1.2`
+   - Reason: Docker/Corepack had floated to pnpm 11.5.3, whose minimum-release-age policy rejected the existing lockfile. Pinning the previously validated pnpm version keeps image builds deterministic.
+
+**Rationale**
+
+1. **Operational simplicity**: Single "latest" tag reduces mental overhead on deployment. No separate `:main` vs. `:latest` aliasing.
+2. **CI as the release gate**: Main is always tested before merge (PR status checks). That's the stability guarantee; no need for a separate release tag.
+3. **Home server expectation**: Brian's deployment pattern defaults to `${IMAGE_TAG:-latest}`, confirming this is the intended flow.
+
+**Risk Mitigation**
+
+- **CI gates must remain strict**: No broken tests merge to main. The `:latest` image is only as good as CI.
+- **Explicit semver releases still possible**: `v*.*.*` tags create a named release (e.g., `:v1.2.3`) for historical pinning if needed.
+- **Manual dispatch still works**: `workflow_dispatch` can rebuild `:latest` off any commit without cutting a tag.
+
+---
+
+### D-174: Regression Test Patterns for Device Create Form Validation
+
+**Author:** Apone (Tester/QA)  
+**Date:** 2026-06-13  
+**Status:** Approved  
+**Topic:** Device create regression test patterns  
+
+**Context**
+
+User reported three UI regressions in device create flow:
+1. Device create fails with generic red toast when brand is missing, but no field-level error message displays the brand-required constraint
+2. Duplicate tag pickers appear in the new-item view (one from AddDeviceModal, one from DeviceForm)
+3. Broken desktop DeviceTable row action/selection affordance
+
+**Decision**
+
+Add targeted regression tests to `DeviceForm.test.ts` and `DeviceTable.test.ts` to lock the expected behavior and prevent future regressions:
+
+#### Brand-Required Validation Tests
+
+Two new tests in `DeviceForm.test.ts` verify that:
+- On submit: when brand is omitted, form displays "Brand is required" error message with accessible styling (`text-danger-600`)
+- On blur: brand field validates immediately without requiring submit
+- Validation blocks `onSubmit` callback when brand is invalid
+
+**Pattern:**
+```typescript
+await waitFor(() => {
+  const errorMsg = screen.getByText('Brand is required');
+  expect(errorMsg).toBeInTheDocument();
+  expect(errorMsg).toHaveClass('text-danger-600');
+});
+expect(onSubmit).not.toHaveBeenCalled();
+```
+
+#### Duplicate Tag UI Guard
+
+New test in `DeviceForm.test.ts` asserts that:
+- Exactly ONE `role="group"` with name matching `devices.form.tags` exists
+- Each tag checkbox appears exactly once
+
+#### Desktop Table Structure Guard
+
+New test in `DeviceTable.test.ts` verifies:
+- Table has semantic `<tbody>` with `<tr>` children
+- Each row is clickable (`cursor-pointer`)
+- Correct column count (7 columns per D-172 update)
+- Name cell is first and sticky
+
+**Rationale**
+
+- **Validation tests use `waitFor()`** because error DOM appears asynchronously after user events
+- **Exact error message text ("Brand is required")** comes from Zod schema
+- **DeviceForm owns its tag selector** — callers like AddDeviceModal must NOT add a second tag picker above the form
+- **Desktop table structure must remain semantic** — each device row is a `<tr>` with proper `<td>` cells
+
+**Consequences**
+
+- **Test suite locks current behavior.** If Vasquez changes validation message text or table structure, tests will fail and force intentional review.
+- **Regression prevented.** The three reported issues cannot reoccur without tests catching them.
+
+**Status:** Implementation complete. All tests green. Ready for team review and merge.
+
+---
+
 ## Governance
 
 - All meaningful changes require team consensus

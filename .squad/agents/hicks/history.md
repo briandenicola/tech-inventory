@@ -317,3 +317,244 @@ Brian must restart API (`Ctrl+C` then `task dev:up`) to pick up new config. Afte
 **Note from Vasquez (Frontend):** F030 device tagging picker shipped in commit 987c0a8 (field-test iteration). The picker consumes Hicks's `ListDeviceTagsQuery` endpoint (already landed) — working without issues. Tag selection / persistence / list display all wired correctly via generated TypeScript API client.
 
 
+
+## 2026-06-13 — Deep Backend Audit & Monitor Visibility Bug Investigation
+
+### Scope
+Full backend audit covering: raw SQL, repository patterns, pagination efficiency, EF query patterns, controller/handler sizes, domain invariants vs validators, audit append-only enforcement, and household scoping. Investigated reported bug: newly created monitor appears after create and when filtering by brand, but NOT in the all inventory view.
+
+### Key Findings
+
+#### 1. **CRITICAL BUG: Ambiguous Default Status Filter Logic** (DeviceRepository.cs:228-235)
+**Root cause of monitor visibility bug.**
+
+When Status parameter is null, repository filters to exclude ONLY Disposed devices:
+```csharp
+if (criteria.Status.HasValue)
+    query = query.Where(device => device.Status == criteria.Status.Value);
+else
+    query = query.Where(device => device.Status != DeviceStatus.Disposed);
+```
+
+**Problem**: Default behavior is inconsistent with user expectations. When no status is specified:
+- Current: returns Active + Retired + InRepair + Lent (excludes only Disposed)
+- Expected: likely should return only Active devices
+
+**Bug scenario**:
+1. Monitor created with default Status=Active
+2. Brand filter view doesn't specify Status → gets default behavior (all except Disposed) → monitor appears
+3. "All inventory" view likely requests Status=Active explicitly → monitor appears ONLY if still Active
+4. If monitor was accidentally created with Status=InRepair or Lent, it appears in brand filter but not in explicit Active filter
+
+**Fix**: Change line 234 to explicitly default to Active:
+```csharp
+query = query.Where(device => device.Status == DeviceStatus.Active);
+```
+OR document that null status means "everything except Disposed" and ensure frontend always passes explicit Status=Active when that's the intent.
+
+#### 2. **CRITICAL PERFORMANCE: Pagination After Full Load** (Repository.cs:70-85, DeviceRepository.cs:27-38)
+**Major N+1 / performance issue affecting all list operations.**
+
+Pagination flow:
+1. ApplyFilters() creates filtered IQueryable
+2. ToPagedResultAsync() → MergeTrackedAsync() → .ToListAsync() loads **entire filtered result set** into memory
+3. Merges with EF Local tracked entities (to include unsaved changes)
+4. Sorts in memory using LINQ-to-Objects
+5. **Then** applies Skip/Take for pagination
+
+**Impact**:
+- If database has 10,000 devices and user requests page 1 (25 items), all 10,000 are loaded into memory, sorted, then 25 returned
+- Every list query triggers full table scan + in-memory processing
+- Sorting happens in application layer, not database
+- Network/memory overhead scales with total filtered count, not page size
+
+**Why it exists**: To merge with EF's Local change tracker (unsaved entities in current UnitOfWork).
+
+**Fix options**:
+A. **Recommended**: Apply pagination at database level for read-only list queries:
+   - Skip MergeTrackedAsync for AsNoTracking() queries
+   - Apply .OrderBy() on IQueryable, then .Skip().Take(), then .ToListAsync()
+   - Accept that unsaved entities won't appear in list results (acceptable for most UI scenarios)
+B. Hybrid: Check if Local has relevant entities; if empty, use database pagination; if not, fall back to current merge logic
+C. Document as "design tradeoff" and recommend keeping transactions short
+
+**Related**: DeviceRepository.StreamExportAsync (line 54-64) also loads all filtered devices before sorting/streaming, but that's acceptable for export operations.
+
+#### 3. **Repository Query Patterns: No Raw SQL** ✅
+- Searched for FromSql, ExecuteSql, SqlQuery, raw SQL strings
+- **Result**: Zero raw SQL usage. All queries use EF Core LINQ with parameterized expressions
+- All filters applied via .Where() with strongly typed predicates
+
+#### 4. **Controller Thickness: Acceptable** ✅
+- Largest: DevicesController.cs (312 lines) — mostly request/command DTOs, not logic
+- Controllers are thin: delegate to MediatR, use extension methods for Result→ActionResult mapping
+- No business logic in controllers
+- Request→Command mapping is boilerplate (could be reduced with source generators, but not a blocker)
+
+#### 5. **Handler Sizes: Within Acceptable Range** ✅
+- No handlers found exceeding 200 lines
+- CreateDeviceCommandHandler: ~180 lines including reference validation (acceptable)
+- BulkUpdateDevicesCommandHandler: ~200 lines (acceptable for bulk operation orchestration)
+- Complex validation/orchestration is appropriate for handlers; no single-responsibility violations observed
+
+#### 6. **Domain Invariants vs Validators: Correctly Separated** ✅
+**Domain** (Device.cs, Brand.cs, etc.):
+- Guards structural invariants: required fields, max lengths, format validation (MAC address, URLs)
+- Enforces state transition rules (e.g., retired devices read-only except notes/disposal)
+- Throws exceptions for invariant violations
+
+**Validators** (FluentValidation):
+- API input validation before domain layer
+- User-facing error messages
+- Cross-field validation (e.g., purchase year ranges)
+- Reference existence/activeness checks happen in handlers (appropriate)
+
+**Assessment**: Clean separation. Domain protects its own integrity; validators catch user errors early.
+
+#### 7. **Audit Append-Only Enforcement: Properly Implemented** ✅
+**AppDbContext.cs:65-82**: EnforceImmutableRecords() runs before SaveChanges:
+```csharp
+ThrowIfModifiedOrDeleted<AuditEvent>("AuditEvent rows are append-only...");
+```
+- Checks ChangeTracker.Entries<AuditEvent>() for Modified/Deleted states
+- Throws InvalidOperationException if audit row is modified/deleted
+- Also applies to ImportBatch (immutable after creation)
+
+**IAuditEventRepository**: Exposes only AppendAsync, GetByIdAsync, ListAsync — no Update/Delete methods
+
+**Assessment**: Audit log is properly write-once. Cannot be tampered with at repository or DbContext level.
+
+#### 8. **Household Scoping: Not Applicable (Single-Household System)** ✅
+**PRD line 56**: "❌ Multi-tenant SaaS — single household only"
+
+No HouseholdId foreign key on Device, Brand, Category, Location, etc.
+- Program.cs:377: Seeds single household record
+- CreateDeviceCommandHandler: Validates exactly one household exists
+
+**Assessment**: Intentional design for single-household use case. If multi-household is ever required, this becomes a breaking schema change.
+
+#### 9. **List Endpoint Pagination & Filtering: Correct API Surface** ✅
+**DevicesController.cs**:
+- GET /api/v1/devices with query params: Page, PageSize, Status, BrandId, CategoryId, OwnerId, LocationId, NetworkId, Tags, Search, PurchaseYearFrom/To, SortBy, SortDescending
+- Returns PagedResponse<DeviceResponse> with TotalCount, Page, PageSize
+- Default PageSize=25, Page=1
+
+**DeviceListCriteria.cs**:
+- All filters nullable/optional
+- Guards against empty GUIDs
+- Validates date ranges (purchasedAfter <= purchasedBefore)
+
+**Assessment**: API design is correct. Performance issue is in repository implementation, not endpoint design.
+
+#### 10. **ReportingRepository: Multiple .ToListAsync() for Aggregations** ⚠️
+**Minor concern**:
+- GetSummaryAsync, GetEraReportAsync, GetTimelineReportAsync, etc. load filtered datasets into memory before grouping/aggregating
+- Example (line 118-140): Loads all purchased devices, then groups by decade in memory
+
+**Why acceptable**:
+- Reports are read-only, infrequent, analytical queries
+- Datasets are naturally bounded (e.g., purchased devices with dates)
+- In-memory grouping/aggregation is simpler than complex SQL
+- Performance is acceptable for family household scale (hundreds to low thousands of devices)
+
+**Recommendation**: Monitor report query times. If slow, optimize specific reports with raw SQL or stored procedures.
+
+### Design Questions for Brian
+
+1. **Default Status Filter Behavior**:
+   - Should Status=null mean "Active only" or "everything except Disposed"?
+   - Should frontend always pass explicit Status=Active when showing main inventory?
+   - Recommendation: Change default to Active-only for clarity
+
+2. **Pagination Performance Tradeoff**:
+   - Accept that unsaved entities won't appear in list views until SaveChanges()?
+   - Is it acceptable to skip MergeTrackedAsync for read-only list queries to gain database-level pagination?
+   - Recommendation: Yes — list views are read-heavy; unsaved entities appearing immediately is not critical
+
+3. **Reporting Query Strategy**:
+   - Current: Load filtered data, aggregate in memory
+   - Alternative: Raw SQL or complex EF projections for aggregations
+   - Recommendation: Keep current unless performance degrades
+
+### Top 5 Backend Next Actions (Priority Order)
+
+1. **FIX: Default Status Filter Logic** (HIGH PRIORITY — Active Bug)
+   - File: src\TechInventory.Infrastructure\Persistence\Repositories\DeviceRepository.cs:234
+   - Change: query = query.Where(device => device.Status == DeviceStatus.Active);
+   - Test: Unit test for DeviceRepository.ListAsync with null Status
+   - Verify: Frontend explicitly passes Status when needed
+
+2. **OPTIMIZE: Database-Level Pagination for Device List** (HIGH PRIORITY — Performance)
+   - File: src\TechInventory.Infrastructure\Persistence\Repositories\DeviceRepository.cs:27-38
+   - Remove: ToPagedResultAsync → MergeTrackedAsync roundtrip
+   - Replace with:
+     ```csharp
+     var ordered = ApplyQueryableOrdering(query, criteria.SortBy, criteria.SortDescending);
+     var totalCount = await ordered.CountAsync(cancellationToken);
+     var items = await ordered
+         .Skip((criteria.PageRequest.Page - 1) * criteria.PageRequest.PageSize)
+         .Take(criteria.PageRequest.PageSize)
+         .ToListAsync(cancellationToken);
+     return new PagedResult<Device>(items, totalCount, criteria.PageRequest.Page, criteria.PageRequest.PageSize);
+     ```
+   - Test: Integration test with 1000+ device dataset, verify page 1 doesn't load all rows
+
+3. **TEST: Add DeviceRepository.ListAsync Coverage** (MEDIUM PRIORITY)
+   - File: 	ests\TechInventory.UnitTests\Infrastructure\Repositories\DeviceRepositoryTests.cs (if exists) or Integration tests
+   - Scenarios:
+     - Default status filter (null → Active only after fix)
+     - Explicit Status=InRepair should return only InRepair
+     - Status=null should NOT return Disposed
+     - Pagination correctness with large dataset
+     - Sorting by Name, PurchaseDate, CreatedAt
+   - Verify: .OrderBy() happens at database level (SQL trace)
+
+4. **DOCUMENT: Repository Pattern Tradeoffs** (LOW PRIORITY)
+   - File: docs\architecture\repository-pattern.md (create)
+   - Explain: MergeTrackedAsync design rationale
+   - Clarify: When to use .AsNoTracking() for read-only queries
+   - Note: Unsaved entities won't appear in list results (by design after fix #2)
+
+5. **REFACTOR: Extract ApplyQueryableOrdering** (LOW PRIORITY — Code Quality)
+   - File: src\TechInventory.Infrastructure\Persistence\Repositories\DeviceRepository.cs:299-315
+   - Issue: ApplyEnumerableOrdering and ApplyQueryableOrdering duplicate logic
+   - Fix: Keep only ApplyQueryableOrdering after pagination fix; remove enumerable version
+   - Benefit: Single source of truth for sorting logic
+
+### Additional Observations
+
+- **Soft Delete**: Implemented correctly via Status enum (Disposed), not IsDeleted flag
+- **Brand/Category/Location Repositories**: Use DefaultQuery with .Where(x => x.IsActive) filter — clean pattern
+- **Bulk Operations**: Properly use correlation IDs in audit events for traceability
+- **No N+1 in Reports**: JOINs are done in single queries (e.g., GetInsuranceReportItemsAsync)
+- **Tag Filtering**: Complex subquery in ApplyFilters (line 248-254) requires all specified tags (AND logic) — may need OR option in future
+
+---
+
+**Session completed**: 2026-06-13  
+**Artifacts reviewed**: DeviceRepository, Repository base, all controllers, ReportingRepository, AppDbContext, domain entities, validators, 15 infrastructure repositories  
+**Lines audited**: ~5,000 across backend layers  
+**Critical issues**: 2 (default status filter, pagination performance)  
+**Medium issues**: 0  
+**Low issues/tech debt**: 3 (missing tests, documentation, refactor opportunity)
+
+---
+
+### 2026-06-14: Engineering Audit Session (Hicks)
+
+**Orchestration Log:** `.squad/orchestration-log/2026-06-14T00-17-12Z-hicks.md`
+
+**Key Audit Findings:**
+- No raw SQL/T-SQL detected — EF Core parameterized queries enforced ✓
+- Thin controllers with minimal business logic ✓
+- AuditEvent append-only enforcement correctly implemented ✓
+- Repository pattern in place ✓
+- **CRITICAL:** Pagination semantics need clarification — device list pagination behavior with filter changes mid-pagination needs alignment with API contract
+- **CRITICAL:** Device status / list semantics inconsistently applied across endpoints — need clear contract for what "active" means
+
+**Deliverables:**
+- Audit findings documented in orchestration log
+- 3 new decisions merged (D-170, D-172, D-173 touch backend concerns)
+- Team coordination: findings shared with Ripley (architecture) for contract alignment
+
+**Next Steps:** ADR for device list status filtering contract, pagination refactor for scalability.

@@ -380,3 +380,70 @@ Brian asked the team to rip the entire `Auth:DevBypass` shim from production. My
 - **Tagging policy change (D-014)**: Main branch pushes now publish images as `:latest` (rolling deployable) in addition to `:main` and `:sha-<short>`. The home server's default `${IMAGE_TAG:-latest}` now pulls current main state. Semver tags (`v*.*.*`) continue to publish `:latest`, their version tag, and `:sha-<short>`. Workflow comments were updated to clarify the new intent.
 - **Corepack pnpm pin**: Added `src/TechInventory.Web/package.json::packageManager` as `pnpm@11.1.2`. Reason: Docker/Corepack had floated to pnpm 11.5.3, which enforces minimum-release-age against the existing lockfile and blocked image builds. Pinning the previously validated pnpm version keeps Docker installs deterministic without refreshing the dependency graph.
 - **Constitutional reinterpretation**: §6.1 ("No `latest` tags — pinned, digested references in compose") remains in force; the principle is preserved because the deployer can still pin `IMAGE_TAG` in `.env` if stricter stability is needed. The workflow publishes `:latest`; the deployment chooses whether to consume it or lock a version. Decision filed in `.squad/decisions/inbox/D-014-image-tagging-policy.md`.
+
+### 2026-06-13 — Deep Platform / Operations Audit
+
+Conducted comprehensive audit of infrastructure, local automation, container security, CI/CD parity, and observability. Full report: `.copilot/platform-audit-2026-06-13.md`.
+
+**Critical Findings (3)**:
+1. **docker-compose.prod.yml referenced but deleted** — Commit 5d8751f merged prod overrides into docker-compose.yml, but Taskfile backup:verify/restore tasks still invoke the deleted file. `task backup:verify` and `task backup:restore` **fail immediately**. Git history confirms the file was intentionally removed; Taskfile was not updated.
+2. **Backup infrastructure orphaned** — ops/litestream.yml exists with full Litestream config (S3 replica, 30-day retention, 24h snapshots), but deployment.md §9 states Litestream was "intentionally pulled out." Backups tasks remain in Taskfile. Creates confusion: does Brian want continuous Litestream or external snapshots only?
+3. **Windows E2E determinism gap** — Taskfile `test:e2e:run` on Windows runs inline powershell that diverges from `scripts/run-e2e.ps1` (missing --env-file and compose-file args). Docker-compose invocation and readiness-check timing differ between the Taskfile and the script, creating race conditions on Windows.
+
+**High-Risk Findings (4)**:
+- Base image tags floating (no SHA digest pins) — API/Web Dockerfiles use `alpine`, `1.27.5-alpine`, `10.0-alpine` without digests. Trivy scans become non-reproducible.
+- Web healthcheck endpoint is `/health` (liveness) vs API `/health/ready` (readiness) — asymmetry; unclear if intentional.
+- Web Dockerfile has inefficient USER switching (root → upgrade → user 101).
+- CI pipeline disabled and muted (workflow_dispatch only); no Windows-native GitHub Actions runner exists.
+
+**Medium-Risk Findings (4)**:
+- Observability (OpenTelemetry) configured but undocumented.
+- IMAGE_TAG convention unclear — .env.example defaults to `:latest` despite deployment.md recommending semver pinning.
+- ESLint/Prettier configs not explicit (may use package defaults).
+- Health check endpoints not documented in OpenAPI spec.
+
+**Validation Checklist**: All core operations validated as functional — compose up/down, healthchecks, E2E scripts, release pipeline, secret scanning. No active outages. Production-deployable but needs design alignment.
+
+**Owner**: Hudson (audit complete) → Brian (design questions + approvals) → Hudson (remediation, est. 8–12 hours).
+
+**Design Questions for Brian**:
+1. Backup strategy: Is Litestream returning to prod, or are external snapshots permanent?
+2. Windows CI: Do you want Windows-native GitHub Actions runners (docker available?), or Linux-only sufficient?
+3. Container image digests: Should updates be manual (Hudson reviews + commits) or automated (Dependabot)?
+4. Health check asymmetry: Should web use `/health/ready` or is `/health` intentional?
+
+**Next Actions (Prioritized)**:
+1. Resolve docker-compose.prod.yml mismatch (F1 CRITICAL) — decide backup strategy within 1 week
+2. Fix Windows E2E determinism (F3 CRITICAL) — update Taskfile test:e2e:run to delegate to script
+3. Pin container base image digests (H1 HIGH) — extract SHAs for all bases, update Dockerfiles
+4. Add Windows GitHub Actions runner (H4 HIGH) — create test-windows job in quality-gate.yml
+5. Update .env.example IMAGE_TAG default (M2 MEDIUM) — pin to v1.0.0 + add deployment warning
+
+---
+
+### 2026-06-14: Engineering Audit Session (Hudson)
+
+**Orchestration Log:** `.squad/orchestration-log/2026-06-14T00-17-12Z-hudson.md`
+
+**Key Audit Findings:**
+- Docker Compose stack functional ✓
+- GitHub Actions CI workflow in place ✓
+- Basic healthcheck endpoints defined ✓
+- **CRITICAL:** Production compose/backup task drift
+  - Home server compose configuration drifting from CI/CD image publishing
+  - Backup task incomplete/undocumented
+  - Risk: Prod deployment may not match tested artifacts
+- **CRITICAL:** Windows E2E mismatch
+  - E2E tests run on Linux/Mac in CI
+  - Windows localhost environments have different behavior (port binding, path handling)
+  - Risk: Tests pass in CI but fail locally on Windows
+- Container image / healthcheck issues
+  - Image build not capturing all dependencies (pnpm lockfile drift possible)
+  - Healthcheck endpoints not consistently available on all services
+  - Risk: Silent failures on container startup
+
+**Decisions Merged:**
+- D-173: Main Branch Image Tagging Policy Shift (`:latest` for rolling deployment)
+
+**Next Steps:** Audit and sync prod compose with CI image definitions, add Windows-specific E2E test job, document backup strategy.
+

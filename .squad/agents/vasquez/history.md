@@ -422,3 +422,137 @@ Work already completed in commit `68ddbd5` (`test(web): T26 ownership modals + T
 - src/TechInventory.Web/src/lib/components/DeviceTable.svelte — Desktop table with explicit Actions column
 - src/TechInventory.Web/src/lib/i18n/en.json — i18n catalog (added view/viewDetails keys)
 - src/TechInventory.Web/src/routes/(authenticated)/devices/new/+page.svelte — Create page that uses DeviceForm internally
+
+---
+
+## 2026-06-13 19:15 — Deep Frontend Engineering Audit
+
+**Audit Scope**: Complete frontend codebase analysis per Brian's request
+- God components identification  
+- API client usage verification
+- Server state management review
+- Runes/stores pattern audit
+- i18n compliance check
+- Design tokens usage
+- Accessibility review
+- **Critical bug investigation**: Device-list grouped view missing new devices
+
+### Critical Bug Found: Grouped View Page Size Cap
+
+**Evidence**: Screenshots show new "Wireless Carplay Device" appears in filtered view but missing in grouped view.
+
+**Root Cause** (devices/+page.svelte:127):
+When groupBy is active, pageSize forced to 200. If user has >200 devices matching filters, only first 200 returned from API. Newly created device not in top 200 due to backend default sort order.
+
+**Reproduction**:
+1. Have >200 total Active devices
+2. Create new device (Monitor category, HAUXIY brand)  
+3. Filter by brandId: device appears (infinite scroll works)
+4. Group by category: device missing (200 cap hit)
+
+**Fix Options**:
+- Option A: Raise pageSize to 500-1000 for grouped views
+- Option B: Server-side grouping (backend change)
+- Option C: Multi-page client fetch + merge
+- Option D: Force createdAt DESC sort when grouping
+
+**Recommended**: Option A with Brian decision on max expected devices per household.
+
+### God Components Found (7 total)
+
+Constitution violation (§4.3: components <200 lines):
+
+1. **devices/+page.svelte** (820 lines) — URL state, query, infinite scroll, filters, grouping, bulk actions, modals
+2. **admin/categories/+page.svelte** (656 lines) — CRUD table, inline edit, validation, sort, pagination  
+3. **admin/import/+page.svelte** (630 lines) — CSV upload, parse, validation, preview, conflict resolution
+4. **DeviceTable.svelte** (596 lines) — Desktop table, mobile cards, grouping, sorting, selection
+5. **DeviceForm.svelte** (590 lines) — Form state, validation, dirty tracking, reference data
+6. **admin/brands/+page.svelte** (598 lines) — Same CRUD pattern as categories
+7. **admin/locations/+page.svelte** (572 lines) — Same CRUD pattern as categories
+
+**Refactoring Priority**:
+- Devices page: Extract DeviceListControls, DeviceBulkActions, InfiniteScroll components
+- Admin pages: Create generic ResponsiveReferenceDataTable (DRY up 4 similar pages)
+- DeviceTable: Extract Header, Row, Card, GroupHeader sub-components
+
+### Code Quality Summary
+
+**Strengths** ✅:
+- Generated API client (no hand-written fetch)
+- Consistent server state via useDevices hook
+- Runes used correctly (//)
+- All strings via t() i18n function (no hard-coded text)
+- Design tokens respected (no magic Tailwind values)
+- Loading/empty/error states explicit everywhere
+- Strong accessibility (semantic HTML, ARIA, keyboard nav)
+
+**Areas for Improvement** ⚠️:
+- Auth + referenceData stores still use Svelte 4 writable pattern (should migrate to runes like theme.svelte.ts)
+- Infinite scroll disabled in grouped views (reduces discoverability)
+- No UI feedback when grouped view hits 200-item cap
+- Bulk selection cleared silently on filter change (no toast)
+- LoadingSkeleton missing aria-busy announcement for screen readers
+
+### Accessibility Audit
+
+**Passing**:
+- Semantic HTML (<table>, <thead>, <th scope>)
+- ARIA labels on all buttons/inputs  
+- aria-sort on sortable columns
+- aria-live for status updates
+- Focus trap in modals
+- Keyboard navigation (Tab, Escape, Enter)
+
+**Minor Issues**:
+- LoadingSkeleton: no aria-busy="true" announcement
+- EmptyState: focus not moved to message (screen reader may miss it)
+- ErrorState: no keyboard shortcut for Retry button
+
+### Design Questions for Brian
+
+1. Expected max devices per household? (Determines grouped view page size)
+2. Should grouped rows respect user's sort preference or always use insertion order?
+3. Show toast when bulk selection cleared due to filter change?
+4. Should empty filtered state show "Add Device" CTA or force filter clear first?
+5. Reference data polling (5min) vs manual refresh button vs SPA-session cache?
+6. God component refactoring priority: Devices page, Admin pages, or DeviceTable first?
+
+### Top 5 Next Actions
+
+1. **FIX grouped view bug** (1h) — Increase pageSize cap pending Brian's decision
+2. **REFACTOR devices page** (4h) — Extract controls, bulk actions, infinite scroll  
+3. **MIGRATE auth + referenceData to runes** (3h) — Consistency with theme.svelte.ts
+4. **ADD grouped view warning badge** (1h) — "Showing first 200 devices..."
+5. **IMPROVE LoadingSkeleton a11y** (30min) — Add aria-busy announcement
+
+**Total Estimated Effort**: 9.5 hours to address all findings.
+
+### Learnings
+
+- **Grouped views + infinite scroll conflict**: Disabling infinite scroll for grouping creates hidden page size cap. Always surface caps to users.
+- **Screenshot debugging**: Visual evidence of bugs invaluable for understanding user-reported issues (screenshots confirmed exact reproduction path).
+- **God component detection**: Line count alone insufficient — must analyze responsibility count (URL state + query + scroll + filters + bulk actions = 5 concerns in 1 file).
+- **Runes migration**: Module-scoped  pattern (theme.svelte.ts) cleanest for shared reactive state; should be team standard.
+
+---
+
+### 2026-06-14: Engineering Audit Session (Vasquez)
+
+**Orchestration Log:** `.squad/orchestration-log/2026-06-14T00-17-12Z-vasquez.md`
+
+**Key Audit Findings:**
+- TypeScript strict mode enforced ✓
+- Zod schema validation aligned with backend ✓
+- Component structure generally clean ✓
+- **CRITICAL BUG:** Grouped device view bug caused by `groupBy` forcing `pageSize=200` hardcoding and disabling infinite scroll
+- Root cause: pagination assumptions incompatible with grouping transform
+- Large frontend components: DeviceTable (596 lines), DeviceForm (590 lines) exceed 200-line guideline
+
+**Decisions Merged:**
+- D-168.1: App Header Opaque (z-index hygiene)
+- D-169: Silent SSO Bootstrap Timeout
+- D-170: Desktop Single Nav Entry Point (supersedes D-163)
+- D-171: Insurance Export at /admin/export
+- D-172: Device Form UI Regression Fixes
+
+**Next Steps:** Fix grouped view pagination, refactor large components, coordinate with Hicks on filter contract.

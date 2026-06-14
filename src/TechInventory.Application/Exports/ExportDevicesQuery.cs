@@ -45,6 +45,7 @@ public sealed record ExportDevicesQuery(
     Guid? LocationId = null,
     Guid? NetworkId = null,
     DeviceStatus? Status = null,
+    bool IncludeAllStatuses = false,
     IReadOnlyCollection<Guid>? TagIds = null,
     int? PurchaseYearFrom = null,
     int? PurchaseYearTo = null,
@@ -65,6 +66,7 @@ public sealed class ExportDevicesQueryHandler(IDeviceExportService deviceExportS
             request.LocationId,
             request.NetworkId,
             request.Status,
+            request.IncludeAllStatuses,
             request.TagIds,
             request.PurchaseYearFrom.HasValue ? new DateOnly(request.PurchaseYearFrom.Value, 1, 1) : null,
             request.PurchaseYearTo.HasValue ? new DateOnly(request.PurchaseYearTo.Value, 12, 31) : null,
@@ -110,6 +112,10 @@ public sealed class ExportDevicesQueryValidator : AbstractValidator<ExportDevice
         RuleFor(query => query)
             .Must(query => !query.PurchaseYearFrom.HasValue || !query.PurchaseYearTo.HasValue || query.PurchaseYearFrom <= query.PurchaseYearTo)
             .WithMessage("PurchaseYearFrom cannot be greater than PurchaseYearTo.");
+
+        RuleFor(query => query)
+            .Must(query => !query.Status.HasValue || !query.IncludeAllStatuses)
+            .WithMessage("Status and IncludeAllStatuses cannot both be specified.");
 
         RuleFor(query => query.SortBy)
             .Must(sortBy => ValidationRules.BeValidSort(sortBy, "name", "purchaseDate", "createdAt"))

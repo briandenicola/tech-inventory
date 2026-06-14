@@ -14,6 +14,7 @@ public sealed record DeviceListCriteria
         Guid? locationId = null,
         Guid? networkId = null,
         DeviceStatus? status = null,
+        bool includeAllStatuses = false,
         IReadOnlyCollection<Guid>? tagIds = null,
         DateOnly? purchasedAfter = null,
         DateOnly? purchasedBefore = null,
@@ -33,6 +34,7 @@ public sealed record DeviceListCriteria
         LocationId = NormalizeOptionalId(locationId, nameof(locationId));
         NetworkId = NormalizeOptionalId(networkId, nameof(networkId));
         Status = status;
+        IncludeAllStatuses = includeAllStatuses;
         TagIds = tagIds?.Where(id => id != Guid.Empty).Distinct().ToArray() ?? [];
         PurchasedAfter = purchasedAfter;
         PurchasedBefore = purchasedBefore;
@@ -55,6 +57,8 @@ public sealed record DeviceListCriteria
     public Guid? NetworkId { get; }
 
     public DeviceStatus? Status { get; }
+
+    public bool IncludeAllStatuses { get; }
 
     public IReadOnlyCollection<Guid> TagIds { get; }
 

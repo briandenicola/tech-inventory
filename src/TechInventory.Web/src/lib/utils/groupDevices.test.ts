@@ -117,4 +117,111 @@ describe('groupDevices', () => {
 		expect(groupDevices([], 'owner', refData)).toEqual([]);
 		expect(groupDevices([], 'year', refData)).toEqual([]);
 	});
+
+	describe('Large dataset scenarios (regression for >200 device bug)', () => {
+		it('partitions 250 devices correctly across groups without truncation', () => {
+			// Regression test: grouped view must not silently truncate at 200
+			const devices = [];
+			for (let i = 1; i <= 250; i++) {
+				const categoryId = i <= 100 ? 'cat-laptops' : i <= 200 ? 'cat-networking' : 'cat-appliances';
+				devices.push(createDeviceResponse({ id: `d${i}`, categoryId }));
+			}
+
+			const groups = groupDevices(devices, 'category', refData);
+
+			expect(groups).toHaveLength(3);
+			expect(groups.find((g) => g.key === 'cat-laptops')!.count).toBe(100);
+			expect(groups.find((g) => g.key === 'cat-networking')!.count).toBe(100);
+			expect(groups.find((g) => g.key === 'cat-appliances')!.count).toBe(50);
+
+			// Verify device on "page 3" (index 201) is included
+			const appliancesGroup = groups.find((g) => g.key === 'cat-appliances')!;
+			expect(appliancesGroup.devices).toContainEqual(
+				expect.objectContaining({ id: 'd201' })
+			);
+		});
+
+		it('handles filter-then-group scenario with 150 devices', () => {
+			// Simulates: user filters by brand, then groups by category
+			// All 150 filtered devices should be grouped, not just first 200
+			const devices = [];
+			for (let i = 1; i <= 150; i++) {
+				const categoryId = i <= 75 ? 'cat-laptops' : 'cat-networking';
+				devices.push(
+					createDeviceResponse({
+						id: `dell-${i}`,
+						brandId: 'brand-dell',
+						categoryId
+					})
+				);
+			}
+
+			const groups = groupDevices(devices, 'category', refData);
+
+			expect(groups).toHaveLength(2);
+			expect(groups.find((g) => g.key === 'cat-laptops')!.count).toBe(75);
+			expect(groups.find((g) => g.key === 'cat-networking')!.count).toBe(75);
+
+			// Verify no devices are orphaned
+			const totalGroupedDevices = groups.reduce((sum, g) => sum + g.count, 0);
+			expect(totalGroupedDevices).toBe(150);
+		});
+
+		it('preserves all devices when grouping by owner with 300 devices', () => {
+			const devices = [];
+			for (let i = 1; i <= 300; i++) {
+				const ownerId = i <= 150 ? 'owner-brian' : 'owner-alex';
+				devices.push(createDeviceResponse({ id: `d${i}`, ownerId }));
+			}
+
+			const groups = groupDevices(devices, 'owner', refData);
+
+			expect(groups).toHaveLength(2);
+			expect(groups.find((g) => g.key === 'owner-brian')!.count).toBe(150);
+			expect(groups.find((g) => g.key === 'owner-alex')!.count).toBe(150);
+
+			// Verify device 300 (last device) is included
+			const alexGroup = groups.find((g) => g.key === 'owner-alex')!;
+			expect(alexGroup.devices).toContainEqual(expect.objectContaining({ id: 'd300' }));
+		});
+
+		it('handles year grouping with 400 devices across multiple years', () => {
+			const devices = [];
+			for (let i = 1; i <= 400; i++) {
+				const year = 2020 + Math.floor((i - 1) / 100); // 100 devices per year: 2020, 2021, 2022, 2023
+				devices.push(
+					createDeviceResponse({
+						id: `d${i}`,
+						purchaseDate: `${year}-01-01`
+					})
+				);
+			}
+
+			const groups = groupDevices(devices, 'year', refData);
+
+			expect(groups).toHaveLength(4);
+			expect(groups.map((g) => g.key)).toEqual(['2023', '2022', '2021', '2020']); // Most recent first
+			groups.forEach((g) => {
+				expect(g.count).toBe(100);
+			});
+
+			// Verify device 400 (last device, year 2023) is included
+			const year2023Group = groups.find((g) => g.key === '2023')!;
+			expect(year2023Group.devices).toContainEqual(expect.objectContaining({ id: 'd400' }));
+		});
+
+		it('does not orphan devices when input is exactly 200', () => {
+			// Edge case: exactly at the problematic threshold
+			const devices = [];
+			for (let i = 1; i <= 200; i++) {
+				devices.push(createDeviceResponse({ id: `d${i}`, categoryId: 'cat-laptops' }));
+			}
+
+			const groups = groupDevices(devices, 'category', refData);
+
+			expect(groups).toHaveLength(1);
+			expect(groups[0].count).toBe(200);
+			expect(groups[0].devices).toHaveLength(200);
+		});
+	});
 });

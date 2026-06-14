@@ -45,6 +45,10 @@ public sealed class ListDevicesQueryValidator : AbstractValidator<ListDevicesQue
             .Must(query => !query.PurchaseYearFrom.HasValue || !query.PurchaseYearTo.HasValue || query.PurchaseYearFrom <= query.PurchaseYearTo)
             .WithMessage("PurchaseYearFrom cannot be greater than PurchaseYearTo.");
 
+        RuleFor(query => query)
+            .Must(query => !query.Status.HasValue || !query.IncludeAllStatuses)
+            .WithMessage("Status and IncludeAllStatuses cannot both be specified.");
+
         RuleFor(query => query.SortBy)
             .Must(sortBy => ValidationRules.BeValidSort(sortBy, "name", "purchaseDate", "createdAt"))
             .WithMessage("SortBy must be one of: name, purchaseDate, createdAt.");

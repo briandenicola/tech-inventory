@@ -96,7 +96,7 @@ describe('devices query helpers', () => {
 		expect(response.items?.[0]?.name).toBe('Router');
 	});
 
-	it('omits Status param when status filter is undefined', async () => {
+	it('omits Status and IncludeAllStatuses when status filter is undefined', async () => {
 		mockedList.mockResolvedValue(sampleResponse);
 
 		await fetchDevicesPage({
@@ -107,9 +107,10 @@ describe('devices query helpers', () => {
 
 		const call = mockedList.mock.calls[0][0];
 		expect(call).not.toHaveProperty('Status');
+		expect(call).not.toHaveProperty('IncludeAllStatuses');
 	});
 
-	it('omits Status param when status filter is empty array', async () => {
+	it('omits Status and IncludeAllStatuses when status filter is empty array', async () => {
 		mockedList.mockResolvedValue(sampleResponse);
 
 		await fetchDevicesPage({
@@ -120,6 +121,23 @@ describe('devices query helpers', () => {
 
 		const call = mockedList.mock.calls[0][0];
 		expect(call).not.toHaveProperty('Status');
+		expect(call).not.toHaveProperty('IncludeAllStatuses');
+	});
+
+	it('sends IncludeAllStatuses for explicit all-status requests', async () => {
+		mockedList.mockResolvedValue(sampleResponse);
+
+		await fetchDevicesPage({
+			page: 1,
+			pageSize: 25,
+			includeAllStatuses: true
+		});
+
+		expect(mockedList).toHaveBeenCalledWith({
+			Page: 1,
+			PageSize: 25,
+			IncludeAllStatuses: true
+		});
 	});
 
 	describe('fetchAllDevicesForGrouping', () => {
@@ -254,7 +272,7 @@ describe('devices query helpers', () => {
 				search: 'laptop',
 				brandId: 'brand-123',
 				categoryId: 'cat-456',
-				status: ['Active', 'Retired']
+				includeAllStatuses: true
 			});
 
 			expect(mockedList).toHaveBeenNthCalledWith(1, {
@@ -263,7 +281,7 @@ describe('devices query helpers', () => {
 				Search: 'laptop',
 				BrandId: 'brand-123',
 				CategoryId: 'cat-456',
-				Status: 'Active'
+				IncludeAllStatuses: true
 			});
 			expect(mockedList).toHaveBeenNthCalledWith(2, {
 				Page: 2,
@@ -271,7 +289,7 @@ describe('devices query helpers', () => {
 				Search: 'laptop',
 				BrandId: 'brand-123',
 				CategoryId: 'cat-456',
-				Status: 'Active'
+				IncludeAllStatuses: true
 			});
 		});
 	});

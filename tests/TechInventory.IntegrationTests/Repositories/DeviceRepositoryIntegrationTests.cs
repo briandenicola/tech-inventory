@@ -74,6 +74,30 @@ public class DeviceRepositoryIntegrationTests(IntegrationTestFactory<DeviceRepos
         var repository = _host.CreateRepository<IDeviceRepository>(dbContext, "DeviceRepository");
         var refs = await SeedDeviceReferencesAsync(dbContext);
         var activeDevice = CreateDevice(refs, $"Active-{Guid.NewGuid():N}");
+        var retiredDevice = CreateDevice(refs, $"Retired-{Guid.NewGuid():N}");
+        retiredDevice.ChangeStatus(DeviceStatus.Retired, new DateOnly(2025, 1, 15), null, "apone");
+        var disposedDevice = CreateDevice(refs, $"Disposed-{Guid.NewGuid():N}");
+        disposedDevice.ChangeStatus(DeviceStatus.Disposed, new DateOnly(2025, 2, 1), "Recycled", "apone");
+
+        (await repository.AddAsync(activeDevice, CancellationToken.None)).IsSuccess.Should().BeTrue();
+        (await repository.AddAsync(retiredDevice, CancellationToken.None)).IsSuccess.Should().BeTrue();
+        (await repository.AddAsync(disposedDevice, CancellationToken.None)).IsSuccess.Should().BeTrue();
+        await dbContext.SaveChangesAsync();
+
+        var defaultList = await repository.ListAsync(new DeviceListCriteria(new PageRequest()), CancellationToken.None);
+
+        defaultList.Items.Select(item => item.Id).Should().Contain(activeDevice.Id);
+        defaultList.Items.Select(item => item.Id).Should().NotContain(retiredDevice.Id);
+        defaultList.Items.Select(item => item.Id).Should().NotContain(disposedDevice.Id);
+    }
+
+    [Fact]
+    public async Task DeviceRepository_ListAsyncCanFilterByExplicitStatus()
+    {
+        await using var dbContext = await _host.CreateDbContextAsync();
+        var repository = _host.CreateRepository<IDeviceRepository>(dbContext, "DeviceRepository");
+        var refs = await SeedDeviceReferencesAsync(dbContext);
+        var activeDevice = CreateDevice(refs, $"Active-{Guid.NewGuid():N}");
         var disposedDevice = CreateDevice(refs, $"Disposed-{Guid.NewGuid():N}");
         disposedDevice.ChangeStatus(DeviceStatus.Disposed, new DateOnly(2025, 2, 1), "Recycled", "apone");
 
@@ -81,12 +105,42 @@ public class DeviceRepositoryIntegrationTests(IntegrationTestFactory<DeviceRepos
         (await repository.AddAsync(disposedDevice, CancellationToken.None)).IsSuccess.Should().BeTrue();
         await dbContext.SaveChangesAsync();
 
-        var defaultList = await repository.ListAsync(new DeviceListCriteria(new PageRequest()), CancellationToken.None);
         var disposedList = await repository.ListAsync(new DeviceListCriteria(new PageRequest(), status: DeviceStatus.Disposed), CancellationToken.None);
 
-        defaultList.Items.Select(item => item.Id).Should().Contain(activeDevice.Id);
-        defaultList.Items.Select(item => item.Id).Should().NotContain(disposedDevice.Id);
         disposedList.Items.Select(item => item.Id).Should().Contain(disposedDevice.Id);
+        disposedList.Items.Select(item => item.Id).Should().NotContain(activeDevice.Id);
+    }
+
+    [Fact]
+    public async Task DeviceRepository_ListAsyncIncludesAllStatusesWhenRequested()
+    {
+        await using var dbContext = await _host.CreateDbContextAsync();
+        var repository = _host.CreateRepository<IDeviceRepository>(dbContext, "DeviceRepository");
+        var refs = await SeedDeviceReferencesAsync(dbContext);
+        var activeDevice = CreateDevice(refs, $"Active-{Guid.NewGuid():N}");
+        var retiredDevice = CreateDevice(refs, $"Retired-{Guid.NewGuid():N}");
+        retiredDevice.ChangeStatus(DeviceStatus.Retired, new DateOnly(2025, 1, 15), null, "apone");
+        var disposedDevice = CreateDevice(refs, $"Disposed-{Guid.NewGuid():N}");
+        disposedDevice.ChangeStatus(DeviceStatus.Disposed, new DateOnly(2025, 2, 1), "Recycled", "apone");
+        var inRepairDevice = CreateDevice(refs, $"InRepair-{Guid.NewGuid():N}");
+        inRepairDevice.ChangeStatus(DeviceStatus.InRepair, null, null, "apone");
+        var lentDevice = CreateDevice(refs, $"Lent-{Guid.NewGuid():N}");
+        lentDevice.ChangeStatus(DeviceStatus.Lent, null, null, "apone");
+
+        (await repository.AddAsync(activeDevice, CancellationToken.None)).IsSuccess.Should().BeTrue();
+        (await repository.AddAsync(retiredDevice, CancellationToken.None)).IsSuccess.Should().BeTrue();
+        (await repository.AddAsync(disposedDevice, CancellationToken.None)).IsSuccess.Should().BeTrue();
+        (await repository.AddAsync(inRepairDevice, CancellationToken.None)).IsSuccess.Should().BeTrue();
+        (await repository.AddAsync(lentDevice, CancellationToken.None)).IsSuccess.Should().BeTrue();
+        await dbContext.SaveChangesAsync();
+
+        var allStatusList = await repository.ListAsync(new DeviceListCriteria(new PageRequest(), includeAllStatuses: true), CancellationToken.None);
+
+        allStatusList.Items.Select(item => item.Id).Should().Contain(activeDevice.Id);
+        allStatusList.Items.Select(item => item.Id).Should().Contain(retiredDevice.Id);
+        allStatusList.Items.Select(item => item.Id).Should().Contain(disposedDevice.Id);
+        allStatusList.Items.Select(item => item.Id).Should().Contain(inRepairDevice.Id);
+        allStatusList.Items.Select(item => item.Id).Should().Contain(lentDevice.Id);
     }
 
     [Fact]

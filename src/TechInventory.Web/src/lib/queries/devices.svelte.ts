@@ -92,6 +92,8 @@ export interface DeviceFilters {
 	locationId?: string;
 	networkId?: string;
 	status?: DeviceStatus[];
+	/** Explicitly request all statuses. Undefined/false means backend default (Active only). */
+	includeAllStatuses?: boolean;
 	purchaseYearMin?: number;
 	purchaseYearMax?: number;
 	sort?: DeviceSort;
@@ -153,7 +155,8 @@ export function normalizeDeviceFilters(filters: DeviceFilters): DeviceFilters {
 		page: clampDevicePage(filters.page),
 		pageSize: clampDevicePageSize(filters.pageSize),
 		sortDir: filters.sort ? (filters.sortDir ?? 'asc') : filters.sortDir,
-		status: filters.status ? [...filters.status].sort() : undefined
+		status: filters.status ? [...filters.status].sort() : undefined,
+		includeAllStatuses: filters.includeAllStatuses === true ? true : undefined
 	};
 }
 
@@ -182,6 +185,7 @@ interface DeviceFiltersParams {
 	LocationId?: string;
 	NetworkId?: string;
 	Status?: DeviceStatus;
+	IncludeAllStatuses?: boolean;
 	PurchaseYearFrom?: number;
 	PurchaseYearTo?: number;
 	SortBy?: DeviceSort;
@@ -201,9 +205,12 @@ function buildDeviceQueryParams(filters: DeviceFilters): DeviceFiltersParams {
 	if (filters.locationId) params.LocationId = filters.locationId;
 	if (filters.networkId) params.NetworkId = filters.networkId;
 	// F026: status round-trip for backend.
-	//   undefined or []           → omit Status param (backend will default or use IncludeAllStatuses if present)
+	//   includeAllStatuses=true   → explicit all statuses
+	//   undefined or []           → omit Status param (backend defaults to Active)
 	//   ['Active', 'Retired', ...] → send first status value
-	if (filters.status && filters.status.length > 0) {
+	if (filters.includeAllStatuses) {
+		params.IncludeAllStatuses = true;
+	} else if (filters.status && filters.status.length > 0) {
 		params.Status = filters.status[0];
 	}
 	if (filters.purchaseYearMin !== undefined) {

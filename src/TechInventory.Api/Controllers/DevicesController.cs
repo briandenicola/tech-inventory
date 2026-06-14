@@ -153,6 +153,8 @@ public sealed class DevicesController(ISender sender) : ControllerBase
 
         public DeviceStatus? Status { get; init; }
 
+        public bool IncludeAllStatuses { get; init; }
+
         public string? Tags { get; init; }
 
         public int? PurchaseYearFrom { get; init; }
@@ -174,6 +176,7 @@ public sealed class DevicesController(ISender sender) : ControllerBase
                 LocationId,
                 NetworkId,
                 Status,
+                IncludeAllStatuses,
                 ParseTags(Tags),
                 PurchaseYearFrom,
                 PurchaseYearTo,

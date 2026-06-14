@@ -95,8 +95,10 @@
 		const params = $page.url.searchParams;
 		const rawStatus = params.get('status');
 		let status: DeviceStatus[] | undefined;
+		let includeAllStatuses = false;
 		if (rawStatus === STATUS_ALL_SENTINEL) {
 			status = undefined;
+			includeAllStatuses = true;
 		} else if (rawStatus && isDeviceStatus(rawStatus)) {
 			status = [rawStatus];
 		} else {
@@ -112,6 +114,7 @@
 			locationId: params.get('locationId') || undefined,
 			networkId: params.get('networkId') || undefined,
 			status,
+			includeAllStatuses,
 			purchaseYearMin: params.get('yearMin') ? parseInt(params.get('yearMin')!, 10) : undefined,
 			purchaseYearMax: params.get('yearMax') ? parseInt(params.get('yearMax')!, 10) : undefined,
 			sort: (params.get('sort') as 'name' | 'purchaseDate' | 'createdAt') || undefined,

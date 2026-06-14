@@ -229,9 +229,14 @@ public sealed class DeviceRepository(AppDbContext dbContext) : Repository<Device
         {
             query = query.Where(device => device.Status == criteria.Status.Value);
         }
+        else if (criteria.IncludeAllStatuses)
+        {
+            // No status filter; include all statuses
+        }
         else
         {
-            query = query.Where(device => device.Status != DeviceStatus.Disposed);
+            // Default: Active only
+            query = query.Where(device => device.Status == DeviceStatus.Active);
         }
 
         if (criteria.PurchasedAfter.HasValue)
@@ -361,8 +366,13 @@ public sealed class DeviceRepository(AppDbContext dbContext) : Repository<Device
                 return false;
             }
         }
-        else if (device.Status == DeviceStatus.Disposed)
+        else if (criteria.IncludeAllStatuses)
         {
+            // No status filter; include all statuses
+        }
+        else if (device.Status != DeviceStatus.Active)
+        {
+            // Default: Active only
             return false;
         }
 

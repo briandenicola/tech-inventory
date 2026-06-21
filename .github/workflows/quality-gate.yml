@@ -8,7 +8,7 @@ jobs:
   dotnet:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v5
         with: { dotnet-version: '10.0.x' }
       - run: dotnet restore
@@ -29,7 +29,7 @@ jobs:
       security-events: write   # uploading CodeQL findings to the Security tab
       actions: read            # required by CodeQL on private repositories
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: github/codeql-action/init@v4
         with:
           languages: csharp,javascript-typescript
@@ -42,7 +42,7 @@ jobs:
       contents: read         # actions/checkout
       pull-requests: read    # gitleaks-action reads PR commits on pull_request events
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with: { fetch-depth: 0 }
       - uses: gitleaks/gitleaks-action@v3
         env:
@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: aquasecurity/trivy-action@master
         with:
           scan-type: config
@@ -69,6 +69,6 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: anchore/sbom-action@v0
         with: { format: cyclonedx-json }

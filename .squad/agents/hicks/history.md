@@ -558,3 +558,33 @@ No HouseholdId foreign key on Device, Brand, Category, Location, etc.
 - Team coordination: findings shared with Ripley (architecture) for contract alignment
 
 **Next Steps:** ADR for device list status filtering contract, pagination refactor for scalability.
+
+---
+
+### 2026-06-23: SQLitePCLRaw Vulnerability Fix (GHSA-2m69-gcr7-jv3q)
+
+**Context:** Release Container Images workflow failing with NU1903 warning for SQLitePCLRaw.lib.e_sqlite3 2.1.11 vulnerability in Release builds.
+
+**Root Cause:** Microsoft.EntityFrameworkCore.Sqlite 10.0.8 transitively pulled in vulnerable SQLitePCLRaw.lib.e_sqlite3 2.1.11.
+
+**Solution:**
+- Updated Microsoft.EntityFrameworkCore.Sqlite from 10.0.8 → 10.0.9
+- Updated Microsoft.EntityFrameworkCore.Design from 10.0.8 → 10.0.9
+- Added direct PackageReference to SQLitePCLRaw.bundle_e_sqlite3 3.0.3 to override vulnerable 2.1.11 dependency
+
+**Files Changed:**
+- src\TechInventory.Infrastructure\TechInventory.Infrastructure.csproj
+- src\TechInventory.Api\TechInventory.Api.csproj
+- tests\TechInventory.IntegrationTests\TechInventory.IntegrationTests.csproj
+
+**Validation:**
+- ✓ dotnet restore (0 warnings)
+- ✓ dotnet build -c Release (0 warnings, 0 errors)
+- ✓ SQLitePCLRaw packages now at version 3.0.3
+- ✓ Release Container Images workflow: SUCCESS
+- ✓ Quality Gate workflow: SUCCESS
+
+**Commit:** 486fe6b
+
+**Learning:** When EF Core SQLite dependencies have known vulnerabilities and the latest EF version hasn't caught up, adding an explicit SQLitePCLRaw.bundle_e_sqlite3 PackageReference at a patched version (3.0.3+) forces NuGet to resolve the safer transitive dependency chain.
+

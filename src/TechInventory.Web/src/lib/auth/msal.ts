@@ -34,8 +34,7 @@ export const msalConfig: Configuration = {
 		knownAuthorities: ['login.microsoftonline.com']
 	},
 	cache: {
-		cacheLocation: BrowserCacheLocation.SessionStorage, // NEVER localStorage
-		storeAuthStateInCookie: false // Modern browsers handle PKCE redirects; no cookie fallback needed
+		cacheLocation: BrowserCacheLocation.SessionStorage // NEVER localStorage
 	}
 };
 

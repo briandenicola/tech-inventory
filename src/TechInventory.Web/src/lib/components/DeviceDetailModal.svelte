@@ -11,9 +11,11 @@
 	import DeleteDeviceModal from '$lib/components/DeleteDeviceModal.svelte';
 	import ClaimOwnershipModal from '$lib/components/ClaimOwnershipModal.svelte';
 	import ReleaseOwnershipModal from '$lib/components/ReleaseOwnershipModal.svelte';
+	import RetireDeviceModal from '$lib/components/RetireDeviceModal.svelte';
 	import AuditLogModal from '$lib/components/AuditLogModal.svelte';
 	import DeviceActionsMenu from '$lib/components/DeviceActionsMenu.svelte';
 	import DeviceDetailFields from '$lib/components/DeviceDetailFields.svelte';
+	import { buildRetireDeviceRequest, canRetireDevice } from '$lib/utils/deviceRetirement';
 	import type { DeviceResponse } from '$lib/queries/devices.svelte';
 	import type { components } from '$lib/api/generated/types';
 
@@ -39,6 +41,7 @@
 	let showDeleteModal = $state(false);
 	let showClaimModal = $state(false);
 	let showReleaseModal = $state(false);
+	let showRetireModal = $state(false);
 	let showHistoryDrawer = $state(false);
 
 	let dialogElement = $state<HTMLDivElement | null>(null);
@@ -48,6 +51,7 @@
 	const canViewHistory = $derived(currentUser?.role === 'Admin');
 	const canClaim = $derived(device && currentUser && device.ownerId !== currentUser.id);
 	const canRelease = $derived(device && currentUser && device.ownerId === currentUser.id);
+	const canRetire = $derived(canRetireDevice(device, currentUser));
 
 	async function fetchDevice() {
 		isLoading = true;
@@ -220,6 +224,30 @@
 		}
 	}
 
+	async function handleRetire() {
+		if (!device) return;
+
+		try {
+			await devices.update(device.id, buildRetireDeviceRequest(device, new Date().toISOString()));
+			invalidateDevicesCache();
+			await fetchDevice();
+			showToast({
+				type: 'success',
+				message: t('devices.retire.toast.success').replace('{name}', device.name ?? 'Device')
+			});
+			onChanged?.();
+		} catch (err) {
+			console.error('[DeviceDetailModal] Retire failed:', err);
+			const errorMsg =
+				err instanceof Error && 'detail' in err
+					? (err as unknown as { detail: string }).detail
+					: 'Failed to retire device';
+			showToast({ type: 'error', message: errorMsg });
+		} finally {
+			showRetireModal = false;
+		}
+	}
+
 	function handleViewHistory() {
 		if (device) {
 			showHistoryDrawer = true;
@@ -259,6 +287,7 @@
 			!showDeleteModal &&
 			!showClaimModal &&
 			!showReleaseModal &&
+			!showRetireModal &&
 			!showHistoryDrawer
 		) {
 			onClose();
@@ -331,6 +360,7 @@
 							editHref={canEdit ? `/devices/${device.id}/edit` : undefined}
 							onClaim={canClaim ? () => (showClaimModal = true) : undefined}
 							onRelease={canRelease ? () => (showReleaseModal = true) : undefined}
+							onRetire={canRetire ? () => (showRetireModal = true) : undefined}
 							onViewHistory={canViewHistory ? handleViewHistory : undefined}
 							onDelete={canDelete ? () => (showDeleteModal = true) : undefined}
 						/>
@@ -417,6 +447,14 @@
 		deviceName={device.name ?? 'Device'}
 		onConfirm={handleReleaseOwnership}
 		onCancel={() => (showReleaseModal = false)}
+	/>
+{/if}
+
+{#if showRetireModal && device}
+	<RetireDeviceModal
+		deviceName={device.name ?? 'Device'}
+		onConfirm={handleRetire}
+		onCancel={() => (showRetireModal = false)}
 	/>
 {/if}
 

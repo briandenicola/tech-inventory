@@ -6,17 +6,18 @@
 		editHref?: string;
 		onClaim?: () => void;
 		onRelease?: () => void;
+		onRetire?: () => void;
 		onViewHistory?: () => void;
 		onDelete?: () => void;
 	}
 
-	let { editHref, onClaim, onRelease, onViewHistory, onDelete }: Props = $props();
+	let { editHref, onClaim, onRelease, onRetire, onViewHistory, onDelete }: Props = $props();
 
 	let isOpen = $state(false);
 	let rootElement = $state<HTMLDivElement | null>(null);
 
 	const hasActions = $derived(
-		Boolean(editHref || onClaim || onRelease || onViewHistory || onDelete)
+		Boolean(editHref || onClaim || onRelease || onRetire || onViewHistory || onDelete)
 	);
 
 	async function openMenu() {
@@ -118,6 +119,19 @@
 							class="flex min-h-11 w-full items-center rounded-xl px-3 py-2 text-left text-sm font-medium text-warning-700 transition-colors hover:bg-warning-50 focus:outline-none focus:ring-2 focus:ring-warning-500 dark:text-warning-300 dark:hover:bg-neutral-800"
 						>
 							{t('devices.detail.releaseButton')}
+						</button>
+					{/if}
+					{#if onRetire}
+						<button
+							data-device-action
+							type="button"
+							onclick={() => {
+								closeMenu();
+								onRetire?.();
+							}}
+							class="flex min-h-11 w-full items-center rounded-xl px-3 py-2 text-left text-sm font-medium text-warning-700 transition-colors hover:bg-warning-50 focus:outline-none focus:ring-2 focus:ring-warning-500 dark:text-warning-300 dark:hover:bg-neutral-800"
+						>
+							{t('devices.retire.button')}
 						</button>
 					{/if}
 					{#if onViewHistory}

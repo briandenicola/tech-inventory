@@ -13,9 +13,11 @@
 	import DeleteDeviceModal from '$lib/components/DeleteDeviceModal.svelte';
 	import ClaimOwnershipModal from '$lib/components/ClaimOwnershipModal.svelte';
 	import ReleaseOwnershipModal from '$lib/components/ReleaseOwnershipModal.svelte';
+	import RetireDeviceModal from '$lib/components/RetireDeviceModal.svelte';
 	import AuditLogModal from '$lib/components/AuditLogModal.svelte';
 	import DeviceActionsMenu from '$lib/components/DeviceActionsMenu.svelte';
 	import DeviceDetailFields from '$lib/components/DeviceDetailFields.svelte';
+	import { buildRetireDeviceRequest, canRetireDevice } from '$lib/utils/deviceRetirement';
 	import type { DeviceResponse } from '$lib/queries/devices.svelte';
 
 	/**
@@ -48,6 +50,7 @@
 	let showDeleteModal = $state(false);
 	let showClaimModal = $state(false);
 	let showReleaseModal = $state(false);
+	let showRetireModal = $state(false);
 	let showAuditLogModal = $state(false);
 
 	// Role checks
@@ -60,6 +63,8 @@
 	const canClaim = $derived(device && currentUser && device.ownerId !== currentUser.id);
 	// Release: visible when current user IS the owner
 	const canRelease = $derived(device && currentUser && device.ownerId === currentUser.id);
+	// Retire: visible when device is Active and user can edit
+	const canRetire = $derived(canRetireDevice(device, currentUser));
 
 	// Fetch device
 	async function fetchDevice() {
@@ -245,15 +250,39 @@
 			showReleaseModal = false;
 		}
 	}
+
+	// Handle retire device
+	async function handleRetire() {
+		if (!device) return;
+
+		try {
+			await devices.update(device.id, buildRetireDeviceRequest(device, new Date().toISOString()));
+			invalidateDevicesCache();
+			// Refetch device detail to show updated status
+			await fetchDevice();
+			showToast({
+				type: 'success',
+				message: t('devices.retire.toast.success').replace('{name}', device.name ?? 'Device')
+			});
+		} catch (err) {
+			console.error('[device-detail] Retire device failed:', err);
+			const errorMsg =
+				err instanceof Error && 'detail' in err
+					? (err as unknown as { detail: string }).detail
+					: 'Failed to retire device';
+			showToast({ type: 'error', message: errorMsg });
+		} finally {
+			showRetireModal = false;
+		}
+	}
 </script>
 
 <svelte:head>
 	<title>{t('devices.detail.title')} — {t('app.title')}</title>
 </svelte:head>
 
-<!-- Breadcrumbs -->
-<div class="pb-24">
-<nav class="mb-4 flex text-sm text-neutral-600 dark:text-neutral-400" aria-label="Breadcrumb">
+<div class="-mt-4 pb-24 sm:mt-0">
+<nav class="mb-4 hidden text-sm text-neutral-600 dark:text-neutral-400 sm:flex" aria-label="Breadcrumb">
 	<ol class="flex items-center space-x-2">
 		<li>
 			<a href="/" class="hover:text-primary-600 dark:hover:text-primary-400">
@@ -290,7 +319,7 @@
 </nav>
 
 <!-- Page header -->
-<div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+<div class="mb-4 flex items-start justify-between gap-3 sm:mb-6">
 	<div class="min-w-0">
 		<!--
 			Mobile: large "Device Details" wrapped under the action row and felt
@@ -302,18 +331,19 @@
 			{t('devices.detail.title')}
 		</p>
 		<h1
-			class="mt-1 text-xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 sm:text-2xl"
+			class="mt-1 truncate text-lg font-bold tracking-tight text-neutral-900 dark:text-neutral-100 sm:text-2xl"
 		>
 			{device?.name ?? '—'}
 		</h1>
 	</div>
 
 	{#if device && !isLoading}
-		<div class="flex justify-end">
+		<div class="flex shrink-0 justify-end">
 			<DeviceActionsMenu
 				editHref={canEdit ? `/devices/${device.id}/edit` : undefined}
 				onClaim={canClaim ? () => (showClaimModal = true) : undefined}
 				onRelease={canRelease ? () => (showReleaseModal = true) : undefined}
+				onRetire={canRetire ? () => (showRetireModal = true) : undefined}
 				onViewHistory={canViewHistory ? () => (showAuditLogModal = true) : undefined}
 				onDelete={canDelete ? () => (showDeleteModal = true) : undefined}
 			/>
@@ -397,6 +427,15 @@
 		deviceName={device.name ?? 'Device'}
 		onConfirm={handleReleaseOwnership}
 		onCancel={() => (showReleaseModal = false)}
+	/>
+{/if}
+
+<!-- Retire device modal -->
+{#if showRetireModal && device}
+	<RetireDeviceModal
+		deviceName={device.name ?? 'Device'}
+		onConfirm={handleRetire}
+		onCancel={() => (showRetireModal = false)}
 	/>
 {/if}
 

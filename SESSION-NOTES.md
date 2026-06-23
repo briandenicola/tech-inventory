@@ -4,6 +4,15 @@ Append-only log. Newest entries at the top.
 
 ---
 
+## 2026-06-23 — Device retire action + list view-state continuity
+
+- Added a detail-screen **Retire Device** action for active devices in `DeviceActionsMenu.svelte`, backed by `RetireDeviceModal.svelte` and shared `deviceRetirement.ts` helpers; Admins can retire any active device and Members only active devices they own.
+- Added session-scoped `/devices` view-state continuity in `src\TechInventory.Web\src\lib\stores\viewState.ts`: list filter/sort/search/group params survive detail/edit/create navigation while the transient `device` modal param is stripped; explicit saved default views remain in `userPrefs.ts`.
+- Tightened mobile PWA spacing on the direct device detail page by hiding breadcrumbs on small screens, moving the header up, and aligning the title/actions in one row.
+- Validation: focused Vitest suite ✅ (`viewState`, `deviceRetirement`, `DeviceActionsMenu`, `RetireDeviceModal`), `pnpm run check` ✅, `pnpm run lint` ✅, `pnpm run build` ✅.
+
+---
+
 ## 2026-05-21 — v1.0 Shipped + Documentation Alignment
 
 - **v1.0 Release**: Version bumped 0.1.0 → 1.0.0 (commit `0e6ef92`). All v1 features complete.

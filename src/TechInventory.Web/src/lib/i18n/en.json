@@ -221,6 +221,17 @@
 				"success": "Ownership released for {name}"
 			}
 		},
+		"retire": {
+			"button": "Retire Device",
+			"modal": {
+				"title": "Retire Device",
+				"body": "Mark this device as retired? It will remain in the inventory but be filtered from the active list by default.",
+				"confirm": "Retire"
+			},
+			"toast": {
+				"success": "{name} retired successfully"
+			}
+		},
 		"create": {
 			"title": "Add Device",
 			"subtitle": "Enter device information"

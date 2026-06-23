@@ -25,6 +25,11 @@
 		setDevicesViewMode,
 		type DevicesViewMode
 	} from '$lib/stores/userPrefs';
+	import {
+		getDevicesViewState,
+		setDevicesViewState,
+		clearDevicesViewState
+	} from '$lib/stores/viewState';
 	import { showToast } from '$lib/stores/toast';
 	import DeviceTable from '$lib/components/DeviceTable.svelte';
 	import DeviceFilters from '$lib/components/DeviceFilters.svelte';
@@ -288,8 +293,17 @@
 	}
 	onMount(() => {
 		refreshStoredDefault();
+		
+		// Check for session view state first (navigation continuity)
+		const sessionState = getDevicesViewState();
 		const bareEntry = $page.url.search === '' || $page.url.search === '?';
-		if (bareEntry && storedDefault) {
+		
+		if (sessionState && bareEntry) {
+			// Restore session state and clear it (one-time restore)
+			clearDevicesViewState();
+			void goto(`?${sessionState}`, { replaceState: true, keepFocus: true, noScroll: true });
+		} else if (bareEntry && storedDefault) {
+			// Fall back to saved default view if no session state
 			void goto(`?${storedDefault}`, { replaceState: true, keepFocus: true, noScroll: true });
 		}
 
@@ -320,6 +334,11 @@
 	const currentQueryNormalized = $derived(normalizeQueryString($page.url.search));
 	const hasStoredDefault = $derived(storedDefault !== null);
 	const canSaveDefault = $derived(currentQueryNormalized !== storedDefault);
+	
+	// Persist current view state to session storage whenever URL changes (for navigation continuity)
+	$effect(() => {
+		setDevicesViewState($page.url.search);
+	});
 
 	function handleSaveDefault() {
 		if (!currentUser?.id) return;

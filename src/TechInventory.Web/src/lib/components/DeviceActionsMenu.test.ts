@@ -38,6 +38,24 @@ describe('DeviceActionsMenu', () => {
 		expect(onDelete).toHaveBeenCalledOnce();
 	});
 
+	it('shows retire action when provided', async () => {
+		const user = userEvent.setup();
+		const onRetire = vi.fn();
+
+		render(DeviceActionsMenu, {
+			props: {
+				onRetire
+			}
+		});
+
+		await user.click(screen.getByRole('button', { name: /more actions/i }));
+		
+		expect(screen.getByText('Retire Device')).toBeInTheDocument();
+		
+		await user.click(screen.getByRole('button', { name: 'Retire Device' }));
+		expect(onRetire).toHaveBeenCalledOnce();
+	});
+
 	it('closes on escape', async () => {
 		const user = userEvent.setup();
 
@@ -61,6 +79,7 @@ describe('DeviceActionsMenu', () => {
 			props: {
 				editHref: '/devices/device-1/edit',
 				onRelease: vi.fn(),
+				onRetire: vi.fn(),
 				onDelete: vi.fn()
 			}
 		});

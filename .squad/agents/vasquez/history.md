@@ -556,3 +556,28 @@ Constitution violation (§4.3: components <200 lines):
 - D-172: Device Form UI Regression Fixes
 
 **Next Steps:** Fix grouped view pagination, refactor large components, coordinate with Hicks on filter contract.
+## 2026-06-23: Device Retire Action + View State Persistence
+
+Added retire device action to detail overflow menu and implemented view state persistence for the devices list.
+
+**What I shipped:**
+- **Retire Action:** New `RetireDeviceModal.svelte` following the pattern of `ReleaseOwnershipModal.svelte`. Shows only when device is Active and user can mutate. Updates device status to 'Retired' via `devices.update()` API call, sets retiredDate to current timestamp, invalidates cache, refetches device detail, shows toast. Wired into both `DeviceDetailModal.svelte` and `[id]/+page.svelte`.
+- **View State Persistence:** New `viewState.ts` store using sessionStorage (not localStorage) for transient navigation continuity. When user filters/sorts/searches on `/devices`, the URL search params are auto-saved to sessionStorage. On bare-URL return to `/devices`, session state takes precedence over saved default view. Session state is one-time restore (cleared after use). Preserves existing saved-default behavior for long-term preferences.
+- **i18n:** Added `devices.retire` section with `button`, `modal.title`, `modal.body`, `modal.confirm`, and `toast.success` keys to `en.json`.
+- **Tests:** 19 passing tests across `DeviceActionsMenu.test.ts`, `RetireDeviceModal.test.ts`, and `viewState.test.ts`. Covered retire action rendering/invocation, modal confirm/cancel/escape, processing state, accessibility, session storage read/write/clear, and complex filter persistence.
+
+**Key decisions:**
+- Used `devices.update()` rather than inventing a new `/retire` endpoint — retire is a status change with a timestamp, not a distinct operation. Mirrors the existing CRUD pattern.
+- Used sessionStorage (not localStorage) for view state to ensure it's truly navigation continuity within the current session, not a long-term preference that persists across browser restarts. This avoids confusion with the existing saved-default feature.
+- Session state takes precedence in bare-URL scenario but is cleared after restore, so the second bare-URL visit falls back to saved default. This gives "back button works" behavior without permanently overriding the user's explicit saved preference.
+- Retire action only shows when device.status === 'Active' — retired/disposed/etc devices don't need another retire action.
+- TypeScript fix: Device properties from API can be `null`, but update endpoint expects `undefined` for optional fields. Used `?? undefined` coercion in retire handlers.
+
+**What I learned:**
+- The existing `/devices` onMount logic checks for `storedDefault` (localStorage, long-term) and applies it on bare-URL entry. Adding session state required checking session first, then falling back to default, with a one-time clear pattern to avoid infinite loops.
+- The `$effect` hook is the right place to auto-save URL changes to sessionStorage. Runs reactively whenever `$page.url.search` changes, so filters/sorts/search/pagination all persist transparently without explicit save calls.
+- The `devices.update()` API requires the full device object including all nullable fields. Can't do a partial PATCH. This means retire action must read current device state and re-send it with only `status` and `retiredDate` changed.
+- The generated TypeScript client types are strict about `null` vs `undefined`. Device response from API has `string | null` for optional fields, but update request body expects `string | undefined`. The `?? undefined` coercion is required for type safety.
+
+---
+

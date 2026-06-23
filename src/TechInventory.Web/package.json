@@ -51,7 +51,7 @@
     "workbox-window": "^7.4.1"
   },
   "dependencies": {
-    "@azure/msal-browser": "^3.28.0",
+    "@azure/msal-browser": "^5.13.0",
     "zod": "^4.4.3"
   }
 }

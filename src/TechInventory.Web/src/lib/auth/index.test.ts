@@ -38,9 +38,11 @@ vi.mock('./msal', () => ({
 
 import {
 	acquireApiToken,
+	clearAutoInteractiveSignInSuppression,
 	getActiveAccount,
 	handleRedirectPromise as handleAuthRedirectPromise,
 	shouldAutoStartInteractiveSignIn,
+	suppressAutoInteractiveSignIn,
 	tryAcquireApiTokenSilent
 } from './index';
 
@@ -148,6 +150,16 @@ describe('auth helpers', () => {
 		sessionStorage.removeItem('ti_silent_sso_suppressed');
 	});
 
+	it('does not auto-start interactive sign-in after the one-shot redirect guard is armed', () => {
+		getAllAccounts.mockReturnValue([account]);
+		suppressAutoInteractiveSignIn();
+
+		expect(shouldAutoStartInteractiveSignIn()).toBe(false);
+
+		clearAutoInteractiveSignInSuppression();
+		expect(shouldAutoStartInteractiveSignIn()).toBe(true);
+	});
+
 	it('falls back to interactive redirect for API calls after a silent miss', async () => {
 		getAllAccounts.mockReturnValue([account]);
 		acquireTokenSilent.mockRejectedValue({ errorCode: 'interaction_required' });
@@ -160,10 +172,12 @@ describe('auth helpers', () => {
 	});
 
 	it('passes through MSAL redirect results after initialization', async () => {
+		sessionStorage.setItem('ti_auto_interactive_signin_suppressed', 'true');
 		handleRedirectPromise.mockResolvedValue(authResult);
 
 		await expect(handleAuthRedirectPromise()).resolves.toEqual(authResult);
 		expect(ensureMsalInitialized).toHaveBeenCalled();
 		expect(setActiveAccount).toHaveBeenCalledWith(account);
+		expect(sessionStorage.getItem('ti_auto_interactive_signin_suppressed')).toBeNull();
 	});
 });

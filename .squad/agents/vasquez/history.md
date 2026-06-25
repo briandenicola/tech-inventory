@@ -581,3 +581,5 @@ Added retire device action to detail overflow menu and implemented view state pe
 
 ---
 
+
+**2026-06-25 (PR #58 auth hardening):** `/auth/login` now arms a per-tab `sessionStorage` one-shot guard (`ti_auto_interactive_signin_suppressed`) before auto-started MSAL `loginRedirect()`. Successful redirect/silent token restore clears the guard; manual Entra sign-in clears it explicitly so break-glass local login stays reachable after cancelled/failed interactive attempts.

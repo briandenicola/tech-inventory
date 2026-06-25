@@ -1,6 +1,11 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { clearSilentSsoSuppression, shouldAutoStartInteractiveSignIn } from '$lib/auth';
+	import {
+		clearAutoInteractiveSignInSuppression,
+		clearSilentSsoSuppression,
+		shouldAutoStartInteractiveSignIn,
+		suppressAutoInteractiveSignIn
+	} from '$lib/auth';
 	import { msalInstance, loginRequest, ensureMsalInitialized } from '$lib/auth/msal';
 	import { authStore } from '$lib/stores/auth';
 	import { t } from '$lib/i18n';
@@ -51,13 +56,18 @@
 		}
 
 		attemptedAutoSignIn = true;
-		void handleSignIn();
+		void handleSignIn({ autoStarted: true });
 	});
 
-	async function handleSignIn() {
+	async function handleSignIn({ autoStarted = false }: { autoStarted?: boolean } = {}) {
 		try {
 			isRedirecting = true;
-			clearSilentSsoSuppression();
+			if (autoStarted) {
+				suppressAutoInteractiveSignIn();
+			} else {
+				clearSilentSsoSuppression();
+				clearAutoInteractiveSignInSuppression();
+			}
 			await ensureMsalInitialized();
 			// Per T09 DoD + J1: Call loginRedirect with API scope + OIDC scopes.
 			// PKCE is maintained by MSAL's redirect flow.
@@ -137,7 +147,7 @@
 					type="button"
 					class="flex w-full items-center justify-center rounded-lg bg-primary-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:cursor-not-allowed disabled:opacity-50"
 					disabled={isRedirecting}
-					onclick={handleSignIn}
+					onclick={() => handleSignIn()}
 				>
 					{#if isRedirecting}
 						<svg

@@ -4,6 +4,6 @@
   "private": true,
   "description": "Root devtools for Tech Inventory monorepo",
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^9.2.3"
   }
 }

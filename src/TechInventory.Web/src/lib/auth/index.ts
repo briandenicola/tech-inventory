@@ -15,6 +15,7 @@ import type {
 } from '@azure/msal-browser';
 
 const SILENT_SSO_SUPPRESS_KEY = 'ti_silent_sso_suppressed';
+const AUTO_INTERACTIVE_SIGN_IN_SUPPRESS_KEY = 'ti_auto_interactive_signin_suppressed';
 
 export interface TryAcquireApiTokenSilentOptions {
 	timeoutMs?: number;
@@ -30,9 +31,32 @@ export function clearSilentSsoSuppression(): void {
 	sessionStorage.removeItem(SILENT_SSO_SUPPRESS_KEY);
 }
 
+export function suppressAutoInteractiveSignIn(): void {
+	if (typeof sessionStorage === 'undefined') return;
+	sessionStorage.setItem(AUTO_INTERACTIVE_SIGN_IN_SUPPRESS_KEY, 'true');
+}
+
+export function clearAutoInteractiveSignInSuppression(): void {
+	if (typeof sessionStorage === 'undefined') return;
+	sessionStorage.removeItem(AUTO_INTERACTIVE_SIGN_IN_SUPPRESS_KEY);
+}
+
 function isSilentSsoSuppressed(): boolean {
 	if (typeof sessionStorage === 'undefined') return false;
 	return sessionStorage.getItem(SILENT_SSO_SUPPRESS_KEY) === 'true';
+}
+
+function isAutoInteractiveSignInSuppressed(): boolean {
+	if (typeof sessionStorage === 'undefined') return false;
+	return sessionStorage.getItem(AUTO_INTERACTIVE_SIGN_IN_SUPPRESS_KEY) === 'true';
+}
+
+export function shouldAutoStartInteractiveSignIn(): boolean {
+	return (
+		!isSilentSsoSuppressed() &&
+		!isAutoInteractiveSignInSuppressed() &&
+		msalInstance.getAllAccounts().length > 0
+	);
 }
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs?: number): Promise<T> {
@@ -81,6 +105,7 @@ export async function handleRedirectPromise(): Promise<AuthenticationResult | nu
 	if (result?.account) {
 		msalInstance.setActiveAccount(result.account);
 		clearSilentSsoSuppression();
+		clearAutoInteractiveSignInSuppression();
 	}
 	return result;
 }
@@ -144,6 +169,7 @@ export async function acquireApiToken(): Promise<string | null> {
 
 	console.info('[auth] Silent token acquisition failed; redirecting to Entra for interactive auth');
 	clearSilentSsoSuppression();
+	clearAutoInteractiveSignInSuppression();
 	// This will redirect the user to Entra; they'll return via handleRedirectPromise
 	// The calling code won't receive a response — redirect is a full navigation
 	await msalInstance.acquireTokenRedirect(request);
@@ -176,6 +202,7 @@ export async function tryAcquireApiTokenSilent(
 			msalInstance.setActiveAccount(resolvedAccount);
 		}
 		clearSilentSsoSuppression();
+		clearAutoInteractiveSignInSuppression();
 		return result;
 	} catch (error) {
 		if (isInteractionRequiredError(error)) {

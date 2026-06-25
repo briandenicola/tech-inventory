@@ -38,8 +38,11 @@ vi.mock('./msal', () => ({
 
 import {
 	acquireApiToken,
+	clearAutoInteractiveSignInSuppression,
 	getActiveAccount,
 	handleRedirectPromise as handleAuthRedirectPromise,
+	shouldAutoStartInteractiveSignIn,
+	suppressAutoInteractiveSignIn,
 	tryAcquireApiTokenSilent
 } from './index';
 
@@ -127,6 +130,36 @@ describe('auth helpers', () => {
 		expect(ssoSilent).not.toHaveBeenCalled();
 	});
 
+	it('auto-starts interactive sign-in when a cached account exists and suppression is clear', () => {
+		getAllAccounts.mockReturnValue([account]);
+
+		expect(shouldAutoStartInteractiveSignIn()).toBe(true);
+	});
+
+	it('does not auto-start interactive sign-in when no cached accounts exist', () => {
+		getAllAccounts.mockReturnValue([]);
+
+		expect(shouldAutoStartInteractiveSignIn()).toBe(false);
+	});
+
+	it('does not auto-start interactive sign-in when suppression is active', () => {
+		getAllAccounts.mockReturnValue([account]);
+		sessionStorage.setItem('ti_silent_sso_suppressed', 'true');
+
+		expect(shouldAutoStartInteractiveSignIn()).toBe(false);
+		sessionStorage.removeItem('ti_silent_sso_suppressed');
+	});
+
+	it('does not auto-start interactive sign-in after the one-shot redirect guard is armed', () => {
+		getAllAccounts.mockReturnValue([account]);
+		suppressAutoInteractiveSignIn();
+
+		expect(shouldAutoStartInteractiveSignIn()).toBe(false);
+
+		clearAutoInteractiveSignInSuppression();
+		expect(shouldAutoStartInteractiveSignIn()).toBe(true);
+	});
+
 	it('falls back to interactive redirect for API calls after a silent miss', async () => {
 		getAllAccounts.mockReturnValue([account]);
 		acquireTokenSilent.mockRejectedValue({ errorCode: 'interaction_required' });
@@ -139,10 +172,12 @@ describe('auth helpers', () => {
 	});
 
 	it('passes through MSAL redirect results after initialization', async () => {
+		sessionStorage.setItem('ti_auto_interactive_signin_suppressed', 'true');
 		handleRedirectPromise.mockResolvedValue(authResult);
 
 		await expect(handleAuthRedirectPromise()).resolves.toEqual(authResult);
 		expect(ensureMsalInitialized).toHaveBeenCalled();
 		expect(setActiveAccount).toHaveBeenCalledWith(account);
+		expect(sessionStorage.getItem('ti_auto_interactive_signin_suppressed')).toBeNull();
 	});
 });

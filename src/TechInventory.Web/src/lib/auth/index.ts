@@ -35,6 +35,10 @@ function isSilentSsoSuppressed(): boolean {
 	return sessionStorage.getItem(SILENT_SSO_SUPPRESS_KEY) === 'true';
 }
 
+export function shouldAutoStartInteractiveSignIn(): boolean {
+	return !isSilentSsoSuppressed() && msalInstance.getAllAccounts().length > 0;
+}
+
 async function withTimeout<T>(promise: Promise<T>, timeoutMs?: number): Promise<T> {
 	if (!timeoutMs || timeoutMs <= 0) {
 		return await promise;

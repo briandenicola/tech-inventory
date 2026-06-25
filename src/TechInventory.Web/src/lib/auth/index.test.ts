@@ -40,6 +40,7 @@ import {
 	acquireApiToken,
 	getActiveAccount,
 	handleRedirectPromise as handleAuthRedirectPromise,
+	shouldAutoStartInteractiveSignIn,
 	tryAcquireApiTokenSilent
 } from './index';
 
@@ -125,6 +126,19 @@ describe('auth helpers', () => {
 		await expect(tryAcquireApiTokenSilent()).resolves.toBeNull();
 		expect(acquireTokenSilent).not.toHaveBeenCalled();
 		expect(ssoSilent).not.toHaveBeenCalled();
+	});
+
+	it('auto-starts interactive sign-in when a cached account exists and suppression is clear', () => {
+		getAllAccounts.mockReturnValue([account]);
+
+		expect(shouldAutoStartInteractiveSignIn()).toBe(true);
+	});
+
+	it('does not auto-start interactive sign-in when suppression is active', () => {
+		getAllAccounts.mockReturnValue([account]);
+		sessionStorage.setItem('ti_silent_sso_suppressed', 'true');
+
+		expect(shouldAutoStartInteractiveSignIn()).toBe(false);
 	});
 
 	it('falls back to interactive redirect for API calls after a silent miss', async () => {

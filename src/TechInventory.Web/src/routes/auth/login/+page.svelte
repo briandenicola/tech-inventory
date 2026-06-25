@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { clearSilentSsoSuppression } from '$lib/auth';
+	import { clearSilentSsoSuppression, shouldAutoStartInteractiveSignIn } from '$lib/auth';
 	import { msalInstance, loginRequest, ensureMsalInitialized } from '$lib/auth/msal';
 	import { authStore } from '$lib/stores/auth';
 	import { t } from '$lib/i18n';
@@ -12,6 +12,7 @@
 	let isRedirecting = $state(false);
 	let showLocalForm = $state(false);
 	let showLoadingSpinner = $state(false);
+	let attemptedAutoSignIn = $state(false);
 
 	$effect(() => {
 		const state = $authStore;
@@ -34,6 +35,23 @@
 			window.clearTimeout(timer);
 			showLoadingSpinner = false;
 		};
+	});
+
+	$effect(() => {
+		const state = $authStore;
+		if (
+			attemptedAutoSignIn ||
+			state.isLoading ||
+			state.isAuthenticated ||
+			isRedirecting ||
+			showLocalForm ||
+			!shouldAutoStartInteractiveSignIn()
+		) {
+			return;
+		}
+
+		attemptedAutoSignIn = true;
+		void handleSignIn();
 	});
 
 	async function handleSignIn() {

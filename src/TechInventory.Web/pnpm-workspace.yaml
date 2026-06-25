@@ -4,3 +4,5 @@ allowBuilds:
 overrides:
   cookie: ^0.7.0
   esbuild: ^0.25.0
+  js-yaml: ^4.2.0
+  undici: ^7.28.0

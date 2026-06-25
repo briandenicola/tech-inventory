@@ -134,11 +134,18 @@ describe('auth helpers', () => {
 		expect(shouldAutoStartInteractiveSignIn()).toBe(true);
 	});
 
+	it('does not auto-start interactive sign-in when no cached accounts exist', () => {
+		getAllAccounts.mockReturnValue([]);
+
+		expect(shouldAutoStartInteractiveSignIn()).toBe(false);
+	});
+
 	it('does not auto-start interactive sign-in when suppression is active', () => {
 		getAllAccounts.mockReturnValue([account]);
 		sessionStorage.setItem('ti_silent_sso_suppressed', 'true');
 
 		expect(shouldAutoStartInteractiveSignIn()).toBe(false);
+		sessionStorage.removeItem('ti_silent_sso_suppressed');
 	});
 
 	it('falls back to interactive redirect for API calls after a silent miss', async () => {

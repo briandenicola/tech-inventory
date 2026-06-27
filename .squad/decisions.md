@@ -4336,6 +4336,146 @@ New test in `DeviceTable.test.ts` verifies:
 
 ---
 
+### D-170: iOS Standalone PWA Auto-Redirect Gate — Entra SSO Reuse
+
+**Author:** Bishop (Security & Auth Specialist)  
+**Date:** 2026-06-26  
+**Status:** Approved  
+**Related:** D-002, D-050, D-120, D-150, D-169, Constitution §5.1 & §6.5.10, `docs/auth-design.md` §3
+
+**Context**
+
+iOS standalone PWA launches (add-to-home-screen) commonly start with an empty per-launch `sessionStorage`, even when Entra ID has a valid browser SSO session. This forces users to tap the Sign In button again, restarting the same Entra `loginRedirect` flow they already have a session for.
+
+**Decision**
+
+Approve automatic `loginRedirect` initiation for installed iOS standalone PWA mode only, after root auth bootstrap detects:
+1. No cached account in `sessionStorage`
+2. Bootstrap hydration complete (`$authStore.isLoading === false`, `$authStore.isAuthenticated === false`)
+
+This reuses the existing Entra browser SSO session, improving UX by eliminating a manual tap that invokes the same OIDC flow. Same trust boundary and PKCE verification as manual Sign In.
+
+**Constraints (All Must-Fix)**
+
+1. **Standalone-only gate:** Detect via `matchMedia('(display-mode: standalone)').matches || navigator.standalone === true`. Normal browser tabs keep the visible Sign In button and local-account fallback.
+
+2. **Bootstrap gate:** Auto-redirect only when `$authStore.isLoading === false && $authStore.isAuthenticated === false`. Do not start redirect during initialization.
+
+3. **Loop guard:** Set `sessionStorage._auth_suppress_auto_login` flag before calling `loginRedirect`. Clear only after successful redirect handling or explicit manual sign-in. If redirect fails, show button and fallback.
+
+4. **Sign-out guard:** Preserve existing sign-out suppression so intentional sign-out does not immediately re-authenticate.
+
+5. **Storage guard:** `offline_access` scope must not introduce custom refresh-token persistence. Tokens stay in MSAL/sessionStorage or memory only; no localStorage, logs, analytics, or app database storage.
+
+6. **Scope guard:** Add `offline_access` to the full interactive login request (improves refresh-token availability within MSAL's session-scoped cache). Keep `apiTokenRequest` to API scope only; no scope leakage to API token acquisition.
+
+7. **Test guard:** Cover standalone auto-redirect, non-standalone no-auto-redirect, suppression loop prevention, manual Sign In clearing suppression, local fallback reachability, and sign-out suppression.
+
+**Security Basis**
+
+- Constitution §5.1: OIDC authorization code + PKCE and rotated refresh tokens required.
+- Constitution §6.5.10 & D-002: Tokens never in localStorage; ASVS V2.10.2 enforced.
+- D-150: Silent-first bootstrap already approved as UX-only; tokens in MSAL, server default-deny unchanged.
+- D-169: Bounded fallback required (one auto redirect + session guard preserves this property).
+
+**Rationale**
+
+- Same PKCE/OIDC flow as manual Sign In; no new attack surface.
+- Standalone PWA is a single-origin context; Entra cookie reuse is safe.
+- Guard logic prevents redirect loops and respects manual sign-out.
+- `offline_access` scope in interactive request aligns with `docs/auth-design.md` and MSAL best practices.
+
+**Implementation Status**
+
+✅ Implemented in branch `fix/ios-pwa-silent-sso-redirect`:
+- Modified `src/TechInventory.Web/src/lib/auth/msal.ts` with standalone gate, bootstrap check, loop guard.
+- Modified `src/TechInventory.Web/src/lib/auth/index.ts` to expose bootstrap completion state.
+- Added `src/TechInventory.Web/src/lib/auth/msal.test.ts` with 12 tests covering all constraint scenarios.
+- Updated `src/TechInventory.Web/src/lib/auth/index.test.ts` (8 tests) and `src/routes/auth/login/page.test.ts`.
+- Updated `docs/auth-design.md` §3 with iOS standalone auto-redirect rationale.
+
+**Test Coverage**
+
+All 20 Vitest tests passing:
+- Standalone mode detection (matchMedia + navigator.standalone)
+- Non-standalone no-auto-redirect
+- Auto-redirect timing (bootstrap completion gate)
+- Suppression flag lifecycle
+- Loop prevention
+- Manual Sign In suppression clearing
+- `offline_access` scope handling
+- API token request scope unchanged
+- Local fallback reachability
+- Sign-out suppression preservation
+
+**Alternatives Rejected**
+
+- Moving tokens to localStorage: Violates D-002 and ASVS V2.10.2.
+- Indefinite auto-redirect loop: Violates D-169 bounded-fallback requirement.
+- Non-standalone auto-redirect: Breaks browser-tab use (users get forced redirect when they want the Sign In button visible).
+
+**Consequences**
+
+- iOS standalone PWA users get seamless SSO reuse (better UX).
+- Browser-tab users unaffected (Sign In button remains visible).
+- All OIDC and token-storage constraints maintained.
+- Zero changes to server auth model or default-deny enforcement.
+
+**Next Steps**
+
+PR from `fix/ios-pwa-silent-sso-redirect` → review → merge.
+
+---
+
+### D-171: iOS PWA Auth Branch Roadmap — `fix/ios-pwa-silent-sso-redirect`
+
+**Author:** Vasquez (Frontend) & Bishop (Security/Auth)  
+**Date:** 2026-06-26  
+**Status:** Approved  
+**Related:** D-170 (iOS auto-redirect constraints), D-002 (token storage), D-150 (silent bootstrap)
+
+**Branch:** `fix/ios-pwa-silent-sso-redirect`
+
+**Scope**
+
+Auth module hardening for iOS standalone PWA:
+- Entra cookie reuse in standalone mode (zero-tap sign-in when browser SSO exists)
+- No token storage changes; sessionStorage only
+- No auth logic changes; PKCE/OIDC flow unchanged
+- Scope: auth module + doc refresh only; no API or business logic changes
+
+**Targets**
+
+- `src/TechInventory.Web/src/lib/auth/msal.ts` — standalone-only auto-redirect gate
+- `src/TechInventory.Web/src/lib/auth/index.ts` — bootstrap completion state exposure
+- `src/TechInventory.Web/src/lib/auth/index.test.ts` — auth store initialization tests (8 tests)
+- `src/TechInventory.Web/src/lib/auth/msal.test.ts` — auto-redirect flow tests (12 tests, NEW)
+- `src/TechInventory.Web/src/routes/auth/login/page.test.ts` — fallback reachability tests
+- `docs/auth-design.md` § 3 — iOS standalone auto-redirect rationale and scope choice
+
+**Validation**
+
+✅ Vitest: 20/20 tests passing  
+✅ TypeScript check: clean  
+✅ ESLint: clean  
+✅ Vite build: success  
+✅ Git diff: no trailing whitespace/CRLF issues  
+✅ Security review: Bishop approved with 7 constraints (all implemented)
+
+**Deployment Readiness**
+
+- Ready for PR → review → merge
+- No breaking changes
+- No new dependencies
+- All mandatory tests passing
+- Documentation updated
+
+**Relationship to D-170**
+
+D-170 contains the security gates and constraints. D-171 is the implementation vehicle (branch + timeline).
+
+---
+
 ## Governance
 
 - All meaningful changes require team consensus

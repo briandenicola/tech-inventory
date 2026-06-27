@@ -39,11 +39,11 @@ export const msalConfig: Configuration = {
 };
 
 /**
- * Login request scopes (openid, profile, API scope)
+ * Login request scopes (openid, profile, offline_access, API scope)
  * Used for full sign-in flow (loginRedirect)
  */
 export const loginRequest: RedirectRequest = {
-	scopes: [API_SCOPE, 'openid', 'profile']
+	scopes: [API_SCOPE, 'openid', 'profile', 'offline_access']
 };
 
 /**

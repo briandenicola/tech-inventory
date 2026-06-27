@@ -583,3 +583,80 @@ Added retire device action to detail overflow menu and implemented view state pe
 
 
 **2026-06-25 (PR #58 auth hardening):** `/auth/login` now arms a per-tab `sessionStorage` one-shot guard (`ti_auto_interactive_signin_suppressed`) before auto-started MSAL `loginRedirect()`. Successful redirect/silent token restore clears the guard; manual Entra sign-in clears it explicitly so break-glass local login stays reachable after cancelled/failed interactive attempts.
+
+---
+
+### 2026-06-26: iOS Standalone PWA Silent SSO Redirect
+
+**Branch:** `fix/ios-pwa-silent-sso-redirect`  
+**Session Log:** `.squad/log/2026-06-26T19-16-04Z-ios-pwa-auth-fix.md`  
+**Decision Merged:** D-170 (iOS Auto-Redirect Gate), D-171 (Branch Roadmap)
+
+**What I shipped:**
+
+iOS standalone PWA now auto-initiates Entra `loginRedirect` after boot-level auth bootstrap detects no cached account, eliminating the manual Sign In tap that users were already manually re-triggering. Reuses the browser's Entra SSO session; same PKCE/OIDC flow as manual button, zero auth-model changes.
+
+**Implementation:**
+
+1. **`src/lib/auth/msal.ts`** — Standalone-only gate:
+   - Detects standalone PWA via `matchMedia('(display-mode: standalone)').matches || navigator.standalone === true`
+   - Waits for bootstrap completion: `isLoading === false && isAuthenticated === false`
+   - Sets `sessionStorage._auth_suppress_auto_login` suppression flag before `loginRedirect()`
+   - Flag cleared only after redirect success or explicit manual sign-in
+   - Added `offline_access` scope to interactive login request (improves MSAL refresh-token availability)
+
+2. **`src/lib/auth/index.ts`** — Bootstrap state exposure:
+   - Refactored auth store to expose `isLoading` signal so msal.ts can gate redirect timing
+   - Maintains existing token hydration from sessionStorage
+
+3. **`src/lib/auth/index.test.ts`** (8 new tests):
+   - Store initialization from sessionStorage hydration
+   - Cached account detection
+   - Bootstrap completion signaling
+   - MSAL initialization with correct scopes
+
+4. **`src/lib/auth/msal.test.ts`** (NEW, 12 comprehensive tests):
+   - Standalone mode detection (matchMedia + navigator.standalone)
+   - Non-standalone behavior (no auto-redirect)
+   - Auto-redirect timing gates (bootstrap completion)
+   - Suppression flag lifecycle (set, clear, re-entry prevention)
+   - Manual Sign In suppression clearing
+   - `offline_access` scope in interactive request only
+   - API token request scope unchanged
+
+5. **`src/routes/auth/login/page.test.ts`** — Updated tests:
+   - Local fallback button reachability (non-standalone, no cached account)
+   - Sign-out suppression preservation
+
+6. **`docs/auth-design.md` § 3** — Documentation:
+   - iOS Standalone PWA Auto-Redirect flow explanation
+   - Same PKCE/OIDC trust boundary as manual Sign In
+   - Scope choice: `offline_access` in interactive request, not API request
+   - Security constraints from Bishop review
+
+**Validation:**
+
+✅ **Vitest:** 20/20 tests passing (auth store + MSAL + login page)  
+✅ **TypeScript:** `pnpm run check` clean (tsc --noEmit + svelte-check)  
+✅ **Linting:** `pnpm run lint` clean (ESLint)  
+✅ **Build:** `pnpm run build` success (Vite)  
+✅ **Git diff:** clean (no trailing whitespace/CRLF issues)  
+✅ **Security Review:** Bishop approved with 7 constraints — all implemented and tested
+
+**Key Decisions:**
+
+- **Standalone-only gate:** Non-standalone browser tabs keep the visible Sign In button and local fallback untouched. Only iOS/Android standalone PWA modes get auto-redirect.
+- **Suppression flag over state machine:** `sessionStorage` one-shot flag is simpler than a complex state machine and prevents re-entry after failed redirect.
+- **offline_access scope:** Added to interactive login request (improves refresh-token freshness within MSAL's session cache), NOT to API token requests (scope containment per Bishop constraint 6).
+- **No token storage changes:** Everything stays in sessionStorage/memory. Zero changes to D-002 compliance.
+
+**What I Learned:**
+
+- iOS standalone PWA isolation: per-launch sessionStorage is cleared on each home-screen app restart, even if browser tab sessionStorage persists. This is why Entra browser session exists but MSAL cache is empty.
+- MSAL interactive vs. silent: `loginRedirect()` is the same auth endpoint as the manual button — timing is the only UX difference.
+- Suppression flag clarity: A single `sessionStorage` key is more debuggable than flag state machines. Easier to trace: "guard is set, flow did X, guard cleared".
+- Test complexity: Testing auto-redirect timing required mocking both `matchMedia` and `navigator.standalone`, plus careful sequencing of `isLoading` → `isAuthenticated` signals. Playwright E2E may still be needed for real browser SSO verification.
+
+**Next Steps:**
+
+PR from `fix/ios-pwa-silent-sso-redirect` → review → merge.

@@ -17,7 +17,9 @@ const { goto, ensureMsalInitialized, getAllAccounts, loginRedirect, localSignIn 
 vi.mock('$app/navigation', () => ({ goto }));
 
 vi.mock('$lib/auth/msal', () => ({
-	loginRequest: { scopes: ['api://tech-inventory/access_as_user', 'openid', 'profile'] },
+	loginRequest: {
+		scopes: ['api://tech-inventory/access_as_user', 'openid', 'profile', 'offline_access']
+	},
 	ensureMsalInitialized,
 	msalInstance: {
 		getAllAccounts,
@@ -63,6 +65,22 @@ const account: AccountInfo = {
 	name: 'Family User'
 };
 
+function setStandaloneDisplayMode(matches: boolean): void {
+	Object.defineProperty(window, 'matchMedia', {
+		configurable: true,
+		value: vi.fn().mockImplementation((query: string) => ({
+			matches: query === '(display-mode: standalone)' ? matches : false,
+			media: query,
+			onchange: null,
+			addListener: vi.fn(),
+			removeListener: vi.fn(),
+			addEventListener: vi.fn(),
+			removeEventListener: vi.fn(),
+			dispatchEvent: vi.fn()
+		}))
+	});
+}
+
 describe('login page', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -70,6 +88,7 @@ describe('login page', () => {
 		getAllAccounts.mockReturnValue([]);
 		loginRedirect.mockResolvedValue(undefined);
 		sessionStorage.clear();
+		setStandaloneDisplayMode(false);
 		(authStore as Writable<AuthState>).set(unauthenticatedState);
 	});
 
@@ -81,12 +100,24 @@ describe('login page', () => {
 		await waitFor(() => expect(loginRedirect).toHaveBeenCalledTimes(1));
 		expect(ensureMsalInitialized).toHaveBeenCalled();
 		expect(loginRedirect).toHaveBeenCalledWith({
-			scopes: ['api://tech-inventory/access_as_user', 'openid', 'profile']
+			scopes: ['api://tech-inventory/access_as_user', 'openid', 'profile', 'offline_access']
 		});
 		expect(sessionStorage.getItem('ti_auto_interactive_signin_suppressed')).toBe('true');
 	});
 
-	it('keeps the Entra button visible when no cached account exists', async () => {
+	it('auto-starts Entra redirect in standalone PWA mode even when no cached account exists', async () => {
+		setStandaloneDisplayMode(true);
+
+		render(Page);
+
+		await waitFor(() => expect(loginRedirect).toHaveBeenCalledTimes(1));
+		expect(loginRedirect).toHaveBeenCalledWith({
+			scopes: ['api://tech-inventory/access_as_user', 'openid', 'profile', 'offline_access']
+		});
+		expect(sessionStorage.getItem('ti_auto_interactive_signin_suppressed')).toBe('true');
+	});
+
+	it('keeps the Entra button visible in browser mode when no cached account exists', async () => {
 		render(Page);
 
 		expect(screen.getByRole('button', { name: 'Sign In' })).toBeInTheDocument();
@@ -95,8 +126,9 @@ describe('login page', () => {
 		expect(loginRedirect).not.toHaveBeenCalled();
 	});
 
-	it('honors auto-redirect suppression and keeps local fallback reachable', async () => {
-		getAllAccounts.mockReturnValue([account]);
+	it('honors redirect suppression and keeps local fallback reachable', async () => {
+		setStandaloneDisplayMode(true);
+		sessionStorage.setItem('ti_silent_sso_suppressed', 'true');
 		sessionStorage.setItem('ti_auto_interactive_signin_suppressed', 'true');
 
 		render(Page);
@@ -108,12 +140,14 @@ describe('login page', () => {
 	});
 
 	it('lets a manual Entra sign-in clear the auto-redirect guard', async () => {
+		sessionStorage.setItem('ti_silent_sso_suppressed', 'true');
 		sessionStorage.setItem('ti_auto_interactive_signin_suppressed', 'true');
 
 		render(Page);
 		await fireEvent.click(screen.getByRole('button', { name: 'Sign In' }));
 
 		await waitFor(() => expect(loginRedirect).toHaveBeenCalledTimes(1));
+		expect(sessionStorage.getItem('ti_silent_sso_suppressed')).toBeNull();
 		expect(sessionStorage.getItem('ti_auto_interactive_signin_suppressed')).toBeNull();
 	});
 });

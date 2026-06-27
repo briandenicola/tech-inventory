@@ -400,3 +400,48 @@ AuditEvent table (append-only) is both a business requirement (PRD §F7) and a s
 
 **Next Steps:** Priority 1 = add ownership check to device write endpoints, Priority 2 = configure explicit CORS allow-list, Priority 3 = add JWT audience validation.
 
+---
+
+### 2026-06-26: iOS Standalone PWA Silent SSO Redirect — Security Review
+
+**Orchestration Log:** `.squad/orchestration-log/2026-06-26T19-16-04Z-ios-pwa-auth.md`  
+**Decision Merged:** D-170 (iOS Standalone Auto-Redirect Gate), D-171 (Branch Roadmap)
+
+**Review Scope:** Vasquez's proposed iOS standalone PWA auto-redirect feature
+
+**Verdict:** ✅ **Approved with 7 constraints**
+
+**Findings:**
+
+1. **Trust Boundary Preserved:** Auto-redirect invokes the same PKCE/OIDC flow as manual Sign In. No new cryptographic requirements; existing Entra session reuse is cryptographically safe.
+
+2. **Token Storage Compliant:** `offline_access` scope addition stays within sessionStorage/memory-only policy (D-002, ASVS V2.10.2). No localStorage or custom persistence.
+
+3. **Scope Correctness:** `offline_access` correctly placed in interactive login request (improves refresh-token availability), NOT in API token requests.
+
+4. **Constraints Implemented & Tested:**
+   - Standalone-only gate (matchMedia + navigator.standalone) ✅
+   - Bootstrap completion gate (isLoading=false && isAuthenticated=false) ✅
+   - Loop guard (sessionStorage suppression flag) ✅
+   - Sign-out guard (existing suppression preserved) ✅
+   - Storage guard (no localStorage/custom persistence) ✅
+   - Scope guard (offline_access in interactive only) ✅
+   - Test guard (20 Vitest tests covering all scenarios) ✅
+
+5. **Test Coverage:** 20 tests across auth store, MSAL client, and login page. All scenarios covered: standalone/non-standalone, cached/uncached, suppression/clear, sign-out preservation.
+
+6. **Documentation:** `docs/auth-design.md` §3 updated with iOS standalone flow, rationale, and scope choice.
+
+**Security Basis for Approval:**
+
+- Constitution §5.1: OIDC + PKCE + rotated refresh tokens — unchanged.
+- Constitution §6.5.10 & D-002: Token storage ASVS V2.10.2 enforced.
+- D-150: Silent bootstrap already approved; tokens remain in MSAL, server default-deny unchanged.
+- D-169: Bounded fallback (one auto redirect + suppression guard) maintains loop prevention guarantee.
+
+**Rationale:**
+
+This feature closes a legitimate iOS standalone UX gap: per-launch sessionStorage isolation forces users to re-authenticate (via manual button tap) even when Entra has a valid browser session. Auto-redirect reuses that session safely and transparently, improving UX with zero auth-model changes or new attack surfaces.
+
+**Next Steps:** PR from `fix/ios-pwa-silent-sso-redirect` → review → merge.
+

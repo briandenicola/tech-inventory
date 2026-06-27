@@ -277,8 +277,10 @@ On app load (root `+layout.svelte`), **before rendering the page**:
 1. Call `handleRedirectPromise()` to check for a post-sign-in callback.
 2. Attempt `msalInstance.acquireTokenSilent()` with the cached account (if one exists).
 3. If acquisition succeeds within **3 seconds**, hydrate the auth store via `GET /api/v1/owners/me` and route to `/devices`.
-4. If acquisition fails (no cached account, `interaction_required`, `login_required`, `consent_required`) or times out, treat as unauthenticated and show the login page.
-5. Local break-glass sessions (from F025 v1b) continue to hydrate from sessionStorage and skip Entra entirely.
+4. If acquisition fails (no cached account, `interaction_required`, `login_required`, `consent_required`) or times out, treat as unauthenticated and finish root bootstrap.
+5. In normal browser mode, show the login page with the Entra button and local-account fallback.
+6. In installed standalone PWA mode, immediately start the top-level Entra `loginRedirect()` flow unless a sign-out or one-shot redirect suppression flag is active.
+7. Local break-glass sessions (from F025 v1b) continue to hydrate from sessionStorage and skip Entra entirely.
 
 ### UX Flow
 
@@ -287,6 +289,7 @@ On app load (root `+layout.svelte`), **before rendering the page**:
 | **Returning user** (MSAL cache valid) | 3s silent auth → dashboard (no login page shown) |
 | **Returning user** (MSAL cache expired) | 3s timeout → login page shown (user clicks MSAL button → completes OAuth → dashboard) |
 | **First visit** (no MSAL cache) | 3s timeout → login page shown |
+| **Installed standalone PWA** (no MSAL cache, Entra SSO still valid) | root bootstrap finishes unauthenticated → top-level Entra redirect auto-starts → dashboard |
 | **Entra outage** (silent fails fast) | 3s timeout → login page shown (user can switch to local account) |
 | **Local break-glass user** | sessionStorage token checked on root layout → dashboard (Entra skipped) |
 

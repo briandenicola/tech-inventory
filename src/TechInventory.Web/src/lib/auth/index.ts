@@ -21,6 +21,14 @@ export interface TryAcquireApiTokenSilentOptions {
 	timeoutMs?: number;
 }
 
+interface StandaloneNavigator extends Navigator {
+	readonly standalone?: boolean;
+}
+
+export interface AutoStartInteractiveSignInOptions {
+	standalonePwa?: boolean;
+}
+
 export function suppressSilentSso(): void {
 	if (typeof sessionStorage === 'undefined') return;
 	sessionStorage.setItem(SILENT_SSO_SUPPRESS_KEY, 'true');
@@ -51,11 +59,23 @@ function isAutoInteractiveSignInSuppressed(): boolean {
 	return sessionStorage.getItem(AUTO_INTERACTIVE_SIGN_IN_SUPPRESS_KEY) === 'true';
 }
 
-export function shouldAutoStartInteractiveSignIn(): boolean {
+export function isStandalonePwa(): boolean {
+	if (typeof window === 'undefined') return false;
+	const displayModeStandalone =
+		typeof window.matchMedia === 'function' &&
+		window.matchMedia('(display-mode: standalone)').matches;
+	const navigatorStandalone = (window.navigator as StandaloneNavigator).standalone === true;
+	return displayModeStandalone || navigatorStandalone;
+}
+
+export function shouldAutoStartInteractiveSignIn(
+	options: AutoStartInteractiveSignInOptions = {}
+): boolean {
+	const standalonePwa = options.standalonePwa ?? isStandalonePwa();
 	return (
 		!isSilentSsoSuppressed() &&
 		!isAutoInteractiveSignInSuppressed() &&
-		msalInstance.getAllAccounts().length > 0
+		(standalonePwa || msalInstance.getAllAccounts().length > 0)
 	);
 }
 

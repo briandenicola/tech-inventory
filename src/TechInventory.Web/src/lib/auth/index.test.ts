@@ -23,7 +23,9 @@ const {
 
 vi.mock('./msal', () => ({
 	apiTokenRequest: { scopes: ['api://tech-inventory/access_as_user'] },
-	loginRequest: { scopes: ['api://tech-inventory/access_as_user', 'openid', 'profile'] },
+	loginRequest: {
+		scopes: ['api://tech-inventory/access_as_user', 'openid', 'profile', 'offline_access']
+	},
 	ensureMsalInitialized,
 	msalInstance: {
 		getAllAccounts,
@@ -109,7 +111,7 @@ describe('auth helpers', () => {
 	it('falls back to ssoSilent when this tab has no cached MSAL account yet', async () => {
 		await expect(tryAcquireApiTokenSilent()).resolves.toEqual(authResult);
 		expect(ssoSilent).toHaveBeenCalledWith({
-			scopes: ['api://tech-inventory/access_as_user', 'openid', 'profile']
+			scopes: ['api://tech-inventory/access_as_user', 'openid', 'profile', 'offline_access']
 		});
 		expect(setActiveAccount).toHaveBeenCalledWith(account);
 	});
@@ -142,11 +144,23 @@ describe('auth helpers', () => {
 		expect(shouldAutoStartInteractiveSignIn()).toBe(false);
 	});
 
+	it('auto-starts interactive sign-in in standalone PWA mode without a cached account', () => {
+		getAllAccounts.mockReturnValue([]);
+
+		expect(shouldAutoStartInteractiveSignIn({ standalonePwa: true })).toBe(true);
+	});
+
+	it('does not auto-start interactive sign-in in browser mode without a cached account', () => {
+		getAllAccounts.mockReturnValue([]);
+
+		expect(shouldAutoStartInteractiveSignIn({ standalonePwa: false })).toBe(false);
+	});
+
 	it('does not auto-start interactive sign-in when suppression is active', () => {
 		getAllAccounts.mockReturnValue([account]);
 		sessionStorage.setItem('ti_silent_sso_suppressed', 'true');
 
-		expect(shouldAutoStartInteractiveSignIn()).toBe(false);
+		expect(shouldAutoStartInteractiveSignIn({ standalonePwa: true })).toBe(false);
 		sessionStorage.removeItem('ti_silent_sso_suppressed');
 	});
 

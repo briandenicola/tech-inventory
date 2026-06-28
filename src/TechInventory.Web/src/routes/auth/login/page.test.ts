@@ -102,7 +102,7 @@ describe('login page', () => {
 		expect(loginRedirect).toHaveBeenCalledWith({
 			scopes: ['api://tech-inventory/access_as_user', 'openid', 'profile', 'offline_access']
 		});
-		expect(sessionStorage.getItem('ti_auto_interactive_signin_suppressed')).toBe('true');
+		expect(sessionStorage.getItem('ti_auto_interactive_signin_suppressed')).toBeNull();
 	});
 
 	it('auto-starts Entra redirect in standalone PWA mode even when no cached account exists', async () => {
@@ -114,7 +114,17 @@ describe('login page', () => {
 		expect(loginRedirect).toHaveBeenCalledWith({
 			scopes: ['api://tech-inventory/access_as_user', 'openid', 'profile', 'offline_access']
 		});
-		expect(sessionStorage.getItem('ti_auto_interactive_signin_suppressed')).toBe('true');
+		expect(sessionStorage.getItem('ti_auto_interactive_signin_suppressed')).toBeNull();
+	});
+
+	it('clears stale auto-redirect suppression before an auto-started PWA sign-in', async () => {
+		setStandaloneDisplayMode(true);
+		sessionStorage.setItem('ti_auto_interactive_signin_suppressed', 'true');
+
+		render(Page);
+
+		await waitFor(() => expect(loginRedirect).toHaveBeenCalledTimes(1));
+		expect(sessionStorage.getItem('ti_auto_interactive_signin_suppressed')).toBeNull();
 	});
 
 	it('keeps the Entra button visible in browser mode when no cached account exists', async () => {

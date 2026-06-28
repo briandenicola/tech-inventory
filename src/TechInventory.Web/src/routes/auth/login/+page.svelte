@@ -3,8 +3,7 @@
 	import {
 		clearAutoInteractiveSignInSuppression,
 		clearSilentSsoSuppression,
-		shouldAutoStartInteractiveSignIn,
-		suppressAutoInteractiveSignIn
+		shouldAutoStartInteractiveSignIn
 	} from '$lib/auth';
 	import { msalInstance, loginRequest, ensureMsalInitialized } from '$lib/auth/msal';
 	import { authStore } from '$lib/stores/auth';
@@ -49,25 +48,28 @@
 			state.isLoading ||
 			state.isAuthenticated ||
 			isRedirecting ||
-			showLocalForm ||
-			!shouldAutoStartInteractiveSignIn()
+			showLocalForm
 		) {
 			return;
 		}
 
+		clearAutoInteractiveSignInSuppression();
+		if (!shouldAutoStartInteractiveSignIn()) {
+			return;
+		}
+
 		attemptedAutoSignIn = true;
-		void handleSignIn({ autoStarted: true });
+		void handleSignIn();
 	});
 
-	async function handleSignIn({ autoStarted = false }: { autoStarted?: boolean } = {}) {
+	async function handleSignIn() {
 		try {
 			isRedirecting = true;
-			if (autoStarted) {
-				suppressAutoInteractiveSignIn();
-			} else {
-				clearSilentSsoSuppression();
-				clearAutoInteractiveSignInSuppression();
-			}
+			// Clear any prior redirect suppression before trying Entra so an
+			// interrupted PWA auth attempt can be retried on the next launch
+			// instead of leaving the user stuck on the sign-in button.
+			clearSilentSsoSuppression();
+			clearAutoInteractiveSignInSuppression();
 			await ensureMsalInitialized();
 			// Per T09 DoD + J1: Call loginRedirect with API scope + OIDC scopes.
 			// PKCE is maintained by MSAL's redirect flow.

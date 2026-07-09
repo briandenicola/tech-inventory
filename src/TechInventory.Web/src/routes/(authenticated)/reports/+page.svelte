@@ -122,7 +122,12 @@
 				<ReportBreakdownCard title={t('reports.summary.byCategory')} items={summary.byCategory} emptyText={t('reports.summary.empty')} />
 			</div>
 			<div class="col-span-2 lg:col-span-1">
-				<ReportBreakdownCard title={t('reports.summary.byLocation')} items={summary.byLocation} emptyText={t('reports.summary.empty')} />
+				<ReportBreakdownCard
+					title={t('reports.summary.byLocation')}
+					items={summary.byLocation}
+					emptyText={t('reports.summary.empty')}
+					maxListHeightClass="max-h-96"
+				/>
 			</div>
 			<div class="col-span-2 lg:col-span-1 xl:col-span-2">
 				<ReportBreakdownCard title={t('reports.summary.byStatus')} items={summary.byStatus.map((item) => ({ label: item.status, count: item.count }))} emptyText={t('reports.summary.empty')} />

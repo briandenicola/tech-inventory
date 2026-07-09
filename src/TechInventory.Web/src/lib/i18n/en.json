@@ -232,6 +232,12 @@
 				"success": "{name} retired successfully"
 			}
 		},
+		"unretire": {
+			"button": "Unretire Device",
+			"toast": {
+				"success": "{name} returned to active devices"
+			}
+		},
 		"create": {
 			"title": "Add Device",
 			"subtitle": "Enter device information"

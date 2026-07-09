@@ -156,20 +156,27 @@ public sealed class UpdateDeviceCommandHandler(
         var targetCurrency = Currency.From(request.CurrencyCode);
         if (device.Status == DeviceStatus.Retired)
         {
-            EnsureRetiredDeviceMutationIsSafe(device, request, targetCurrency);
-
-            device.UpdateNotes(request.Notes);
-            if (!string.Equals(device.DisposalMethod, NormalizeOptional(request.DisposalMethod), StringComparison.Ordinal))
+            if (request.Status == DeviceStatus.Active)
             {
-                device.UpdateDisposalMethod(request.DisposalMethod);
+                device.Reactivate();
             }
-
-            if (request.Status == DeviceStatus.Disposed)
+            else
             {
-                device.ChangeStatus(DeviceStatus.Disposed, device.RetiredDate, request.DisposalMethod);
-            }
+                EnsureRetiredDeviceMutationIsSafe(device, request, targetCurrency);
 
-            return;
+                device.UpdateNotes(request.Notes);
+                if (!string.Equals(device.DisposalMethod, NormalizeOptional(request.DisposalMethod), StringComparison.Ordinal))
+                {
+                    device.UpdateDisposalMethod(request.DisposalMethod);
+                }
+
+                if (request.Status == DeviceStatus.Disposed)
+                {
+                    device.ChangeStatus(DeviceStatus.Disposed, device.RetiredDate, request.DisposalMethod);
+                }
+
+                return;
+            }
         }
 
         device.UpdateDetails(

@@ -185,6 +185,19 @@ public sealed class Device(
         Touch(modifiedBy);
     }
 
+    public void Reactivate(string? modifiedBy = null)
+    {
+        if (Status != DeviceStatus.Retired)
+        {
+            throw new InvalidOperationException("Only retired devices can be reactivated.");
+        }
+
+        Status = DeviceStatus.Active;
+        RetiredDate = null;
+        DisposalMethod = null;
+        Touch(modifiedBy);
+    }
+
     public void UpdateNotes(string? notes, string? modifiedBy = null)
     {
         Notes = Guard.AgainstMaxLength(notes, nameof(notes), 4000);

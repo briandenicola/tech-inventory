@@ -193,11 +193,12 @@ public sealed class DeviceRepository(AppDbContext dbContext) : Repository<Device
         if (!string.IsNullOrWhiteSpace(criteria.Search))
         {
             var search = criteria.Search.Trim();
+            var normalizedSearch = search.ToUpper();
             query = query.Where(device =>
-                device.Name.Contains(search) ||
-                (device.Model != null && device.Model.Contains(search)) ||
-                (device.SerialNumber != null && device.SerialNumber.Contains(search)) ||
-                (device.Notes != null && device.Notes.Contains(search)));
+                device.Name.ToUpper().Contains(normalizedSearch) ||
+                (device.Model != null && device.Model.ToUpper().Contains(normalizedSearch)) ||
+                (device.SerialNumber != null && device.SerialNumber.ToUpper().Contains(normalizedSearch)) ||
+                (device.Notes != null && device.Notes.ToUpper().Contains(normalizedSearch)));
         }
 
         if (criteria.BrandId.HasValue)

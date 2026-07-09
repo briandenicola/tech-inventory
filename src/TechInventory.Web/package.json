@@ -29,7 +29,7 @@
     "@types/node": "^26.0.1",
     "@vite-pwa/sveltekit": "^1.1.0",
     "@vitest/ui": "^4.1.8",
-    "axe-core": "^4.10.2",
+    "axe-core": "^4.12.1",
     "eslint": "^9.17.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-svelte": "^3.19.0",

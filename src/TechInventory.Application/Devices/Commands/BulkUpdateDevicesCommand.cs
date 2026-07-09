@@ -164,9 +164,10 @@ public sealed class BulkUpdateDevicesCommandHandler(
 
     private static void ApplyChanges(Device device, BulkUpdateDeviceChanges changes)
     {
-        if (device.Status == DeviceStatus.Retired && changes.Status is not DeviceStatus.Retired and not DeviceStatus.Disposed and not null)
+        if (device.Status == DeviceStatus.Retired)
         {
-            throw new InvalidOperationException("Retired devices cannot be moved back to Active via bulk update.");
+            ApplyRetiredDeviceChanges(device, changes);
+            return;
         }
 
         var targetBrand = changes.BrandId ?? device.BrandId;
@@ -197,6 +198,29 @@ public sealed class BulkUpdateDevicesCommandHandler(
         if (changes.Status is { } targetStatus && targetStatus != device.Status)
         {
             device.ChangeStatus(targetStatus, device.RetiredDate, device.DisposalMethod);
+        }
+    }
+
+    private static void ApplyRetiredDeviceChanges(Device device, BulkUpdateDeviceChanges changes)
+    {
+        if (changes.BrandId.HasValue || changes.CategoryId.HasValue || changes.OwnerId.HasValue || changes.LocationId.HasValue)
+        {
+            throw new InvalidOperationException("Retired devices are read-only except for status changes.");
+        }
+
+        switch (changes.Status)
+        {
+            case DeviceStatus.Active:
+                device.Reactivate();
+                return;
+            case DeviceStatus.Disposed:
+                device.ChangeStatus(DeviceStatus.Disposed, device.RetiredDate, device.DisposalMethod);
+                return;
+            case DeviceStatus.Retired:
+            case null:
+                return;
+            default:
+                throw new InvalidOperationException("Retired devices can only be moved back to Active or disposed via bulk update.");
         }
     }
 }

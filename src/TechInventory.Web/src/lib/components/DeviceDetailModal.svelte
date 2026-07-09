@@ -15,7 +15,12 @@
 	import AuditLogModal from '$lib/components/AuditLogModal.svelte';
 	import DeviceActionsMenu from '$lib/components/DeviceActionsMenu.svelte';
 	import DeviceDetailFields from '$lib/components/DeviceDetailFields.svelte';
-	import { buildRetireDeviceRequest, canRetireDevice } from '$lib/utils/deviceRetirement';
+	import {
+		buildRetireDeviceRequest,
+		buildUnretireDeviceRequest,
+		canRetireDevice,
+		canUnretireDevice
+	} from '$lib/utils/deviceRetirement';
 	import type { DeviceResponse } from '$lib/queries/devices.svelte';
 	import type { components } from '$lib/api/generated/types';
 
@@ -52,6 +57,7 @@
 	const canClaim = $derived(device && currentUser && device.ownerId !== currentUser.id);
 	const canRelease = $derived(device && currentUser && device.ownerId === currentUser.id);
 	const canRetire = $derived(canRetireDevice(device, currentUser));
+	const canUnretire = $derived(canUnretireDevice(device, currentUser));
 
 	async function fetchDevice() {
 		isLoading = true;
@@ -248,6 +254,28 @@
 		}
 	}
 
+	async function handleUnretire() {
+		if (!device) return;
+
+		try {
+			await devices.update(device.id, buildUnretireDeviceRequest(device));
+			invalidateDevicesCache();
+			await fetchDevice();
+			showToast({
+				type: 'success',
+				message: t('devices.unretire.toast.success').replace('{name}', device.name ?? 'Device')
+			});
+			onChanged?.();
+		} catch (err) {
+			console.error('[DeviceDetailModal] Unretire failed:', err);
+			const errorMsg =
+				err instanceof Error && 'detail' in err
+					? (err as unknown as { detail: string }).detail
+					: 'Failed to unretire device';
+			showToast({ type: 'error', message: errorMsg });
+		}
+	}
+
 	function handleViewHistory() {
 		if (device) {
 			showHistoryDrawer = true;
@@ -361,6 +389,7 @@
 							onClaim={canClaim ? () => (showClaimModal = true) : undefined}
 							onRelease={canRelease ? () => (showReleaseModal = true) : undefined}
 							onRetire={canRetire ? () => (showRetireModal = true) : undefined}
+							onUnretire={canUnretire ? handleUnretire : undefined}
 							onViewHistory={canViewHistory ? handleViewHistory : undefined}
 							onDelete={canDelete ? () => (showDeleteModal = true) : undefined}
 						/>

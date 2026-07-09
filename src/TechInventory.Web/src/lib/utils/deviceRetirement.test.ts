@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { DeviceResponse } from '$lib/queries/devices.svelte';
-import { buildRetireDeviceRequest, canRetireDevice } from './deviceRetirement';
+import {
+	buildRetireDeviceRequest,
+	buildUnretireDeviceRequest,
+	canRetireDevice,
+	canUnretireDevice
+} from './deviceRetirement';
 
 const activeDevice = {
 	id: 'device-1',
@@ -45,6 +50,21 @@ describe('deviceRetirement', () => {
 		);
 	});
 
+	it('allows admins and owning members to unretire retired devices', () => {
+		const retiredDevice = { ...activeDevice, status: 'Retired' };
+
+		expect(canUnretireDevice(retiredDevice, { id: 'admin-1', role: 'Admin' })).toBe(true);
+		expect(canUnretireDevice(retiredDevice, { id: 'member-1', role: 'Member' })).toBe(true);
+	});
+
+	it('blocks viewers, non-owning members, and active devices from unretiring', () => {
+		const retiredDevice = { ...activeDevice, status: 'Retired' };
+
+		expect(canUnretireDevice(retiredDevice, { id: 'viewer-1', role: 'Viewer' })).toBe(false);
+		expect(canUnretireDevice(retiredDevice, { id: 'member-2', role: 'Member' })).toBe(false);
+		expect(canUnretireDevice(activeDevice, { id: 'admin-1', role: 'Admin' })).toBe(false);
+	});
+
 	it('builds an update payload that preserves existing fields while setting retired status', () => {
 		const payload = buildRetireDeviceRequest(activeDevice, '2026-06-23');
 
@@ -54,6 +74,25 @@ describe('deviceRetirement', () => {
 			categoryId: 'category-1',
 			status: 'Retired',
 			retiredDate: '2026-06-23',
+			version: 'abc'
+		});
+	});
+
+	it('builds an update payload that clears retirement metadata and sets active status', () => {
+		const payload = buildUnretireDeviceRequest({
+			...activeDevice,
+			status: 'Retired',
+			retiredDate: '2026-06-23',
+			disposalMethod: 'Stored'
+		});
+
+		expect(payload).toMatchObject({
+			name: 'Aqua Flosser',
+			brandId: 'brand-1',
+			categoryId: 'category-1',
+			status: 'Active',
+			retiredDate: null,
+			disposalMethod: null,
 			version: 'abc'
 		});
 	});

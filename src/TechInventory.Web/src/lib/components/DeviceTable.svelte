@@ -53,7 +53,7 @@
 
 	const refData = $derived($referenceDataStore);
 	const isGrouped = $derived(Array.isArray(groups) && groups.length > 0);
-	const groupColspan = $derived(selectable ? 8 : 7);
+	const groupColspan = $derived(selectable ? 9 : 8);
 
 	function isSelected(id: string): boolean {
 		return selectedIds?.has(id) ?? false;
@@ -218,6 +218,14 @@
 					</button>
 				</th>
 
+				<!-- Model (not sortable) -->
+				<th
+					scope="col"
+					class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
+				>
+					{t('devices.columns.model')}
+				</th>
+
 				<!-- Brand (not sortable) -->
 				<th
 					scope="col"
@@ -338,18 +346,10 @@
 						</td>
 					{/if}
 					<td class="sticky left-0 z-10 border-r border-neutral-200 dark:border-neutral-800 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] {selected ? 'bg-primary-500/10' : 'bg-white dark:bg-neutral-950'} group-hover/row:bg-neutral-50 dark:group-hover/row:bg-neutral-900 px-4 py-4 text-sm font-medium text-neutral-900 dark:text-neutral-50">
-						<div class="flex flex-col">
-							<span>{device.name || '—'}</span>
-							{#if device.model}
-								<!-- F034: surface model under the device name so the desktop
-								     table reveals it without forcing a click into detail. -->
-								<span
-									class="mt-0.5 text-xs font-normal text-neutral-500 dark:text-neutral-400 truncate"
-								>
-									{device.model}
-								</span>
-							{/if}
-						</div>
+						{device.name || '—'}
+					</td>
+					<td class="px-4 py-4 text-sm text-neutral-700 dark:text-neutral-300">
+						{device.model || '—'}
 					</td>
 					<td class="px-4 py-4 text-sm text-neutral-700 dark:text-neutral-300">
 						{lookupName(refData.brands, device.brandId)}

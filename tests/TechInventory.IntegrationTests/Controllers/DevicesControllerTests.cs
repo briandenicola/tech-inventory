@@ -86,6 +86,26 @@ public sealed class DevicesControllerTests(IntegrationTestFactory<DevicesControl
     }
 
     [Fact]
+    public async Task GetDevices_WhenSearchDiffersByCase_ReturnsNameMatches()
+    {
+        await ResetDatabaseAsync();
+        var references = await SeedDeviceReferenceDataAsync();
+        var airFryer = CreateDevice(references, "Air Fryer");
+        var chair = CreateDevice(references, "Office Chair");
+        var television = CreateDevice(references, "Television");
+        await SeedAsync(entities: [airFryer, chair, television]);
+        using var client = CreateClient();
+
+        var response = await client.GetAsync("/api/v1/devices?search=air&pageSize=25");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var paged = await ReadJsonAsync<PagedResponse<DeviceResponse>>(response);
+        paged.Items.Should().Contain(device => device.Id == airFryer.Id);
+        paged.Items.Should().Contain(device => device.Id == chair.Id);
+        paged.Items.Should().NotContain(device => device.Id == television.Id);
+    }
+
+    [Fact]
     public async Task GetDeviceById_WhenFound_ReturnsDevice()
     {
         await ResetDatabaseAsync();
@@ -154,6 +174,48 @@ public sealed class DevicesControllerTests(IntegrationTestFactory<DevicesControl
                 updated.CurrencyCode.Should().Be("EUR");
                 updated.Model.Should().Be(request.model);
                 updated.SerialNumber.Should().Be(request.serialNumber);
+            });
+    }
+
+    [Fact]
+    public async Task UpdateDevice_WhenRetiredDeviceSetActive_ReactivatesAndClearsRetirementMetadata()
+    {
+        await ResetDatabaseAsync();
+        var references = await SeedDeviceReferenceDataAsync();
+        var device = CreateDevice(references, $"Device-{Guid.NewGuid():N}", DeviceStatus.Retired);
+        await SeedAsync(entities: [device]);
+        using var client = CreateClient();
+        var request = new
+        {
+            id = device.Id,
+            name = device.Name,
+            brandId = device.BrandId,
+            categoryId = device.CategoryId,
+            ownerId = device.OwnerId,
+            locationId = device.LocationId,
+            currencyCode = device.Currency.Code,
+            model = device.Model,
+            serialNumber = device.SerialNumber,
+            networkId = device.NetworkId,
+            purchaseDate = device.PurchaseDate,
+            purchasePrice = device.PurchasePrice,
+            status = DeviceStatus.Active,
+            notes = device.Notes,
+            retiredDate = (DateOnly?)null,
+            disposalMethod = (string?)null
+        };
+
+        var response = await client.PutAsync($"/api/v1/devices/{device.Id}", CreateJsonContent(request));
+
+        await AssertUpdateResponseAsync<DeviceResponse>(
+            response,
+            () => client.GetAsync($"/api/v1/devices/{device.Id}"),
+            updated =>
+            {
+                updated.Id.Should().Be(device.Id);
+                updated.Status.Should().Be(DeviceStatus.Active.ToString());
+                updated.RetiredDate.Should().BeNull();
+                updated.DisposalMethod.Should().BeNull();
             });
     }
 
@@ -333,6 +395,43 @@ public sealed class DevicesControllerTests(IntegrationTestFactory<DevicesControl
                 .ToListAsync();
             audits.Should().HaveCount(3);
             audits.Should().AllSatisfy(ae => ae.AfterPayload.Should().Contain(result.CorrelationId.ToString()));
+        });
+    }
+
+    [Fact]
+    public async Task BulkUpdateDevices_WhenRetiredDeviceSetActive_ReactivatesAndClearsRetirementMetadata()
+    {
+        await ResetDatabaseAsync();
+        var references = await SeedDeviceReferenceDataAsync();
+        var device = CreateDevice(references, $"Device-{Guid.NewGuid():N}", DeviceStatus.Retired);
+        await SeedAsync(entities: [device]);
+        using var client = CreateClient();
+
+        var request = new
+        {
+            deviceIds = new[] { device.Id },
+            changes = new { status = DeviceStatus.Active }
+        };
+
+        var response = await client.PostAsync("/api/v1/devices/bulk/update", CreateJsonContent(request));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await ReadJsonAsync<BulkOperationResponse>(response);
+        result.AffectedCount.Should().Be(1);
+
+        await WithDbContextAsync(async dbContext =>
+        {
+            var reloaded = await dbContext.Devices.SingleAsync(d => d.Id == device.Id);
+            reloaded.Status.Should().Be(DeviceStatus.Active);
+            reloaded.RetiredDate.Should().BeNull();
+            reloaded.DisposalMethod.Should().BeNull();
+
+            var auditEvent = await AuditEventAssertionHelper.AssertExistsAsync(
+                dbContext,
+                nameof(Device),
+                device.Id.ToString(),
+                AuditAction.Updated);
+            auditEvent.AfterPayload.Should().Contain(result.CorrelationId.ToString());
         });
     }
 

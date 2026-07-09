@@ -89,9 +89,9 @@ describe('DeviceTable', () => {
 			});
 
 			// Verify table semantic structure: each row has expected <td> count
-			// D-038 order: Name, Brand, Category, Owner, Status, Purchase Date, Actions = 7 columns
+			// D-038 order: Name, Model, Brand, Category, Owner, Status, Purchase Date, Actions = 8 columns
 			const firstRowCells = rows[0].querySelectorAll('td');
-			expect(firstRowCells.length).toBe(7);
+			expect(firstRowCells.length).toBe(8);
 
 			// Name cell should be first and sticky (for horizontal scroll)
 			const nameCell = firstRowCells[0];
@@ -126,7 +126,7 @@ describe('DeviceTable', () => {
 
 			const groupHeaderCell = groupHeader.querySelector('th');
 			expect(groupHeaderCell).toHaveAttribute('scope', 'colgroup');
-			expect(groupHeaderCell).toHaveAttribute('colspan', '7');
+			expect(groupHeaderCell).toHaveAttribute('colspan', '8');
 		});
 
 		it('keeps only the Name column sticky for horizontal scrolling', () => {
@@ -153,7 +153,7 @@ describe('DeviceTable', () => {
 	});
 
 	describe('column order (D-038)', () => {
-		it('renders columns in correct order: Name, Brand, Category, Owner, Status, Purchase Date', () => {
+		it('renders columns in correct order: Name, Model, Brand, Category, Owner, Status, Purchase Date', () => {
 			render(DeviceTable, { props: defaultProps });
 
 			const headers = screen.getAllByRole('columnheader');
@@ -162,11 +162,26 @@ describe('DeviceTable', () => {
 
 			// Should match D-038 order (sorting indicators will be in the text)
 			expect(headerTexts[0]).toContain('Name');
-			expect(headerTexts[1]).toBe('Brand');
-			expect(headerTexts[2]).toBe('Category');
-			expect(headerTexts[3]).toBe('Owner');
-			expect(headerTexts[4]).toBe('Status');
-			expect(headerTexts[5]).toContain('Purchase Date');
+			expect(headerTexts[1]).toBe('Model');
+			expect(headerTexts[2]).toBe('Brand');
+			expect(headerTexts[3]).toBe('Category');
+			expect(headerTexts[4]).toBe('Owner');
+			expect(headerTexts[5]).toBe('Status');
+			expect(headerTexts[6]).toContain('Purchase Date');
+		});
+
+		it('renders model as its own desktop table column', () => {
+			const devices = createDeviceList(1);
+			devices[0].model = 'Cam Pam v3';
+
+			render(DeviceTable, { props: { ...defaultProps, devices } });
+
+			const firstDataRow = screen.getAllByRole('row')[1];
+			const cells = firstDataRow.querySelectorAll('td');
+
+			expect(cells[0].textContent).toContain(devices[0].name);
+			expect(cells[0].textContent).not.toContain('Cam Pam v3');
+			expect(cells[1].textContent).toContain('Cam Pam v3');
 		});
 	});
 

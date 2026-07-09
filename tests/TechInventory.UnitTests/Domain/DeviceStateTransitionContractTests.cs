@@ -106,6 +106,29 @@ public class DeviceStateTransitionContractTests
     }
 
     [Fact]
+    public void Device_Reactivate_ClearsRetirementMetadata()
+    {
+        var device = new Device(
+            Guid.NewGuid(),
+            "Camera",
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Currency.From("USD"),
+            status: DeviceStatus.Retired,
+            retiredDate: new DateOnly(2025, 1, 1),
+            disposalMethod: "Stored");
+
+        device.Reactivate("apone");
+
+        device.Status.Should().Be(DeviceStatus.Active);
+        device.RetiredDate.Should().BeNull();
+        device.DisposalMethod.Should().BeNull();
+        device.ModifiedBy.Should().Be("apone");
+    }
+
+    [Fact]
     public void Device_CanTransitionFromRetiredToDisposed()
     {
         var device = new Device(

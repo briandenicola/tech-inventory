@@ -56,6 +56,24 @@ describe('DeviceActionsMenu', () => {
 		expect(onRetire).toHaveBeenCalledOnce();
 	});
 
+	it('shows unretire action when provided', async () => {
+		const user = userEvent.setup();
+		const onUnretire = vi.fn();
+
+		render(DeviceActionsMenu, {
+			props: {
+				onUnretire
+			}
+		});
+
+		await user.click(screen.getByRole('button', { name: /more actions/i }));
+
+		expect(screen.getByText('Unretire Device')).toBeInTheDocument();
+
+		await user.click(screen.getByRole('button', { name: 'Unretire Device' }));
+		expect(onUnretire).toHaveBeenCalledOnce();
+	});
+
 	it('closes on escape', async () => {
 		const user = userEvent.setup();
 
@@ -80,6 +98,7 @@ describe('DeviceActionsMenu', () => {
 				editHref: '/devices/device-1/edit',
 				onRelease: vi.fn(),
 				onRetire: vi.fn(),
+				onUnretire: vi.fn(),
 				onDelete: vi.fn()
 			}
 		});

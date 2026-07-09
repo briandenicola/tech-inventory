@@ -8,9 +8,10 @@
 		title: string;
 		items: BreakdownItem[];
 		emptyText: string;
+		maxListHeightClass?: string;
 	}
 
-	let { title, items, emptyText }: Props = $props();
+	let { title, items, emptyText, maxListHeightClass }: Props = $props();
 	const maxCount = $derived(items.reduce((largest, item) => Math.max(largest, item.count), 0));
 </script>
 
@@ -20,7 +21,7 @@
 	{#if items.length === 0}
 		<p class="mt-4 text-sm text-neutral-600 dark:text-neutral-300">{emptyText}</p>
 	{:else}
-		<ul class="mt-4 space-y-3">
+		<ul class={`mt-4 space-y-3 ${maxListHeightClass ? `${maxListHeightClass} overflow-y-auto pr-2` : ''}`}>
 			{#each items as item (item.label)}
 				<li class="space-y-1">
 					<div class="flex items-center justify-between gap-3 text-sm">

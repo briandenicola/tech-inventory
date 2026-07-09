@@ -7,17 +7,18 @@
 		onClaim?: () => void;
 		onRelease?: () => void;
 		onRetire?: () => void;
+		onUnretire?: () => void;
 		onViewHistory?: () => void;
 		onDelete?: () => void;
 	}
 
-	let { editHref, onClaim, onRelease, onRetire, onViewHistory, onDelete }: Props = $props();
+	let { editHref, onClaim, onRelease, onRetire, onUnretire, onViewHistory, onDelete }: Props = $props();
 
 	let isOpen = $state(false);
 	let rootElement = $state<HTMLDivElement | null>(null);
 
 	const hasActions = $derived(
-		Boolean(editHref || onClaim || onRelease || onRetire || onViewHistory || onDelete)
+		Boolean(editHref || onClaim || onRelease || onRetire || onUnretire || onViewHistory || onDelete)
 	);
 
 	async function openMenu() {
@@ -132,6 +133,19 @@
 							class="flex min-h-11 w-full items-center rounded-xl px-3 py-2 text-left text-sm font-medium text-warning-700 transition-colors hover:bg-warning-50 focus:outline-none focus:ring-2 focus:ring-warning-500 dark:text-warning-300 dark:hover:bg-neutral-800"
 						>
 							{t('devices.retire.button')}
+						</button>
+					{/if}
+					{#if onUnretire}
+						<button
+							data-device-action
+							type="button"
+							onclick={() => {
+								closeMenu();
+								onUnretire?.();
+							}}
+							class="flex min-h-11 w-full items-center rounded-xl px-3 py-2 text-left text-sm font-medium text-success-700 transition-colors hover:bg-success-50 focus:outline-none focus:ring-2 focus:ring-success-500 dark:text-success-300 dark:hover:bg-neutral-800"
+						>
+							{t('devices.unretire.button')}
 						</button>
 					{/if}
 					{#if onViewHistory}

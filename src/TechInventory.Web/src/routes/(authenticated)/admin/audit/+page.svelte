@@ -28,6 +28,7 @@
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import PaginationControls from '$lib/components/PaginationControls.svelte';
 	import AuditDiffDrawer from '$lib/components/admin/AuditDiffDrawer.svelte';
+	import { buildActorDisplayNameMap, formatActor as formatAuditActor } from '$lib/utils/auditActors';
 
 	type AuditEvent = components['schemas']['AuditEventResponse'];
 	type AuditAction = components['schemas']['AuditAction'];
@@ -64,6 +65,8 @@
 	let totalCount = $state(0);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
+	let actorDisplayNames = $state<Record<string, string>>({});
+	let ownerActorMapLoaded = $state(false);
 
 	// Local filter form state — separate from URL so the user can edit
 	// freely before clicking Apply.
@@ -123,12 +126,33 @@
 			});
 			events = response.items ?? [];
 			totalCount = response.totalCount ?? 0;
+			await ensureOwnerActorMap();
 		} catch (err: unknown) {
 			console.error('[AuditLog] Load failed:', err);
 			error = err instanceof Error ? err.message : 'Failed to load audit events';
 		} finally {
 			loading = false;
 		}
+	}
+
+	async function ensureOwnerActorMap(): Promise<void> {
+		if (ownerActorMapLoaded) {
+			return;
+		}
+
+		try {
+			const response = await api.owners.list({ page: 1, pageSize: 200, includeInactive: true });
+			actorDisplayNames = buildActorDisplayNameMap(response.items ?? []);
+		} catch (err: unknown) {
+			console.error('[AuditLog] Owner actor lookup failed:', err);
+			actorDisplayNames = {};
+		} finally {
+			ownerActorMapLoaded = true;
+		}
+	}
+
+	function formatActor(actor: string | null | undefined): string {
+		return formatAuditActor(actor, actorDisplayNames);
 	}
 
 	function applyFilters(e: Event) {
@@ -412,7 +436,7 @@
 							<td
 								class="px-4 py-3 text-sm text-neutral-900 dark:text-neutral-100"
 							>
-								{event.actor ?? '—'}
+								{formatActor(event.actor)}
 							</td>
 							<td
 								class="whitespace-nowrap px-4 py-3 text-sm text-neutral-900 dark:text-neutral-100"
@@ -446,4 +470,7 @@
 	{/if}
 </div>
 
-<AuditDiffDrawer event={selectedEvent} onClose={closeDetail} />
+<AuditDiffDrawer
+	event={selectedEvent ? { ...selectedEvent, actor: formatActor(selectedEvent.actor) } : null}
+	onClose={closeDetail}
+/>

@@ -17,7 +17,12 @@
 	import AuditLogModal from '$lib/components/AuditLogModal.svelte';
 	import DeviceActionsMenu from '$lib/components/DeviceActionsMenu.svelte';
 	import DeviceDetailFields from '$lib/components/DeviceDetailFields.svelte';
-	import { buildRetireDeviceRequest, canRetireDevice } from '$lib/utils/deviceRetirement';
+	import {
+		buildRetireDeviceRequest,
+		buildUnretireDeviceRequest,
+		canRetireDevice,
+		canUnretireDevice
+	} from '$lib/utils/deviceRetirement';
 	import type { DeviceResponse } from '$lib/queries/devices.svelte';
 
 	/**
@@ -65,6 +70,7 @@
 	const canRelease = $derived(device && currentUser && device.ownerId === currentUser.id);
 	// Retire: visible when device is Active and user can edit
 	const canRetire = $derived(canRetireDevice(device, currentUser));
+	const canUnretire = $derived(canUnretireDevice(device, currentUser));
 
 	// Fetch device
 	async function fetchDevice() {
@@ -275,6 +281,27 @@
 			showRetireModal = false;
 		}
 	}
+
+	async function handleUnretire() {
+		if (!device) return;
+
+		try {
+			await devices.update(device.id, buildUnretireDeviceRequest(device));
+			invalidateDevicesCache();
+			await fetchDevice();
+			showToast({
+				type: 'success',
+				message: t('devices.unretire.toast.success').replace('{name}', device.name ?? 'Device')
+			});
+		} catch (err) {
+			console.error('[device-detail] Unretire device failed:', err);
+			const errorMsg =
+				err instanceof Error && 'detail' in err
+					? (err as unknown as { detail: string }).detail
+					: 'Failed to unretire device';
+			showToast({ type: 'error', message: errorMsg });
+		}
+	}
 </script>
 
 <svelte:head>
@@ -344,6 +371,7 @@
 				onClaim={canClaim ? () => (showClaimModal = true) : undefined}
 				onRelease={canRelease ? () => (showReleaseModal = true) : undefined}
 				onRetire={canRetire ? () => (showRetireModal = true) : undefined}
+				onUnretire={canUnretire ? handleUnretire : undefined}
 				onViewHistory={canViewHistory ? () => (showAuditLogModal = true) : undefined}
 				onDelete={canDelete ? () => (showDeleteModal = true) : undefined}
 			/>

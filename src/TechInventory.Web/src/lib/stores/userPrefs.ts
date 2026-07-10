@@ -36,7 +36,7 @@ export type TableColumnId = (typeof ALL_TABLE_COLUMNS)[number];
 /** Default column order and visibility — all columns, original order. */
 export const DEFAULT_TABLE_COLUMNS: TableColumnId[] = [...ALL_TABLE_COLUMNS];
 
-const TableColumnSchema = z.enum(['name', 'model', 'brand', 'category', 'owner', 'status', 'purchaseDate']);
+const TableColumnSchema = z.enum(ALL_TABLE_COLUMNS);
 
 const UserPrefsSchema = z.object({
 	version: z.literal(STORAGE_VERSION),

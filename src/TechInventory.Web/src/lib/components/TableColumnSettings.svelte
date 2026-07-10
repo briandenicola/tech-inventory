@@ -59,7 +59,7 @@
 			columns = [...columns, id];
 		}
 		enabledSet = next;
-		save();
+		persist();
 	}
 
 	function moveUp(id: TableColumnId) {
@@ -68,7 +68,7 @@
 		const next = [...columns];
 		[next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
 		columns = next;
-		save();
+		persist();
 	}
 
 	function moveDown(id: TableColumnId) {
@@ -77,7 +77,7 @@
 		const next = [...columns];
 		[next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
 		columns = next;
-		save();
+		persist();
 	}
 
 	function resetToDefault() {
@@ -87,10 +87,15 @@
 		addToast({ type: 'success', message: t('settings.tableColumns.toast.reset') });
 	}
 
-	function save() {
+	// Debounced save: persist immediately but only toast after 1s idle
+	let saveTimeout: ReturnType<typeof setTimeout> | undefined;
+	function persist() {
 		if (!currentUser?.id) return;
 		setTableColumns(currentUser.id, columns);
-		addToast({ type: 'success', message: t('settings.tableColumns.toast.saved') });
+		clearTimeout(saveTimeout);
+		saveTimeout = setTimeout(() => {
+			addToast({ type: 'success', message: t('settings.tableColumns.toast.saved') });
+		}, 1000);
 	}
 </script>
 

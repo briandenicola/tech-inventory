@@ -18,6 +18,7 @@
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
+	import TableColumnSettings from '$lib/components/TableColumnSettings.svelte';
 
 	const currentUser = $derived($authStore.currentUser);
 
@@ -236,6 +237,11 @@
 				<ThemeToggle />
 			</div>
 		</section>
+
+		<!-- Table column configuration -->
+		<div class="mt-6">
+			<TableColumnSettings />
+		</div>
 
 		<section
 			class="mt-6 rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-6 text-sm text-neutral-600 dark:border-neutral-700 dark:bg-neutral-900/40 dark:text-neutral-400"

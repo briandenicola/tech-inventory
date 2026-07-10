@@ -13,6 +13,7 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
 	import { referenceDataStore } from '$lib/stores/referenceData';
+	import { DEFAULT_TABLE_COLUMNS, type TableColumnId } from '$lib/stores/userPrefs';
 	import type { DeviceResponse } from '$lib/queries/devices.svelte';
 	import type { DeviceGroup } from '$lib/utils/groupDevices';
 
@@ -33,6 +34,8 @@
 		/** F031: mobile view mode — cards (default) or table (horizontally scrollable). */
 		mobileViewMode?: 'cards' | 'table';
 		onOpenDevice?: (deviceId: string) => void;
+		/** Visible columns in display order. Defaults to all columns. */
+		visibleColumns?: TableColumnId[];
 	}
 
 	let {
@@ -48,12 +51,14 @@
 		allVisibleSelected = false,
 		someVisibleSelected = false,
 		mobileViewMode = 'cards',
-		onOpenDevice
+		onOpenDevice,
+		visibleColumns = DEFAULT_TABLE_COLUMNS
 	}: Props = $props();
 
 	const refData = $derived($referenceDataStore);
 	const isGrouped = $derived(Array.isArray(groups) && groups.length > 0);
-	const groupColspan = $derived(selectable ? 9 : 8);
+	// +1 for actions column, +1 if selectable
+	const groupColspan = $derived((selectable ? 1 : 0) + visibleColumns.length + 1);
 
 	function isSelected(id: string): boolean {
 		return selectedIds?.has(id) ?? false;
@@ -100,6 +105,35 @@
 	function getAriaSort(column: 'name' | 'purchaseDate' | 'createdAt') {
 		if (currentSort !== column) return 'none';
 		return sortDir === 'asc' ? 'ascending' : 'descending';
+	}
+
+	// Sortable columns
+	type SortableColumn = 'name' | 'purchaseDate' | 'createdAt';
+	const SORTABLE_COLUMNS: SortableColumn[] = ['name', 'purchaseDate'];
+
+	function isSortable(col: TableColumnId): boolean {
+		return (SORTABLE_COLUMNS as string[]).includes(col);
+	}
+
+	function getCellValue(device: DeviceResponse, col: TableColumnId): string {
+		switch (col) {
+			case 'name':
+				return device.name || '—';
+			case 'model':
+				return device.model || '—';
+			case 'brand':
+				return lookupName(refData.brands, device.brandId);
+			case 'category':
+				return lookupName(refData.categories, device.categoryId);
+			case 'owner':
+				return lookupName(refData.owners, device.ownerId);
+			case 'status':
+				return device.status || '—';
+			case 'purchaseDate':
+				return formatDate(device.purchaseDate);
+			default:
+				return '—';
+		}
 	}
 
 	// Format date helper (nullable dates)
@@ -163,155 +197,40 @@
 						/>
 					</th>
 				{/if}
-				<!-- Name (sortable, sticky for horizontal-scroll context) -->
-				<th
-					scope="col"
-					class="sticky left-0 z-10 bg-neutral-50 dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
-					aria-sort={getAriaSort('name')}
-				>
-					<button
-						type="button"
-						onclick={() => handleSort('name')}
-						class="group inline-flex items-center gap-1 hover:text-neutral-900 dark:hover:text-neutral-100"
+				{#each visibleColumns as col, colIdx (col)}
+					{@const isFirst = colIdx === 0}
+					{@const sortable = isSortable(col)}
+					<th
+						scope="col"
+						class="{isFirst ? 'sticky left-0 z-10 bg-neutral-50 dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]' : ''} px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
+						aria-sort={sortable ? getAriaSort(col as SortableColumn) : undefined}
 					>
-						{t('devices.columns.name')}
-						{#if currentSort === 'name'}
-							<svg
-								class="h-4 w-4"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-								aria-hidden="true"
+						{#if sortable}
+							<button
+								type="button"
+								onclick={() => handleSort(col as SortableColumn)}
+								class="group inline-flex items-center gap-1 hover:text-neutral-900 dark:hover:text-neutral-100"
 							>
-								{#if sortDir === 'asc'}
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M5 15l7-7 7 7"
-									/>
+								{t(`devices.columns.${col}`)}
+								{#if currentSort === col}
+									<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+										{#if sortDir === 'asc'}
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+										{:else}
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+										{/if}
+									</svg>
 								{:else}
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M19 9l-7 7-7-7"
-									/>
+									<svg class="h-4 w-4 opacity-0 group-hover:opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+									</svg>
 								{/if}
-							</svg>
+							</button>
 						{:else}
-							<svg
-								class="h-4 w-4 opacity-0 group-hover:opacity-50"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-								aria-hidden="true"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
-								/>
-							</svg>
+							{t(`devices.columns.${col}`)}
 						{/if}
-					</button>
-				</th>
-
-				<!-- Model (not sortable) -->
-				<th
-					scope="col"
-					class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
-				>
-					{t('devices.columns.model')}
-				</th>
-
-				<!-- Brand (not sortable) -->
-				<th
-					scope="col"
-					class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
-				>
-					{t('devices.columns.brand')}
-				</th>
-
-				<!-- Category (not sortable) -->
-				<th
-					scope="col"
-					class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
-				>
-					{t('devices.columns.category')}
-				</th>
-
-				<!-- Owner (not sortable) -->
-				<th
-					scope="col"
-					class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
-				>
-					{t('devices.columns.owner')}
-				</th>
-
-				<!-- Status (not sortable) -->
-				<th
-					scope="col"
-					class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
-				>
-					{t('devices.columns.status')}
-				</th>
-
-				<!-- Purchase Date (sortable) -->
-				<th
-					scope="col"
-					class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
-					aria-sort={getAriaSort('purchaseDate')}
-				>
-					<button
-						type="button"
-						onclick={() => handleSort('purchaseDate')}
-						class="group inline-flex items-center gap-1 hover:text-neutral-900 dark:hover:text-neutral-100"
-					>
-						{t('devices.columns.purchaseDate')}
-						{#if currentSort === 'purchaseDate'}
-							<svg
-								class="h-4 w-4"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-								aria-hidden="true"
-							>
-								{#if sortDir === 'asc'}
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M5 15l7-7 7 7"
-									/>
-								{:else}
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M19 9l-7 7-7-7"
-									/>
-								{/if}
-							</svg>
-						{:else}
-							<svg
-								class="h-4 w-4 opacity-0 group-hover:opacity-50"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-								aria-hidden="true"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
-								/>
-							</svg>
-						{/if}
-					</button>
-				</th>
+					</th>
+				{/each}
 
 				<!-- Actions (non-sortable) -->
 				<th
@@ -345,27 +264,12 @@
 							/>
 						</td>
 					{/if}
-					<td class="sticky left-0 z-10 border-r border-neutral-200 dark:border-neutral-800 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] {selected ? 'bg-primary-500/10' : 'bg-white dark:bg-neutral-950'} group-hover/row:bg-neutral-50 dark:group-hover/row:bg-neutral-900 px-4 py-4 text-sm font-medium text-neutral-900 dark:text-neutral-50">
-						{device.name || '—'}
-					</td>
-					<td class="px-4 py-4 text-sm text-neutral-700 dark:text-neutral-300">
-						{device.model || '—'}
-					</td>
-					<td class="px-4 py-4 text-sm text-neutral-700 dark:text-neutral-300">
-						{lookupName(refData.brands, device.brandId)}
-					</td>
-					<td class="px-4 py-4 text-sm text-neutral-700 dark:text-neutral-300">
-						{lookupName(refData.categories, device.categoryId)}
-					</td>
-					<td class="px-4 py-4 text-sm text-neutral-700 dark:text-neutral-300">
-						{lookupName(refData.owners, device.ownerId)}
-					</td>
-					<td class="px-4 py-4 text-sm text-neutral-700 dark:text-neutral-300">
-						{device.status || '—'}
-					</td>
-					<td class="px-4 py-4 text-sm text-neutral-700 dark:text-neutral-300">
-						{formatDate(device.purchaseDate)}
-					</td>
+					{#each visibleColumns as col, colIdx (col)}
+						{@const isFirst = colIdx === 0}
+						<td class="{isFirst ? `sticky left-0 z-10 border-r border-neutral-200 dark:border-neutral-800 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] ${selected ? 'bg-primary-500/10' : 'bg-white dark:bg-neutral-950'} group-hover/row:bg-neutral-50 dark:group-hover/row:bg-neutral-900` : ''} px-4 py-4 text-sm {isFirst ? 'font-medium text-neutral-900 dark:text-neutral-50' : 'text-neutral-700 dark:text-neutral-300'}">
+							{getCellValue(device, col)}
+						</td>
+					{/each}
 					<td class="px-4 py-4 text-right">
 						<button
 							type="button"

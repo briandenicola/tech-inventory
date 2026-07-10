@@ -23,7 +23,10 @@
 		normalizeQueryString,
 		getDevicesViewMode,
 		setDevicesViewMode,
-		type DevicesViewMode
+		getTableColumns,
+		DEFAULT_TABLE_COLUMNS,
+		type DevicesViewMode,
+		type TableColumnId
 	} from '$lib/stores/userPrefs';
 	import {
 		getDevicesViewState,
@@ -178,6 +181,9 @@
 	// Mobile view mode (cards or table)
 	let mobileViewMode = $state<DevicesViewMode>('cards');
 
+	// Table column visibility/order preference
+	let tableColumns = $state<TableColumnId[]>([...DEFAULT_TABLE_COLUMNS]);
+
 	// Add Device modal state (D-137 — Apple-elegant modal replaces /devices/new flow)
 	let createModalOpen = $state(false);
 	const selectedDeviceId = $derived($page.url.searchParams.get('device'));
@@ -310,6 +316,11 @@
 		const savedViewMode = getDevicesViewMode(currentUser?.id);
 		if (savedViewMode) {
 			mobileViewMode = savedViewMode;
+		}
+
+		const savedColumns = getTableColumns(currentUser?.id);
+		if (savedColumns && savedColumns.length > 0) {
+			tableColumns = savedColumns;
 		}
 
 		const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -864,6 +875,7 @@
 			{someVisibleSelected}
 			{mobileViewMode}
 			onOpenDevice={openDeviceDetail}
+			visibleColumns={tableColumns}
 		/>
 
 		{#if urlFilters.groupBy}

@@ -18,11 +18,32 @@ import { z } from 'zod';
 const STORAGE_VERSION = 1;
 const KEY_PREFIX = 'ti.userPrefs.v1';
 
+/**
+ * All possible table columns that the user can show/hide/reorder.
+ */
+export const ALL_TABLE_COLUMNS = [
+	'name',
+	'model',
+	'brand',
+	'category',
+	'owner',
+	'status',
+	'purchaseDate'
+] as const;
+
+export type TableColumnId = (typeof ALL_TABLE_COLUMNS)[number];
+
+/** Default column order and visibility — all columns, original order. */
+export const DEFAULT_TABLE_COLUMNS: TableColumnId[] = [...ALL_TABLE_COLUMNS];
+
+const TableColumnSchema = z.enum(['name', 'model', 'brand', 'category', 'owner', 'status', 'purchaseDate']);
+
 const UserPrefsSchema = z.object({
 	version: z.literal(STORAGE_VERSION),
 	devicesDefaultView: z.string().nullable().optional(),
 	devicesViewMode: z.enum(['cards', 'table']).nullable().optional(),
-	themePreference: z.enum(['light', 'dark', 'system']).nullable().optional()
+	themePreference: z.enum(['light', 'dark', 'system']).nullable().optional(),
+	tableColumns: z.array(TableColumnSchema).nullable().optional()
 });
 
 export type UserPrefs = z.infer<typeof UserPrefsSchema>;
@@ -132,6 +153,30 @@ export function setThemePreference(
 	if (!userId) return;
 	const prefs = readPrefs(userId);
 	prefs.themePreference = theme;
+	writePrefs(userId, prefs);
+}
+
+/**
+ * Get the user's configured table columns (order determines display order;
+ * only included columns are visible). Returns null if unset (use defaults).
+ */
+export function getTableColumns(userId: string | null | undefined): TableColumnId[] | null {
+	if (!userId) return null;
+	const prefs = readPrefs(userId);
+	return prefs.tableColumns ?? null;
+}
+
+/**
+ * Persist the user's chosen table columns (order + visibility).
+ * Pass null to reset to defaults.
+ */
+export function setTableColumns(
+	userId: string | null | undefined,
+	columns: TableColumnId[] | null
+): void {
+	if (!userId) return;
+	const prefs = readPrefs(userId);
+	prefs.tableColumns = columns;
 	writePrefs(userId, prefs);
 }
 

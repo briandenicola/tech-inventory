@@ -1020,6 +1020,17 @@
 			"light": "Light",
 			"dark": "Dark",
 			"system": "System"
+		},
+		"tableColumns": {
+			"heading": "Table Columns",
+			"subheading": "Choose which columns to display in the devices table and their order. Drag to reorder.",
+			"resetToDefault": "Reset to Default",
+			"moveUp": "Move up",
+			"moveDown": "Move down",
+			"toast": {
+				"saved": "Table column preferences saved.",
+				"reset": "Table columns reset to defaults."
+			}
 		}
 	},
 	"errors": {

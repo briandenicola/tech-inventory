@@ -408,7 +408,7 @@
 		</p>
 		<a
 			href="/devices"
-			class="mt-6 inline-flex items-center gap-2 rounded-lg bg-warning-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-warning-700 focus:outline-none focus:ring-2 focus:ring-warning-500 focus:ring-offset-2 dark:bg-warning-500 dark:hover:bg-warning-600"
+			class="mt-6 inline-flex items-center gap-2 rounded-lg bg-warning-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-warning-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning-500 focus-visible:ring-offset-2 dark:bg-warning-500 dark:hover:bg-warning-600"
 		>
 			{t('common.actions.back')} to Devices
 		</a>

@@ -10,6 +10,7 @@
 	import { registerPullToRefresh } from '$lib/stores/pullToRefresh';
 	import { fetchReferenceData } from '$lib/stores/referenceData';
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import BulkDeleteReferenceModal from '$lib/components/BulkDeleteReferenceModal.svelte';
 	import MergeEntityModal from '$lib/components/MergeEntityModal.svelte';
@@ -406,7 +407,7 @@
 	const warningActionButtonClass =
 		'text-sm font-medium text-warning-600 hover:text-warning-700 hover:underline dark:text-warning-400 dark:hover:text-warning-300';
 	const primarySolidButtonClass =
-		'inline-flex min-h-11 items-center justify-center rounded-full bg-primary-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-700 dark:hover:bg-primary-800';
+		'inline-flex min-h-11 items-center justify-center rounded-full bg-primary-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:bg-primary-700 dark:hover:bg-primary-800';
 </script>
 
 <svelte:head>
@@ -432,7 +433,7 @@
 			type="text"
 			bind:value={searchQuery}
 			placeholder={t('admin.categories.list.searchPlaceholder')}
-			class="block min-h-11 w-full rounded-md border border-neutral-300 px-4 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
+			class="block min-h-11 w-full rounded-md border border-neutral-300 px-4 py-2 text-sm focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
 		/>
 	</div>
 
@@ -442,27 +443,24 @@
 	{:else if error}
 		<ErrorState {error} onRetry={loadCategories} />
 	{:else if displayedCategories.length === 0}
-		<div
-			class="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-neutral-200 bg-white p-12 text-center dark:border-neutral-800 dark:bg-neutral-950"
-		>
-			<svg
-				class="h-16 w-16 text-neutral-400 dark:text-neutral-600"
-				fill="none"
-				viewBox="0 0 24 24"
-				stroke="currentColor"
-				aria-hidden="true"
-			>
-				<path
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="1.5"
-					d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-				/>
-			</svg>
-			<p class="mt-4 text-lg font-semibold text-neutral-900 dark:text-neutral-50">
-				{t('admin.categories.list.emptyState')}
-			</p>
-		</div>
+		<EmptyState message={t('admin.categories.list.emptyState')} showAddAction={false}>
+			{#snippet icon()}
+				<svg
+					class="h-16 w-16 text-neutral-400 dark:text-neutral-600"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					aria-hidden="true"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="1.5"
+						d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+					/>
+				</svg>
+			{/snippet}
+		</EmptyState>
 	{:else}
 		<div class="mt-6 overflow-hidden rounded-lg border border-neutral-200 bg-white shadow dark:border-neutral-800 dark:bg-neutral-950">
 			<div class="divide-y divide-neutral-200 dark:divide-neutral-800">
@@ -558,7 +556,7 @@
 						type="text"
 						bind:value={formData.name}
 						placeholder={t('admin.categories.fields.namePlaceholder')}
-						class="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
+						class="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
 						class:border-error-600={formErrors.name}
 					/>
 					{#if formErrors.name}
@@ -578,7 +576,7 @@
 						id="category-parent"
 						value={formData.parentId}
 						onchange={handleParentChange}
-						class="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
+						class="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
 						class:border-error-600={formErrors.parentId}
 					>
 						<option value="">{t('admin.categories.fields.parentNone')}</option>
@@ -607,7 +605,7 @@
 						bind:value={formData.icon}
 						placeholder={t('admin.categories.fields.iconPlaceholder')}
 						maxlength="100"
-						class="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
+						class="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
 						class:border-error-600={formErrors.icon}
 					/>
 					{#if formErrors.icon}
@@ -656,7 +654,7 @@
 			{#if categoryId}
 				<input
 					type="checkbox"
-					class="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
+					class="h-4 w-4 rounded border-neutral-300 text-primary-600 focus-visible:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
 					checked={selected}
 					onchange={() => toggleSelect(categoryId)}
 					aria-label={t('admin.bulk.selectRow', { name: category.name ?? '' })}
@@ -666,7 +664,7 @@
 				<button
 					type="button"
 					onclick={() => toggleExpanded(categoryId)}
-					class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200 lg:h-6 lg:w-6"
+					class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200 lg:h-6 lg:w-6"
 					aria-label={expandedIds.has(categoryId) ? 'Collapse' : 'Expand'}
 				>
 					{#if expandedIds.has(categoryId)}

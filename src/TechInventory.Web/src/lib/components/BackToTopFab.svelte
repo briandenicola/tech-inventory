@@ -12,7 +12,7 @@
 	<button
 		type="button"
 		onclick={onClick}
-		class="fixed inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary-600 text-white shadow-lg transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600"
+		class="fixed inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary-600 text-white shadow-lg transition-colors hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600"
 		style="right: calc(env(safe-area-inset-right, 0px) + var(--space-6)); bottom: calc(env(safe-area-inset-bottom, 0px) + var(--space-6)); z-index: var(--z-fixed);"
 		aria-label={label}
 		title={label}

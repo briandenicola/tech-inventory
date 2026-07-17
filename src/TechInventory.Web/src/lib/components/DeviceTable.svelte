@@ -189,7 +189,7 @@
 					<th scope="col" class="w-12 px-4 py-3 text-left">
 						<input
 							type="checkbox"
-							class="h-4 w-4 cursor-pointer rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
+							class="h-4 w-4 cursor-pointer rounded border-neutral-300 text-primary-600 focus-visible:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
 							checked={allVisibleSelected}
 							use:setIndeterminate={!allVisibleSelected && someVisibleSelected}
 							onchange={() => onToggleSelectAll?.()}
@@ -257,7 +257,7 @@
 						>
 							<input
 								type="checkbox"
-								class="h-4 w-4 cursor-pointer rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
+								class="h-4 w-4 cursor-pointer rounded border-neutral-300 text-primary-600 focus-visible:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
 								checked={isSelected(device.id)}
 								onchange={(e) => handleSelectToggle(e, device.id)}
 								aria-label={t('devices.bulk.selectRow', { name: device.name || device.id })}
@@ -277,7 +277,7 @@
 								e.stopPropagation();
 								openDevice(device.id);
 							}}
-							class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+							class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
 							aria-label={t('common.actions.viewDetails', { name: device.name || device.id })}
 						>
 							{t('common.actions.view')}
@@ -316,7 +316,7 @@
 								aria-label={collapsed
 									? t('devices.groups.expandGroup', { label: group.label })
 									: t('devices.groups.collapseGroup', { label: group.label })}
-								class="inline-flex w-full items-center gap-2 text-sm font-semibold text-neutral-900 hover:text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1 dark:text-neutral-50 dark:hover:text-primary-400"
+								class="inline-flex w-full items-center gap-2 text-sm font-semibold text-neutral-900 hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1 dark:text-neutral-50 dark:hover:text-primary-400"
 							>
 								<svg
 									class="h-4 w-4 transition-transform"
@@ -393,7 +393,7 @@
 					>
 						<input
 							type="checkbox"
-							class="h-5 w-5 cursor-pointer rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
+							class="h-5 w-5 cursor-pointer rounded border-neutral-300 text-primary-600 focus-visible:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
 							checked={isSelected(device.id)}
 							onchange={(e) => handleSelectToggle(e, device.id)}
 							aria-label={t('devices.bulk.selectRow', { name: device.name || device.id })}
@@ -485,7 +485,7 @@
 						type="button"
 						onclick={() => toggleGroup(group.key)}
 						aria-expanded={!collapsed}
-						class="mb-2 flex w-full items-center gap-2 rounded-lg bg-neutral-100 px-3 py-2 text-sm font-semibold text-neutral-900 hover:bg-neutral-200 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-900 dark:text-neutral-50 dark:hover:bg-neutral-800"
+						class="mb-2 flex w-full items-center gap-2 rounded-lg bg-neutral-100 px-3 py-2 text-sm font-semibold text-neutral-900 hover:bg-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-neutral-900 dark:text-neutral-50 dark:hover:bg-neutral-800"
 					>
 						<svg
 							class="h-4 w-4 transition-transform"

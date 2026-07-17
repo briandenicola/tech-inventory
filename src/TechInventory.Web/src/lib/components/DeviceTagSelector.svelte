@@ -47,7 +47,7 @@
 									tag.id,
 									(event.currentTarget as HTMLInputElement).checked
 								)}
-							class="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 disabled:cursor-not-allowed"
+							class="h-4 w-4 rounded border-neutral-300 text-primary-600 focus-visible:ring-primary-500 disabled:cursor-not-allowed"
 						/>
 						<span
 							class="h-2.5 w-2.5 rounded-full bg-neutral-400"

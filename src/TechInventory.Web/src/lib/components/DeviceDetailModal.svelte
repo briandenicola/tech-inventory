@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { fly } from 'svelte/transition';
+	import { motionDuration } from '$lib/utils/motion';
 	import { t } from '$lib/i18n';
 	import { devices } from '$lib/api/client';
 	import { referenceDataStore } from '$lib/stores/referenceData';
@@ -355,7 +356,7 @@
 	>
 		<div
 			bind:this={dialogElement}
-			transition:fly|local={{ y: 32, duration: 180 }}
+			transition:fly|local={{ y: 32, duration: motionDuration(180) }}
 			class="ti-modal-surface pointer-events-auto relative flex h-[calc(100dvh-env(safe-area-inset-top,0px))] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl dark:bg-neutral-950 sm:h-auto sm:max-h-[85dvh] sm:max-w-4xl sm:rounded-2xl"
 			role="dialog"
 			aria-modal="true"
@@ -397,7 +398,7 @@
 					<button
 						type="button"
 						onclick={onClose}
-						class="inline-flex h-11 w-11 items-center justify-center rounded-full text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+						class="inline-flex h-11 w-11 items-center justify-center rounded-full text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
 						aria-label={t('common.actions.close')}
 						data-dialog-initial-focus
 					>

@@ -84,7 +84,7 @@
 				bind:value={selectedLocationId}
 				disabled={locationsLoading || isDownloading}
 				onchange={resetStatus}
-				class="mt-1 block min-h-11 w-full rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-neutral-800 dark:text-neutral-100"
+				class="mt-1 block min-h-11 w-full rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-neutral-800 dark:text-neutral-100"
 			>
 				<option value="">{t('export.insurance.allLocations')}</option>
 				{#if locationsLoading}

@@ -206,7 +206,7 @@
 								<input
 									type="checkbox"
 									bind:checked={showUnchanged}
-									class="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
+									class="h-4 w-4 rounded border-neutral-300 text-primary-600 focus-visible:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
 								/>
 								{t('admin.audit.diff.showUnchanged')} ({unchangedCount})
 							</label>

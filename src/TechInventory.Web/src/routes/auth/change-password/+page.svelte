@@ -10,6 +10,10 @@
 	 *
 	 * On success we drop the session and bounce back to /auth/login so the user
 	 * signs in again with the new password.
+	 *
+	 * No LoadingSkeleton — the form renders immediately with no data fetch on
+	 * mount; the submit button's own disabled/label state covers the async
+	 * changePassword() call.
 	 */
 	import { goto } from '$app/navigation';
 	import { localSignOut } from '$lib/stores/auth';
@@ -89,7 +93,7 @@
 				<input
 					type="password"
 					autocomplete="current-password"
-					class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-50"
+					class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-50"
 					bind:value={currentPassword}
 					required
 					disabled={isSubmitting}
@@ -101,7 +105,7 @@
 				<input
 					type="password"
 					autocomplete="new-password"
-					class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-50"
+					class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-50"
 					bind:value={newPassword}
 					required
 					minlength={MIN_LENGTH}
@@ -115,7 +119,7 @@
 				<input
 					type="password"
 					autocomplete="new-password"
-					class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-50"
+					class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-50"
 					bind:value={confirmPassword}
 					required
 					minlength={MIN_LENGTH}

@@ -10,6 +10,7 @@
 	import { registerPullToRefresh } from '$lib/stores/pullToRefresh';
 	import { fetchReferenceData } from '$lib/stores/referenceData';
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import PaginationControls from '$lib/components/PaginationControls.svelte';
 	import BulkDeleteReferenceModal from '$lib/components/BulkDeleteReferenceModal.svelte';
@@ -348,7 +349,7 @@
 	const warningActionButtonClass =
 		'text-sm font-medium text-warning-600 hover:text-warning-700 hover:underline dark:text-warning-400 dark:hover:text-warning-300';
 	const primarySolidButtonClass =
-		'inline-flex min-h-11 items-center justify-center rounded-full bg-primary-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-700 dark:hover:bg-primary-800';
+		'inline-flex min-h-11 items-center justify-center rounded-full bg-primary-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:bg-primary-700 dark:hover:bg-primary-800';
 </script>
 
 <svelte:head>
@@ -378,7 +379,7 @@
 							<th scope="col" class="w-12 px-4 py-3 text-left">
 								<input
 									type="checkbox"
-									class="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
+									class="h-4 w-4 rounded border-neutral-300 text-primary-600 focus-visible:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
 									checked={allVisibleSelected}
 									use:setIndeterminate={!allVisibleSelected && someVisibleSelected}
 									onchange={toggleSelectAllVisible}
@@ -398,7 +399,7 @@
 									{#if network.id}
 										<input
 											type="checkbox"
-											class="h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
+											class="h-4 w-4 rounded border-neutral-300 text-primary-600 focus-visible:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
 											checked={selected}
 											onchange={() => toggleSelect(network.id ?? '')}
 											aria-label={t('admin.bulk.selectRow', { name: network.name ?? '' })}
@@ -441,26 +442,8 @@
 			<ErrorState {error} onRetry={loadNetworks} />
 		</div>
 	{:else if networks.length === 0}
-		<div
-			class="mt-6 flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-neutral-200 bg-white p-12 text-center dark:border-neutral-800 dark:bg-neutral-950"
-		>
-			<svg
-				class="h-16 w-16 text-neutral-400 dark:text-neutral-600"
-				fill="none"
-				viewBox="0 0 24 24"
-				stroke="currentColor"
-				aria-hidden="true"
-			>
-				<path
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="1.5"
-					d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
-				/>
-			</svg>
-			<p class="mt-4 text-lg font-semibold text-neutral-900 dark:text-neutral-50">
-				{t('networks.list.emptyState')}
-			</p>
+		<div class="mt-6">
+			<EmptyState message={t('networks.list.emptyState')} showAddAction={false} />
 		</div>
 	{/if}
 </div>
@@ -537,7 +520,7 @@
 						type="text"
 						bind:value={formData.name}
 						placeholder={t('networks.fields.namePlaceholder')}
-						class="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
+						class="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
 						class:border-error-600={formErrors.name}
 					/>
 					{#if formErrors.name}
@@ -557,7 +540,7 @@
 						bind:value={formData.description}
 						placeholder={t('networks.fields.descriptionPlaceholder')}
 						rows="3"
-						class="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
+						class="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
 						class:border-error-600={formErrors.description}
 					></textarea>
 					{#if formErrors.description}

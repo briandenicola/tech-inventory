@@ -136,7 +136,7 @@
 					type="checkbox"
 					checked={enabled}
 					onchange={() => toggleColumn(col)}
-					class="h-4 w-4 cursor-pointer rounded border-neutral-300 text-primary-600 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
+					class="h-4 w-4 cursor-pointer rounded border-neutral-300 text-primary-600 focus-visible:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800"
 					aria-label={columnLabel(col)}
 				/>
 				<span class="flex-1 text-sm text-neutral-900 dark:text-neutral-100">

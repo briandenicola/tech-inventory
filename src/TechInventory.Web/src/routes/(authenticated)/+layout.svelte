@@ -288,7 +288,7 @@
 			<!-- Hamburger Menu Button (mobile only — desktop uses user menu as sole nav entry) -->
 			<button
 				type="button"
-				class="inline-flex h-11 w-11 items-center justify-center rounded-full text-neutral-700 transition-colors hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-neutral-300 dark:hover:bg-neutral-800 md:hidden"
+				class="inline-flex h-11 w-11 items-center justify-center rounded-full text-neutral-700 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-neutral-300 dark:hover:bg-neutral-800 md:hidden"
 				onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
 				aria-label={mobileMenuOpen ? t('header.closeMenu') : t('header.menu')}
 				aria-expanded={mobileMenuOpen}

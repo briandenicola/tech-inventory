@@ -27,9 +27,19 @@
 		disabledFields?: string[];
 		onSubmit: (data: DeviceFormInput) => Promise<void>;
 		onCancel: () => void;
+		isDirty?: boolean;
+		serverErrors?: Record<string, string>;
 	}
 
-	let { mode, initialData = {}, disabledFields = [], onSubmit, onCancel }: Props = $props();
+	let {
+		mode,
+		initialData = {},
+		disabledFields = [],
+		onSubmit,
+		onCancel,
+		isDirty = $bindable(false),
+		serverErrors = {}
+	}: Props = $props();
 
 	const refData = $derived($referenceDataStore);
 
@@ -65,6 +75,18 @@
 	let touched = $state<Record<string, boolean>>({});
 	let isSubmitting = $state(false);
 
+	// Server-side validation errors (e.g. "OwnerId is required") arrive after
+	// a failed submit, keyed by field. Merge them in and mark those fields
+	// touched so they render immediately without waiting for a blur event.
+	$effect(() => {
+		if (Object.keys(serverErrors).length === 0) return;
+		errors = { ...errors, ...serverErrors };
+		touched = {
+			...touched,
+			...Object.fromEntries(Object.keys(serverErrors).map((key) => [key, true]))
+		};
+	});
+
 	function areValuesEqual(initial: unknown, current: unknown): boolean {
 		if (Array.isArray(initial) && Array.isArray(current)) {
 			return (
@@ -93,7 +115,7 @@
 		return '';
 	}
 
-	const isDirty = $derived(
+	const computedDirty = $derived(
 		Object.keys(formData).some((key) => {
 			const formKey = key as keyof DeviceFormInput;
 			const initial = getInitialValue(formKey);
@@ -101,6 +123,10 @@
 			return !areValuesEqual(initial, current);
 		})
 	);
+
+	$effect(() => {
+		isDirty = computedDirty;
+	});
 
 	function validateField(name: string) {
 		try {
@@ -233,7 +259,7 @@
 	<!-- Brand -->
 	<div>
 		<label for="brandId" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
-			{t('devices.columns.brand')} <span class="text-danger-600">*</span>
+			{t('devices.columns.brand')}
 		</label>
 		<select
 			id="brandId"
@@ -242,7 +268,7 @@
 			disabled={isDisabled('brandId')}
 			class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors hover:border-neutral-400 focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:hover:border-neutral-600 dark:focus-visible:border-primary-500 dark:disabled:bg-neutral-900"
 		>
-			<option value="">-- Select Brand --</option>
+			<option value="">-- No Brand --</option>
 			{#each refData.brands as brand (brand.id)}
 				<option value={brand.id}>{brand.name}</option>
 			{/each}
@@ -280,7 +306,7 @@
 	<!-- Owner -->
 	<div>
 		<label for="ownerId" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
-			{t('devices.columns.owner')}
+			{t('devices.columns.owner')} <span class="text-danger-600">*</span>
 		</label>
 		<select
 			id="ownerId"
@@ -289,7 +315,7 @@
 			disabled={isDisabled('ownerId')}
 			class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors hover:border-neutral-400 focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:hover:border-neutral-600 dark:focus-visible:border-primary-500 dark:disabled:bg-neutral-900"
 		>
-			<option value="">-- No Owner --</option>
+			<option value="">-- Select Owner --</option>
 			{#each refData.owners as owner (owner.id)}
 				<option value={owner.id}>{owner.name}</option>
 			{/each}
@@ -305,7 +331,7 @@
 			for="locationId"
 			class="block text-sm font-medium text-neutral-900 dark:text-neutral-100"
 		>
-			{t('devices.columns.location')}
+			{t('devices.columns.location')} <span class="text-danger-600">*</span>
 		</label>
 		<select
 			id="locationId"
@@ -314,7 +340,7 @@
 			disabled={isDisabled('locationId')}
 			class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors hover:border-neutral-400 focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:hover:border-neutral-600 dark:focus-visible:border-primary-500 dark:disabled:bg-neutral-900"
 		>
-			<option value="">-- No Location --</option>
+			<option value="">-- Select Location --</option>
 			{#each refData.locations as location (location.id)}
 				<option value={location.id}>{location.name}</option>
 			{/each}

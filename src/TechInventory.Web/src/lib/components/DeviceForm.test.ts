@@ -49,6 +49,8 @@ import { referenceDataStore } from '$lib/stores/referenceData';
 
 const testBrandId = '00000000-0000-4000-8000-000000000301';
 const testCategoryId = '00000000-0000-4000-8000-000000000201';
+const testOwnerId = '00000000-0000-4000-8000-000000000401';
+const testLocationId = '00000000-0000-4000-8000-000000000501';
 
 describe('DeviceForm', () => {
 	beforeEach(() => {
@@ -64,8 +66,14 @@ describe('DeviceForm', () => {
 				createCategory({ id: testCategoryId, name: 'Laptop' }),
 				createCategory({ id: '00000000-0000-4000-8000-000000000202', name: 'Phone' })
 			],
-			owners: [createOwner({ name: 'Alice' }), createOwner({ name: 'Bob' })],
-			locations: [createLocation({ name: 'Office' }), createLocation({ name: 'Home' })],
+			owners: [
+				createOwner({ id: testOwnerId, name: 'Alice' }),
+				createOwner({ name: 'Bob' })
+			],
+			locations: [
+				createLocation({ id: testLocationId, name: 'Office' }),
+				createLocation({ name: 'Home' })
+			],
 			networks: [createNetwork({ name: 'WiFi-Main' }), createNetwork({ name: 'WiFi-Guest' })],
 			tags: [
 				createTag({ id: '00000000-0000-4000-8000-000000000101', name: 'Travel', color: '#0ea5e9' }),
@@ -270,11 +278,12 @@ describe('DeviceForm', () => {
 			});
 		});
 
-		it('shows accessible brand-required error on submit when brand is omitted (regression: brand-missing create failure)', async () => {
-			// Regression test: User reported that device create fails with generic
-			// red toast when brand is not defined but no field-level error shows
-			// the brand-required constraint. This test ensures the form validates
-			// brandId and displays a clear accessible error message.
+		it('shows accessible owner-required error on submit when owner is omitted (regression: owner/location-missing create failure, F-02)', async () => {
+			// Regression test: the API requires ownerId/locationId (backend
+			// DeviceValidationRules.ApplyRequiredReferenceRules) but the form
+			// used to show no asterisk and no field-level error for them,
+			// only a generic toast. This test ensures the form validates
+			// ownerId and displays a clear accessible error message.
 			const user = userEvent.setup();
 			const onSubmit = vi.fn<
 				(data: import('$lib/schemas/device').DeviceFormInput) => Promise<void>
@@ -287,49 +296,51 @@ describe('DeviceForm', () => {
 				}
 			});
 
-			// Fill name and category (required fields), but omit brand
+			// Fill name and category (required fields), select a location, but omit owner
 			const nameInput = screen.getByLabelText(/devices.columns.name/i);
 			await user.type(nameInput, 'Test Device');
 
 			const categorySelect = screen.getByLabelText(/devices.columns.category/i);
 			await user.selectOptions(categorySelect, [testCategoryId]);
 
-			// Submit form without selecting brand
+			const locationSelect = screen.getByLabelText(/devices.columns.location/i);
+			await user.selectOptions(locationSelect, [testLocationId]);
+
+			// Submit form without selecting owner
 			const submitButton = screen.getByRole('button', { name: /common.actions.save/i });
 			await user.click(submitButton);
 
-			// Should show brand-required error (Zod schema: "Brand is required")
+			// Should show owner-required error (Zod schema: "Owner is required")
 			await waitFor(() => {
-				expect(screen.getByText(/Brand is required/i)).toBeInTheDocument();
+				expect(screen.getByText(/Owner is required/i)).toBeInTheDocument();
 			});
 
-			// Verify error appears below the brand field for accessibility
-			const brandSelect = screen.getByLabelText(/devices.columns.brand/i);
-			const brandField = brandSelect.closest('div');
-			const brandFieldError = brandField?.querySelector('p.text-danger-600, p.text-danger-400');
-			expect(brandFieldError).toBeInTheDocument();
-			// The error <p> tag contains only "Brand is required", not the label asterisk
-			expect(brandFieldError).toHaveTextContent('Brand is required');
+			// Verify error appears below the owner field for accessibility
+			const ownerSelect = screen.getByLabelText(/devices.columns.owner/i);
+			const ownerField = ownerSelect.closest('div');
+			const ownerFieldError = ownerField?.querySelector('p.text-danger-600, p.text-danger-400');
+			expect(ownerFieldError).toBeInTheDocument();
+			expect(ownerFieldError).toHaveTextContent('Owner is required');
 
 			// onSubmit should NOT have been called because validation failed
 			expect(onSubmit).not.toHaveBeenCalled();
 		});
 
-		it('shows accessible brand-required error on blur when brand is omitted (regression: brand-missing create failure)', async () => {
-			// Second assertion: brand field should also validate on blur so the user
-			// gets immediate feedback before submit.
+		it('shows accessible owner-required error on blur when owner is omitted (regression: owner/location-missing create failure, F-02)', async () => {
+			// Second assertion: owner field should also validate on blur so the
+			// user gets immediate feedback before submit.
 			const user = userEvent.setup();
 			render(DeviceForm, { props: defaultProps });
 
-			const brandSelect = screen.getByLabelText(/devices.columns.brand/i);
+			const ownerSelect = screen.getByLabelText(/devices.columns.owner/i);
 
-			// Focus brand field and blur without selecting a value
-			await user.click(brandSelect);
+			// Focus owner field and blur without selecting a value
+			await user.click(ownerSelect);
 			await user.tab();
 
 			// Should show error after blur
 			await waitFor(() => {
-				const errorMsg = screen.getByText('Brand is required');
+				const errorMsg = screen.getByText('Owner is required');
 				expect(errorMsg).toBeInTheDocument();
 				expect(errorMsg).toHaveClass('text-danger-600');
 			});
@@ -372,8 +383,8 @@ describe('DeviceForm', () => {
 				serialNumber: 'SN123456',
 				brandId: testBrandId,
 				categoryId: testCategoryId,
-				ownerId: '',
-				locationId: '',
+				ownerId: testOwnerId,
+				locationId: testLocationId,
 				networkId: '',
 				tagIds: ['00000000-0000-4000-8000-000000000101'],
 				purchaseDate: '',

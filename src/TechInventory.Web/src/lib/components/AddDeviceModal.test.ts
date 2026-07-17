@@ -20,6 +20,17 @@ vi.mock('$lib/api/client', () => ({
 	devices: {
 		create: mocks.create,
 		syncTags: mocks.syncTags
+	},
+	ApiError: class ApiError extends Error {
+		constructor(
+			public status: number,
+			public title: string,
+			public detail?: string,
+			public instance?: string,
+			public errors?: Record<string, string[]>
+		) {
+			super(title);
+		}
 	}
 }));
 
@@ -47,8 +58,18 @@ vi.mock('$lib/stores/referenceData', async () => {
 					name: 'Fan'
 				}
 			],
-			owners: [],
-			locations: [],
+			owners: [
+				{
+					id: '00000000-0000-4000-8000-000000000401',
+					name: 'Alice'
+				}
+			],
+			locations: [
+				{
+					id: '00000000-0000-4000-8000-000000000601',
+					name: 'Office'
+				}
+			],
 			networks: [],
 			tags: [
 				{
@@ -94,6 +115,14 @@ describe('AddDeviceModal', () => {
 		await user.selectOptions(
 			screen.getByLabelText(/devices.columns.category/i),
 			'00000000-0000-4000-8000-000000000201'
+		);
+		await user.selectOptions(
+			screen.getByLabelText(/devices.columns.owner/i),
+			'00000000-0000-4000-8000-000000000401'
+		);
+		await user.selectOptions(
+			screen.getByLabelText(/devices.columns.location/i),
+			'00000000-0000-4000-8000-000000000601'
 		);
 		await user.click(screen.getByLabelText('Cooling'));
 		await user.click(screen.getByRole('button', { name: /common.actions.save/i }));

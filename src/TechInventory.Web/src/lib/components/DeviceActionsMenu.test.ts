@@ -33,7 +33,7 @@ describe('DeviceActionsMenu', () => {
 		});
 
 		await user.click(screen.getByRole('button', { name: /more actions/i }));
-		await user.click(screen.getAllByRole('button', { name: 'Delete' })[0]!);
+		await user.click(screen.getAllByRole('menuitem', { name: 'Delete' })[0]!);
 
 		expect(onDelete).toHaveBeenCalledOnce();
 	});
@@ -51,8 +51,8 @@ describe('DeviceActionsMenu', () => {
 		await user.click(screen.getByRole('button', { name: /more actions/i }));
 		
 		expect(screen.getByText('Retire Device')).toBeInTheDocument();
-		
-		await user.click(screen.getByRole('button', { name: 'Retire Device' }));
+
+		await user.click(screen.getByRole('menuitem', { name: 'Retire Device' }));
 		expect(onRetire).toHaveBeenCalledOnce();
 	});
 
@@ -70,7 +70,7 @@ describe('DeviceActionsMenu', () => {
 
 		expect(screen.getByText('Unretire Device')).toBeInTheDocument();
 
-		await user.click(screen.getByRole('button', { name: 'Unretire Device' }));
+		await user.click(screen.getByRole('menuitem', { name: 'Unretire Device' }));
 		expect(onUnretire).toHaveBeenCalledOnce();
 	});
 

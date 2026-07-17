@@ -8,6 +8,7 @@
 	// in +page.ts because that runs before the layout's handleRedirectPromise
 	// — see comment in +page.ts. The static greeting below is only visible
 	// for the brief moment between mount and authStore resolution.
+	// No LoadingSkeleton — this is a transient redirect splash, not content.
 	$effect(() => {
 		const state = $authStore;
 		if (state.isLoading) return;

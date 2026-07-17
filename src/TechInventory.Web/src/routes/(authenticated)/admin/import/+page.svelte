@@ -21,6 +21,10 @@
 	The File is held in $state across the wizard so the user does not need
 	to re-upload between preview and commit.
 
+	No LoadingSkeleton — this is a wizard, not a list/table page. Each async
+	step (preview, commit) already gets its own inline button spinner
+	(isLoading) rather than a content skeleton.
+
 	Refs: PRD F1, spec.md J10, D-137 (Apple-elegant), constitution §4.4.
 -->
 <script lang="ts">
@@ -461,7 +465,7 @@
 					data-testid="import-preview-rows"
 				>
 					<summary
-						class="cursor-pointer rounded-2xl px-6 py-4 text-base font-semibold text-neutral-900 hover:bg-neutral-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-neutral-50 dark:hover:bg-neutral-800/40"
+						class="cursor-pointer rounded-2xl px-6 py-4 text-base font-semibold text-neutral-900 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-neutral-50 dark:hover:bg-neutral-800/40"
 					>
 						{t('import.preview.previewRowsTitle')}
 					</summary>

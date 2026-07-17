@@ -16,6 +16,9 @@
 	 * Form with all device fields, Zod validation, household default currency pre-filled.
 	 * Submit → POST /api/v1/devices → toast → redirect to detail page.
 	 *
+	 * No LoadingSkeleton — the form renders immediately with no data fetch
+	 * gating it; DeviceForm fills its own reference-data selects as they load.
+	 *
 	 * Related: specs/002-frontend-mvp/spec.md J6
 	 */
 

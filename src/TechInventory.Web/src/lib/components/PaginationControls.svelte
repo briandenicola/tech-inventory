@@ -74,7 +74,7 @@
 				id="page-size"
 				value={pageSize}
 				onchange={handlePageSizeChange}
-				class="rounded-md border-neutral-300 text-sm focus:border-primary-500 focus:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300"
+				class="rounded-md border-neutral-300 text-sm focus-visible:border-primary-500 focus-visible:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300"
 			>
 				<option value="25">25</option>
 				<option value="50">50</option>

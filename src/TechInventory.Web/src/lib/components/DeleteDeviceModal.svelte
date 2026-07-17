@@ -151,7 +151,7 @@
 					type="text"
 					bind:value={confirmName}
 					placeholder={deviceName}
-					class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus:border-danger-500 focus:outline-none focus:ring-2 focus:ring-danger-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus:border-danger-500"
+					class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus-visible:border-danger-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus-visible:border-danger-500"
 				/>
 			</div>
 
@@ -166,7 +166,7 @@
 					rows="3"
 					minlength="10"
 					placeholder={t('devices.delete.reasonPlaceholder')}
-					class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus:border-danger-500 focus:outline-none focus:ring-2 focus:ring-danger-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus:border-danger-500"
+					class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus-visible:border-danger-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus-visible:border-danger-500"
 				></textarea>
 				<p class="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
 					Minimum 10 characters ({reason.trim().length}/10)
@@ -179,7 +179,7 @@
 					type="button"
 					onclick={onCancel}
 					disabled={isSubmitting}
-					class="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-neutral-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:focus:ring-neutral-600"
+					class="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:focus-visible:ring-neutral-600"
 				>
 					{t('common.actions.cancel')}
 				</button>
@@ -187,7 +187,7 @@
 				<button
 					type="submit"
 					disabled={!canSubmit}
-					class="inline-flex items-center gap-2 rounded-lg bg-danger-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-danger-700 focus:outline-none focus:ring-2 focus:ring-danger-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-danger-500 dark:hover:bg-danger-600"
+					class="inline-flex items-center gap-2 rounded-lg bg-danger-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-danger-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-danger-500 dark:hover:bg-danger-600"
 				>
 					{#if isSubmitting}
 						<svg

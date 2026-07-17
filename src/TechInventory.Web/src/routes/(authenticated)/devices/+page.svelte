@@ -60,6 +60,10 @@
 	 */
 
 	const currentUser = $derived($authStore.currentUser);
+	// #78: kept as a JS matchMedia check (not superseded by the app.css global
+	// override) because it gates actual behavior, not just animation timing —
+	// it switches between infinite-scroll and paginated mode and chooses
+	// scrollIntoView's 'auto' vs 'smooth', neither of which a CSS override can do.
 	const initialReducedMotion =
 		typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -767,7 +771,7 @@
 					<button
 						type="button"
 						onclick={() => (filtersOpen = !filtersOpen)}
-						class="relative inline-flex items-center gap-2 rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-200 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
+						class="relative inline-flex items-center gap-2 rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
 						aria-expanded={filtersOpen}
 					>
 						<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -790,7 +794,7 @@
 					<button
 						type="button"
 						onclick={() => (createModalOpen = true)}
-						class="hidden md:inline-flex min-h-11 items-center gap-2 rounded-full bg-primary-600 px-5 py-2.5 text-base font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600"
+						class="hidden md:inline-flex min-h-11 items-center gap-2 rounded-full bg-primary-600 px-5 py-2.5 text-base font-medium text-white transition-colors hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600"
 					>
 						<svg
 							class="h-5 w-5"
@@ -843,7 +847,7 @@
 						}}
 						placeholder={t('devices.filters.searchPlaceholder')}
 						aria-label={t('devices.filters.searchPlaceholder')}
-						class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 pl-11 pr-4 py-2.5 text-base text-neutral-900 placeholder:text-neutral-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-400 dark:focus:bg-neutral-900"
+						class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 pl-11 pr-4 py-2.5 text-base text-neutral-900 placeholder:text-neutral-500 focus:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-400 dark:focus:bg-neutral-900"
 					/>
 				</div>
 			</div>
@@ -929,7 +933,7 @@
 						<button
 							type="button"
 							onclick={() => void loadNextPage()}
-							class="rounded-lg border border-danger-300 px-3 py-2 font-medium transition-colors hover:bg-danger-100 focus:outline-none focus:ring-2 focus:ring-danger-500 dark:border-danger-700 dark:hover:bg-danger-900/60"
+							class="rounded-lg border border-danger-300 px-3 py-2 font-medium transition-colors hover:bg-danger-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger-500 dark:border-danger-700 dark:hover:bg-danger-900/60"
 						>
 							{t('common.actions.retry')}
 						</button>

@@ -9,6 +9,7 @@
 <script lang="ts">
 	import { toasts, dismissToast } from '$lib/stores/toast';
 	import { fly } from 'svelte/transition';
+	import { motionDuration } from '$lib/utils/motion';
 
 	const activeToasts = $derived($toasts);
 </script>
@@ -21,7 +22,7 @@
 >
 	{#each activeToasts as toast (toast.id)}
 		<div
-			transition:fly={{ y: -20, duration: 300 }}
+			transition:fly={{ y: -20, duration: motionDuration(300) }}
 			class="pointer-events-auto flex min-w-[320px] items-start gap-3 rounded-lg px-4 py-3 shadow-lg {toast.type ===
 			'success'
 				? 'bg-success-50 text-success-900 dark:bg-success-900 dark:text-success-50'
@@ -73,12 +74,12 @@
 			<button
 				type="button"
 				onclick={() => dismissToast(toast.id)}
-				class="flex-shrink-0 rounded p-1 transition-colors hover:bg-black/10 focus:outline-none focus:ring-2 focus:ring-offset-1 {toast.type ===
+				class="flex-shrink-0 rounded p-1 transition-colors hover:bg-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 {toast.type ===
 				'success'
-					? 'focus:ring-success-600 dark:focus:ring-success-400'
+					? 'focus-visible:ring-success-600 dark:focus-visible:ring-success-400'
 					: toast.type === 'error'
-						? 'focus:ring-danger-600 dark:focus:ring-danger-400'
-						: 'focus:ring-info-600 dark:focus:ring-info-400'}"
+						? 'focus-visible:ring-danger-600 dark:focus-visible:ring-danger-400'
+						: 'focus-visible:ring-info-600 dark:focus-visible:ring-info-400'}"
 				aria-label="Dismiss notification"
 			>
 				<svg

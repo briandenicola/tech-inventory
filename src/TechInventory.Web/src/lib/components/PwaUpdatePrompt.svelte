@@ -70,14 +70,14 @@
 		<button
 			type="button"
 			onclick={reload}
-			class="rounded-lg bg-primary-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600"
+			class="rounded-lg bg-primary-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600"
 		>
 			{t('pwa.update.reload')}
 		</button>
 		<button
 			type="button"
 			onclick={dismiss}
-			class="rounded-lg px-2 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-neutral-300 dark:hover:bg-neutral-800"
+			class="rounded-lg px-2 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-neutral-300 dark:hover:bg-neutral-800"
 			aria-label={t('pwa.update.dismiss')}
 		>
 			{t('pwa.update.dismiss')}

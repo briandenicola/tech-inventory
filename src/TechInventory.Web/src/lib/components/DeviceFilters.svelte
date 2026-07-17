@@ -191,7 +191,7 @@
 				<button
 					type="button"
 					onclick={onClose}
-					class="inline-flex h-11 w-11 items-center justify-center rounded-full text-neutral-600 transition-colors hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-neutral-300 dark:hover:bg-neutral-800"
+					class="inline-flex h-11 w-11 items-center justify-center rounded-full text-neutral-600 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-neutral-300 dark:hover:bg-neutral-800"
 					aria-label={t('devices.filters.closeFilters')}
 					data-dialog-initial-focus
 				>
@@ -225,7 +225,7 @@
 					page: 1
 				});
 			}}
-			class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:bg-neutral-900"
+			class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:bg-neutral-900"
 		>
 			<option value="">{t('devices.filters.groupByNone')}</option>
 			<option value="category">{t('devices.filters.groupByCategory')}</option>
@@ -243,7 +243,7 @@
 			id="brand"
 			value={filters.brandId || ''}
 			onchange={(e) => handleFilterChange('brandId', (e.target as HTMLSelectElement).value)}
-			class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:bg-neutral-900"
+			class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:bg-neutral-900"
 		>
 			<option value="">{t('devices.filters.allOption')}</option>
 			{#each refData.brands as brand (brand.id)}
@@ -261,7 +261,7 @@
 			id="category"
 			value={filters.categoryId || ''}
 			onchange={(e) => handleFilterChange('categoryId', (e.target as HTMLSelectElement).value)}
-			class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:bg-neutral-900"
+			class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:bg-neutral-900"
 		>
 			<option value="">{t('devices.filters.allOption')}</option>
 			{#each refData.categories as category (category.id)}
@@ -279,7 +279,7 @@
 			id="owner"
 			value={filters.ownerId || ''}
 			onchange={(e) => handleFilterChange('ownerId', (e.target as HTMLSelectElement).value)}
-			class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:bg-neutral-900"
+			class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:bg-neutral-900"
 		>
 			<option value="">{t('devices.filters.allOption')}</option>
 			{#each refData.owners as owner (owner.id)}
@@ -297,7 +297,7 @@
 			id="location"
 			value={filters.locationId || ''}
 			onchange={(e) => handleFilterChange('locationId', (e.target as HTMLSelectElement).value)}
-			class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:bg-neutral-900"
+			class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:bg-neutral-900"
 		>
 			<option value="">{t('devices.filters.allOption')}</option>
 			{#each refData.locations as location (location.id)}
@@ -315,7 +315,7 @@
 			id="network"
 			value={filters.networkId || ''}
 			onchange={(e) => handleFilterChange('networkId', (e.target as HTMLSelectElement).value)}
-			class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:bg-neutral-900"
+			class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:bg-neutral-900"
 		>
 			<option value="">{t('devices.filters.allOption')}</option>
 			{#each refData.networks as network (network.id)}
@@ -336,7 +336,7 @@
 						type="checkbox"
 						checked={statusValues.includes(status)}
 						onchange={() => toggleStatus(status)}
-						class="h-5 w-5 rounded-md border-neutral-300 text-primary-600 focus:ring-primary-500 focus:ring-offset-0 dark:border-neutral-600 dark:bg-neutral-800"
+						class="h-5 w-5 rounded-md border-neutral-300 text-primary-600 focus-visible:ring-primary-500 focus-visible:ring-offset-0 dark:border-neutral-600 dark:bg-neutral-800"
 					/>
 					<span class="text-base text-neutral-800 dark:text-neutral-200">
 						{t(`devices.filters.status${status}`)}
@@ -366,7 +366,7 @@
 							parseInt((e.target as HTMLInputElement).value, 10) || undefined
 						)}
 					placeholder="1990"
-					class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 placeholder:text-neutral-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-400 dark:focus:bg-neutral-900"
+					class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 placeholder:text-neutral-500 focus:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-400 dark:focus:bg-neutral-900"
 				/>
 			</div>
 			<div class="flex-1">
@@ -383,7 +383,7 @@
 							parseInt((e.target as HTMLInputElement).value, 10) || undefined
 						)}
 					placeholder={currentYear.toString()}
-					class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 placeholder:text-neutral-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-400 dark:focus:bg-neutral-900"
+					class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 placeholder:text-neutral-500 focus:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-400 dark:focus:bg-neutral-900"
 				/>
 			</div>
 		</div>
@@ -400,7 +400,7 @@
 			<button
 				type="button"
 				onclick={clearAll}
-				class="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-neutral-300 px-5 py-2.5 text-base font-medium text-neutral-700 transition-colors hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+				class="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-neutral-300 px-5 py-2.5 text-base font-medium text-neutral-700 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
 			>
 				{t('devices.filters.clearAll')}
 			</button>
@@ -412,7 +412,7 @@
 							type="button"
 							onclick={onSaveDefault}
 							disabled={!canSaveDefault}
-							class="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-primary-600 px-5 py-2.5 text-base font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-primary-500 dark:hover:bg-primary-600"
+							class="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-primary-600 px-5 py-2.5 text-base font-medium text-white transition-colors hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-primary-500 dark:hover:bg-primary-600"
 						>
 							{t('devices.filters.saveDefault')}
 						</button>
@@ -421,7 +421,7 @@
 						<button
 							type="button"
 							onclick={onClearDefault}
-							class="inline-flex min-h-11 w-full items-center justify-center rounded-full px-5 py-2.5 text-sm font-medium text-neutral-600 underline-offset-4 transition-colors hover:underline focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:text-neutral-400"
+							class="inline-flex min-h-11 w-full items-center justify-center rounded-full px-5 py-2.5 text-sm font-medium text-neutral-600 underline-offset-4 transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:text-neutral-400"
 						>
 							{t('devices.filters.clearDefault')}
 						</button>

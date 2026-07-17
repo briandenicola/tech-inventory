@@ -465,6 +465,7 @@
 				pageSize={urlFilters.pageSize}
 				{totalCount}
 				onPageChange={handlePageChange}
+				itemLabel={t('admin.audit.list.itemLabel')}
 			/>
 		</div>
 	{/if}

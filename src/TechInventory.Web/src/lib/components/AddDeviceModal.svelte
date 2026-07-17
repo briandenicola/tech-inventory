@@ -13,10 +13,12 @@
 -->
 <script lang="ts">
 	import { t } from '$lib/i18n';
-	import { devices } from '$lib/api/client';
+	import { devices, ApiError } from '$lib/api/client';
 	import { showToast } from '$lib/stores/toast';
 	import { invalidateDevicesCache } from '$lib/queries/devices.svelte';
+	import { mapApiFieldErrors } from '$lib/utils/apiErrors';
 	import DeviceForm from '$lib/components/DeviceForm.svelte';
+	import UnsavedChangesModal from '$lib/components/UnsavedChangesModal.svelte';
 	import type { DeviceFormInput } from '$lib/schemas/device';
 
 	interface Props {
@@ -28,14 +30,27 @@
 
 	let modalElement = $state<HTMLDivElement | undefined>(undefined);
 	let dialogElement = $state<HTMLDivElement | undefined>(undefined);
+	let isDirty = $state(false);
+	let confirmingDiscard = $state(false);
+	let serverErrors = $state<Record<string, string>>({});
+
+	function requestClose() {
+		if (isDirty) {
+			confirmingDiscard = true;
+			return;
+		}
+		onClose();
+	}
 
 	async function handleSubmit(data: DeviceFormInput) {
+		serverErrors = {};
 		// Transform empty strings to undefined for optional UUID fields
 		// (matches /devices/new page logic)
 		const { tagIds, ...deviceData } = data;
 		const payload = {
 			...deviceData,
 			model: data.model || undefined,
+			brandId: data.brandId || undefined,
 			ownerId: data.ownerId || undefined,
 			locationId: data.locationId || undefined,
 			networkId: data.networkId || undefined,
@@ -59,13 +74,16 @@
 			invalidateDevicesCache();
 			showToast({
 				type: 'success',
-				message: `Device "${data.name}" created successfully`
+				message: `Device ${data.name} created successfully`
 			});
 
 			onCreated?.(result.id);
 			onClose();
 		} catch (err) {
 			console.error('[AddDeviceModal] Submit failed:', err);
+			if (err instanceof ApiError && err.errors) {
+				serverErrors = mapApiFieldErrors(err.errors);
+			}
 			const errorMsg =
 				err instanceof Error && 'detail' in err
 					? (err as unknown as { detail: string }).detail
@@ -76,8 +94,8 @@
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
-		if (e.key === 'Escape') {
-			onClose();
+		if (e.key === 'Escape' && !confirmingDiscard) {
+			requestClose();
 		}
 	}
 
@@ -115,7 +133,7 @@
 		type="button"
 		aria-label={t('common.actions.cancel')}
 		class="ti-modal-backdrop absolute inset-0 h-full w-full cursor-default"
-		onclick={onClose}
+		onclick={requestClose}
 	></button>
 
 	<div class="pointer-events-none relative flex h-full items-center justify-center px-4 pt-[calc(env(safe-area-inset-top,0px)+4.5rem)] pb-4 sm:py-10">
@@ -145,7 +163,7 @@
 					</div>
 					<button
 						type="button"
-						onclick={onClose}
+						onclick={requestClose}
 						class="inline-flex h-11 w-11 items-center justify-center rounded-full text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
 						aria-label={t('common.actions.cancel')}
 					>
@@ -168,8 +186,24 @@
 
 				<!-- Form body (scrollable) -->
 				<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-6">
-					<DeviceForm mode="create" onSubmit={handleSubmit} onCancel={onClose} />
+					<DeviceForm
+						mode="create"
+						onSubmit={handleSubmit}
+						onCancel={requestClose}
+						bind:isDirty
+						{serverErrors}
+					/>
 				</div>
 		</div>
 	</div>
 </div>
+
+{#if confirmingDiscard}
+	<UnsavedChangesModal
+		onDiscard={() => {
+			confirmingDiscard = false;
+			onClose();
+		}}
+		onKeepEditing={() => (confirmingDiscard = false)}
+	/>
+{/if}

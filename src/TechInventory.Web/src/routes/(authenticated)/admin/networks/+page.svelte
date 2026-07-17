@@ -299,7 +299,7 @@
 			}
 			closeMergeModal();
 			clearSelection();
-			await Promise.all([loadNetworks(), fetchReferenceData()]);
+			await Promise.all([loadNetworks(), fetchReferenceData({ force: true })]);
 		} catch (err: unknown) {
 			console.error('[NetworksAdmin] Merge failed:', err);
 			mergeError = err instanceof Error ? err.message : t('admin.merge.error');
@@ -341,7 +341,7 @@
 	async function handleBulkDeleteSuccess() {
 		clearSelection();
 		bulkDeleteModalOpen = false;
-		await Promise.all([loadNetworks(), fetchReferenceData()]);
+		await Promise.all([loadNetworks(), fetchReferenceData({ force: true })]);
 	}
 
 	const primaryActionButtonClass =
@@ -431,6 +431,7 @@
 				pageSize={urlParams.pageSize}
 				{totalCount}
 				onPageChange={handlePageChange}
+				itemLabel={t('common.nouns.networks')}
 			/>
 		</div>
 	{:else if loading}

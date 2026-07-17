@@ -1,22 +1,31 @@
 /**
  * Device Zod Schema Tests — Pure validation unit tests (T23)
- * 
+ *
  * Fast feedback layer: test schema validation without rendering components.
- * Mirrors backend FluentValidation constraints.
- * 
+ * Mirrors backend FluentValidation constraints (verified directly against
+ * DeviceValidationRules.ApplyOptionalBrandRule / ApplyRequiredReferenceRules /
+ * ApplyOptionalNetworkRule — brandId and networkId are optional, categoryId/
+ * ownerId/locationId are required).
+ *
  * Constitution §3.5: Tests own their data
  */
 
 import { describe, it, expect } from 'vitest';
 import { deviceCreateSchema, deviceUpdateSchema } from './device';
 
+const validOwnerId = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+const validLocationId = 'bbbbbbbb-cccc-4ddd-8eee-ffffffffffff';
+const validCategoryId = '87654321-4321-4321-8321-cba987654321';
+const validBrandId = '12345678-1234-4234-8234-123456789abc';
+
 describe('deviceCreateSchema', () => {
 	describe('valid payloads', () => {
 		it('accepts minimal valid payload (required fields only)', () => {
 			const payload = {
 				name: 'iPhone 15 Pro',
-				brandId: '12345678-1234-4234-8234-123456789abc',
-				categoryId: '87654321-4321-4321-8321-cba987654321'
+				categoryId: validCategoryId,
+				ownerId: validOwnerId,
+				locationId: validLocationId
 			};
 
 			const result = deviceCreateSchema.safeParse(payload);
@@ -27,10 +36,10 @@ describe('deviceCreateSchema', () => {
 			const payload = {
 				name: 'MacBook Pro 16"',
 				serialNumber: 'C02XJ0FMJGH5',
-				brandId: '12345678-1234-4234-8234-123456789abc',
-				categoryId: '87654321-4321-4321-8321-cba987654321',
-				ownerId: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
-				locationId: 'bbbbbbbb-cccc-4ddd-8eee-ffffffffffff',
+				brandId: validBrandId,
+				categoryId: validCategoryId,
+				ownerId: validOwnerId,
+				locationId: validLocationId,
 				networkId: 'cccccccc-dddd-4eee-8fff-000000000000',
 				purchaseDate: '2024-03-15',
 				purchasePrice: 2499.99,
@@ -42,14 +51,14 @@ describe('deviceCreateSchema', () => {
 			expect(result.success).toBe(true);
 		});
 
-		it('accepts empty strings for optional fields (form clearance)', () => {
+		it('accepts empty strings for truly optional fields (form clearance)', () => {
 			const payload = {
 				name: 'Test Device',
 				serialNumber: '',
-				brandId: '12345678-1234-4234-8234-123456789abc',
-				categoryId: '87654321-4321-4321-8321-cba987654321',
-				ownerId: '',
-				locationId: '',
+				brandId: '',
+				categoryId: validCategoryId,
+				ownerId: validOwnerId,
+				locationId: validLocationId,
 				networkId: '',
 				purchaseDate: '',
 				currencyCode: '',
@@ -63,8 +72,9 @@ describe('deviceCreateSchema', () => {
 		it('accepts zero purchase price (free device)', () => {
 			const payload = {
 				name: 'Promotional Item',
-				brandId: '12345678-1234-4234-8234-123456789abc',
-				categoryId: '87654321-4321-4321-8321-cba987654321',
+				categoryId: validCategoryId,
+				ownerId: validOwnerId,
+				locationId: validLocationId,
 				purchasePrice: 0
 			};
 
@@ -75,8 +85,9 @@ describe('deviceCreateSchema', () => {
 		it('accepts null for purchasePrice', () => {
 			const payload = {
 				name: 'Device',
-				brandId: '12345678-1234-4234-8234-123456789abc',
-				categoryId: '87654321-4321-4321-8321-cba987654321',
+				categoryId: validCategoryId,
+				ownerId: validOwnerId,
+				locationId: validLocationId,
 				purchasePrice: null
 			};
 
@@ -89,8 +100,9 @@ describe('deviceCreateSchema', () => {
 		it('rejects empty name', () => {
 			const payload = {
 				name: '',
-				brandId: '12345678-1234-4234-8234-123456789abc',
-				categoryId: '87654321-4321-4321-8321-cba987654321'
+				categoryId: validCategoryId,
+				ownerId: validOwnerId,
+				locationId: validLocationId
 			};
 
 			const result = deviceCreateSchema.safeParse(payload);
@@ -103,8 +115,9 @@ describe('deviceCreateSchema', () => {
 		it('rejects name exceeding 200 characters', () => {
 			const payload = {
 				name: 'A'.repeat(201),
-				brandId: '12345678-1234-4234-8234-123456789abc',
-				categoryId: '87654321-4321-4321-8321-cba987654321'
+				categoryId: validCategoryId,
+				ownerId: validOwnerId,
+				locationId: validLocationId
 			};
 
 			const result = deviceCreateSchema.safeParse(payload);
@@ -117,8 +130,9 @@ describe('deviceCreateSchema', () => {
 		it('accepts name at exactly 200 characters', () => {
 			const payload = {
 				name: 'A'.repeat(200),
-				brandId: '12345678-1234-4234-8234-123456789abc',
-				categoryId: '87654321-4321-4321-8321-cba987654321'
+				categoryId: validCategoryId,
+				ownerId: validOwnerId,
+				locationId: validLocationId
 			};
 
 			const result = deviceCreateSchema.safeParse(payload);
@@ -131,8 +145,9 @@ describe('deviceCreateSchema', () => {
 			const payload = {
 				name: 'Device',
 				serialNumber: 'S'.repeat(101),
-				brandId: '12345678-1234-4234-8234-123456789abc',
-				categoryId: '87654321-4321-4321-8321-cba987654321'
+				categoryId: validCategoryId,
+				ownerId: validOwnerId,
+				locationId: validLocationId
 			};
 
 			const result = deviceCreateSchema.safeParse(payload);
@@ -146,8 +161,9 @@ describe('deviceCreateSchema', () => {
 			const payload = {
 				name: 'Device',
 				serialNumber: 'S'.repeat(100),
-				brandId: '12345678-1234-4234-8234-123456789abc',
-				categoryId: '87654321-4321-4321-8321-cba987654321'
+				categoryId: validCategoryId,
+				ownerId: validOwnerId,
+				locationId: validLocationId
 			};
 
 			const result = deviceCreateSchema.safeParse(payload);
@@ -155,36 +171,39 @@ describe('deviceCreateSchema', () => {
 		});
 	});
 
-	describe('brandId and categoryId validation', () => {
-		it('rejects missing brandId', () => {
+	describe('brandId validation (optional per backend ApplyOptionalBrandRule)', () => {
+		it('accepts missing brandId', () => {
+			const payload = {
+				name: 'Device',
+				categoryId: validCategoryId,
+				ownerId: validOwnerId,
+				locationId: validLocationId
+			};
+
+			const result = deviceCreateSchema.safeParse(payload);
+			expect(result.success).toBe(true);
+		});
+
+		it('accepts empty string brandId', () => {
 			const payload = {
 				name: 'Device',
 				brandId: '',
-				categoryId: '87654321-4321-4321-8321-cba987654321'
+				categoryId: validCategoryId,
+				ownerId: validOwnerId,
+				locationId: validLocationId
 			};
 
 			const result = deviceCreateSchema.safeParse(payload);
-			expect(result.success).toBe(false);
-			if (!result.success) {
-				expect(result.error.issues[0].message).toContain('Brand is required');
-			}
-		});
-
-		it('rejects missing categoryId', () => {
-			const payload = {
-				name: 'Device',
-				brandId: '12345678-1234-4234-8234-123456789abc'
-			};
-
-			const result = deviceCreateSchema.safeParse(payload);
-			expect(result.success).toBe(false);
+			expect(result.success).toBe(true);
 		});
 
 		it('rejects non-UUID brandId', () => {
 			const payload = {
 				name: 'Device',
 				brandId: 'not-a-uuid',
-				categoryId: '87654321-4321-4321-8321-cba987654321'
+				categoryId: validCategoryId,
+				ownerId: validOwnerId,
+				locationId: validLocationId
 			};
 
 			const result = deviceCreateSchema.safeParse(payload);
@@ -193,12 +212,26 @@ describe('deviceCreateSchema', () => {
 				expect(result.error.issues[0].message).toContain('Invalid brand');
 			}
 		});
+	});
+
+	describe('categoryId validation (required)', () => {
+		it('rejects missing categoryId', () => {
+			const payload = {
+				name: 'Device',
+				ownerId: validOwnerId,
+				locationId: validLocationId
+			};
+
+			const result = deviceCreateSchema.safeParse(payload);
+			expect(result.success).toBe(false);
+		});
 
 		it('rejects non-UUID categoryId', () => {
 			const payload = {
 				name: 'Device',
-				brandId: '12345678-1234-4234-8234-123456789abc',
-				categoryId: 'not-a-uuid'
+				categoryId: 'not-a-uuid',
+				ownerId: validOwnerId,
+				locationId: validLocationId
 			};
 
 			const result = deviceCreateSchema.safeParse(payload);
@@ -209,13 +242,39 @@ describe('deviceCreateSchema', () => {
 		});
 	});
 
-	describe('optional UUID fields (ownerId, locationId, networkId)', () => {
-		it('rejects non-UUID ownerId when provided', () => {
+	describe('ownerId / locationId validation (required per backend ApplyRequiredReferenceRules)', () => {
+		it('rejects missing ownerId', () => {
 			const payload = {
 				name: 'Device',
-				brandId: '12345678-1234-4234-8234-123456789abc',
-				categoryId: '87654321-4321-4321-8321-cba987654321',
-				ownerId: 'not-a-uuid'
+				categoryId: validCategoryId,
+				locationId: validLocationId
+			};
+
+			const result = deviceCreateSchema.safeParse(payload);
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				expect(result.error.issues.some((issue) => issue.path[0] === 'ownerId')).toBe(true);
+			}
+		});
+
+		it('rejects empty string ownerId', () => {
+			const payload = {
+				name: 'Device',
+				categoryId: validCategoryId,
+				ownerId: '',
+				locationId: validLocationId
+			};
+
+			const result = deviceCreateSchema.safeParse(payload);
+			expect(result.success).toBe(false);
+		});
+
+		it('rejects non-UUID ownerId', () => {
+			const payload = {
+				name: 'Device',
+				categoryId: validCategoryId,
+				ownerId: 'not-a-uuid',
+				locationId: validLocationId
 			};
 
 			const result = deviceCreateSchema.safeParse(payload);
@@ -225,9 +284,62 @@ describe('deviceCreateSchema', () => {
 		it('accepts valid UUID ownerId', () => {
 			const payload = {
 				name: 'Device',
-				brandId: '12345678-1234-4234-8234-123456789abc',
-				categoryId: '87654321-4321-4321-8321-cba987654321',
-				ownerId: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'
+				categoryId: validCategoryId,
+				ownerId: validOwnerId,
+				locationId: validLocationId
+			};
+
+			const result = deviceCreateSchema.safeParse(payload);
+			expect(result.success).toBe(true);
+		});
+
+		it('rejects missing locationId', () => {
+			const payload = {
+				name: 'Device',
+				categoryId: validCategoryId,
+				ownerId: validOwnerId
+			};
+
+			const result = deviceCreateSchema.safeParse(payload);
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				expect(result.error.issues.some((issue) => issue.path[0] === 'locationId')).toBe(true);
+			}
+		});
+
+		it('rejects empty string locationId', () => {
+			const payload = {
+				name: 'Device',
+				categoryId: validCategoryId,
+				ownerId: validOwnerId,
+				locationId: ''
+			};
+
+			const result = deviceCreateSchema.safeParse(payload);
+			expect(result.success).toBe(false);
+		});
+	});
+
+	describe('networkId validation (optional)', () => {
+		it('rejects non-UUID networkId when provided', () => {
+			const payload = {
+				name: 'Device',
+				categoryId: validCategoryId,
+				ownerId: validOwnerId,
+				locationId: validLocationId,
+				networkId: 'not-a-uuid'
+			};
+
+			const result = deviceCreateSchema.safeParse(payload);
+			expect(result.success).toBe(false);
+		});
+
+		it('accepts missing networkId', () => {
+			const payload = {
+				name: 'Device',
+				categoryId: validCategoryId,
+				ownerId: validOwnerId,
+				locationId: validLocationId
 			};
 
 			const result = deviceCreateSchema.safeParse(payload);
@@ -239,8 +351,9 @@ describe('deviceCreateSchema', () => {
 		it('accepts valid YYYY-MM-DD date', () => {
 			const payload = {
 				name: 'Device',
-				brandId: '12345678-1234-4234-8234-123456789abc',
-				categoryId: '87654321-4321-4321-8321-cba987654321',
+				categoryId: validCategoryId,
+				ownerId: validOwnerId,
+				locationId: validLocationId,
 				purchaseDate: '2024-03-15'
 			};
 
@@ -251,8 +364,9 @@ describe('deviceCreateSchema', () => {
 		it('rejects date in wrong format (MM/DD/YYYY)', () => {
 			const payload = {
 				name: 'Device',
-				brandId: '12345678-1234-4234-8234-123456789abc',
-				categoryId: '87654321-4321-4321-8321-cba987654321',
+				categoryId: validCategoryId,
+				ownerId: validOwnerId,
+				locationId: validLocationId,
 				purchaseDate: '03/15/2024'
 			};
 
@@ -266,8 +380,9 @@ describe('deviceCreateSchema', () => {
 		it('rejects date in wrong format (DD-MM-YYYY)', () => {
 			const payload = {
 				name: 'Device',
-				brandId: '12345678-1234-4234-8234-123456789abc',
-				categoryId: '87654321-4321-4321-8321-cba987654321',
+				categoryId: validCategoryId,
+				ownerId: validOwnerId,
+				locationId: validLocationId,
 				purchaseDate: '15-03-2024'
 			};
 
@@ -278,8 +393,9 @@ describe('deviceCreateSchema', () => {
 		it('rejects malformed date string', () => {
 			const payload = {
 				name: 'Device',
-				brandId: '12345678-1234-4234-8234-123456789abc',
-				categoryId: '87654321-4321-4321-8321-cba987654321',
+				categoryId: validCategoryId,
+				ownerId: validOwnerId,
+				locationId: validLocationId,
 				purchaseDate: 'not-a-date'
 			};
 
@@ -292,8 +408,9 @@ describe('deviceCreateSchema', () => {
 		it('rejects negative purchase price', () => {
 			const payload = {
 				name: 'Device',
-				brandId: '12345678-1234-4234-8234-123456789abc',
-				categoryId: '87654321-4321-4321-8321-cba987654321',
+				categoryId: validCategoryId,
+				ownerId: validOwnerId,
+				locationId: validLocationId,
 				purchasePrice: -10.50
 			};
 
@@ -307,8 +424,9 @@ describe('deviceCreateSchema', () => {
 		it('accepts decimal purchase price', () => {
 			const payload = {
 				name: 'Device',
-				brandId: '12345678-1234-4234-8234-123456789abc',
-				categoryId: '87654321-4321-4321-8321-cba987654321',
+				categoryId: validCategoryId,
+				ownerId: validOwnerId,
+				locationId: validLocationId,
 				purchasePrice: 1299.99
 			};
 
@@ -321,8 +439,9 @@ describe('deviceCreateSchema', () => {
 		it('accepts 3-character currency code', () => {
 			const payload = {
 				name: 'Device',
-				brandId: '12345678-1234-4234-8234-123456789abc',
-				categoryId: '87654321-4321-4321-8321-cba987654321',
+				categoryId: validCategoryId,
+				ownerId: validOwnerId,
+				locationId: validLocationId,
 				currencyCode: 'EUR'
 			};
 
@@ -333,8 +452,9 @@ describe('deviceCreateSchema', () => {
 		it('rejects currency code with wrong length', () => {
 			const payload = {
 				name: 'Device',
-				brandId: '12345678-1234-4234-8234-123456789abc',
-				categoryId: '87654321-4321-4321-8321-cba987654321',
+				categoryId: validCategoryId,
+				ownerId: validOwnerId,
+				locationId: validLocationId,
 				currencyCode: 'US'
 			};
 
@@ -350,8 +470,9 @@ describe('deviceCreateSchema', () => {
 		it('accepts notes under 2000 characters', () => {
 			const payload = {
 				name: 'Device',
-				brandId: '12345678-1234-4234-8234-123456789abc',
-				categoryId: '87654321-4321-4321-8321-cba987654321',
+				categoryId: validCategoryId,
+				ownerId: validOwnerId,
+				locationId: validLocationId,
 				notes: 'A'.repeat(1999)
 			};
 
@@ -362,8 +483,9 @@ describe('deviceCreateSchema', () => {
 		it('accepts notes at exactly 2000 characters', () => {
 			const payload = {
 				name: 'Device',
-				brandId: '12345678-1234-4234-8234-123456789abc',
-				categoryId: '87654321-4321-4321-8321-cba987654321',
+				categoryId: validCategoryId,
+				ownerId: validOwnerId,
+				locationId: validLocationId,
 				notes: 'A'.repeat(2000)
 			};
 
@@ -374,8 +496,9 @@ describe('deviceCreateSchema', () => {
 		it('rejects notes exceeding 2000 characters', () => {
 			const payload = {
 				name: 'Device',
-				brandId: '12345678-1234-4234-8234-123456789abc',
-				categoryId: '87654321-4321-4321-8321-cba987654321',
+				categoryId: validCategoryId,
+				ownerId: validOwnerId,
+				locationId: validLocationId,
 				notes: 'A'.repeat(2001)
 			};
 
@@ -394,12 +517,12 @@ describe('deviceUpdateSchema', () => {
 	it('accepts same payload as create schema (for now, update = create)', () => {
 		const payload = {
 			name: 'Updated Device',
-			brandId: '12345678-1234-4234-8234-123456789abc',
-			categoryId: '87654321-4321-4321-8321-cba987654321',
+			categoryId: validCategoryId,
+			ownerId: validOwnerId,
+			locationId: validLocationId,
 			purchasePrice: 500,
 			serialNumber: '',
-			ownerId: '',
-			locationId: '',
+			brandId: '',
 			networkId: '',
 			purchaseDate: '',
 			currencyCode: '',
@@ -414,11 +537,11 @@ describe('deviceUpdateSchema', () => {
 		// Update schema should reject same invalid data as create
 		const payload = {
 			name: '',
-			brandId: '12345678-1234-4234-8234-123456789abc',
-			categoryId: '87654321-4321-4321-8321-cba987654321',
+			categoryId: validCategoryId,
+			ownerId: validOwnerId,
+			locationId: validLocationId,
 			serialNumber: '',
-			ownerId: '',
-			locationId: '',
+			brandId: '',
 			networkId: '',
 			purchaseDate: '',
 			currencyCode: '',

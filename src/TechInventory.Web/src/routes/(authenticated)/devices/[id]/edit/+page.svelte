@@ -1,16 +1,18 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, beforeNavigate } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { t } from '$lib/i18n';
-	import { devices } from '$lib/api/client';
+	import { devices, ApiError } from '$lib/api/client';
 	import DeviceForm from '$lib/components/DeviceForm.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
+	import UnsavedChangesModal from '$lib/components/UnsavedChangesModal.svelte';
 	import { invalidateDevicesCache, type DeviceResponse } from '$lib/queries/devices.svelte';
 	import type { DeviceFormInput } from '$lib/schemas/device';
 	import { registerPullToRefresh } from '$lib/stores/pullToRefresh';
 	import { fetchReferenceData } from '$lib/stores/referenceData';
 	import { showToast } from '$lib/stores/toast';
+	import { mapApiFieldErrors } from '$lib/utils/apiErrors';
 
 	/**
 	 * T21: Device edit page — /devices/[id]/edit
@@ -59,7 +61,7 @@
 
 	$effect(() => {
 		const unregister = registerPullToRefresh($page.url.pathname, async () => {
-			await Promise.all([fetchReferenceData(), fetchDevice()]);
+			await Promise.all([fetchReferenceData({ force: true }), fetchDevice()]);
 		});
 		return unregister;
 	});
@@ -89,16 +91,24 @@
 		return fields;
 	});
 
+	let isDirty = $state(false);
+	let confirmingDiscard = $state(false);
+	let discarding = false;
+	let pendingUrl = $state<URL | null>(null);
+	let serverErrors = $state<Record<string, string>>({});
+
 	async function handleSubmit(data: DeviceFormInput) {
 		if (!device) {
 			return;
 		}
 
+		serverErrors = {};
 		try {
 			const { tagIds, ...deviceData } = data;
 			const payload = {
 				...deviceData,
 				model: data.model || undefined,
+				brandId: data.brandId || undefined,
 				ownerId: data.ownerId || undefined,
 				locationId: data.locationId || undefined,
 				networkId: data.networkId || undefined,
@@ -138,18 +148,41 @@
 				message:
 					tagFailures > 0
 						? t('devices.tags.updateErrorSome', { count: tagFailures })
-						: `Device "${data.name}" updated successfully`
+						: `Device ${data.name} updated successfully`
 			});
 
+			discarding = true;
 			goto(`/devices/${device.id}`);
 		} catch (err) {
 			console.error('[device-edit] Submit failed:', err);
+			if (err instanceof ApiError && err.errors) {
+				serverErrors = mapApiFieldErrors(err.errors);
+			}
 			const errorMsg =
 				err instanceof Error && 'detail' in err
 					? (err as unknown as { detail: string }).detail
 					: 'Failed to update device';
 			showToast({ type: 'error', message: errorMsg });
 			throw err;
+		}
+	}
+
+	beforeNavigate(({ cancel, to }) => {
+		if (!isDirty || discarding) return;
+		cancel();
+		pendingUrl = to?.url ?? null;
+		confirmingDiscard = true;
+	});
+
+	function discardAndLeave() {
+		confirmingDiscard = false;
+		discarding = true;
+		if (pendingUrl) {
+			goto(pendingUrl);
+		} else if (device) {
+			goto(`/devices/${device.id}`);
+		} else {
+			goto('/devices');
 		}
 	}
 
@@ -286,6 +319,18 @@
 			{disabledFields}
 			onSubmit={handleSubmit}
 			onCancel={handleCancel}
+			bind:isDirty
+			{serverErrors}
 		/>
 	</div>
+{/if}
+
+{#if confirmingDiscard}
+	<UnsavedChangesModal
+		onDiscard={discardAndLeave}
+		onKeepEditing={() => {
+			confirmingDiscard = false;
+			pendingUrl = null;
+		}}
+	/>
 {/if}

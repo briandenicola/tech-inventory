@@ -246,6 +246,7 @@
 				pageSize={urlParams.pageSize}
 				{totalCount}
 				onPageChange={handlePageChange}
+				itemLabel={t('common.nouns.tags')}
 			/>
 		</div>
 	{/if}

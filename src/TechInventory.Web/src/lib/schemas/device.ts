@@ -3,14 +3,16 @@
  * 
  * T20+T21: Form validation for create/edit. Zod errors mapped to per-field UI errors.
  * 
- * Backend constraints (from CreateDeviceCommand + UpdateDeviceCommand validators):
+ * Backend constraints (from CreateDeviceCommand + UpdateDeviceCommand validators,
+ * via DeviceValidationRules.ApplyOptionalBrandRule / ApplyRequiredReferenceRules /
+ * ApplyOptionalNetworkRule — verified against the live validators, not assumed):
  * - name: required, max 200
  * - model: optional, max 200 (F034)
  * - serial: optional, max 100
- * - brandId: required UUID (API contract enforces this)
+ * - brandId: optional UUID
  * - categoryId: required UUID
- * - ownerId: optional UUID
- * - locationId: optional UUID
+ * - ownerId: required UUID
+ * - locationId: required UUID
  * - networkId: optional UUID
  * - purchaseDate: optional ISO 8601 date
  * - purchasePrice: optional, >= 0
@@ -43,10 +45,10 @@ const deviceBaseSchema = z.object({
 		.max(100, 'Serial number must be 100 characters or less')
 		.optional()
 		.or(z.literal('')),
-	brandId: z.string().min(1, 'Brand is required').uuid('Invalid brand ID'),
+	brandId: z.string().uuid('Invalid brand ID').optional().or(z.literal('')),
 	categoryId: z.string().uuid('Category is required'),
-	ownerId: z.string().uuid().optional().or(z.literal('')),
-	locationId: z.string().uuid().optional().or(z.literal('')),
+	ownerId: z.string().min(1, 'Owner is required').uuid('Invalid owner ID'),
+	locationId: z.string().min(1, 'Location is required').uuid('Invalid location ID'),
 	networkId: z.string().uuid().optional().or(z.literal('')),
 	purchaseDate: z
 		.string()

@@ -863,7 +863,13 @@
 	{:else if query.error || (urlFilters.groupBy && groupedError)}
 		<ErrorState error={query.error || groupedError || 'Unknown error'} onRetry={refreshDevicesList} />
 	{:else if displayedDevices.length === 0}
-		<EmptyState filtered={hasActiveFilters} onAdd={() => (createModalOpen = true)} />
+		<!--
+			showAddAction=false: the persistent header "Add Device" CTA (desktop)
+			and AddDeviceFab (mobile) already cover every viewport, so the
+			empty-state's own CTA would just be a second identically-labeled
+			button on screen at the same time.
+		-->
+		<EmptyState filtered={hasActiveFilters} showAddAction={false} />
 	{:else}
 		<DeviceTable
 			devices={displayedDevices}

@@ -84,6 +84,12 @@
 			"invalidDate": "Invalid date",
 			"mustBePositive": "Must be a positive number",
 			"mustMatch": "Fields must match"
+		},
+		"unsavedChanges": {
+			"title": "Discard unsaved changes?",
+			"description": "You have changes that haven't been saved. If you leave now, they'll be lost.",
+			"discard": "Discard changes",
+			"keepEditing": "Keep editing"
 		}
 	},
 	"auth": {
@@ -313,7 +319,7 @@
 			"pageSize": "Items per page",
 			"previous": "Previous Page",
 			"next": "Next Page",
-			"showing": "Showing {start} to {end} of {total} devices"
+			"showing": "Showing {start} to {end} of {total} {item}"
 		},
 		"infiniteScroll": {
 			"loadingMore": "Loading more devices…",
@@ -904,7 +910,8 @@
 			"list": {
 				"title": "Audit Log",
 				"subtitle": "Append-only record of every entity change. Click a row to see the BEFORE / AFTER diff.",
-				"emptyState": "No audit events match your filters."
+				"emptyState": "No audit events match your filters.",
+				"itemLabel": "audit events"
 			},
 			"modal": {
 				"subtitle": "Quickly review change history without leaving your current page."

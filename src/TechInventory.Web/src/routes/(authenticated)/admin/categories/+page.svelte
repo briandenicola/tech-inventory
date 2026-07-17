@@ -351,7 +351,7 @@
 			}
 			closeMergeModal();
 			clearSelection();
-			await Promise.all([loadCategories(), fetchReferenceData()]);
+			await Promise.all([loadCategories(), fetchReferenceData({ force: true })]);
 		} catch (err: unknown) {
 			console.error('[CategoriesAdmin] Merge failed:', err);
 			mergeError = err instanceof Error ? err.message : t('admin.merge.error');
@@ -371,7 +371,7 @@
 	async function handleBulkDeleteSuccess() {
 		clearSelection();
 		bulkDeleteModalOpen = false;
-		await Promise.all([loadCategories(), fetchReferenceData()]);
+		await Promise.all([loadCategories(), fetchReferenceData({ force: true })]);
 	}
 
 	// Toggle expand/collapse

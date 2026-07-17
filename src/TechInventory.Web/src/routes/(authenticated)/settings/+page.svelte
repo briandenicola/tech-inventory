@@ -139,7 +139,7 @@
 						type="text"
 						bind:value={displayName}
 						maxlength={200}
-						class="mt-1 block w-full rounded-md border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+						class="mt-1 block w-full rounded-md border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus-visible:border-primary-500 focus-visible:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
 						class:border-danger-500={fieldError}
 						aria-invalid={fieldError ? 'true' : 'false'}
 						aria-describedby={fieldError ? 'displayName-error' : 'displayName-help'}
@@ -210,7 +210,7 @@
 					<button
 						type="submit"
 						disabled={!canSubmit}
-						class="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+						class="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 					>
 						{saving ? t('settings.profile.saving') : t('common.actions.save')}
 					</button>

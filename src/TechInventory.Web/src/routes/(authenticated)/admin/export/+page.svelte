@@ -4,6 +4,11 @@
 	Primary section exports device inventory in CSV/JSON with list-style filters.
 	Secondary section offers the insurance CSV export for admin-only household records.
 
+	No LoadingSkeleton — this isn't a list/table page. The download itself
+	(the operation that can take >300ms) gets its own inline button spinner
+	(isDownloading); InsuranceExportCard has an equivalent spinner for its
+	locationsLoading state.
+
 	Refs: PRD F4, spec.md J11.
 -->
 <script lang="ts">
@@ -153,7 +158,7 @@
 							name="format"
 							value={opt.value}
 							bind:group={format}
-							class="h-4 w-4 text-primary-600 focus:ring-primary-500"
+							class="h-4 w-4 text-primary-600 focus-visible:ring-primary-500"
 						/>
 						<span class="text-base font-medium text-neutral-900 dark:text-neutral-100">
 							{opt.label}
@@ -178,7 +183,7 @@
 					type="search"
 					bind:value={search}
 					placeholder={t('devices.filters.searchPlaceholder')}
-					class="mt-1 block min-h-11 w-full rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100"
+					class="mt-1 block min-h-11 w-full rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100"
 				/>
 			</div>
 
@@ -190,7 +195,7 @@
 					<select
 						id="export-brand"
 						bind:value={brandId}
-						class="mt-1 block min-h-11 w-full rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100"
+						class="mt-1 block min-h-11 w-full rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100"
 					>
 						<option value="">All brands</option>
 						{#each refData.brands as b (b.id)}
@@ -206,7 +211,7 @@
 					<select
 						id="export-category"
 						bind:value={categoryId}
-						class="mt-1 block min-h-11 w-full rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100"
+						class="mt-1 block min-h-11 w-full rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100"
 					>
 						<option value="">All categories</option>
 						{#each refData.categories as c (c.id)}
@@ -222,7 +227,7 @@
 					<select
 						id="export-owner"
 						bind:value={ownerId}
-						class="mt-1 block min-h-11 w-full rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100"
+						class="mt-1 block min-h-11 w-full rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100"
 					>
 						<option value="">All owners</option>
 						{#each refData.owners as o (o.id)}
@@ -238,7 +243,7 @@
 					<select
 						id="export-location"
 						bind:value={locationId}
-						class="mt-1 block min-h-11 w-full rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100"
+						class="mt-1 block min-h-11 w-full rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100"
 					>
 						<option value="">All locations</option>
 						{#each refData.locations as l (l.id)}
@@ -254,7 +259,7 @@
 					<select
 						id="export-network"
 						bind:value={networkId}
-						class="mt-1 block min-h-11 w-full rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100"
+						class="mt-1 block min-h-11 w-full rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100"
 					>
 						<option value="">All networks</option>
 						{#each refData.networks as n (n.id)}
@@ -270,7 +275,7 @@
 					<select
 						id="export-status"
 						bind:value={status}
-						class="mt-1 block min-h-11 w-full rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100"
+						class="mt-1 block min-h-11 w-full rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100"
 					>
 						<option value="">All statuses</option>
 						{#each STATUS_OPTIONS as s (s)}
@@ -289,7 +294,7 @@
 						min="1990"
 						max={currentYear}
 						bind:value={purchaseYearFrom}
-						class="mt-1 block min-h-11 w-full rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100"
+						class="mt-1 block min-h-11 w-full rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100"
 					/>
 				</div>
 
@@ -303,7 +308,7 @@
 						min="1990"
 						max={currentYear}
 						bind:value={purchaseYearTo}
-						class="mt-1 block min-h-11 w-full rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100"
+						class="mt-1 block min-h-11 w-full rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100"
 					/>
 				</div>
 			</div>

@@ -255,7 +255,7 @@
 			onclick={() => (filtersOpen = !filtersOpen)}
 			aria-expanded={filtersOpen}
 			aria-controls="audit-filters-panel"
-			class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+			class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
 		>
 			<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
 				<path
@@ -293,7 +293,7 @@
 					type="text"
 					bind:value={filterForm.entityType}
 					placeholder="Device, Brand, Category..."
-					class="mt-1 block w-full rounded-md border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+					class="mt-1 block w-full rounded-md border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus-visible:border-primary-500 focus-visible:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
 				/>
 			</label>
 			<label class="block">
@@ -304,7 +304,7 @@
 					type="text"
 					bind:value={filterForm.entityId}
 					placeholder="00000000-…"
-					class="mt-1 block w-full rounded-md border-neutral-300 bg-white px-3 py-2 font-mono text-xs shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+					class="mt-1 block w-full rounded-md border-neutral-300 bg-white px-3 py-2 font-mono text-xs shadow-sm focus-visible:border-primary-500 focus-visible:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
 				/>
 			</label>
 			<label class="block">
@@ -313,7 +313,7 @@
 				</span>
 				<select
 					bind:value={filterForm.action}
-					class="mt-1 block w-full rounded-md border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+					class="mt-1 block w-full rounded-md border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus-visible:border-primary-500 focus-visible:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
 				>
 					<option value="">{t('admin.audit.filters.actionAny')}</option>
 					<option value="Created">Created</option>
@@ -329,7 +329,7 @@
 					type="text"
 					bind:value={filterForm.actor}
 					placeholder="User oid or display name"
-					class="mt-1 block w-full rounded-md border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+					class="mt-1 block w-full rounded-md border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus-visible:border-primary-500 focus-visible:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
 				/>
 			</label>
 			<label class="block">
@@ -339,7 +339,7 @@
 				<input
 					type="datetime-local"
 					bind:value={filterForm.from}
-					class="mt-1 block w-full rounded-md border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+					class="mt-1 block w-full rounded-md border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus-visible:border-primary-500 focus-visible:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
 				/>
 			</label>
 			<label class="block">
@@ -349,7 +349,7 @@
 				<input
 					type="datetime-local"
 					bind:value={filterForm.to}
-					class="mt-1 block w-full rounded-md border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+					class="mt-1 block w-full rounded-md border-neutral-300 bg-white px-3 py-2 text-sm shadow-sm focus-visible:border-primary-500 focus-visible:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
 				/>
 			</label>
 		</div>
@@ -363,7 +363,7 @@
 			</button>
 			<button
 				type="submit"
-				class="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+				class="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
 			>
 				{t('admin.audit.filters.apply')}
 			</button>
@@ -465,6 +465,7 @@
 				pageSize={urlFilters.pageSize}
 				{totalCount}
 				onPageChange={handlePageChange}
+				itemLabel={t('admin.audit.list.itemLabel')}
 			/>
 		</div>
 	{/if}

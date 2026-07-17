@@ -57,6 +57,35 @@
 			closeMenu();
 		}
 	}
+
+	function menuItems(): HTMLElement[] {
+		return Array.from(rootElement?.querySelectorAll<HTMLElement>('[data-device-action]') ?? []);
+	}
+
+	function handleMenuKeydown(event: KeyboardEvent) {
+		const items = menuItems();
+		if (items.length === 0) return;
+		const currentIndex = items.findIndex((el) => el === document.activeElement);
+
+		switch (event.key) {
+			case 'ArrowDown':
+				event.preventDefault();
+				items[(currentIndex + 1) % items.length]?.focus();
+				break;
+			case 'ArrowUp':
+				event.preventDefault();
+				items[(currentIndex - 1 + items.length) % items.length]?.focus();
+				break;
+			case 'Home':
+				event.preventDefault();
+				items[0]?.focus();
+				break;
+			case 'End':
+				event.preventDefault();
+				items[items.length - 1]?.focus();
+				break;
+		}
+	}
 </script>
 
 <svelte:window onclick={handleWindowClick} onkeydown={handleWindowKeydown} />
@@ -64,11 +93,12 @@
 {#if hasActions}
 	<div class="relative" bind:this={rootElement}>
 		<button
+			id="device-actions-trigger"
 			type="button"
 			onclick={() => void toggleMenu()}
-			class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-neutral-300 bg-white text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+			class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-neutral-300 bg-white text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
 			aria-expanded={isOpen}
-			aria-haspopup="true"
+			aria-haspopup="menu"
 			aria-label={t('devices.detail.moreActions')}
 			aria-controls="device-actions-menu"
 		>
@@ -82,16 +112,23 @@
 		{#if isOpen}
 			<div
 				id="device-actions-menu"
+				role="menu"
+				tabindex="-1"
+				aria-orientation="vertical"
+				aria-labelledby="device-actions-trigger"
+				onkeydown={handleMenuKeydown}
 				class="absolute right-0 top-full z-10 mt-2 w-64 overflow-hidden rounded-2xl border border-neutral-200 bg-white p-2 shadow-xl dark:border-neutral-800 dark:bg-neutral-950"
 				style="z-index: var(--z-dropdown);"
 			>
-				<div class="space-y-1">
+				<div class="space-y-1" role="none">
 					{#if editHref}
 						<a
 							data-device-action
+							role="menuitem"
+							tabindex="-1"
 							href={editHref}
 							onclick={closeMenu}
-							class="flex min-h-11 items-center rounded-xl px-3 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-neutral-200 dark:hover:bg-neutral-800 dark:hover:text-neutral-50"
+							class="flex min-h-11 items-center rounded-xl px-3 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-neutral-200 dark:hover:bg-neutral-800 dark:hover:text-neutral-50"
 						>
 							{t('common.actions.edit')}
 						</a>
@@ -99,12 +136,14 @@
 					{#if onClaim}
 						<button
 							data-device-action
+							role="menuitem"
+							tabindex="-1"
 							type="button"
 							onclick={() => {
 								closeMenu();
 								onClaim?.();
 							}}
-							class="flex min-h-11 w-full items-center rounded-xl px-3 py-2 text-left text-sm font-medium text-primary-700 transition-colors hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-primary-300 dark:hover:bg-neutral-800"
+							class="flex min-h-11 w-full items-center rounded-xl px-3 py-2 text-left text-sm font-medium text-primary-700 transition-colors hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-primary-300 dark:hover:bg-neutral-800"
 						>
 							{t('devices.detail.claimButton')}
 						</button>
@@ -112,12 +151,14 @@
 					{#if onRelease}
 						<button
 							data-device-action
+							role="menuitem"
+							tabindex="-1"
 							type="button"
 							onclick={() => {
 								closeMenu();
 								onRelease?.();
 							}}
-							class="flex min-h-11 w-full items-center rounded-xl px-3 py-2 text-left text-sm font-medium text-warning-700 transition-colors hover:bg-warning-50 focus:outline-none focus:ring-2 focus:ring-warning-500 dark:text-warning-300 dark:hover:bg-neutral-800"
+							class="flex min-h-11 w-full items-center rounded-xl px-3 py-2 text-left text-sm font-medium text-warning-700 transition-colors hover:bg-warning-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning-500 dark:text-warning-300 dark:hover:bg-neutral-800"
 						>
 							{t('devices.detail.releaseButton')}
 						</button>
@@ -125,12 +166,14 @@
 					{#if onRetire}
 						<button
 							data-device-action
+							role="menuitem"
+							tabindex="-1"
 							type="button"
 							onclick={() => {
 								closeMenu();
 								onRetire?.();
 							}}
-							class="flex min-h-11 w-full items-center rounded-xl px-3 py-2 text-left text-sm font-medium text-warning-700 transition-colors hover:bg-warning-50 focus:outline-none focus:ring-2 focus:ring-warning-500 dark:text-warning-300 dark:hover:bg-neutral-800"
+							class="flex min-h-11 w-full items-center rounded-xl px-3 py-2 text-left text-sm font-medium text-warning-700 transition-colors hover:bg-warning-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning-500 dark:text-warning-300 dark:hover:bg-neutral-800"
 						>
 							{t('devices.retire.button')}
 						</button>
@@ -138,12 +181,14 @@
 					{#if onUnretire}
 						<button
 							data-device-action
+							role="menuitem"
+							tabindex="-1"
 							type="button"
 							onclick={() => {
 								closeMenu();
 								onUnretire?.();
 							}}
-							class="flex min-h-11 w-full items-center rounded-xl px-3 py-2 text-left text-sm font-medium text-success-700 transition-colors hover:bg-success-50 focus:outline-none focus:ring-2 focus:ring-success-500 dark:text-success-300 dark:hover:bg-neutral-800"
+							class="flex min-h-11 w-full items-center rounded-xl px-3 py-2 text-left text-sm font-medium text-success-700 transition-colors hover:bg-success-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-success-500 dark:text-success-300 dark:hover:bg-neutral-800"
 						>
 							{t('devices.unretire.button')}
 						</button>
@@ -151,12 +196,14 @@
 					{#if onViewHistory}
 						<button
 							data-device-action
+							role="menuitem"
+							tabindex="-1"
 							type="button"
 							onclick={() => {
 								closeMenu();
 								onViewHistory?.();
 							}}
-							class="flex min-h-11 w-full items-center rounded-xl px-3 py-2 text-left text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-neutral-200 dark:hover:bg-neutral-800"
+							class="flex min-h-11 w-full items-center rounded-xl px-3 py-2 text-left text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-neutral-200 dark:hover:bg-neutral-800"
 						>
 							{t('admin.audit.link.viewHistory')}
 						</button>
@@ -164,12 +211,14 @@
 					{#if onDelete}
 						<button
 							data-device-action
+							role="menuitem"
+							tabindex="-1"
 							type="button"
 							onclick={() => {
 								closeMenu();
 								onDelete?.();
 							}}
-							class="flex min-h-11 w-full items-center rounded-xl px-3 py-2 text-left text-sm font-medium text-danger-700 transition-colors hover:bg-danger-50 focus:outline-none focus:ring-2 focus:ring-danger-500 dark:text-danger-300 dark:hover:bg-neutral-800"
+							class="flex min-h-11 w-full items-center rounded-xl px-3 py-2 text-left text-sm font-medium text-danger-700 transition-colors hover:bg-danger-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger-500 dark:text-danger-300 dark:hover:bg-neutral-800"
 						>
 							{t('common.actions.delete')}
 						</button>

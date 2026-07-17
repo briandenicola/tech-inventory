@@ -174,7 +174,7 @@
 					<button
 						type="button"
 						onclick={() => removeTag(tag.id)}
-						class="inline-flex h-4 w-4 items-center justify-center rounded-full text-primary-700 hover:bg-primary-200 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-primary-200 dark:hover:bg-primary-800"
+						class="inline-flex h-4 w-4 items-center justify-center rounded-full text-primary-700 hover:bg-primary-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-primary-200 dark:hover:bg-primary-800"
 						aria-label={t('devices.tags.removeTag', { name: tag.name })}
 					>
 						<svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">

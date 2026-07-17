@@ -47,7 +47,7 @@
 				<button
 					type="button"
 					onclick={onClear}
-					class="text-sm font-medium text-neutral-600 underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-neutral-400"
+					class="text-sm font-medium text-neutral-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-neutral-400"
 				>
 					{t('admin.bulk.clear')}
 				</button>
@@ -58,7 +58,7 @@
 					type="button"
 					onclick={onDelete}
 					disabled={deleteDisabled}
-					class="inline-flex min-h-11 items-center justify-center rounded-full border border-danger-300 px-4 py-2 text-sm font-medium text-danger-700 transition-colors hover:bg-danger-50 focus:outline-none focus:ring-2 focus:ring-danger-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-danger-800 dark:text-danger-300 dark:hover:bg-danger-950"
+					class="inline-flex min-h-11 items-center justify-center rounded-full border border-danger-300 px-4 py-2 text-sm font-medium text-danger-700 transition-colors hover:bg-danger-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-danger-800 dark:text-danger-300 dark:hover:bg-danger-950"
 				>
 					{t('admin.bulk.deleteSelected')}
 				</button>
@@ -66,7 +66,7 @@
 					type="button"
 					onclick={onMerge}
 					disabled={mergeDisabled}
-					class="inline-flex min-h-11 items-center justify-center rounded-full bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-primary-700 dark:hover:bg-primary-800"
+					class="inline-flex min-h-11 items-center justify-center rounded-full bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-primary-700 dark:hover:bg-primary-800"
 				>
 					{t('admin.bulk.mergeSelected')}
 				</button>

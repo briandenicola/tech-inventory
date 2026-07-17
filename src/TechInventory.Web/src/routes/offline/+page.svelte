@@ -3,6 +3,8 @@
 
 	Served by the service worker's navigateFallback when the network is
 	unreachable. Must be pre-renderable (no API calls, no auth state).
+
+	No LoadingSkeleton — static shell with no data fetch of any kind.
 -->
 <script lang="ts">
 	import { t } from '$lib/i18n';
@@ -46,7 +48,7 @@
 	<button
 		type="button"
 		onclick={tryAgain}
-		class="mt-8 inline-flex items-center gap-2 rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600"
+		class="mt-8 inline-flex items-center gap-2 rounded-xl bg-primary-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600"
 	>
 		<svg
 			class="h-5 w-5"

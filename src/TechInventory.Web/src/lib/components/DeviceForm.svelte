@@ -27,9 +27,19 @@
 		disabledFields?: string[];
 		onSubmit: (data: DeviceFormInput) => Promise<void>;
 		onCancel: () => void;
+		isDirty?: boolean;
+		serverErrors?: Record<string, string>;
 	}
 
-	let { mode, initialData = {}, disabledFields = [], onSubmit, onCancel }: Props = $props();
+	let {
+		mode,
+		initialData = {},
+		disabledFields = [],
+		onSubmit,
+		onCancel,
+		isDirty = $bindable(false),
+		serverErrors = {}
+	}: Props = $props();
 
 	const refData = $derived($referenceDataStore);
 
@@ -65,6 +75,18 @@
 	let touched = $state<Record<string, boolean>>({});
 	let isSubmitting = $state(false);
 
+	// Server-side validation errors (e.g. "OwnerId is required") arrive after
+	// a failed submit, keyed by field. Merge them in and mark those fields
+	// touched so they render immediately without waiting for a blur event.
+	$effect(() => {
+		if (Object.keys(serverErrors).length === 0) return;
+		errors = { ...errors, ...serverErrors };
+		touched = {
+			...touched,
+			...Object.fromEntries(Object.keys(serverErrors).map((key) => [key, true]))
+		};
+	});
+
 	function areValuesEqual(initial: unknown, current: unknown): boolean {
 		if (Array.isArray(initial) && Array.isArray(current)) {
 			return (
@@ -93,7 +115,7 @@
 		return '';
 	}
 
-	const isDirty = $derived(
+	const computedDirty = $derived(
 		Object.keys(formData).some((key) => {
 			const formKey = key as keyof DeviceFormInput;
 			const initial = getInitialValue(formKey);
@@ -101,6 +123,10 @@
 			return !areValuesEqual(initial, current);
 		})
 	);
+
+	$effect(() => {
+		isDirty = computedDirty;
+	});
 
 	function validateField(name: string) {
 		try {
@@ -174,7 +200,7 @@
 			bind:value={formData.name}
 			onblur={() => handleBlur('name')}
 			disabled={isDisabled('name')}
-			class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus:border-primary-500 dark:disabled:bg-neutral-900"
+			class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus-visible:border-primary-500 dark:disabled:bg-neutral-900"
 			placeholder="iPhone 15 Pro"
 		/>
 		{#if touched.name && errors.name}
@@ -196,7 +222,7 @@
 			bind:value={formData.serialNumber}
 			onblur={() => handleBlur('serialNumber')}
 			disabled={isDisabled('serialNumber')}
-			class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus:border-primary-500 dark:disabled:bg-neutral-900"
+			class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus-visible:border-primary-500 dark:disabled:bg-neutral-900"
 			placeholder="G6AZH2X3F7"
 		/>
 		{#if touched.serialNumber && errors.serialNumber}
@@ -222,7 +248,7 @@
 			onblur={() => handleBlur('model')}
 			disabled={isDisabled('model')}
 			maxlength="200"
-			class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus:border-primary-500 dark:disabled:bg-neutral-900"
+			class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus-visible:border-primary-500 dark:disabled:bg-neutral-900"
 			placeholder={t('devices.form.modelPlaceholder')}
 		/>
 		{#if touched.model && errors.model}
@@ -233,16 +259,16 @@
 	<!-- Brand -->
 	<div>
 		<label for="brandId" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
-			{t('devices.columns.brand')} <span class="text-danger-600">*</span>
+			{t('devices.columns.brand')}
 		</label>
 		<select
 			id="brandId"
 			bind:value={formData.brandId}
 			onblur={() => handleBlur('brandId')}
 			disabled={isDisabled('brandId')}
-			class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors hover:border-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:hover:border-neutral-600 dark:focus:border-primary-500 dark:disabled:bg-neutral-900"
+			class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors hover:border-neutral-400 focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:hover:border-neutral-600 dark:focus-visible:border-primary-500 dark:disabled:bg-neutral-900"
 		>
-			<option value="">-- Select Brand --</option>
+			<option value="">-- No Brand --</option>
 			{#each refData.brands as brand (brand.id)}
 				<option value={brand.id}>{brand.name}</option>
 			{/each}
@@ -265,7 +291,7 @@
 			bind:value={formData.categoryId}
 			onblur={() => handleBlur('categoryId')}
 			disabled={isDisabled('categoryId')}
-			class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors hover:border-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:hover:border-neutral-600 dark:focus:border-primary-500 dark:disabled:bg-neutral-900"
+			class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors hover:border-neutral-400 focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:hover:border-neutral-600 dark:focus-visible:border-primary-500 dark:disabled:bg-neutral-900"
 		>
 			<option value="">-- Select Category --</option>
 			{#each refData.categories as category (category.id)}
@@ -280,16 +306,16 @@
 	<!-- Owner -->
 	<div>
 		<label for="ownerId" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
-			{t('devices.columns.owner')}
+			{t('devices.columns.owner')} <span class="text-danger-600">*</span>
 		</label>
 		<select
 			id="ownerId"
 			bind:value={formData.ownerId}
 			onblur={() => handleBlur('ownerId')}
 			disabled={isDisabled('ownerId')}
-			class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors hover:border-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:hover:border-neutral-600 dark:focus:border-primary-500 dark:disabled:bg-neutral-900"
+			class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors hover:border-neutral-400 focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:hover:border-neutral-600 dark:focus-visible:border-primary-500 dark:disabled:bg-neutral-900"
 		>
-			<option value="">-- No Owner --</option>
+			<option value="">-- Select Owner --</option>
 			{#each refData.owners as owner (owner.id)}
 				<option value={owner.id}>{owner.name}</option>
 			{/each}
@@ -305,16 +331,16 @@
 			for="locationId"
 			class="block text-sm font-medium text-neutral-900 dark:text-neutral-100"
 		>
-			{t('devices.columns.location')}
+			{t('devices.columns.location')} <span class="text-danger-600">*</span>
 		</label>
 		<select
 			id="locationId"
 			bind:value={formData.locationId}
 			onblur={() => handleBlur('locationId')}
 			disabled={isDisabled('locationId')}
-			class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors hover:border-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:hover:border-neutral-600 dark:focus:border-primary-500 dark:disabled:bg-neutral-900"
+			class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors hover:border-neutral-400 focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:hover:border-neutral-600 dark:focus-visible:border-primary-500 dark:disabled:bg-neutral-900"
 		>
-			<option value="">-- No Location --</option>
+			<option value="">-- Select Location --</option>
 			{#each refData.locations as location (location.id)}
 				<option value={location.id}>{location.name}</option>
 			{/each}
@@ -334,7 +360,7 @@
 			bind:value={formData.networkId}
 			onblur={() => handleBlur('networkId')}
 			disabled={isDisabled('networkId')}
-			class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors hover:border-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:hover:border-neutral-600 dark:focus:border-primary-500 dark:disabled:bg-neutral-900"
+			class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors hover:border-neutral-400 focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:hover:border-neutral-600 dark:focus-visible:border-primary-500 dark:disabled:bg-neutral-900"
 		>
 			<option value="">-- No Network --</option>
 			{#each refData.networks as network (network.id)}
@@ -367,7 +393,7 @@
 			bind:value={formData.purchaseDate}
 			onblur={() => handleBlur('purchaseDate')}
 			disabled={isDisabled('purchaseDate')}
-			class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors hover:border-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:hover:border-neutral-600 dark:focus:border-primary-500 dark:disabled:bg-neutral-900"
+			class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors hover:border-neutral-400 focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:hover:border-neutral-600 dark:focus-visible:border-primary-500 dark:disabled:bg-neutral-900"
 		/>
 		{#if touched.purchaseDate && errors.purchaseDate}
 			<p class="mt-1 text-sm text-danger-600 dark:text-danger-400">{errors.purchaseDate}</p>
@@ -391,7 +417,7 @@
 				bind:value={formData.purchasePrice}
 				onblur={() => handleBlur('purchasePrice')}
 				disabled={isDisabled('purchasePrice')}
-				class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus:border-primary-500 dark:disabled:bg-neutral-900"
+				class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus-visible:border-primary-500 dark:disabled:bg-neutral-900"
 				placeholder="999.99"
 			/>
 			{#if touched.purchasePrice && errors.purchasePrice}
@@ -411,7 +437,7 @@
 				bind:value={formData.currencyCode}
 				onblur={() => handleBlur('currencyCode')}
 				disabled={isDisabled('currencyCode')}
-				class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors hover:border-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:hover:border-neutral-600 dark:focus:border-primary-500 dark:disabled:bg-neutral-900"
+				class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors hover:border-neutral-400 focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:hover:border-neutral-600 dark:focus-visible:border-primary-500 dark:disabled:bg-neutral-900"
 			>
 				{#each currencyOptions as currency (currency.code)}
 					<option value={currency.code}>{currency.name}</option>
@@ -434,7 +460,7 @@
 			onblur={() => handleBlur('notes')}
 			disabled={isDisabled('notes')}
 			rows="4"
-			class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus:border-primary-500 dark:disabled:bg-neutral-900"
+			class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus-visible:border-primary-500 dark:disabled:bg-neutral-900"
 			placeholder="Additional notes or comments…"
 		></textarea>
 		{#if touched.notes && errors.notes}
@@ -476,7 +502,7 @@
 					onblur={() => handleBlur('purpose')}
 					disabled={isDisabled('purpose')}
 					rows="3"
-					class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus:border-primary-500 dark:disabled:bg-neutral-900"
+					class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus-visible:border-primary-500 dark:disabled:bg-neutral-900"
 					placeholder={t('devices.form.purposePlaceholder')}
 				></textarea>
 				{#if touched.purpose && errors.purpose}
@@ -498,7 +524,7 @@
 					bind:value={formData.operatingSystem}
 					onblur={() => handleBlur('operatingSystem')}
 					disabled={isDisabled('operatingSystem')}
-					class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus:border-primary-500 dark:disabled:bg-neutral-900"
+					class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus-visible:border-primary-500 dark:disabled:bg-neutral-900"
 					placeholder={t('devices.form.operatingSystemPlaceholder')}
 				/>
 				{#if touched.operatingSystem && errors.operatingSystem}
@@ -520,7 +546,7 @@
 					bind:value={formData.ipAddress}
 					onblur={() => handleBlur('ipAddress')}
 					disabled={isDisabled('ipAddress')}
-					class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus:border-primary-500 dark:disabled:bg-neutral-900"
+					class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus-visible:border-primary-500 dark:disabled:bg-neutral-900"
 					placeholder={t('devices.form.ipAddressPlaceholder')}
 				/>
 				{#if touched.ipAddress && errors.ipAddress}
@@ -542,7 +568,7 @@
 					bind:value={formData.macAddress}
 					onblur={() => handleBlur('macAddress')}
 					disabled={isDisabled('macAddress')}
-					class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus:border-primary-500 dark:disabled:bg-neutral-900"
+					class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus-visible:border-primary-500 dark:disabled:bg-neutral-900"
 					placeholder={t('devices.form.macAddressPlaceholder')}
 				/>
 				{#if touched.macAddress && errors.macAddress}
@@ -564,7 +590,7 @@
 					bind:value={formData.productUrl}
 					onblur={() => handleBlur('productUrl')}
 					disabled={isDisabled('productUrl')}
-					class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus:border-primary-500 dark:disabled:bg-neutral-900"
+					class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus-visible:border-primary-500 dark:disabled:bg-neutral-900"
 					placeholder={t('devices.form.productUrlPlaceholder')}
 				/>
 				{#if touched.productUrl && errors.productUrl}
@@ -586,7 +612,7 @@
 					bind:value={formData.version}
 					onblur={() => handleBlur('version')}
 					disabled={isDisabled('version')}
-					class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus:border-primary-500 dark:disabled:bg-neutral-900"
+					class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus-visible:border-primary-500 dark:disabled:bg-neutral-900"
 					placeholder={t('devices.form.versionPlaceholder')}
 				/>
 				{#if touched.version && errors.version}
@@ -602,7 +628,7 @@
 			type="button"
 			onclick={onCancel}
 			disabled={isSubmitting}
-			class="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-neutral-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:focus:ring-neutral-600"
+			class="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:focus-visible:ring-neutral-600"
 		>
 			{t('common.actions.cancel')}
 		</button>
@@ -610,7 +636,7 @@
 		<button
 			type="submit"
 			disabled={isSubmitting || (mode === 'edit' && !isDirty)}
-			class="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-primary-500 dark:hover:bg-primary-600"
+			class="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-primary-500 dark:hover:bg-primary-600"
 		>
 			{#if isSubmitting}
 				<svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">

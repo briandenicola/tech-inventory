@@ -116,7 +116,7 @@
 					<select
 						id="era-category-filter"
 						bind:value={selectedCategoryId}
-						class="block min-h-11 w-full rounded-full border-0 bg-neutral-100 px-4 py-2.5 text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100"
+						class="block min-h-11 w-full rounded-full border-0 bg-neutral-100 px-4 py-2.5 text-sm text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100"
 					>
 						<option value="">{t('reports.eras.allCategories')}</option>
 						{#each categories as category (category.id)}

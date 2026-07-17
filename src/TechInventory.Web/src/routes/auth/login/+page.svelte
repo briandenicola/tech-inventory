@@ -13,6 +13,9 @@
 	// Silent Entra restoration runs in the root layout. This page stays on a
 	// splash state until that check finishes so returning users do not see a
 	// login flash before we can route them back into the app.
+	// No LoadingSkeleton here — there's no list/table content to skeleton;
+	// the delayed spinner below (showLoadingSpinner) is the right affordance
+	// for a splash screen.
 	let isRedirecting = $state(false);
 	let showLocalForm = $state(false);
 	let showLoadingSpinner = $state(false);

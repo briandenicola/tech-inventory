@@ -1,14 +1,16 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, beforeNavigate } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { t } from '$lib/i18n';
-	import { devices } from '$lib/api/client';
+	import { devices, ApiError } from '$lib/api/client';
 	import DeviceForm from '$lib/components/DeviceForm.svelte';
+	import UnsavedChangesModal from '$lib/components/UnsavedChangesModal.svelte';
 	import { invalidateDevicesCache } from '$lib/queries/devices.svelte';
 	import type { DeviceFormInput } from '$lib/schemas/device';
 	import { fetchReferenceData } from '$lib/stores/referenceData';
 	import { registerPullToRefresh } from '$lib/stores/pullToRefresh';
 	import { showToast } from '$lib/stores/toast';
+	import { mapApiFieldErrors } from '$lib/utils/apiErrors';
 
 	/**
 	 * T20: Device create page — /devices/new
@@ -16,15 +18,25 @@
 	 * Form with all device fields, Zod validation, household default currency pre-filled.
 	 * Submit → POST /api/v1/devices → toast → redirect to detail page.
 	 *
+	 * No LoadingSkeleton — the form renders immediately with no data fetch
+	 * gating it; DeviceForm fills its own reference-data selects as they load.
+	 *
 	 * Related: specs/002-frontend-mvp/spec.md J6
 	 */
 
+	let isDirty = $state(false);
+	let confirmingDiscard = $state(false);
+	let discarding = false;
+	let serverErrors = $state<Record<string, string>>({});
+
 	async function handleSubmit(data: DeviceFormInput) {
+		serverErrors = {};
 		try {
 			const { tagIds, ...deviceData } = data;
 			const payload = {
 				...deviceData,
 				model: data.model || undefined,
+				brandId: data.brandId || undefined,
 				ownerId: data.ownerId || undefined,
 				locationId: data.locationId || undefined,
 				networkId: data.networkId || undefined,
@@ -48,12 +60,16 @@
 
 			showToast({
 				type: 'success',
-				message: `Device "${data.name}" created successfully`
+				message: `Device ${data.name} created successfully`
 			});
 
+			discarding = true;
 			goto(`/devices/${result.id}`);
 		} catch (err) {
 			console.error('[device-create] Submit failed:', err);
+			if (err instanceof ApiError && err.errors) {
+				serverErrors = mapApiFieldErrors(err.errors);
+			}
 			const errorMsg =
 				err instanceof Error && 'detail' in err
 					? (err as unknown as { detail: string }).detail
@@ -65,6 +81,25 @@
 
 	function handleCancel() {
 		goto('/devices');
+	}
+
+	let pendingUrl = $state<URL | null>(null);
+
+	beforeNavigate(({ cancel, to }) => {
+		if (!isDirty || discarding) return;
+		cancel();
+		pendingUrl = to?.url ?? null;
+		confirmingDiscard = true;
+	});
+
+	function discardAndLeave() {
+		confirmingDiscard = false;
+		discarding = true;
+		if (pendingUrl) {
+			goto(pendingUrl);
+		} else {
+			goto('/devices');
+		}
 	}
 
 	$effect(() => {
@@ -128,5 +163,21 @@
 <div
 	class="rounded-lg border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-950"
 >
-	<DeviceForm mode="create" onSubmit={handleSubmit} onCancel={handleCancel} />
+	<DeviceForm
+		mode="create"
+		onSubmit={handleSubmit}
+		onCancel={handleCancel}
+		bind:isDirty
+		{serverErrors}
+	/>
 </div>
+
+{#if confirmingDiscard}
+	<UnsavedChangesModal
+		onDiscard={discardAndLeave}
+		onKeepEditing={() => {
+			confirmingDiscard = false;
+			pendingUrl = null;
+		}}
+	/>
+{/if}

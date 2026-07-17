@@ -27,3 +27,28 @@ html.dark body {
 		isolation: isolate;
 	}
 }
+
+/* Global reduced-motion override (#78). Collapses the motion tokens (see
+   duration and ease custom properties in tokens.css) so any component built
+   on them automatically goes still, and forces every CSS transition and
+   animation to near-zero as a fallback for utilities that hardcode a
+   duration instead of using the tokens. Svelte transition, in, and out
+   directives run via JS, not CSS, so they are not covered here; see
+   lib/utils/motion.ts for those. */
+@media (prefers-reduced-motion: reduce) {
+	:root {
+		--duration-fast: 0ms;
+		--duration-base: 0ms;
+		--duration-slow: 0ms;
+		--duration-slower: 0ms;
+	}
+
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+}

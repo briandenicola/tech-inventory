@@ -179,7 +179,7 @@
 						placeholder={t('admin.merge.searchPlaceholder', {
 							entityPlural: copy.plural.toLowerCase()
 						})}
-						class="min-h-11 w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-50"
+						class="min-h-11 w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-50"
 					/>
 
 					<label for="merge-target" class="text-sm font-medium text-neutral-700 dark:text-neutral-300">
@@ -188,7 +188,7 @@
 					<select
 						id="merge-target"
 						bind:value={selectedTargetId}
-						class="min-h-11 w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-50"
+						class="min-h-11 w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-50"
 					>
 						<option value="">{t('admin.merge.targetPlaceholder')}</option>
 						{#each targetOptions as entity (entity.id)}

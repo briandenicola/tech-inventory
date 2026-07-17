@@ -9,6 +9,7 @@
 	import { addToast } from '$lib/stores/toast';
 	import { registerPullToRefresh } from '$lib/stores/pullToRefresh';
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
+	import EmptyState from '$lib/components/EmptyState.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import PaginationControls from '$lib/components/PaginationControls.svelte';
 	import DeactivateConfirmModal from '$lib/components/admin/DeactivateConfirmModal.svelte';
@@ -224,7 +225,7 @@
 	const warningActionButtonClass =
 		'text-sm font-medium text-warning-600 hover:text-warning-700 hover:underline dark:text-warning-400 dark:hover:text-warning-300';
 	const primarySolidButtonClass =
-		'inline-flex min-h-11 items-center justify-center rounded-full bg-primary-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-primary-700 dark:hover:bg-primary-800';
+		'inline-flex min-h-11 items-center justify-center rounded-full bg-primary-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:bg-primary-700 dark:hover:bg-primary-800';
 </script>
 
 <svelte:head>
@@ -254,26 +255,25 @@
 			<ErrorState {error} onRetry={loadOwners} />
 		</div>
 	{:else if owners.length === 0}
-		<div
-			class="mt-6 flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-neutral-200 bg-white p-12 text-center dark:border-neutral-800 dark:bg-neutral-950"
-		>
-			<svg
-				class="h-16 w-16 text-neutral-400 dark:text-neutral-600"
-				fill="none"
-				viewBox="0 0 24 24"
-				stroke="currentColor"
-				aria-hidden="true"
-			>
-				<path
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="1.5"
-					d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-				/>
-			</svg>
-			<p class="mt-4 text-lg font-semibold text-neutral-900 dark:text-neutral-50">
-				{t('admin.owners.list.emptyState')}
-			</p>
+		<div class="mt-6">
+			<EmptyState message={t('admin.owners.list.emptyState')} showAddAction={false}>
+				{#snippet icon()}
+					<svg
+						class="h-16 w-16 text-neutral-400 dark:text-neutral-600"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						aria-hidden="true"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="1.5"
+							d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+						/>
+					</svg>
+				{/snippet}
+			</EmptyState>
 		</div>
 	{:else}
 		<div class="mt-6 overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
@@ -366,7 +366,7 @@
 						type="text"
 						bind:value={formData.displayName}
 						placeholder={t('admin.owners.fields.displayNamePlaceholder')}
-						class="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
+						class="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
 						class:border-error-600={formErrors.displayName}
 					/>
 					{#if formErrors.displayName}
@@ -385,7 +385,7 @@
 					<select
 						id="owner-role"
 						bind:value={formData.role}
-						class="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
+						class="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
 						class:border-error-600={formErrors.role}
 					>
 						<option value="Admin">{t('admin.owners.roles.admin')}</option>
@@ -410,7 +410,7 @@
 						type="text"
 						bind:value={formData.entraObjectId}
 						placeholder={t('admin.owners.fields.entraObjectIdPlaceholder')}
-						class="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-3 py-2 font-mono text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
+						class="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-3 py-2 font-mono text-sm focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
 						class:border-error-600={formErrors.entraObjectId}
 					/>
 					{#if formErrors.entraObjectId}

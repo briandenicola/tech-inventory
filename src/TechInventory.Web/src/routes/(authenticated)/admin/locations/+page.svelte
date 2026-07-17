@@ -303,7 +303,7 @@
 			}
 			closeMergeModal();
 			clearSelection();
-			await Promise.all([loadLocations(), fetchReferenceData()]);
+			await Promise.all([loadLocations(), fetchReferenceData({ force: true })]);
 		} catch (err: unknown) {
 			console.error('[LocationsAdmin] Merge failed:', err);
 			mergeError = err instanceof Error ? err.message : t('admin.merge.error');
@@ -345,7 +345,7 @@
 	async function handleBulkDeleteSuccess() {
 		clearSelection();
 		bulkDeleteModalOpen = false;
-		await Promise.all([loadLocations(), fetchReferenceData()]);
+		await Promise.all([loadLocations(), fetchReferenceData({ force: true })]);
 	}
 
 	const primaryActionButtonClass =
@@ -447,6 +447,7 @@
 				pageSize={urlParams.pageSize}
 				{totalCount}
 				onPageChange={handlePageChange}
+				itemLabel={t('common.nouns.locations')}
 			/>
 		</div>
 	{/if}

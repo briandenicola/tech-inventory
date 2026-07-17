@@ -12,9 +12,16 @@
 		pageSize: number;
 		totalCount: number;
 		onPageChange: (page: number, pageSize: number) => void;
+		itemLabel?: string;
 	}
 
-	let { currentPage, pageSize, totalCount, onPageChange }: Props = $props();
+	let {
+		currentPage,
+		pageSize,
+		totalCount,
+		onPageChange,
+		itemLabel = t('common.nouns.devices')
+	}: Props = $props();
 
 	// Calculate total pages
 	const totalPages = $derived(Math.ceil(totalCount / pageSize));
@@ -65,7 +72,7 @@
 		<!-- Showing info + page size selector -->
 		<div class="flex items-center gap-4">
 			<p class="text-sm text-neutral-700 dark:text-neutral-300">
-				{t('devices.pagination.showing', { start, end, total: totalCount })}
+				{t('devices.pagination.showing', { start, end, total: totalCount, item: itemLabel })}
 			</p>
 
 			<!-- Page size selector -->

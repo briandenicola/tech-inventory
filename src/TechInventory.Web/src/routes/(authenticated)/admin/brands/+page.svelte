@@ -319,7 +319,7 @@
 			}
 			closeMergeModal();
 			clearSelection();
-			await Promise.all([loadBrands(), fetchReferenceData()]);
+			await Promise.all([loadBrands(), fetchReferenceData({ force: true })]);
 		} catch (err: unknown) {
 			console.error('[BrandsAdmin] Merge failed:', err);
 			mergeError = err instanceof Error ? err.message : t('admin.merge.error');
@@ -362,7 +362,7 @@
 	async function handleBulkDeleteSuccess() {
 		clearSelection();
 		bulkDeleteModalOpen = false;
-		await Promise.all([loadBrands(), fetchReferenceData()]);
+		await Promise.all([loadBrands(), fetchReferenceData({ force: true })]);
 	}
 
 	const primaryActionButtonClass =
@@ -467,6 +467,7 @@
 				pageSize={urlParams.pageSize}
 				{totalCount}
 				onPageChange={handlePageChange}
+				itemLabel={t('common.nouns.brands')}
 			/>
 		</div>
 	{/if}

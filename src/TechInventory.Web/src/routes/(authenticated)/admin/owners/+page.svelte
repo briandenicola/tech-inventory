@@ -319,6 +319,7 @@
 				pageSize={urlParams.pageSize}
 				{totalCount}
 				onPageChange={handlePageChange}
+				itemLabel={t('common.nouns.owners')}
 			/>
 		</div>
 	{/if}

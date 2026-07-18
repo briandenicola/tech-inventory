@@ -53,17 +53,20 @@ public sealed class BulkUpdateDevicesCommandHandler(
         var correlationId = Guid.NewGuid();
         var devices = new List<Device>(uniqueIds.Length);
 
+        // Single round trip for every targeted device, rather than one SELECT
+        // per id — see #95.
+        var devicesById = (await deviceRepository.GetByIdsAsync(uniqueIds, cancellationToken).ConfigureAwait(false))
+            .ToDictionary(device => device.Id);
+
         // First pass: load + apply changes in-memory. Any single failure aborts
         // the whole batch before SaveChanges is called.
         foreach (var deviceId in uniqueIds)
         {
-            var deviceResult = await deviceRepository.GetByIdAsync(deviceId, cancellationToken).ConfigureAwait(false);
-            if (deviceResult.IsFailure)
+            if (!devicesById.TryGetValue(deviceId, out var device))
             {
-                return Result<BulkOperationResponse>.Failure(deviceResult.Error!);
+                return Result<BulkOperationResponse>.Failure(Error.NotFound($"Device '{deviceId}' was not found."));
             }
 
-            var device = deviceResult.Value!;
             if (device.Status == DeviceStatus.Disposed)
             {
                 return Result<BulkOperationResponse>.Failure(Error.Conflict($"Device '{deviceId}' is already disposed."));

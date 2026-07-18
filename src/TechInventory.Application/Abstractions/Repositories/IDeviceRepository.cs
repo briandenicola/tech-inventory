@@ -8,6 +8,13 @@ public interface IDeviceRepository : IAggregateRepository<Device>
 {
     Task<PagedResult<Device>> ListAsync(DeviceListCriteria criteria, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Fetches every device in <paramref name="ids"/> with a single round trip
+    /// (favouring already-tracked instances), instead of one query per id.
+    /// Ids that don't match any device are simply absent from the result.
+    /// </summary>
+    Task<IReadOnlyList<Device>> GetByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken);
+
     Task<Result<int>> ReassignBrandReferencesAsync(Guid sourceId, Guid targetId, CancellationToken cancellationToken);
 
     Task<Result<int>> ReassignCategoryReferencesAsync(Guid sourceId, Guid targetId, CancellationToken cancellationToken);

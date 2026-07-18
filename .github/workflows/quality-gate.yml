@@ -17,6 +17,35 @@ jobs:
       - run: dotnet test -c Release --no-build --collect:"XPlat Code Coverage"
       - run: dotnet list package --vulnerable --include-transitive
 
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/TechInventory.Web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with: { node-version: '22' }
+      - run: corepack enable
+      - uses: actions/cache@v6
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('src/TechInventory.Web/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+      - run: pnpm install --frozen-lockfile
+      # Non-blocking for now: main currently carries ~110 pre-existing
+      # svelte-check errors unrelated to any single change, so making this
+      # step required would red-mark every PR on day one. It still runs and
+      # surfaces new failures (e.g. #80's TypeScript 7 / svelte-check
+      # incompatibility) in the PR checks UI; flip continue-on-error to
+      # false once the existing backlog is cleared.
+      - run: pnpm run check
+        continue-on-error: true
+      - run: pnpm run lint
+      - run: pnpm run test -- --run
+      - run: pnpm run build
+
   codeql:
     runs-on: ubuntu-latest
     # SARIF upload requires Code Scanning to be enabled in repo settings

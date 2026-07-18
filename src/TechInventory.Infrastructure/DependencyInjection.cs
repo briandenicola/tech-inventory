@@ -51,6 +51,7 @@ public static class DependencyInjection
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IPasswordHasher, Argon2idPasswordHasher>();
         services.AddSingleton<ILocalTokenIssuer, HmacJwtLocalTokenIssuer>();
+        services.AddSingleton<ILocalLoginLockoutPolicy, LocalLoginLockoutPolicy>();
 
         return services;
     }

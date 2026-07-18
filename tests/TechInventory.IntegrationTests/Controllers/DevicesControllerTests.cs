@@ -470,6 +470,35 @@ public sealed class DevicesControllerTests(IntegrationTestFactory<DevicesControl
     }
 
     [Fact]
+    public async Task BulkUpdateDevices_WhenOneDeviceIdIsUnknown_Returns404AndAppliesNoChanges()
+    {
+        await ResetDatabaseAsync();
+        var references = await SeedDeviceReferenceDataAsync();
+        var targetCategory = new Category(Guid.NewGuid(), $"Category-{Guid.NewGuid():N}");
+        await SeedAsync(entities: [targetCategory]);
+        var known = CreateDevice(references, $"Device-{Guid.NewGuid():N}");
+        var unknownId = Guid.NewGuid();
+        await SeedAsync(entities: [known]);
+        using var client = CreateClient();
+
+        var request = new
+        {
+            deviceIds = new[] { known.Id, unknownId },
+            changes = new { categoryId = targetCategory.Id }
+        };
+
+        var response = await client.PostAsync("/api/v1/devices/bulk/update", CreateJsonContent(request));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        await WithDbContextAsync(async dbContext =>
+        {
+            var reloaded = await dbContext.Devices.SingleAsync(d => d.Id == known.Id);
+            reloaded.CategoryId.Should().Be(references.Category.Id);
+        });
+    }
+
+    [Fact]
     public async Task BulkDeleteDevices_WhenValid_DisposesAllDevicesAndAuditsEach()
     {
         await ResetDatabaseAsync();

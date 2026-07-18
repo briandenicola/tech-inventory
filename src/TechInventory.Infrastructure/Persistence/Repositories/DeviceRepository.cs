@@ -24,6 +24,46 @@ public sealed class DeviceRepository(AppDbContext dbContext) : Repository<Device
     public Task<Result<Device>> GetByIdAsync(Guid id, CancellationToken cancellationToken)
         => GetEntityByIdAsync(id, cancellationToken);
 
+    public async Task<IReadOnlyList<Device>> GetByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(ids);
+
+        if (ids.Count == 0)
+        {
+            return [];
+        }
+
+        var merged = new Dictionary<Guid, Device>();
+        var remainingIds = new List<Guid>(ids.Count);
+        foreach (var id in ids)
+        {
+            var tracked = FindTrackedEntity(device => device.Id == id);
+            if (tracked is not null)
+            {
+                merged[id] = tracked;
+            }
+            else
+            {
+                remainingIds.Add(id);
+            }
+        }
+
+        if (remainingIds.Count > 0)
+        {
+            var fetched = await DbContext.Devices
+                .Where(device => remainingIds.Contains(device.Id))
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            foreach (var device in fetched)
+            {
+                merged[device.Id] = device;
+            }
+        }
+
+        return merged.Values.ToArray();
+    }
+
     public async Task<PagedResult<Device>> ListAsync(DeviceListCriteria criteria, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(criteria);

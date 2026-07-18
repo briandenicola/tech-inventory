@@ -50,9 +50,10 @@ public sealed class ExportsController(ISender sender, ILogger<ExportsController>
         var rowCount = 0;
         await foreach (var row in exportRows.WithCancellation(cancellationToken))
         {
+            var safeRow = NeutralizeCsvFormulas(row);
             await WriteCsvChunkAsync(csvWriter =>
             {
-                csvWriter.WriteRecord(row);
+                csvWriter.WriteRecord(safeRow);
                 csvWriter.NextRecord();
             }, cancellationToken).ConfigureAwait(false);
             rowCount++;
@@ -60,6 +61,37 @@ public sealed class ExportsController(ISender sender, ILogger<ExportsController>
 
         return rowCount;
     }
+
+    /// <summary>
+    /// Free-text device fields are attacker/user-controlled (device create/edit,
+    /// or CSV import). If a cell value starts with a formula-trigger character,
+    /// Excel/Sheets/LibreOffice will execute it as a formula when the export is
+    /// opened — CSV/formula injection (CWE-1236). Prefixing with a single quote
+    /// forces spreadsheet apps to treat the value as literal text.
+    /// </summary>
+    private static DeviceExportRow NeutralizeCsvFormulas(DeviceExportRow row) => row with
+    {
+        Name = NeutralizeCsvField(row.Name),
+        Brand = NeutralizeNullableCsvField(row.Brand),
+        Category = NeutralizeCsvField(row.Category),
+        Owner = NeutralizeCsvField(row.Owner),
+        Location = NeutralizeCsvField(row.Location),
+        Network = NeutralizeNullableCsvField(row.Network),
+        Model = NeutralizeNullableCsvField(row.Model),
+        SerialNumber = NeutralizeNullableCsvField(row.SerialNumber),
+        Notes = NeutralizeNullableCsvField(row.Notes),
+        DisposalMethod = NeutralizeNullableCsvField(row.DisposalMethod),
+        CreatedBy = NeutralizeNullableCsvField(row.CreatedBy),
+        ModifiedBy = NeutralizeNullableCsvField(row.ModifiedBy)
+    };
+
+    private static string? NeutralizeNullableCsvField(string? value)
+        => string.IsNullOrEmpty(value) ? value : NeutralizeCsvField(value);
+
+    private static string NeutralizeCsvField(string value)
+        => value.Length > 0 && value[0] is '=' or '+' or '-' or '@' or '\t' or '\r'
+            ? "'" + value
+            : value;
 
     private async Task WriteCsvChunkAsync(Action<CsvWriter> writeChunk, CancellationToken cancellationToken)
     {

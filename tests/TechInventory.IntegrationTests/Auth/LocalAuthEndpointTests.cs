@@ -69,6 +69,26 @@ public sealed class LocalAuthEndpointTests : IClassFixture<LocalAuthEndpointTest
     }
 
     [Fact]
+    public async Task Login_ExceedsMaxFailedAttempts_LocksOutAccountEvenWithCorrectPassword()
+    {
+        await SeedLocalUserAsync(mustChangePassword: false);
+        using var client = _factory.CreateClient();
+
+        // Auth:Local:MaxFailedLoginAttempts defaults to 5 (not overridden by
+        // LocalAuthFactory), so the 5th bad attempt should arm the lockout.
+        const int maxFailedLoginAttempts = 5;
+        for (var attempt = 0; attempt < maxFailedLoginAttempts; attempt++)
+        {
+            var failedResponse = await client.PostAsJsonAsync("/api/v1/auth/local/login", new { username = TestUsername, password = "wrong-password" });
+            failedResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        }
+
+        var lockedOutResponse = await client.PostAsJsonAsync("/api/v1/auth/local/login", new { username = TestUsername, password = TestPassword });
+
+        lockedOutResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
     public async Task ProtectedEndpoint_BlocksLocalUserWhileMustChangePassword()
     {
         await SeedLocalUserAsync(mustChangePassword: true);

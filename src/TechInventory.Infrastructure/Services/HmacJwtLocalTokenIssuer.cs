@@ -105,4 +105,16 @@ public sealed class LocalJwtOptions
     /// directly with the configured password.
     /// </summary>
     public bool SeedRequireChangeOnFirstLogin { get; set; } = true;
+
+    /// <summary>
+    /// F025b — consecutive failed login attempts allowed before the account is
+    /// locked out. Reaching this count arms <c>LocalUser.LockoutUntilUtc</c>.
+    /// </summary>
+    public int MaxFailedLoginAttempts { get; set; } = 5;
+
+    /// <summary>
+    /// F025b — how long an account stays locked out once <see cref="MaxFailedLoginAttempts"/>
+    /// consecutive failures are reached.
+    /// </summary>
+    public int LockoutDurationMinutes { get; set; } = 15;
 }

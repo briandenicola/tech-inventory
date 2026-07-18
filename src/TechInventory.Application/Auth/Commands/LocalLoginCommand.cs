@@ -30,6 +30,7 @@ public sealed class LocalLoginCommandHandler(
     ILocalUserRepository localUserRepository,
     IPasswordHasher passwordHasher,
     ILocalTokenIssuer tokenIssuer,
+    ILocalLoginLockoutPolicy lockoutPolicy,
     IUnitOfWork unitOfWork,
     IAuditContext auditContext,
     TimeProvider timeProvider,
@@ -80,15 +81,24 @@ public sealed class LocalLoginCommandHandler(
 
         if (!passwordHasher.Verify(request.Password, user.PasswordHash, user.PasswordAlgorithm))
         {
-            user.RecordFailedLogin(modifiedBy: $"localuser:{user.Username}");
+            var willLockOut = user.FailedAttemptCount + 1 >= lockoutPolicy.MaxFailedAttempts;
+            var lockoutUntilUtc = willLockOut ? nowUtc.Add(lockoutPolicy.LockoutDuration) : (DateTimeOffset?)null;
+            user.RecordFailedLogin(lockoutUntilUtc, modifiedBy: $"localuser:{user.Username}");
             await localUserRepository.UpdateAsync(user, cancellationToken).ConfigureAwait(false);
             auditContext.Add(new AuditContextEntry(
                 nameof(LocalUser),
                 user.Id.ToString(),
                 AuditAction.Updated,
-                afterPayload: new { reason = "local-login-failed", failedAttemptCount = user.FailedAttemptCount }));
+                afterPayload: new { reason = "local-login-failed", failedAttemptCount = user.FailedAttemptCount, lockedOut = willLockOut }));
             await unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            logger.LogWarning("Local login failed for {Username}: bad password (attempt {Attempt})", user.Username, user.FailedAttemptCount);
+            if (willLockOut)
+            {
+                logger.LogWarning("Local login failed for {Username}: bad password (attempt {Attempt}) — account locked until {LockoutUntil}", user.Username, user.FailedAttemptCount, lockoutUntilUtc);
+            }
+            else
+            {
+                logger.LogWarning("Local login failed for {Username}: bad password (attempt {Attempt})", user.Username, user.FailedAttemptCount);
+            }
             return Result<LocalLoginResponse>.Failure(InvalidCredentials);
         }
 

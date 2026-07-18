@@ -101,6 +101,22 @@ public sealed class ExportControllerTests(IntegrationTestFactory<ExportControlle
         ReadCsvRows(csvBody).Should().HaveCount(125);
     }
 
+    [Fact]
+    public async Task ExportDevicesAsCsv_WhenNameStartsWithFormulaTrigger_IsNeutralizedWithLeadingQuote()
+    {
+        await ResetDatabaseAsync();
+        var references = await SeedDeviceReferenceDataAsync();
+        await SeedAsync(entities: [CreateDevice(references, "=1+1")]);
+        using var client = CreateClient();
+
+        var response = await client.GetAsync("/api/v1/exports/devices?format=csv", HttpCompletionOption.ResponseHeadersRead);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var csvRows = ReadCsvRows(await response.Content.ReadAsStringAsync());
+        csvRows.Should().ContainSingle();
+        csvRows[0]["Name"].Should().Be("'=1+1");
+    }
+
     private static List<Dictionary<string, string>> ReadCsvRows(string csvBody)
     {
         using var stringReader = new StringReader(csvBody);

@@ -28,7 +28,7 @@
     "@types/eslint": "^9.6.1",
     "@types/node": "^26.1.1",
     "@vite-pwa/sveltekit": "^1.1.0",
-    "@vitest/ui": "^4.1.8",
+    "@vitest/ui": "^4.1.10",
     "axe-core": "^4.12.1",
     "eslint": "^9.17.0",
     "eslint-config-prettier": "^10.1.8",

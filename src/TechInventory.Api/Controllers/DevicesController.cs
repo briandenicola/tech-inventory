@@ -31,8 +31,10 @@ public sealed class DevicesController(ISender sender) : ControllerBase
         => this.OkResult(await sender.Send(new GetDeviceByIdQuery(id), cancellationToken));
 
     [HttpPost]
+    [Authorize(Policy = AuthorizationPolicies.AdminOrMember)]
     [ProducesResponseType(typeof(DeviceResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<DeviceResponse>> CreateDevice([FromBody] CreateDeviceRequest request, CancellationToken cancellationToken)
         => this.CreatedAtActionResult(
@@ -41,24 +43,30 @@ public sealed class DevicesController(ISender sender) : ControllerBase
             response => new { id = response.Id });
 
     [HttpPut("{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.AdminOrMember)]
     [ProducesResponseType(typeof(DeviceResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<DeviceResponse>> UpdateDevice(Guid id, [FromBody] UpdateDeviceRequest request, CancellationToken cancellationToken)
         => this.OkResult(await sender.Send(request.ToCommand(id), cancellationToken));
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.AdminOrMember)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> DeleteDevice(Guid id, [FromBody] DeleteDeviceRequest? request, CancellationToken cancellationToken)
         => this.NoContentResult(await sender.Send((request ?? new DeleteDeviceRequest()).ToCommand(id), cancellationToken));
 
     [HttpPost("{id:guid}/tags")]
+    [Authorize(Policy = AuthorizationPolicies.AdminOrMember)]
     [ProducesResponseType(typeof(DeviceTagResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<DeviceTagResponse>> AddTag(Guid id, [FromBody] AddDeviceTagRequest request, CancellationToken cancellationToken)
@@ -71,24 +79,30 @@ public sealed class DevicesController(ISender sender) : ControllerBase
         => this.OkResult(await sender.Send(new ListDeviceTagsQuery(id), cancellationToken));
 
     [HttpDelete("{id:guid}/tags/{tagId:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.AdminOrMember)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> RemoveTag(Guid id, Guid tagId, CancellationToken cancellationToken)
         => this.NoContentResult(await sender.Send(new RemoveTagFromDeviceCommand(id, tagId), cancellationToken));
 
     [HttpPatch("{id:guid}/owner")]
+    [Authorize(Policy = AuthorizationPolicies.AdminOrMember)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> ClaimOwnership(Guid id, [FromBody] ClaimDeviceOwnershipRequest request, CancellationToken cancellationToken)
         => this.NoContentResult(await sender.Send(request.ToCommand(id), cancellationToken));
 
     [HttpPost("bulk/update")]
+    [Authorize(Policy = AuthorizationPolicies.AdminOrMember)]
     [ProducesResponseType(typeof(BulkOperationResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<BulkOperationResponse>> BulkUpdateDevices(

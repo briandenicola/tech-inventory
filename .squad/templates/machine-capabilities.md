@@ -27,7 +27,7 @@ Add `needs:*` labels to issues that require specific capabilities:
 
 | Label | Meaning |
 |-------|---------|
-| `needs:browser` | Requires Playwright / browser automation |
+| `needs:browser` | Requires browser automation (no current consumer — retired, `specs/004-agentic-development-foundation/brief.md` §2.1) |
 | `needs:gpu` | Requires NVIDIA GPU |
 | `needs:personal-gh` | Requires personal GitHub account |
 | `needs:emu-gh` | Requires Enterprise Managed User account |

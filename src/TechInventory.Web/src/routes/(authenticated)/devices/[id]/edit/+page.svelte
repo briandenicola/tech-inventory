@@ -3,6 +3,7 @@
 	import { page } from '$app/stores';
 	import { t } from '$lib/i18n';
 	import { devices, ApiError } from '$lib/api/client';
+	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import DeviceForm from '$lib/components/DeviceForm.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
@@ -11,6 +12,7 @@
 	import type { DeviceFormInput } from '$lib/schemas/device';
 	import { registerPullToRefresh } from '$lib/stores/pullToRefresh';
 	import { fetchReferenceData } from '$lib/stores/referenceData';
+	import { authStore } from '$lib/stores/auth';
 	import { showToast } from '$lib/stores/toast';
 	import { getApiErrorMessage, mapApiFieldErrors } from '$lib/utils/apiErrors';
 
@@ -24,6 +26,25 @@
 	 */
 
 	const deviceId = $derived($page.params.id);
+
+	// C-13: Viewer role has no edit affordance (DeviceForm/DeviceActionsMenu
+	// hide the link entirely), but a Viewer could still type the URL
+	// directly — the client route guard mirrors the admin pages' pattern.
+	// This is UX, not the security boundary: the API still enforces the
+	// same rule server-side (see
+	// `ViewerRoleAuthorizationTests.UpdateDevice_WhenCallerIsViewer_ReturnsForbidden`
+	// in `Controllers/ViewerRoleAuthorizationTests.cs` — a real, executing
+	// test against the authorization pipeline, not the permanently-skipped
+	// `AuthIntegrationTests.ViewerRoleOnAdminEndpoint_Returns403Forbidden`,
+	// which was removed).
+	const currentUser = $derived($authStore.currentUser);
+	const canEditDevice = $derived(currentUser?.role === 'Admin' || currentUser?.role === 'Member');
+
+	$effect(() => {
+		if (!canEditDevice && currentUser !== null) {
+			goto(deviceId ? `/devices/${deviceId}` : '/devices');
+		}
+	});
 
 	let device = $state<DeviceResponse | null>(null);
 	let deviceTagIds = $state<string[]>([]);
@@ -197,55 +218,14 @@
 </svelte:head>
 
 <!-- Breadcrumbs -->
-<nav class="mb-4 flex text-sm text-neutral-600 dark:text-neutral-400" aria-label="Breadcrumb">
-	<ol class="flex items-center space-x-2">
-		<li>
-			<a href="/" class="hover:text-primary-600 dark:hover:text-primary-400">
-				{t('navigation.home')}
-			</a>
-		</li>
-		<li>
-			<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-				<path
-					fill-rule="evenodd"
-					d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
-					clip-rule="evenodd"
-				/>
-			</svg>
-		</li>
-		<li>
-			<a href="/devices" class="hover:text-primary-600 dark:hover:text-primary-400">
-				{t('common.nouns.devices')}
-			</a>
-		</li>
-		<li>
-			<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-				<path
-					fill-rule="evenodd"
-					d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
-					clip-rule="evenodd"
-				/>
-			</svg>
-		</li>
-		<li>
-			<a href={`/devices/${deviceId}`} class="hover:text-primary-600 dark:hover:text-primary-400">
-				{device?.name ?? 'Device'}
-			</a>
-		</li>
-		<li>
-			<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-				<path
-					fill-rule="evenodd"
-					d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
-					clip-rule="evenodd"
-				/>
-			</svg>
-		</li>
-		<li aria-current="page" class="font-medium text-neutral-900 dark:text-neutral-100">
-			{t('common.actions.edit')}
-		</li>
-	</ol>
-</nav>
+<Breadcrumbs
+	items={[
+		{ label: t('navigation.home'), href: '/' },
+		{ label: t('common.nouns.devices'), href: '/devices' },
+		{ label: device?.name ?? 'Device', href: `/devices/${deviceId}` },
+		{ label: t('common.actions.edit') }
+	]}
+/>
 
 <!-- Page header -->
 <div class="mb-6">

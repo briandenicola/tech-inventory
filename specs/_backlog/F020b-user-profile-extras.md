@@ -31,7 +31,13 @@ Round out `/settings` with the remaining tabs and storage:
 - [ ] Session tab renders last sign-in time + UA from the most recent
       auth event.
 - [ ] Zero axe-core violations; 44px touch targets.
-- [ ] Playwright happy-path covers each tab.
+- [ ] Vitest component tests cover each tab's rendering and primary
+      interaction (Avatar upload preview, Preferences save call, Session tab
+      last-sign-in render). No browser E2E layer exists to automate a
+      cross-tab happy path post-retirement
+      (`specs/004-agentic-development-foundation/brief.md` §2.1); a
+      real-device pass across all three tabs is added to
+      `docs/testing/manual-pwa-validation.md` instead.
 
 ## Open Questions
 - Avatar storage: Attachment table (preferred long-term) or interim base64

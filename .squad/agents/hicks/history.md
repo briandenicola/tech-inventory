@@ -668,3 +668,70 @@ the situation where re-deriving root cause from primary sources (spec, code,
 — the summary is frequently right about *what* changed but can be subtly
 wrong about *why* it was rejected (read-path vs. write-path in B2 here), and
 trusting it would have produced a second rejected revision.
+
+### 2026-09-02 — T104 revision (B-1/B-2/B-3) ✅ CLOSED, pending Apone re-review
+
+Assigned as independent revision owner after Apone rejected Hudson's T104
+(`specs/004-agentic-development-foundation/validation.md` §10) on three
+blockers. Hudson locked out for this cycle; Ripley's root-cause-from-
+primary-sources discipline above applied again — read Apone's
+`.squad/decisions/inbox/apone-t104-review.md` directly for exact
+reproduction evidence rather than any secondhand summary.
+
+**B-1** (`check:client-drift` compared regeneration-from-working-tree
+against index/HEAD, so it failed with provably zero drift): new
+`scripts/check-client-drift.mjs` snapshots the working-tree generated
+client, regenerates in place, compares against its own snapshot
+(CRLF/LF-normalized against `core.autocrlf` noise), and **always** restores
+original bytes in a `finally` — clean pass, detected drift, or
+generate-command failure. Never depends on git, never depends on committing.
+9/9 new unit tests (`check-client-drift.test.mjs`).
+
+**B-2** (`check:vulnerable` ran unparsed `dotnet list package --vulnerable`,
+which exits 0 regardless of findings, while `.github/workflows/README.md`
+called it "Enforced"): new `scripts/check-vulnerable.mjs` parses
+`--format json` (confirmed supported by the installed SDK via direct probe,
+not assumed) and fails closed on any Moderate+ advisory — the exact
+threshold `.specify/memory/constitution.md` §5.8 already specifies, so no
+new policy was invented. Also fails closed on tool-launch failure, nonzero
+exit, and malformed JSON. 13/13 new unit tests
+(`check-vulnerable.test.mjs`).
+
+**B-3** (`ci.yml` depended on PyYAML for `check:openapi-drift` without
+installing it, unlike `quality-gate.yml`): confirmed via search that only
+these two workflows invoke `task verify`; added the identical
+`pip install pyyaml` step to `ci.yml`.
+
+**Live tamper evidence, not just unit tests:** deliberately corrupted
+`types.ts` to simulate a stale client — the new check caught it (exit 1)
+and restored it; ran the new vulnerability check against a real throwaway
+project pinned to `Newtonsoft.Json 12.0.1` (the same package/version Apone
+used to prove the original fail-open defect) — now returns exit 1, where
+the old check returned exit 0.
+
+**Full pipeline, this machine, Windows:** `task verify:fast`,
+`task verify:contracts`, `task verify:full`, and `task verify` (the
+authoritative alias) all ran to completion and **exited 0** — the first
+time in this work package the authoritative entrypoint has been observed to
+finish end to end. No stage required Docker or a browser.
+
+Updated `validation.md` (§11, new), `tasks.md`, `plan.md`, and
+`coverage-migration.md` (§14.4, new) as revision evidence. Did not touch any
+T101/T102 file, did not address Apone's non-blocking F-5–F-9 (none was a
+blocker prerequisite), did not start T105, did not self-approve T104 — that
+transition and T105's authorization both belong to Apone. No commit, no
+push, per instructions. GitHub Actions execution remains unobserved until a
+push — disclosed, not claimed.
+
+**Mistake and recovery, worth repeating:** mid-tamper-test I used
+`git checkout -- types.ts` to "restore" the file after corrupting it. On
+this branch, `types.ts` already carried a real uncommitted change from
+T102, so `git checkout --` reverted to the *index/HEAD* copy, silently
+discarding that legitimate uncommitted work instead of undoing my tamper.
+Recovered by regenerating fresh from the untouched `openapi.yaml`
+(`types.ts` hash confirmed identical to its pre-incident value via
+`git hash-object`, `git status --short` count confirmed back to the
+pre-incident 149). **Learning: on a dirty working tree, tamper-test
+restoration must use a real byte snapshot or a verified re-derivation —
+never `git checkout --`, which restores relative to git's index, not to the
+moment before the tamper.**

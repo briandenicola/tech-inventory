@@ -34,8 +34,10 @@ public sealed class NetworksController(ISender sender) : ControllerBase
         => this.OkResult(await sender.Send(new GetNetworkByIdQuery(id), cancellationToken));
 
     [HttpPost]
+    [Authorize(Policy = AuthorizationPolicies.AdminOrMember)]
     [ProducesResponseType(typeof(NetworkResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<NetworkResponse>> CreateNetwork([FromBody] CreateNetworkRequest request, CancellationToken cancellationToken)
         => this.CreatedAtActionResult(
@@ -44,15 +46,19 @@ public sealed class NetworksController(ISender sender) : ControllerBase
             response => new { id = response.Id });
 
     [HttpPut("{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.AdminOrMember)]
     [ProducesResponseType(typeof(NetworkResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<NetworkResponse>> UpdateNetwork(Guid id, [FromBody] UpdateNetworkRequest request, CancellationToken cancellationToken)
         => this.OkResult(await sender.Send(request.ToCommand(id), cancellationToken));
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.AdminOrMember)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> DeleteNetwork(Guid id, CancellationToken cancellationToken)

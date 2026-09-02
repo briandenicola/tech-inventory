@@ -63,8 +63,13 @@ nav item that the user-menu dropdown links to, not a primary nav pill.
 - [ ] All controls satisfy the 44px touch-target token + zero axe-core
       violations
 - [ ] i18n keys live under `settings.*` in `en.json`
-- [ ] At least one Playwright E2E covers: edit display name → reload → name
-      persists in header + in audit log
+- [ ] Backend integration test asserts the display-name update persists
+      across a fresh HTTP request; a Vitest component test asserts the
+      header + any attributed audit-log rows re-render the new name without
+      a full page reload. There is no browser E2E layer to prove the
+      real-browser reload-persistence path post-retirement
+      (`specs/004-agentic-development-foundation/brief.md` §2.1) — add it to
+      `docs/testing/manual-pwa-validation.md` instead
 
 ## Out of Scope
 - Admin-managed bulk user import (Admin Console F8 territory)

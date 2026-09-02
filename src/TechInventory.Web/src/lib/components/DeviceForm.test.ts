@@ -433,10 +433,7 @@ describe('DeviceForm', () => {
 			});
 		});
 
-		it.skip('disables submit button while submitting', async () => {
-			// SKIP: Svelte 5 select bindings not updating formData in jsdom (T23)
-			// Root cause: bind:value on <select> doesn't trigger reactive updates in test environment
-			// Coverage: E2E tests (T46) cover form submission loading states in real browsers
+		it('disables submit button while submitting', async () => {
 			const user = userEvent.setup();
 			const onSubmit = vi.fn<
 				(data: import('$lib/schemas/device').DeviceFormInput) => Promise<void>
@@ -449,19 +446,17 @@ describe('DeviceForm', () => {
 				}
 			});
 
-			// Fill and submit (use IDs from resetFactories: first brand=0, first category=0)
+			// Fill every required field (owner/location included) so client-side
+			// validation actually lets the async onSubmit run — an earlier version
+			// of this test omitted owner/location, so validation blocked submission
+			// and isSubmitting never flipped true; that looked like a jsdom
+			// select-binding bug but was just an incomplete fixture (T23 skip note
+			// was stale, not a real jsdom limitation).
 			await user.type(screen.getByLabelText(/devices.columns.name/i), 'Test');
-			await user.selectOptions(
-				screen.getByLabelText(/devices.columns.brand/i),
-				testBrandId
-			);
-			await user.selectOptions(
-				screen.getByLabelText(/devices.columns.category/i),
-				testCategoryId
-			);
-
-			// Wait for Svelte 5 runes reactivity to settle
-			await new Promise((resolve) => setTimeout(resolve, 50));
+			await user.selectOptions(screen.getByLabelText(/devices.columns.brand/i), testBrandId);
+			await user.selectOptions(screen.getByLabelText(/devices.columns.category/i), testCategoryId);
+			await user.selectOptions(screen.getByLabelText(/devices.columns.owner/i), testOwnerId);
+			await user.selectOptions(screen.getByLabelText(/devices.columns.location/i), testLocationId);
 
 			const submitButton = screen.getByRole('button', { name: /common.actions.save/i });
 			await waitFor(() => expect(submitButton).not.toBeDisabled());
@@ -469,7 +464,7 @@ describe('DeviceForm', () => {
 			await user.click(submitButton);
 
 			// Should be disabled during submission
-			expect(submitButton).toBeDisabled();
+			await waitFor(() => expect(submitButton).toBeDisabled());
 		});
 	});
 
@@ -489,6 +484,34 @@ describe('DeviceForm', () => {
 			await user.click(cancelButton);
 
 			expect(onCancel).toHaveBeenCalledTimes(1);
+		});
+
+		it('discards unsaved edits without submitting (C-05: cancel-without-save)', async () => {
+			// Regression guard: cancelling a dirty, unsubmitted form must never
+			// trigger the save mutation — only onCancel fires, and onSubmit is
+			// never invoked with the in-progress edits.
+			const user = userEvent.setup();
+			const onCancel = vi.fn();
+			const onSubmit = vi.fn<
+				(data: import('$lib/schemas/device').DeviceFormInput) => Promise<void>
+			>(async () => {});
+
+			render(DeviceForm, {
+				props: {
+					...defaultProps,
+					onCancel,
+					onSubmit
+				}
+			});
+
+			await user.type(screen.getByLabelText(/devices.columns.name/i), 'Unsaved Device Name');
+			await user.selectOptions(screen.getByLabelText(/devices.columns.brand/i), testBrandId);
+
+			const cancelButton = screen.getByRole('button', { name: /common\.actions\.cancel/i });
+			await user.click(cancelButton);
+
+			expect(onCancel).toHaveBeenCalledTimes(1);
+			expect(onSubmit).not.toHaveBeenCalled();
 		});
 	});
 

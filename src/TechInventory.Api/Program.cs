@@ -247,7 +247,10 @@ builder.Services.AddAuthorizationBuilder()
         .Build())
     .AddPolicy(AuthorizationPolicies.Admin, policy => policy
         .RequireAuthenticatedUser()
-        .RequireRole("Admin"));
+        .RequireRole("Admin"))
+    .AddPolicy(AuthorizationPolicies.AdminOrMember, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireRole("Admin", "Member"));
 
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options =>

@@ -3,6 +3,16 @@
 > **Authority**: This document operationalizes PRD §7.5 *Local Testing & Validation*
 > and constitution §7 *Testing*. When this guide and those documents conflict,
 > the PRD and constitution win — and this guide should be updated to match.
+>
+> **Exception, recorded explicitly (not a silent override):** `briandenicola`
+> approved retiring the browser-automation E2E harness entirely
+> (`specs/004-agentic-development-foundation/brief.md` §2.1, 2026-09-02). PRD
+> §7.5.2–§7.5.4 and constitution §6.5.7/§7 still describe that harness as
+> mandatory by name; amending those clauses requires a separate ADR and is
+> deliberately **surfaced, not performed**, by this retirement
+> (`specs/004-agentic-development-foundation/coverage-migration.md` §5.4).
+> This guide is updated now because it is operational, not normative — the
+> normative documents are the pending ADR's job.
 
 This is the developer-facing guide to writing and running tests in this
 project. If you've just cloned the repo, start with [Quick Start](#-quick-start).
@@ -18,9 +28,7 @@ If you're about to write a test, start with [Choosing the Right Test Type](#-cho
 - [Backend Unit Tests (xUnit)](#-backend-unit-tests-xunit)
 - [Backend Integration Tests (Testcontainers)](#-backend-integration-tests-testcontainers)
 - [Frontend Unit Tests (Vitest)](#-frontend-unit-tests-vitest)
-- [Playwright E2E Tests](#-playwright-e2e-tests)
-- [Accessibility Tests](#-accessibility-tests)
-- [Performance Tests (Lighthouse CI)](#-performance-tests-lighthouse-ci)
+- [Manual PWA Validation Checklist](#-manual-pwa-validation-checklist)
 - [Contract Tests](#-contract-tests)
 - [Test Data & Fixtures](#-test-data--fixtures)
 - [Authentication in Tests](#-authentication-in-tests)
@@ -28,6 +36,8 @@ If you're about to write a test, start with [Choosing the Right Test Type](#-cho
 - [Debugging Failing Tests](#-debugging-failing-tests)
 - [Flaky Test Policy](#-flaky-test-policy)
 - [Writing a New Critical Journey](#-writing-a-new-critical-journey)
+- [Accessibility Tests](#-accessibility-tests)
+- [Performance Tests (Lighthouse CI)](#-performance-tests-lighthouse-ci)
 - [CI Behavior](#-ci-behavior)
 - [For AI Agents (Copilot)](#-for-ai-agents-copilot)
 - [Common Pitfalls](#-common-pitfalls)
@@ -51,13 +61,12 @@ We do **not** test for:
 ### Non-negotiables
 
 - ✅ Every change has tests at the appropriate level
-- ✅ Playwright is the only E2E framework
+- ✅ No automated browser E2E — that harness is retired (`specs/004-agentic-development-foundation/brief.md` §2.1); HTTP integration, Vitest component tests, and the manual PWA checklist are the destination layers (`specs/004-agentic-development-foundation/coverage-migration.md` §6)
 - ✅ Tests run locally with one command (`task test`)
 - ✅ CI runs the exact same commands a developer runs
 - ✅ Flaky tests are bugs — fix or delete within a working day
 - ✅ Tests own their data — no shared fixtures across files
 - ❌ No mocked databases in integration tests
-- ❌ No mocked API in E2E tests
 - ❌ No tests that require internet access
 
 ---
@@ -67,12 +76,11 @@ We do **not** test for:
 ### First-time setup
 
 ```bash
-# Prereqs: Docker, .NET 10 SDK, Node 22+, GNU task
+# Prereqs: .NET 10 SDK, Node 22+, GNU task (Docker only if you're using `task up`)
 git clone <repo> && cd <repo>
 
-# Install JS deps and Playwright browsers
+# Install JS deps
 cd src/TechInventory.Web && npm ci
-npx playwright install --with-deps
 cd -
 
 # Restore .NET deps
@@ -82,18 +90,15 @@ dotnet restore
 ### Run the whole suite (the way CI does)
 
 ```bash
-task test           # backend unit + integration + frontend unit + E2E
+task test           # backend unit + integration + frontend unit
 ```
 
 Or scope it:
 
 ```bash
 task test:unit          # backend xUnit only (no Docker)
-task test:integration   # backend integration (Testcontainers Postgres)
-task test:web           # frontend Vitest only
-task test:e2e           # Playwright (requires `task dev:up` or equivalent)
-task test:a11y          # @axe-core/playwright accessibility checks
-task test:perf          # Lighthouse CI against the running web container
+task test:integration   # backend integration (in-process SQLite)
+task check:stale-refs   # fails if the retired browser-E2E harness has returned
 ```
 
 The Taskfile is the source of truth — if a script gets renamed, this section
@@ -111,13 +116,14 @@ Decide by **what would break first if this code were wrong**:
 | A Svelte component renders wrong markup or fires the wrong event | Frontend Vitest unit                 | `src/TechInventory.Web` (`*.test.ts` adjacent)  |
 | An HTTP endpoint returns the wrong status / shape / authz result | Backend integration (Testcontainers) | `tests/TechInventory.IntegrationTests`          |
 | OpenAPI spec drifts from the running API                         | Contract                             | `tests/TechInventory.IntegrationTests/Contract` |
-| A user-facing journey is broken end-to-end                       | Playwright E2E                       | `tests/e2e`                                     |
-| A page violates WCAG 2.1 AA                                      | Accessibility (axe in Playwright)    | `tests/e2e/a11y`                                |
+| A user-facing journey is broken end-to-end                       | HTTP integration + Vitest component tests (browser E2E retired) | `tests/TechInventory.IntegrationTests`, `src/TechInventory.Web` — see `specs/004-agentic-development-foundation/coverage-migration.md` §6, §9 |
+| A page violates WCAG 2.1 AA                                      | Accessibility (`vitest-axe` in component tests)    | `src/TechInventory.Web` (route-level axe harnesses) |
+| Only a real installed app / service worker / second rendering engine can prove it | Manual PWA validation checklist | `docs/testing/manual-pwa-validation.md` |
 | A page's perf budget regresses                                   | Lighthouse CI                        | `tests/lighthouse`                              |
 
 **Rule of thumb**: pick the cheapest test that would have caught the bug.
-A unit test that exercises a regex is worth ten E2E tests that happened to
-fail because that regex was wrong.
+A unit test that exercises a regex is worth ten integration tests that
+happened to fail because that regex was wrong.
 
 ---
 
@@ -185,49 +191,27 @@ schemas, and utils.
 
 Every Svelte component that talks to auth should have a sibling
 `*.test.ts` that asserts it uses the `auth` store, not raw `fetch` + token
-juggling. Token storage rule violations should be caught here before they
-ever reach a Playwright run.
-
----
-
-## 🎭 Playwright E2E Tests
-
-Live in `tests/e2e/`. Uses **npm**, not pnpm (per `Taskfile.yml`); install
-with `npm ci` inside `tests/e2e`. Page objects live in `tests/e2e/pages/`
-(see `tests/e2e/pages/README.md` for conventions).
-
-- Spec files: `tests/e2e/specs/*.spec.ts`
-- Critical journeys (the ones that gate releases) are tagged `@critical`.
-- Auth is wired through a **local-account fixture** (`tests/e2e/fixtures/auth.ts`)
-  that exchanges the F025-seeded admin's credentials at
-  `POST /api/v1/auth/local/login` for an HS256 JWT, decodes the claims, and
-  drops both into sessionStorage before any in-page script runs. Tests do not
-  go through the real Entra redirect.
-
-Run:
-
-```bash
-cd tests/e2e
-npx playwright test                       # all
-npx playwright test --grep @critical      # release gates only
-npx playwright test --ui                  # interactive
-```
-
-Headed debug:
-
-```bash
-PWDEBUG=1 npx playwright test specs/devices-crud.spec.ts
-```
+juggling. Token storage rule violations are caught here — this is the only
+automated layer that exercises them; browser E2E is retired (see
+`specs/004-agentic-development-foundation/coverage-migration.md` §6).
 
 ---
 
 ## ♿ Accessibility Tests
 
-`@axe-core/playwright` runs against each critical journey. Failure threshold:
-**zero serious or critical violations**. `minor` and `moderate` are logged
-but do not fail the build (yet — see F0xx backlog).
+Accessibility assertions live alongside the Vitest component tests that
+render each route (`vitest-axe` / equivalent axe-core bindings), not in a
+separate browser-driven suite — the previous axe-in-browser layer
+was retired along with the rest of that harness
+(`specs/004-agentic-development-foundation/coverage-migration.md` §6, C-18).
+Failure threshold: **zero serious or critical violations** in any covered
+route's component test. Any route not yet covered at the component level is
+tracked as an explicit gap (see `coverage-migration.md` §6/C-20) and is
+exercised instead by the manual PWA validation checklist
+(`docs/testing/manual-pwa-validation.md`).
 
-Run: `task test:a11y`
+Run: `cd src/TechInventory.Web && pnpm test` (accessibility assertions run
+as part of the normal Vitest suite, not a separate command).
 
 ---
 
@@ -275,11 +259,13 @@ will fail loudly otherwise.
 | Unit (BE)    | Not applicable — pure logic.                                                                                                                         |
 | Integration  | `TestJwtBuilder` mints an HS256 token consumed by the dev-only JwtBearer scheme. Set `role`, `oid`, `name` per test. Local-fallback paths use the same builder but with issuer `techinventory-local`. |
 | Unit (FE)    | Mock the `auth` store, not `fetch`. If you find yourself stubbing `sessionStorage`, prefer a store-level fake.                                       |
-| E2E          | `tests/e2e/fixtures/auth.ts` — the `authenticated` test variant POSTs to `/api/v1/auth/local/login` with the F025-seeded admin creds, injects the returned JWT + meta into sessionStorage via `page.addInitScript`, and overrides Playwright's `request` fixture to carry `Authorization: Bearer <token>`. No Entra redirect in E2E. |
 
 **Do not** test against a live Entra tenant from CI. The whole point of the
 F025 local-account path is that auth is exercised in isolation against a
-seeded admin row.
+seeded admin row. There is no browser-driven E2E auth fixture any more —
+that harness is retired; the equivalent coverage lives in the integration
+tests above plus the manual PWA validation checklist's sign-in steps
+(`docs/testing/manual-pwa-validation.md`).
 
 ---
 
@@ -299,8 +285,6 @@ test harness, not a process problem.
 
 - **Integration test fails only in CI**: usually a timezone or culture
   assumption. Run `TZ=UTC task test:integration` locally to reproduce.
-- **Playwright fails only headless**: usually a missing `await page.waitFor…`.
-  Use `--headed --slowmo=250` to see what the test sees.
 - **Vitest fails after Tailwind change**: probably `lib/tokens.test.ts`.
   Snapshot intentionally — see D-137/D-138 visual baseline.
 - **Argon2 test slow**: tuning parameters live in
@@ -317,22 +301,31 @@ fixture. The policy:
 1. First reproduction: open a `known-issues.md` entry within the day.
 2. Two consecutive flakes: either fix it or delete it. No `[Skip]` for
    more than one working day.
-3. Quarantine via `@flaky` tag (Playwright) or `Trait("flaky", "true")`
-   (xUnit) is acceptable for ≤ 24h — long enough to schedule the fix.
+3. Quarantine via `Trait("flaky", "true")` (xUnit) or an equivalent skip
+   annotation (Vitest) is acceptable for ≤ 24h — long enough to schedule
+   the fix.
 
 ---
 
 ## ✍️ Writing a New Critical Journey
 
-Critical journeys are tagged `@critical`. To add one:
+Critical journeys no longer get a dedicated browser-automation spec — that
+harness is retired. To add coverage for a new user-facing journey:
 
 1. Identify the user value — the journey must map to a PRD scenario.
-2. Build the page objects first (`tests/e2e/pages/<feature>.page.ts`).
-3. Write the spec against the page objects, not against raw selectors.
-4. Tag `@critical` only after the test has been green on three consecutive
-   CI runs.
-5. Update `tests/e2e/README.md` if the journey changes the auth or seed
-   flow.
+2. Cover the request/response contract with a backend integration test
+   (`tests/TechInventory.IntegrationTests`) exercising the real HTTP
+   pipeline end to end for that journey.
+3. Cover the UI behaviour with Vitest component tests
+   (`src/TechInventory.Web`), including an axe-core assertion for the
+   route/component involved (see [Accessibility Tests](#-accessibility-tests)).
+4. If the journey depends on a real installed PWA, a second rendering
+   engine, or genuine offline/service-worker behaviour that neither layer
+   above can prove, add a checklist item to
+   `docs/testing/manual-pwa-validation.md` instead of trying to automate it.
+5. See `specs/004-agentic-development-foundation/coverage-migration.md` §6
+   for the full journey-by-journey replacement mapping used when this
+   harness was retired.
 
 ---
 
@@ -365,14 +358,12 @@ Critical journeys are tagged `@critical`. To add one:
 
 - **Using `localStorage` anywhere in auth code**: forbidden by D-002 /
   security-baseline §1. Token storage is sessionStorage-only, period.
-- **Writing E2E tests that mock the API**: defeats the point. Use
-  integration tests instead.
+- **Writing tests that mock the API**: defeats the point of an integration
+  test. Use `WebApplicationFactory` against the real pipeline instead.
 - **Asserting on time-of-day**: use `IClock` / `TimeProvider`, not
   `DateTime.UtcNow`.
 - **Building giant fixtures shared across files**: don't. Each test owns
   its data.
-- **Importing from `src/` into `tests/e2e`**: tests/e2e is a separate
-  package with its own `package.json`. Cross-package imports break CI.
 
 ---
 

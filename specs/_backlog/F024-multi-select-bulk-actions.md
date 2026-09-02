@@ -81,9 +81,13 @@ When ≥1 row is selected, a sticky bottom bar appears with:
       a shared correlation id linking them.
 - [ ] Bulk delete requires type-to-confirm matching the device count and a
       reason ≥10 chars (same threshold as single delete).
-- [ ] At least two Vitest units (selection state, bar-visibility) and one
-      Playwright E2E ("select 3 of 5 → bulk-set category → verify all 3
-      updated, other 2 unchanged").
+- [x] At least two Vitest units (selection state, bar-visibility) — delivered
+      as `BulkActionBar.test.ts` and the `DeviceTable` selection-state tests
+      — and one backend integration test ("select 3 of 5 → bulk-set category
+      → verify all 3 updated, other 2 unchanged") — delivered as
+      `DevicesControllerTests.BulkUpdateDevices_WhenValid_UpdatesAllDevicesAndAuditsEachWithCorrelationId`.
+      No browser E2E layer exists post-retirement to add on top of this
+      (`specs/004-agentic-development-foundation/brief.md` §2.1).
 - [ ] Zero axe-core violations on the selection column, header checkbox,
       and bulk-action bar.
 
@@ -143,6 +147,8 @@ When ≥1 row is selected, a sticky bottom bar appears with:
   - **Hard cap: 500 ids/request** (FluentValidation `InclusiveBetween(1, 500)`).
   - **Bulk delete is Admin-only**; bulk update permits any authenticated user
     (matches single-device rules).
-  - Carved **F024b** for: Playwright E2E coverage, shift-click range select,
+  - Carved **F024b** for: end-to-end walkthrough coverage at the HTTP
+    integration layer (no browser E2E layer exists post-retirement — see
+    F024b), shift-click range select,
     select-all-N-matching across pages, undo, group-level "select all in
     group", and bulk owner-change via Claim/Release semantics.

@@ -13,6 +13,7 @@
 
 import { writable } from 'svelte/store';
 import { z } from 'zod';
+import { t } from '$lib/i18n';
 import {
 	clearLocalSession,
 	getLocalSessionMeta,
@@ -115,11 +116,26 @@ export async function fetchCurrentUser(): Promise<void> {
 	} catch (error) {
 		console.error('[auth] Failed to fetch current user:', error);
 
-		// If 404 (Bishop's T11 not landed), set error but don't crash
-		const errorMessage =
-			error instanceof Error && error.message.includes('404')
-				? 'User endpoint not available yet (T11 pending)'
-				: 'Failed to load user profile';
+		// C-03: surface a real denial message instead of a silent/generic one.
+		// Duck-typed (not `instanceof ApiError`) to avoid importing client.ts's
+		// class here — this file is imported dynamically by client.ts itself to
+		// avoid a circular dependency, so a static import back would reintroduce it.
+		const status =
+			typeof error === 'object' && error !== null && 'status' in error
+				? (error as { status: unknown }).status
+				: undefined;
+
+		let errorMessage: string;
+		if (status === 401) {
+			errorMessage = t('auth.unauthorized');
+		} else if (status === 403) {
+			errorMessage = t('auth.accessDenied');
+		} else if (error instanceof Error && error.message.includes('404')) {
+			// If 404 (Bishop's T11 not landed), set error but don't crash
+			errorMessage = 'User endpoint not available yet (T11 pending)';
+		} else {
+			errorMessage = 'Failed to load user profile';
+		}
 
 		authStore.set({
 			currentUser: null,

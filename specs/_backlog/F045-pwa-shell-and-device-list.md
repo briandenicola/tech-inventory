@@ -315,32 +315,40 @@ Existing suites that **must be updated, not deleted**: `DeviceTable.test.ts`,
 `AppNavMenuHarness`/`ResponsiveAdminListHarness` pattern rather than mocking
 `matchMedia` ad hoc in every file.
 
-### 6.2 Playwright (E2E, `tests/e2e/`)
+### 6.2 Post-retirement note — no browser E2E layer
 
-- New `tests/e2e/journeys/15-pwa-shell.spec.ts` using a context with
-  `display-mode: standalone` emulated (`page.emulateMedia({ media: 'screen' })`
-  plus a `matchMedia` init-script override — Playwright cannot natively emulate
-  `display-mode`, so inject the override in `addInitScript`; document that
-  clearly in the page object).
-- Journeys: bottom nav visible and tappable → Reports; Settings bubble
-  navigates; Add opens the create modal from a non-devices route; hamburger
-  opens a popover that does **not** cover the whole viewport (assert the
-  underlying list is still hit-testable); device row shows two lines and its
-  `...` menu opens.
-- App-mode axe coverage landed in the new `15-pwa-shell.spec.ts` itself
-  (bottom nav and devices-list passes, each asserting **zero axe
-  violations** — constitution §6.5.6 merge gate) rather than as an extension
-  to `13-a11y-smoke.spec.ts` as originally anticipated here; `13-a11y-smoke`
-  remains desktop/mobile-web route coverage only. Accepted as equivalent
-  coverage — the assertion still exists and still gates the merge, just in
-  the journey file that owns app-mode setup instead of the general smoke
-  file.
-- Update `06-browse-filter.spec.ts` and `03-create-device.spec.ts` page objects
-  for the moved Add affordance **in the same PR** — the F027 note about
-  two-step breakage applies here verbatim.
-- Regression guard: a desktop-viewport run of the existing suite must pass
-  **unchanged**. If any desktop test needs editing, that is a design violation,
-  not a test fix — escalate to Ripley.
+The browser E2E journey originally planned here
+(`tests/e2e/journeys/15-pwa-shell.spec.ts`, authored 2026-09-02 against this
+contract, with a page object emulating a standalone-display context via a
+`matchMedia` init-script override — a native browser cannot otherwise be told
+its `display-mode` is `standalone`) was deleted with the rest of the browser
+E2E harness in T101
+(`specs/004-agentic-development-foundation/coverage-migration.md` §4 wave D3)
+— there is no future automated browser-suite role in this repository
+(`specs/004-agentic-development-foundation/brief.md` §2.1). Its assertions
+are re-homed, not silently dropped:
+
+- Bottom-nav visibility/tappability, Settings-bubble navigation, Add-modal
+  opening from a non-devices route, the popover's non-full-viewport
+  footprint, and the two-line device row with its `...` menu are covered by
+  the §6.1 Vitest component harnesses (`AppBottomNav.svelte`,
+  `AppMenuPopover.svelte`, `DevicePwaRow.svelte`) plus their axe-clean
+  assertions — the same **zero axe violations** merge gate (constitution
+  §6.5.6), proved with jsdom instead of a real browser.
+- The one behaviour a component harness cannot prove — that the bottom nav
+  and Settings bubble actually render, are tappable, and don't hide the last
+  list row **as laid out on a real installed device** — is
+  `docs/testing/manual-pwa-validation.md` **M-03**, which already names this
+  exact check; no new manual item is needed, only this cross-reference.
+- The "desktop-viewport run of the existing suite must pass unchanged"
+  regression guard no longer applies — there is no existing browser suite to
+  run. Its replacement: the desktop/mobile-web Vitest component suites
+  listed in §6.1 ("Existing suites that must be updated, not deleted")
+  continue to pass unedited, and `docs/testing/manual-pwa-validation.md`
+  **M-14**/**M-15** (WebKit/Firefox spot checks of `/devices`) are re-run for
+  this change. If any of those Vitest suites need editing for this feature
+  to land, that is the same design-violation signal the original guard was
+  protecting against — escalate to Ripley.
 
 ---
 
@@ -383,7 +391,7 @@ Existing suites that **must be updated, not deleted**: `DeviceTable.test.ts`,
 | R5 | Default category grouping forces an unbounded full-result-set fetch on the weakest device on the network | Medium | App-mode-only 500-row cap (`maxRows` param, PWA caller only — desktop/mobile-web stay unbounded, D-182), show a truncation note only when it applies, do not raise the cap |
 | R6 | `DeviceTable.svelte` grows past 700 lines with a third renderer | Medium | Mandatory extraction into three renderer components (§5.5) |
 | R7 | Scope creep into "redesign the whole PWA" | Medium | §3 non-goals are binding; any addition needs a new backlog entry |
-| R8 | Playwright cannot emulate `display-mode`, tempting a source-level test hook | Medium | `addInitScript` `matchMedia` override in the page object; no production test hooks |
+| R8 | No component harness can emulate a real installed `display-mode: standalone` environment; risk of shipping app-chrome logic unverified against a genuine standalone PWA | Medium | `DisplayModeHarness.svelte` mocks `matchMedia` at the component level (§6.1) for the branching logic; `docs/testing/manual-pwa-validation.md` **M-03** proves the real installed geometry — no production test hooks either way |
 | R9 | Nav item set drifts from the drawer's current options during the popover rewrite | Medium | Three role-based snapshot tests (§6.1) |
 | R10 | Bottom nav "Home" ambiguity — the app has no `/` home for authed users | Low | Home = `/devices`. Decided; label it "Home", route it to `/devices`. |
 
@@ -417,8 +425,10 @@ Existing suites that **must be updated, not deleted**: `DeviceTable.test.ts`,
       or left over 400 lines
 - [ ] All new strings in `en.json`
 - [ ] Zero axe violations (unit + E2E, both themes)
-- [ ] `pnpm run check`, `pnpm run lint`, `pnpm run test` clean; Playwright
-      desktop suite green **without edits**
+- [ ] `pnpm run check`, `pnpm run lint`, `pnpm run test` clean (the browser
+      E2E harness is retired repo-wide — `brief.md` §2.1 — so there is no
+      browser suite to gate on; the desktop/mobile-web Vitest component
+      suites listed in §6.1 pass unedited as the equivalent regression guard)
 - [ ] `./scripts/verify.sh` clean
 
 ## 10. History

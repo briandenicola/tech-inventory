@@ -13,4 +13,13 @@ public static class AuthorizationPolicies
     /// administrative data (audit log, future user management, etc.).
     /// </summary>
     public const string Admin = "Admin";
+
+    /// <summary>
+    /// Requires an authenticated principal with the <c>Admin</c> or
+    /// <c>Member</c> role claim. Used for endpoints that mutate ordinary
+    /// household data (devices, imports) per constitution §5.2's
+    /// Admin/Member/Viewer model — Viewer is read-only, so it must never be
+    /// satisfied by this policy.
+    /// </summary>
+    public const string AdminOrMember = "AdminOrMember";
 }

@@ -67,7 +67,12 @@ Background from existing memories:
       choices, persisted to the prefs store (localStorage today; server-sync
       when F022b ships)
 - [ ] First-paint FOUC suppressed by an inline pre-hydration script (verified
-      in a Playwright test that screenshots immediately after navigation)
+      by the existing `app.html` pre-hydration theme contract test pattern,
+      **C-21** in `coverage-migration.md` §6.2 — no browser E2E layer exists
+      post-retirement to screenshot immediately after navigation with,
+      `specs/004-agentic-development-foundation/brief.md` §2.1; a real-device
+      hard-reload spot check is `docs/testing/manual-pwa-validation.md`
+      **M-10**)
 - [ ] `/admin/audit` and the audit drawer (from F026) render with ≥4.5:1
       contrast on every textual element in both themes (axe-core asserts)
 - [ ] JSON diff added/removed/changed colors are accessible in both themes;

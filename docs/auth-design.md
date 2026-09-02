@@ -442,7 +442,7 @@ which env vars to set, NPM forwarding) are in
    - Implement owner lookup by `EntraObjectId` (first-login auto-onboard).
    - Implement audit logging for auth events: sign-in, sign-out, role assignment, bootstrap.
    - Implement authorization policies on all endpoints: default-deny + role-based checks.
-   - Playwright tests (4 critical journeys):
+   - Real-HTTP integration coverage for the 4 critical journeys (browser-automation harness retired — `specs/004-agentic-development-foundation/brief.md` §2.1):
      - Sign in (valid household user).
      - Sign in denied (user not in Entra).
      - Role enforcement (Member cannot delete; Viewer cannot edit).

@@ -53,8 +53,14 @@ Initial scope:
 - [ ] Default auto-applies only when the route is entered with **no** query
       string — explicit URLs (bookmarks, audit-log deep links, etc.) always
       win.
-- [ ] At least one Vitest unit covering the merge logic and one Playwright
-      E2E: set default → sign out → sign back in → defaults applied.
+- [ ] At least one Vitest unit covering the merge logic, plus a backend
+      integration test asserting the stored default round-trips for the same
+      user id across two independent HTTP requests. The full
+      sign-out/sign-back-in real-session path is a manual checklist addition
+      (`docs/testing/manual-pwa-validation.md`), consistent with the
+      real-Entra-redirect boundary already declared there (**G-08**) — no
+      browser E2E layer exists post-retirement
+      (`specs/004-agentic-development-foundation/brief.md` §2.1).
 - [ ] Zero axe-core violations on the toolbar additions.
 
 ## Out of Scope

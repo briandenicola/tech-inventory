@@ -213,9 +213,9 @@
 	<div
 		class="rounded-2xl border border-neutral-200 bg-white px-4 py-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950"
 	>
-		<h3 class="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+		<h2 class="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
 			{t('devices.detail.audit.title')}
-		</h3>
+		</h2>
 		<table class="mt-3 w-full table-fixed border-collapse">
 			<tbody>
 				<tr>

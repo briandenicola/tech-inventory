@@ -49,6 +49,74 @@ public sealed class DevicesControllerTests(IntegrationTestFactory<DevicesControl
         AssertCreatedLocationHeader(response, "/api/v1/devices", created.Id);
     }
 
+    // H-01 — real-HTTP create-then-read round trip. A browser-shaped JSON
+    // payload (all required references plus the F034 extended fields) goes in
+    // through WebApplicationFactory + real SQLite; GET /devices?search= must
+    // then surface the exact row with full field fidelity, so a missing
+    // required reference (OwnerId/LocationId/CategoryId) or a serialization
+    // drift is a failing assertion here rather than a silent seed mismatch.
+    [Fact]
+    public async Task CreateDevice_WhenValid_IsReturnedByDeviceSearch()
+    {
+        await ResetDatabaseAsync();
+        var references = await SeedDeviceReferenceDataAsync();
+        using var client = CreateClient();
+        var searchToken = $"RoundTrip-{Guid.NewGuid():N}";
+        var request = new
+        {
+            name = $"{searchToken} Steam Deck",
+            brandId = references.Brand.Id,
+            categoryId = references.Category.Id,
+            ownerId = references.Owner.Id,
+            locationId = references.Location.Id,
+            currencyCode = "USD",
+            model = "Steam Deck OLED",
+            serialNumber = $"SN-{searchToken}",
+            networkId = references.Network.Id,
+            purchaseDate = new DateOnly(2024, 5, 1),
+            purchasePrice = 549.99m,
+            status = DeviceStatus.Active,
+            notes = "Portable gaming handheld",
+            purpose = "Household gaming",
+            operatingSystem = "SteamOS",
+            ipAddress = "192.168.1.42",
+            macAddress = "AA:BB:CC:DD:EE:01",
+            productUrl = "https://store.steampowered.com/steamdeck",
+            version = "1.0",
+            warrantyExpiry = new DateOnly(2026, 5, 1)
+        };
+
+        var createResponse = await client.PostAsync("/api/v1/devices", CreateJsonContent(request));
+        createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = await ReadJsonAsync<DeviceResponse>(createResponse);
+
+        var searchResponse = await client.GetAsync($"/api/v1/devices?search={Uri.EscapeDataString(searchToken)}&pageSize=25");
+
+        searchResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var paged = await ReadJsonAsync<PagedResponse<DeviceResponse>>(searchResponse);
+        var found = paged.Items.Should().ContainSingle(device => device.Id == created.Id).Subject;
+        found.Name.Should().Be(request.name);
+        found.Model.Should().Be(request.model);
+        found.SerialNumber.Should().Be(request.serialNumber);
+        found.BrandId.Should().Be(references.Brand.Id);
+        found.CategoryId.Should().Be(references.Category.Id);
+        found.OwnerId.Should().Be(references.Owner.Id);
+        found.LocationId.Should().Be(references.Location.Id);
+        found.NetworkId.Should().Be(references.Network.Id);
+        found.CurrencyCode.Should().Be("USD");
+        found.PurchaseDate.Should().Be(request.purchaseDate);
+        found.PurchasePrice.Should().Be(request.purchasePrice);
+        found.Status.Should().Be(DeviceStatus.Active.ToString());
+        found.Notes.Should().Be(request.notes);
+        found.Purpose.Should().Be(request.purpose);
+        found.OperatingSystem.Should().Be(request.operatingSystem);
+        found.IpAddress.Should().Be(request.ipAddress);
+        found.MacAddress.Should().Be(request.macAddress);
+        found.ProductUrl.Should().Be(request.productUrl);
+        found.Version.Should().Be(request.version);
+        found.WarrantyExpiry.Should().Be(request.warrantyExpiry);
+    }
+
     [Fact]
     public async Task GetDevices_WhenDatabaseEmpty_ReturnsEmptyPagedResponse()
     {
@@ -367,6 +435,52 @@ public sealed class DevicesControllerTests(IntegrationTestFactory<DevicesControl
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
         var problem = await ReadProblemDetailsAsync(response);
         problem.Status.Should().Be((int)HttpStatusCode.NotFound);
+    }
+
+    // H-02 — single-device DELETE with a reason (sent as DisposalMethod, the
+    // only free-text field the DELETE body exposes) must soft-delete (status
+    // → Disposed), drop the row from the default active list while keeping it
+    // visible with includeAllStatuses, and persist an AuditEvent whose
+    // AfterPayload carries that reason. Bulk delete already asserts the
+    // reason lands in the audit trail (BulkDeleteDevices_WhenValid_…AuditsEach);
+    // single delete did not have equivalent coverage.
+    [Fact]
+    public async Task DeleteDevice_WithReason_HidesFromDefaultListAndAuditsReason()
+    {
+        await ResetDatabaseAsync();
+        var references = await SeedDeviceReferenceDataAsync();
+        var device = CreateDevice(references, $"Device-{Guid.NewGuid():N}");
+        await SeedAsync(entities: [device]);
+        using var client = CreateClient();
+        var reason = $"Traded in for a newer model {Guid.NewGuid():N}";
+
+        using var deleteRequest = new HttpRequestMessage(HttpMethod.Delete, $"/api/v1/devices/{device.Id}")
+        {
+            Content = CreateJsonContent(new { disposalMethod = reason })
+        };
+        var response = await client.SendAsync(deleteRequest);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var defaultListResponse = await client.GetAsync($"/api/v1/devices?search={Uri.EscapeDataString(device.Name)}");
+        var defaultListPayload = await ReadJsonAsync<PagedResponse<DeviceResponse>>(defaultListResponse);
+        defaultListPayload.Items.Should().NotContain(item => item.Id == device.Id);
+
+        var allStatusesResponse = await client.GetAsync($"/api/v1/devices?search={Uri.EscapeDataString(device.Name)}&includeAllStatuses=true");
+        var allStatusesPayload = await ReadJsonAsync<PagedResponse<DeviceResponse>>(allStatusesResponse);
+        var reloaded = allStatusesPayload.Items.Should().ContainSingle(item => item.Id == device.Id).Subject;
+        reloaded.Status.Should().Be(DeviceStatus.Disposed.ToString());
+        reloaded.DisposalMethod.Should().Be(reason);
+
+        await WithDbContextAsync(async dbContext =>
+        {
+            var auditEvent = await AuditEventAssertionHelper.AssertExistsAsync(
+                dbContext,
+                nameof(Device),
+                device.Id.ToString(),
+                AuditAction.Deleted);
+            auditEvent.AfterPayload.Should().Contain(reason);
+        });
     }
 
     [Fact]

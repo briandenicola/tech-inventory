@@ -38,11 +38,7 @@ Thumbs.db
 *.log
 coverage/
 TestResults/
-playwright-report/
-test-results/
 build/
-playwright-report/
-test-results/
 .tools/
 
 # SQLite databases

@@ -48,9 +48,8 @@ task up
 # Run all mandatory tests (requires stack to be running)
 task test
 
-# Or run just the backend integration suite / one-shot hermetic E2E
+# Or run just the backend integration suite
 task test:integration
-task test:e2e
 
 # Tear down the stack
 task down
@@ -72,7 +71,7 @@ Run `task hooks:install` once per clone. It downloads the pinned `gitleaks` bina
 | `task down`          | Stop and remove all containers, networks, volumes      |
 | `task test`          | Run all mandatory tests against the running stack      |
 | `task test:integration` | Run backend integration tests with isolated SQLite files |
-| `task test:e2e`      | Bring up the compose stack, run Playwright, tear down  |
+| `task check:stale-refs` | Fail if the retired browser-E2E harness has returned    |
 | `task build`         | Build backend and frontend                             |
 | `task lint`          | Lint backend and frontend                              |
 | `task verify`        | Run the full verification pipeline                     |

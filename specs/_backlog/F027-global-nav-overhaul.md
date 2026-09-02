@@ -71,8 +71,13 @@ A single coordinated nav + responsive-tables pass.
 - [ ] Zero axe-core violations on every refactored route; touch target ≥44 px
       everywhere per WCAG 2.5.5.
 - [ ] All strings in `src/lib/i18n/en.json`.
-- [ ] Playwright: update existing nav-related journeys (e.g., admin smoke
-      tests) so they use the new hamburger affordance via page objects.
+- [ ] Vitest component tests cover the hamburger drawer's rendering, keyboard
+      open/focus-trap/Escape-close behavior, and the `<ResponsiveList>`
+      breakpoint switch (stacked cards ≤768px, table ≥1024px). No browser
+      E2E layer exists to update nav-related journeys in post-retirement
+      (`specs/004-agentic-development-foundation/brief.md` §2.1); a
+      real-device visual pass of the refactored routes is added to
+      `docs/testing/manual-pwa-validation.md` instead.
 
 ## Out of Scope
 - Pull-down-to-refresh and infinite scroll (**F028**).
@@ -100,8 +105,9 @@ A single coordinated nav + responsive-tables pass.
 - Existing `<ListPage>` partial in `src/TechInventory.Web/src/lib/components`
   is a good starting point — extend rather than replace.
 - This work touches every authenticated route; coordinate with Apone so the
-  Playwright page objects are updated *in the same PR* to avoid two-step
-  breakage.
+  affected Vitest component harnesses (and the
+  `docs/testing/manual-pwa-validation.md` route list) are updated *in the
+  same PR* to avoid two-step breakage.
 
 ## History
 - 2026-05-19: created from Brian's PWA field-test feedback (items 4, 9, 10 in

@@ -10,6 +10,7 @@
 	import { invalidateDevicesCache } from '$lib/queries/devices.svelte';
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
+	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import DeleteDeviceModal from '$lib/components/DeleteDeviceModal.svelte';
 	import ClaimOwnershipModal from '$lib/components/ClaimOwnershipModal.svelte';
 	import ReleaseOwnershipModal from '$lib/components/ReleaseOwnershipModal.svelte';
@@ -35,8 +36,8 @@
 	 * Breadcrumbs: Home > Devices > {Device Name}
 	 * Edit button: visible to Admin + Member
 	 * Delete button: visible to Admin only
-	 * Claim button: visible when device.ownerId !== currentUser.id
-	 * Release button: visible when device.ownerId === currentUser.id
+	 * Claim button: visible to Admin/Member when device.ownerId !== currentUser.id (Viewer: never)
+	 * Release button: visible to Admin/Member when device.ownerId === currentUser.id (Viewer: never)
 	 *
 	 * Related: specs/002-frontend-mvp/spec.md J5, J9
 	 */
@@ -65,10 +66,15 @@
 	const canViewHistory = $derived(currentUser?.role === 'Admin');
 
 	// Ownership checks (T24, T25)
+	// Claim/release are ownership-gated on top of the same Admin/Member role
+	// gate as canEdit — constitution §5.2 / docs/prd.md define Viewer as
+	// read-only, so a Viewer must never see these affordances regardless of
+	// device ownership (see ViewerRoleAuthorizationTests.ClaimDeviceOwnership_*
+	// / .ReleaseDeviceOwnership_* for the API-side 403 proof).
 	// Claim: visible when device unowned OR owned by another user
-	const canClaim = $derived(device && currentUser && device.ownerId !== currentUser.id);
+	const canClaim = $derived(canEdit && device && currentUser && device.ownerId !== currentUser.id);
 	// Release: visible when current user IS the owner
-	const canRelease = $derived(device && currentUser && device.ownerId === currentUser.id);
+	const canRelease = $derived(canEdit && device && currentUser && device.ownerId === currentUser.id);
 	// Retire: visible when device is Active and user can edit
 	const canRetire = $derived(canRetireDevice(device, currentUser));
 	const canUnretire = $derived(canUnretireDevice(device, currentUser));
@@ -295,41 +301,14 @@
 </svelte:head>
 
 <div class="-mt-4 pb-24 sm:mt-0">
-<nav class="mb-4 hidden text-sm text-neutral-600 dark:text-neutral-400 sm:flex" aria-label="Breadcrumb">
-	<ol class="flex items-center space-x-2">
-		<li>
-			<a href="/" class="hover:text-primary-600 dark:hover:text-primary-400">
-				{t('navigation.home')}
-			</a>
-		</li>
-		<li>
-			<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-				<path
-					fill-rule="evenodd"
-					d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
-					clip-rule="evenodd"
-				/>
-			</svg>
-		</li>
-		<li>
-			<a href="/devices" class="hover:text-primary-600 dark:hover:text-primary-400">
-				{t('common.nouns.devices')}
-			</a>
-		</li>
-		<li>
-			<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-				<path
-					fill-rule="evenodd"
-					d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
-					clip-rule="evenodd"
-				/>
-			</svg>
-		</li>
-		<li aria-current="page" class="font-medium text-neutral-900 dark:text-neutral-100">
-			{device?.name ?? 'Device'}
-		</li>
-	</ol>
-</nav>
+<Breadcrumbs
+	class="mb-4 hidden text-sm text-neutral-600 dark:text-neutral-400 sm:flex"
+	items={[
+		{ label: t('navigation.home'), href: '/' },
+		{ label: t('common.nouns.devices'), href: '/devices' },
+		{ label: device?.name ?? 'Device' }
+	]}
+/>
 
 <!-- Page header -->
 <div class="mb-4 flex items-start justify-between gap-3 sm:mb-6">

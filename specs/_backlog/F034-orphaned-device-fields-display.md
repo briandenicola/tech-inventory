@@ -105,9 +105,15 @@ Two independent slices, both small and self-contained.
 - [ ] `pnpm run check`, `pnpm run lint`, `pnpm exec vitest run`,
       `pnpm run build`, `dotnet build` all pass
 - [ ] DeviceForm test fixture updated; existing tests pass
-- [ ] Playwright: add a smoke test that imports the canonical SharePoint
-      CSV and asserts Model + Purpose + Notes appear on a chosen device's
-      detail page (reuse the existing `data/Devices.csv` fixture)
+- [x] Import smoke coverage: a backend integration test commits the
+      canonical `data/Devices.csv` and asserts the "Mohu Leaf Stitch 60m
+      Range" row's Model/Purpose persist (`SharePointCsvImportTests`,
+      `coverage-migration.md` **H-05**); `DeviceDetailFields.test.ts` and the
+      import-preview component test assert Model/Purpose/Notes render
+      (**C-08**, **C-19**). Delivered in T102, replacing the originally
+      planned browser E2E smoke test — no browser E2E layer exists
+      post-retirement (`specs/004-agentic-development-foundation/brief.md`
+      §2.1)
 - [ ] Zero axe-core violations on the changed views in both themes
 
 ## Out of Scope
@@ -165,9 +171,13 @@ Two independent slices, both small and self-contained.
     renders the first 10 valid rows so admins can confirm Model / Purpose /
     Notes / Owner / Location / Status landed in the right columns BEFORE
     committing.
-  - Playwright journey 14 covers both a synthetic CSV (asserts every new
-    field renders) and the canonical `data/Devices.csv` import (asserts
-    the "Mohu Leaf Stitch 60m Range" row's Model="Leaf Stitch" and
-    Purpose="Master TV" reach the detail page). The Playwright suite was
-    NOT executed locally in this session — no Docker — but the spec
-    follows journey-08's proven patterns.
+  - The originally authored browser E2E journey 14 covered both a synthetic
+    CSV (asserted every new field renders) and the canonical
+    `data/Devices.csv` import (asserted the "Mohu Leaf Stitch 60m Range"
+    row's Model="Leaf Stitch" and Purpose="Master TV" reach the detail
+    page). That suite was **not** executed locally in this session — no
+    Docker — but followed journey-08's proven patterns. It was later
+    deleted with the rest of the browser E2E harness (T101); its coverage
+    is replaced by `SharePointCsvImportTests` (**H-05**) and the
+    `DeviceDetailFields` / import-preview component tests (**C-08**,
+    **C-19**) — see Acceptance Criteria above.

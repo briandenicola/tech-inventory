@@ -22,6 +22,39 @@ describe('DeviceActionsMenu', () => {
 		expect(screen.getAllByText('Claim Ownership').length).toBeGreaterThan(0);
 	});
 
+	it('renders the Edit link with the given editHref target', async () => {
+		const user = userEvent.setup();
+
+		render(DeviceActionsMenu, {
+			props: {
+				editHref: '/devices/device-1/edit'
+			}
+		});
+
+		await user.click(screen.getByRole('button', { name: /more actions/i }));
+
+		expect(screen.getByRole('menuitem', { name: 'Edit' })).toHaveAttribute(
+			'href',
+			'/devices/device-1/edit'
+		);
+	});
+
+	it('invokes onRelease when the Release action is clicked', async () => {
+		const user = userEvent.setup();
+		const onRelease = vi.fn();
+
+		render(DeviceActionsMenu, {
+			props: {
+				onRelease
+			}
+		});
+
+		await user.click(screen.getByRole('button', { name: /more actions/i }));
+		await user.click(screen.getByRole('menuitem', { name: 'Release Ownership' }));
+
+		expect(onRelease).toHaveBeenCalledOnce();
+	});
+
 	it('invokes action callbacks', async () => {
 		const user = userEvent.setup();
 		const onDelete = vi.fn();

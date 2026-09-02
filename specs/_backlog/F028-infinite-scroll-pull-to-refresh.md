@@ -62,8 +62,13 @@ hook so we don't fork list components.
       `hasMore === false`
 - [ ] All admin management list pages adopt the same pattern (after F027
       lands `<ResponsiveList>`)
-- [ ] `<PullToRefresh>` wraps every list route; Playwright touch-emulation
-      test asserts the refresh fires the expected query invalidation
+- [ ] `<PullToRefresh>` wraps every list route; a Vitest component test
+      (mirroring the existing `PullToRefresh.containing-block.test.ts`
+      pattern) asserts the refresh handler fires the expected query
+      invalidation. Real touch-gesture behavior on a physical device is a
+      manual checklist addition (`docs/testing/manual-pwa-validation.md`) —
+      no browser E2E layer exists post-retirement
+      (`specs/004-agentic-development-foundation/brief.md` §2.1).
 - [ ] App-bar "Refresh" button on every list page for non-touch users
 - [ ] Scroll position is preserved when navigating back from a detail
       modal/page (SvelteKit `snapshot`)

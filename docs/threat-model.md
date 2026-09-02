@@ -78,7 +78,7 @@ This system has seven security-relevant surfaces. Each is analyzed below using S
   - Service Worker caches app shell + read-only endpoints (offline mode).
   - API rate limiting per user (TODO — Phase 2).
   - Client-side request debouncing on search/filter.
-  - Playwright E2E tests validate app shell caches and offline reads.
+  - Manual PWA validation checklist (`docs/testing/manual-pwa-validation.md` M-06–M-09) confirms app-shell caching and offline reads on a real installed app; no automated browser layer proves this (harness retired).
 - **Residual Risk**: Low for read; Medium for mutations (no queue/replay until Phase 2 offline write).
 
 #### Elevation of Privilege (RBAC Bypass)
@@ -87,7 +87,7 @@ This system has seven security-relevant surfaces. Each is analyzed below using S
   - Roles (`Admin`, `Member`, `Viewer`) encoded in JWT claims (app_roles).
   - Every endpoint enforces role via ASP.NET Core authorization policy (default-deny).
   - UI hides edit/delete affordances for Viewer (but client-side check is NOT sufficient — API re-validates).
-  - Playwright test #11 ("Role enforcement") validates Viewer cannot navigate to edit routes.
+  - `ViewerRoleAuthorizationTests` (real-HTTP integration; `specs/004-agentic-development-foundation/coverage-migration.md` **H-04**) validates Viewer cannot mutate Admin/Member-gated endpoints; UI affordance hiding is defense-in-depth only.
 - **Residual Risk**: Very Low. Server-side policy enforcement is mandatory (ASVS V4.1.2, API2:2023).
 
 ---
@@ -457,7 +457,7 @@ None identified.
 | V2.1 | Password policy | ✓ N/A | Using Entra ID; no local passwords for users. |
 | V2.10 | Credential agility | ✓ | Token rotation in Phase 2. |
 | V4.1 | Authorization architecture | ✓ | Default-deny + policy per endpoint. |
-| V4.1.2 | Access control policy test | ✓ | Playwright test #11. |
+| V4.1.2 | Access control policy test | ✓ | `ViewerRoleAuthorizationTests` (real-HTTP integration; **H-04**). |
 | V4.1.3 | Access control bypass test | ✓ | BOLA tested per endpoint (Phase 1 API spec). |
 | V6.1 | Data classification | ✓ | Device data non-PII; Entra tokens not stored. |
 | V8.1 | Defect handling | ✓ | Exceptions only for exceptional conditions. |

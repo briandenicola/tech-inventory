@@ -105,4 +105,48 @@ describe('buildDevicesUrlParams (F045 B2)', () => {
 		const firstPage = buildDevicesUrlParams({ ...baseFilters, page: 1 }, { isPwa: false });
 		expect(firstPage.has('page')).toBe(false);
 	});
+
+	describe('Clear All output (C-06)', () => {
+		// DeviceFilters.svelte's clearAll() emits exactly
+		// { page: 1, pageSize, groupBy } — every other dimension is dropped
+		// from the filters object entirely (not just falsy). This proves what
+		// that object serializes to: no search/brandId/categoryId/ownerId/
+		// locationId/networkId/year params, and — per the F026 sentinel rule
+		// above — an *implicit* `status=all` because status is now undefined,
+		// not because the URL omits status altogether.
+		it('serializes a groupBy-preserving Clear All result with no other filter keys', () => {
+			const clearAllResult: DeviceFilters = { page: 1, pageSize: 50, groupBy: 'owner' };
+
+			const params = buildDevicesUrlParams(clearAllResult, { isPwa: false });
+
+			expect(params.get('status')).toBe(STATUS_ALL_SENTINEL);
+			expect(params.get('groupBy')).toBe('owner');
+			expect(params.get('pageSize')).toBe('50');
+			for (const key of [
+				'search',
+				'brandId',
+				'categoryId',
+				'ownerId',
+				'locationId',
+				'networkId',
+				'yearMin',
+				'yearMax',
+				'sort',
+				'sortDir',
+				'page'
+			]) {
+				expect(params.has(key)).toBe(false);
+			}
+		});
+
+		it('serializes a Clear All result with no prior groupBy as a bare reset (no groupBy key at all)', () => {
+			const clearAllResult: DeviceFilters = { page: 1, pageSize: 25 };
+
+			const params = buildDevicesUrlParams(clearAllResult, { isPwa: true });
+
+			expect(params.get('status')).toBe(STATUS_ALL_SENTINEL);
+			expect(params.has('groupBy')).toBe(false);
+			expect(params.has('pageSize')).toBe(false);
+		});
+	});
 });

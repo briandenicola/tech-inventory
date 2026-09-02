@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/svelte';
+import { render, screen, waitFor, fireEvent } from '@testing-library/svelte';
 import { axe } from 'vitest-axe';
 import userEvent from '@testing-library/user-event';
 import ReleaseOwnershipModal from './ReleaseOwnershipModal.svelte';
@@ -171,7 +171,29 @@ describe('ReleaseOwnershipModal', () => {
 		});
 	});
 
-	// NOTE: Backdrop click tests deferred to E2E per D-123 (jsdom limitation on backdrop click events)
+	describe('backdrop click (C-22: D-123 deferral was inaccurate — plain onclick, testable in jsdom)', () => {
+		it('closes the modal when the backdrop itself is clicked', async () => {
+			const onCancel = vi.fn();
+			const { container } = render(ReleaseOwnershipModal, {
+				props: { ...defaultProps, onCancel }
+			});
+
+			const backdrop = container.querySelector('.ti-modal-backdrop');
+			expect(backdrop).toBeInTheDocument();
+			await fireEvent.click(backdrop as Element);
+
+			expect(onCancel).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not close when clicking inside the modal surface', async () => {
+			const onCancel = vi.fn();
+			render(ReleaseOwnershipModal, { props: { ...defaultProps, onCancel } });
+
+			await fireEvent.click(screen.getByText('devices.release.modal.title'));
+
+			expect(onCancel).not.toHaveBeenCalled();
+		});
+	});
 
 	describe('accessibility', () => {
 		it('has no axe violations in default state', async () => {

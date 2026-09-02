@@ -83,8 +83,12 @@ child of `winnerId`. Validation rejects merges that would create a cycle.
 - [ ] Frontend merge dialog ships on Brand, Category, Location management
       pages (Owner/Network/Tag in scope if low-cost)
 - [ ] Destructive-confirm requires typing loser name
-- [ ] Playwright journey: create two brands, assign devices to each, merge,
-      assert all devices now reference the winner and loser is deactivated
+- [ ] Backend integration test: create two brands, assign devices to each,
+      call the merge endpoint, assert all devices now reference the winner
+      and the loser is soft-deleted; a Vitest component test covers the
+      merge dialog's destructive-confirm (type-loser-name) interaction. No
+      browser E2E layer exists post-retirement to author a journey with
+      (`specs/004-agentic-development-foundation/brief.md` §2.1).
 - [ ] Integration test verifies the audit-event payload shape
 
 ## Out of Scope

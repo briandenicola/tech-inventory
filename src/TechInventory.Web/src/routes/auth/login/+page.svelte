@@ -146,6 +146,17 @@
 				<LocalLoginForm onCancel={() => (showLocalForm = false)} />
 			</div>
 		{:else}
+			<!-- C-03: denial UI — surface fetchCurrentUser()'s 401/403 message
+				 instead of silently dropping back to the sign-in button. -->
+			{#if $authStore.error}
+				<div
+					role="alert"
+					class="mt-8 rounded-lg border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-800 dark:border-danger-800 dark:bg-danger-950 dark:text-danger-200"
+				>
+					{$authStore.error}
+				</div>
+			{/if}
+
 			<!-- Sign In Button -->
 			<div class="mt-8 space-y-3">
 				<button

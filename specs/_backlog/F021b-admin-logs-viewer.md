@@ -31,7 +31,11 @@ Admin-only `/admin/logs` route:
 - [ ] Level + source context + free-text filters work and persist via URL.
 - [ ] Backend exposes `GET /api/v1/admin/logs` (Admin policy) returning a
       paginated tail.
-- [ ] Returns 403 for non-Admin (Playwright RBAC test covers it).
+- [ ] Returns 403 for non-Admin (HTTP integration test, mirroring the
+      existing Member→403 authorization-suite pattern, e.g.
+      `AuditEventsAuthorizationTests`/`ViewerRoleAuthorizationTests` for the
+      sibling `/admin/audit` route — an authorization status code needs no
+      browser to verify).
 - [ ] Sensitive properties are redacted server-side before reaching the wire.
 - [ ] Zero axe-core violations; mobile-friendly.
 

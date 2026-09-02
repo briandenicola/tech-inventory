@@ -23,7 +23,7 @@ The CI pipeline (`ci.yml`) is **complete and functional** on ubuntu-latest. All 
 - ✅ Frontend type-check (tsc + svelte-check)
 - ✅ Frontend lint (ESLint)
 - ✅ Security scan (gitleaks + auth token detection)
-- ✅ E2E tests (Playwright, runs in ubuntu-latest Docker)
+- ✅ E2E tests (browser-automation harness, ran in ubuntu-latest Docker at the time) — **retired 2026-09-02**, see `specs/004-agentic-development-foundation/brief.md` §2.1 for what it was and why; the corresponding CI step is now the stale-reference guard, not a browser test
 
 The pre-commit hook is **optimized** for developer speed (lint + security only, ~2–3 seconds).
 
@@ -155,7 +155,9 @@ pnpm run test
 
 **Full verification (before pushing):**
 ```bash
-task verify  # Runs format, build, all tests, vuln scan, E2E
+task verify  # Runs format, build, all tests, vuln scan, frontend check/lint,
+             # and the stale-reference guard (no E2E stage — retired
+             # 2026-09-02, see specs/004-agentic-development-foundation/brief.md §2.1)
 ```
 
 ---
@@ -181,14 +183,14 @@ task verify  # Runs format, build, all tests, vuln scan, E2E
 
 ## Common Issues & Fixes
 
-### "API readiness check failed at http://localhost:8080/health/ready"
-**In CI:** Docker Compose stack didn't start in time.
-- Check CI logs for API container errors
-- Usually transient; re-run CI
-
-**Locally:** `task test:e2e`
-- Ensure Docker daemon is running: `docker ps`
-- Pre-warm the stack: `task up`, then `task test:e2e:run`
+> **Removed 2026-09-02:** the "API readiness check failed" / `task test:e2e`
+> troubleshooting entry that lived here described the retired browser-E2E
+> harness's Docker Compose readiness poll. That harness, `task test:e2e`, and
+> `task test:e2e:run` no longer exist (`task --list` confirms) — see
+> `specs/004-agentic-development-foundation/brief.md` §2.1. There is currently
+> no consolidated local/CI verification troubleshooting entry to replace it
+> with; that is T104's scope
+> (`specs/004-agentic-development-foundation/plan.md` §4), not restored here.
 
 ### "Pre-commit hook failed"
 **Lint violations:** Run `pnpm run lint -- --fix` in `src/TechInventory.Web`
@@ -224,7 +226,8 @@ All Constitution §9 Phase 1 checks are now enforced in CI:
 | Lint (frontend) | ESLint | ✅ Enforced |
 | Security (tokens) | `check-security.mjs` | ✅ Enforced |
 | Security (secrets) | gitleaks | ✅ Enforced |
-| E2E smoke | Playwright | ✅ Enforced |
+| E2E smoke | browser-automation harness (retired 2026-09-02, see `brief.md` §2.1) | ✅ Enforced at the time this checklist was written |
+| Stale-reference guard (retired browser-E2E harness) | `scripts/check-stale-playwright-references.mjs` | ✅ Enforced — now `verify.sh`/`verify.ps1` step 9/9, replacing the E2E stage above |
 | Code coverage ≥ 85% | (local verify.sh) | ✅ Enforced |
 
 **Phase 3 TODOs (deferred):**
@@ -241,7 +244,7 @@ All Constitution §9 Phase 1 checks are now enforced in CI:
 | `.github/workflows/ci.yml` | The CI workflow definition (ubuntu-latest) |
 | `.github/workflows/README.md` | **Start here** — explains all checks, caching, troubleshooting |
 | `.githooks/pre-commit` | Git hook that runs lint + security on commit |
-| `scripts/verify.sh` | Local equivalent of CI pipeline (format → build → test → vuln scan → E2E) |
+| `scripts/verify.sh` | Local equivalent of CI pipeline (format → build → tests → vuln scan → frontend check/lint → stale-reference guard; no E2E stage — retired 2026-09-02, `brief.md` §2.1) |
 | `Taskfile.yml` | Task runner for `task up`, `task test`, `task verify`, etc. |
 | `scripts/check-security.mjs` | Security gate: detects localStorage auth tokens + gitleaks |
 

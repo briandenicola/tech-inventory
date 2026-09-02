@@ -83,8 +83,12 @@ content-security baseline (no inline scripts, sanitized JSON rendering).
 - [ ] Device detail page links to the audit history for that device id
 - [ ] `/admin/logs` route surfaces recent Serilog entries with level + free
       text filters
-- [ ] Both routes return 403 (or redirect to `/403`) for non-Admin roles —
-      covered by Playwright `J13`-style RBAC test
+- [x] `/admin/audit` returns 403 (or redirects to `/403`) for non-Admin roles
+      — delivered via `AuditEventsAuthorizationTests.GetAuditEvents_WhenCallerIsMember_ReturnsForbidden`
+      and `ViewerRoleAuthorizationTests.GetAuditEvents_WhenCallerIsViewer_ReturnsForbidden`
+      (backend HTTP integration tests, no browser needed for a status code).
+      `/admin/logs` is carved out to **F021b** and tracks its own 403 coverage
+      there
 - [ ] Zero axe-core violations; works on mobile (filters collapse to drawer)
 - [ ] No new secret leakage paths — verified by adding the routes to the
       sensitive-property redaction smoke test

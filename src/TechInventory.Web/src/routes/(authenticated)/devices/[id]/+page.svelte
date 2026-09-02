@@ -254,7 +254,7 @@
 		if (!device) return;
 
 		try {
-			await devices.update(device.id, buildRetireDeviceRequest(device, new Date().toISOString()));
+			await devices.update(device.id, buildRetireDeviceRequest(device, new Date()));
 			invalidateDevicesCache();
 			// Refetch device detail to show updated status
 			await fetchDevice();

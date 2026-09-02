@@ -13,8 +13,11 @@ node_modules/
 dist/
 .svelte-kit/
 
-# Frontend generated files
-src/TechInventory.Web/src/lib/api/generated/
+# The generated OpenAPI client is COMMITTED on purpose. Gitignoring it meant a
+# fresh checkout had no `paths`/`components` types at all, every API call
+# type-checked as `never`, and CI muted the resulting ~110 svelte-check errors.
+# Committing it makes the client a reviewable artifact and lets CI diff a fresh
+# regeneration against it to catch drift.
 
 # Env / secrets
 .env

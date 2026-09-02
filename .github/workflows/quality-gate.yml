@@ -17,6 +17,14 @@ jobs:
       - run: dotnet test -c Release --no-build --collect:"XPlat Code Coverage"
       - run: dotnet list package --vulnerable --include-transitive
 
+      # Contract drift gate. `openapi.yaml` is committed but was only ever
+      # refreshed by hand, so nothing stopped it describing an API that no
+      # longer existed — and the frontend's client is generated from it.
+      - name: Verify OpenAPI document is current
+        run: |
+          python3 -m pip install --quiet --disable-pip-version-check pyyaml
+          ./scripts/check-openapi-drift.sh
+
   web:
     runs-on: ubuntu-latest
     defaults:
@@ -34,6 +42,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-
       - run: pnpm install --frozen-lockfile
+
+      # The committed client must match what the committed spec generates.
+      # Regenerate and diff rather than trusting whoever last ran the codegen.
+      - name: Verify generated API client is current
+        run: |
+          pnpm run generate:client
+          if ! git diff --exit-code -- src/lib/api/generated/types.ts; then
+            echo "::error::src/lib/api/generated/types.ts is out of sync with openapi.yaml — run 'pnpm run generate:client' and commit the result."
+            exit 1
+          fi
       # Blocking. The ~110 "pre-existing" svelte-check errors this step used to
       # tolerate were not a backlog: every one of them came from the generated
       # OpenAPI client being absent. `src/lib/api/generated/types.ts` is

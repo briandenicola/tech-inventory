@@ -7,6 +7,7 @@
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
 	import PaginationControls from '$lib/components/PaginationControls.svelte';
 	import AuditDiffDrawer from '$lib/components/admin/AuditDiffDrawer.svelte';
+	import { getApiErrorMessage } from '$lib/utils/apiErrors';
 
 	type AuditEvent = components['schemas']['AuditEventResponse'];
 
@@ -147,7 +148,7 @@
 			totalCount = response.totalCount ?? 0;
 		} catch (err: unknown) {
 			console.error('[AuditLogModal] Load failed:', err);
-			error = err instanceof Error ? err.message : 'Failed to load audit events';
+			error = getApiErrorMessage(err, 'Failed to load audit events');
 		} finally {
 			loading = false;
 		}

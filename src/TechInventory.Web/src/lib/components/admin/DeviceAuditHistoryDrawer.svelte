@@ -22,6 +22,7 @@
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import AuditDiffDrawer from '$lib/components/admin/AuditDiffDrawer.svelte';
+	import { getApiErrorMessage } from '$lib/utils/apiErrors';
 
 	type AuditEvent = components['schemas']['AuditEventResponse'];
 
@@ -52,7 +53,7 @@
 			events = response.items ?? [];
 		} catch (err: unknown) {
 			console.error('[DeviceAuditHistoryDrawer] Load failed:', err);
-			error = err instanceof Error ? err.message : 'Failed to load audit events';
+			error = getApiErrorMessage(err, 'Failed to load audit events');
 		} finally {
 			loading = false;
 		}

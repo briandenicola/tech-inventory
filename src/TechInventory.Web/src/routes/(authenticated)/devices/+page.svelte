@@ -48,6 +48,7 @@
 	import { devices as devicesApi } from '$lib/api/client';
 	import { referenceDataStore } from '$lib/stores/referenceData';
 	import { groupDevices } from '$lib/utils/groupDevices';
+	import { getApiErrorMessage } from '$lib/utils/apiErrors';
 
 	/**
 	 * T15: Devices list page — paginated table with filters, sort, and pagination.
@@ -409,7 +410,7 @@
 			infinitePage = nextPage.page;
 			totalCount = nextPage.totalCount;
 		} catch (err) {
-			loadMoreError = err instanceof Error ? err.message : t('devices.infiniteScroll.loadError');
+			loadMoreError = getApiErrorMessage(err, t('devices.infiniteScroll.loadError'));
 		} finally {
 			isLoadingMore = false;
 		}
@@ -449,7 +450,7 @@
 			groupedDevices = result.items ?? [];
 			groupedTotalCount = result.totalCount;
 		} catch (err) {
-			groupedError = err instanceof Error ? err.message : t('devices.grouped.loadError');
+			groupedError = getApiErrorMessage(err, t('devices.grouped.loadError'));
 			groupedDevices = [];
 			groupedTotalCount = 0;
 		} finally {

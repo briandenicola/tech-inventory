@@ -13,6 +13,7 @@
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import PaginationControls from '$lib/components/PaginationControls.svelte';
 	import DeactivateConfirmModal from '$lib/components/admin/DeactivateConfirmModal.svelte';
+	import { getApiErrorMessage } from '$lib/utils/apiErrors';
 
 
 	/**
@@ -88,7 +89,7 @@
 			totalCount = response.totalCount ?? 0;
 		} catch (err: unknown) {
 			console.error('[OwnersAdmin] Load failed:', err);
-			error = err instanceof Error ? err.message : 'Failed to load owners';
+			error = getApiErrorMessage(err, 'Failed to load owners');
 		} finally {
 			loading = false;
 		}
@@ -157,7 +158,7 @@
 			await loadOwners();
 		} catch (err: unknown) {
 			console.error('[OwnersAdmin] Submit failed:', err);
-			const message = err instanceof Error ? err.message : 'Failed to save owner';
+			const message = getApiErrorMessage(err, 'Failed to save owner');
 			addToast({ type: 'error', message });
 		} finally {
 			formSubmitting = false;
@@ -190,10 +191,13 @@
 			if (err instanceof ApiError && err.status === 409) {
 				addToast({
 					type: 'error',
-					message: err.detail || 'Cannot deactivate owner: devices still reference this owner'
+					message: getApiErrorMessage(
+						err,
+						'Cannot deactivate owner: devices still reference this owner'
+					)
 				});
 			} else {
-				const message = err instanceof Error ? err.message : 'Failed to deactivate owner';
+				const message = getApiErrorMessage(err, 'Failed to deactivate owner');
 				addToast({ type: 'error', message });
 			}
 		}

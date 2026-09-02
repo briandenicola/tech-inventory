@@ -30,6 +30,7 @@
 		toggleAllVisibleReferenceSelections,
 		toggleReferenceSelection
 	} from '$lib/utils/referenceSelection';
+	import { getApiErrorMessage } from '$lib/utils/apiErrors';
 
 	/**
 	 * T30: Locations Admin — paginated list with Add/Edit/Deactivate
@@ -128,7 +129,7 @@
 			totalCount = response.totalCount ?? 0;
 		} catch (err: unknown) {
 			console.error('[LocationsAdmin] Load failed:', err);
-			error = err instanceof Error ? err.message : 'Failed to load locations';
+			error = getApiErrorMessage(err, 'Failed to load locations');
 		} finally {
 			loading = false;
 		}
@@ -185,7 +186,7 @@
 			await loadLocations();
 		} catch (err: unknown) {
 			console.error('[LocationsAdmin] Submit failed:', err);
-			const message = err instanceof Error ? err.message : 'Failed to save location';
+			const message = getApiErrorMessage(err, 'Failed to save location');
 			addToast({ type: 'error', message });
 		} finally {
 			formSubmitting = false;
@@ -211,7 +212,7 @@
 			await loadLocations();
 		} catch (err: unknown) {
 			console.error('[LocationsAdmin] Deactivate failed:', err);
-			const message = err instanceof Error ? err.message : 'Failed to deactivate location';
+			const message = getApiErrorMessage(err, 'Failed to deactivate location');
 			addToast({ type: 'error', message });
 		}
 	}
@@ -306,7 +307,7 @@
 			await Promise.all([loadLocations(), fetchReferenceData({ force: true })]);
 		} catch (err: unknown) {
 			console.error('[LocationsAdmin] Merge failed:', err);
-			mergeError = err instanceof Error ? err.message : t('admin.merge.error');
+			mergeError = getApiErrorMessage(err, t('admin.merge.error'));
 		} finally {
 			mergeSubmitting = false;
 		}

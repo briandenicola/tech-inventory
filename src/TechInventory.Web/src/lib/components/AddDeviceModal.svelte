@@ -16,7 +16,7 @@
 	import { devices, ApiError } from '$lib/api/client';
 	import { showToast } from '$lib/stores/toast';
 	import { invalidateDevicesCache } from '$lib/queries/devices.svelte';
-	import { mapApiFieldErrors } from '$lib/utils/apiErrors';
+	import { getApiErrorMessage, mapApiFieldErrors } from '$lib/utils/apiErrors';
 	import DeviceForm from '$lib/components/DeviceForm.svelte';
 	import UnsavedChangesModal from '$lib/components/UnsavedChangesModal.svelte';
 	import type { DeviceFormInput } from '$lib/schemas/device';
@@ -84,10 +84,7 @@
 			if (err instanceof ApiError && err.errors) {
 				serverErrors = mapApiFieldErrors(err.errors);
 			}
-			const errorMsg =
-				err instanceof Error && 'detail' in err
-					? (err as unknown as { detail: string }).detail
-					: 'Failed to create device';
+			const errorMsg = getApiErrorMessage(err, 'Failed to create device');
 			showToast({ type: 'error', message: errorMsg });
 			throw err; // keep DeviceForm in submitting state false via finally
 		}

@@ -119,6 +119,14 @@ tasks:
     cmds:
       - dotnet run --project src/TechInventory.Api/TechInventory.Api.csproj -- export-openapi
 
+  openapi:verify:
+    desc: Fail if the committed OpenAPI document has drifted from the API project
+    cmds:
+      - cmd: ./scripts/check-openapi-drift.sh
+        platforms: [linux, darwin]
+      - cmd: bash ./scripts/check-openapi-drift.sh
+        platforms: [windows]
+
   logs:
     desc: Tail logs from all running containers
     cmds:

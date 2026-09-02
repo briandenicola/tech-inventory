@@ -11,6 +11,7 @@
 import { writable } from 'svelte/store';
 import { brands, categories, owners, locations, networks, tags } from '$lib/api/client';
 import type { components } from '$lib/api/generated/types';
+import { getApiErrorMessage } from '$lib/utils/apiErrors';
 
 type TagResponse = components['schemas']['TagResponse'];
 
@@ -176,7 +177,7 @@ async function performFetch(): Promise<boolean> {
 		referenceDataStore.update((state) => ({
 			...state,
 			isLoading: false,
-			error: err instanceof Error ? err.message : 'Failed to fetch reference data'
+			error: getApiErrorMessage(err, 'Failed to fetch reference data')
 		}));
 		return false;
 	}

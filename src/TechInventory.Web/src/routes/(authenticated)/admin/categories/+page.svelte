@@ -26,6 +26,7 @@
 		clearReferenceSelection,
 		toggleReferenceSelection
 	} from '$lib/utils/referenceSelection';
+	import { getApiErrorMessage } from '$lib/utils/apiErrors';
 
 	/**
 	 * T28: Categories Admin — tree view with expand/collapse
@@ -117,7 +118,7 @@
 			expandedIds = new Set(categories.map((c) => c.id).filter((id): id is string => !!id));
 		} catch (err: unknown) {
 			console.error('[CategoriesAdmin] Load failed:', err);
-			error = err instanceof Error ? err.message : 'Failed to load categories';
+			error = getApiErrorMessage(err, 'Failed to load categories');
 		} finally {
 			loading = false;
 		}
@@ -230,7 +231,7 @@
 			await loadCategories();
 		} catch (err: unknown) {
 			console.error('[CategoriesAdmin] Submit failed:', err);
-			const message = err instanceof Error ? err.message : 'Failed to save category';
+			const message = getApiErrorMessage(err, 'Failed to save category');
 			addToast({ type: 'error', message });
 		} finally {
 			formSubmitting = false;
@@ -259,7 +260,7 @@
 			await loadCategories();
 		} catch (err: unknown) {
 			console.error('[CategoriesAdmin] Deactivate failed:', err);
-			const message = err instanceof Error ? err.message : 'Failed to deactivate category';
+			const message = getApiErrorMessage(err, 'Failed to deactivate category');
 			addToast({ type: 'error', message });
 		}
 	}
@@ -354,7 +355,7 @@
 			await Promise.all([loadCategories(), fetchReferenceData({ force: true })]);
 		} catch (err: unknown) {
 			console.error('[CategoriesAdmin] Merge failed:', err);
-			mergeError = err instanceof Error ? err.message : t('admin.merge.error');
+			mergeError = getApiErrorMessage(err, t('admin.merge.error'));
 		} finally {
 			mergeSubmitting = false;
 		}

@@ -219,6 +219,92 @@ public sealed class DevicesControllerTests(IntegrationTestFactory<DevicesControl
             });
     }
 
+    // Wire-format contract tests for the retire flow.
+    //
+    // The pre-existing retirement coverage passed `retiredDate = (DateOnly?)null`
+    // — a C# value serialized by the server's own serializer — so it could never
+    // catch a client sending the wrong string shape. It didn't: the web app sent
+    // `new Date().toISOString()` into this `DateOnly?` field and every retire
+    // came back 400 for roughly ten weeks with the suite green. These send the
+    // JSON the browser actually sends.
+    [Fact]
+    public async Task UpdateDevice_WhenRetiringWithDateOnlyString_RetiresDevice()
+    {
+        await ResetDatabaseAsync();
+        var references = await SeedDeviceReferenceDataAsync();
+        var device = CreateDevice(references, $"Device-{Guid.NewGuid():N}");
+        await SeedAsync(entities: [device]);
+        using var client = CreateClient();
+        var request = new
+        {
+            id = device.Id,
+            name = device.Name,
+            brandId = device.BrandId,
+            categoryId = device.CategoryId,
+            ownerId = device.OwnerId,
+            locationId = device.LocationId,
+            currencyCode = device.Currency.Code,
+            model = device.Model,
+            serialNumber = device.SerialNumber,
+            networkId = device.NetworkId,
+            purchaseDate = device.PurchaseDate,
+            purchasePrice = device.PurchasePrice,
+            status = DeviceStatus.Retired,
+            notes = device.Notes,
+            // A raw string, exactly as buildRetireDeviceRequest emits it.
+            retiredDate = "2026-09-01",
+            disposalMethod = (string?)null
+        };
+
+        var response = await client.PutAsync($"/api/v1/devices/{device.Id}", CreateJsonContent(request));
+
+        await AssertUpdateResponseAsync<DeviceResponse>(
+            response,
+            () => client.GetAsync($"/api/v1/devices/{device.Id}"),
+            updated =>
+            {
+                updated.Id.Should().Be(device.Id);
+                updated.Status.Should().Be(DeviceStatus.Retired.ToString());
+                updated.RetiredDate.Should().Be(new DateOnly(2026, 9, 1));
+            });
+    }
+
+    [Fact]
+    public async Task UpdateDevice_WhenRetiredDateIsATimestamp_Returns400()
+    {
+        await ResetDatabaseAsync();
+        var references = await SeedDeviceReferenceDataAsync();
+        var device = CreateDevice(references, $"Device-{Guid.NewGuid():N}");
+        await SeedAsync(entities: [device]);
+        using var client = CreateClient();
+        var request = new
+        {
+            id = device.Id,
+            name = device.Name,
+            brandId = device.BrandId,
+            categoryId = device.CategoryId,
+            ownerId = device.OwnerId,
+            locationId = device.LocationId,
+            currencyCode = device.Currency.Code,
+            model = device.Model,
+            serialNumber = device.SerialNumber,
+            networkId = device.NetworkId,
+            purchaseDate = device.PurchaseDate,
+            purchasePrice = device.PurchasePrice,
+            status = DeviceStatus.Retired,
+            notes = device.Notes,
+            // What the web app used to send. DateOnly cannot bind this.
+            retiredDate = "2026-09-01T19:55:00.000Z",
+            disposalMethod = (string?)null
+        };
+
+        var response = await client.PutAsync($"/api/v1/devices/{device.Id}", CreateJsonContent(request));
+
+        // Pins the constraint the client has to satisfy. If a future serializer
+        // change makes this bind, this test is the place to relax it.
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
     [Fact]
     public async Task UpdateDevice_WhenValidationFails_Returns400ValidationProblemDetails()
     {

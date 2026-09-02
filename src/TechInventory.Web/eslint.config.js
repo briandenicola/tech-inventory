@@ -200,7 +200,20 @@ export default [
 			'security/no-auth-token-localstorage': 'error',
 			// eslint-plugin-svelte v3 enables this for .svelte.ts runes files too;
 			// migrate mutable built-ins to SvelteMap/SvelteSet separately.
-			'svelte/prefer-svelte-reactivity': 'off'
+			'svelte/prefer-svelte-reactivity': 'off',
+			// Error text must come from one place. `'detail' in err` looks like a
+			// presence check but `ApiError` assigns `detail` unconditionally as a
+			// constructor parameter property, so the check is always true and the
+			// value is often `undefined` — which rendered as a blank red toast in
+			// production twice before this rule existed.
+			'no-restricted-syntax': [
+				'error',
+				{
+					selector: "BinaryExpression[operator='in'] > Literal[value='detail']",
+					message:
+						"Don't hand-roll error-message extraction. Use getApiErrorMessage(err, fallback) from $lib/utils/apiErrors — `'detail' in err` is always true on an ApiError and yields a blank toast."
+				}
+			]
 		}
 	},
 	prettier,

@@ -12,7 +12,7 @@
 	import { registerPullToRefresh } from '$lib/stores/pullToRefresh';
 	import { fetchReferenceData } from '$lib/stores/referenceData';
 	import { showToast } from '$lib/stores/toast';
-	import { mapApiFieldErrors } from '$lib/utils/apiErrors';
+	import { getApiErrorMessage, mapApiFieldErrors } from '$lib/utils/apiErrors';
 
 	/**
 	 * T21: Device edit page — /devices/[id]/edit
@@ -49,7 +49,7 @@
 				.filter((tagId): tagId is string => typeof tagId === 'string' && tagId.length > 0);
 		} catch (err) {
 			console.error('[device-edit] Fetch failed:', err);
-			error = err instanceof Error ? err.message : 'Failed to load device';
+			error = getApiErrorMessage(err, 'Failed to load device');
 		} finally {
 			isLoading = false;
 		}
@@ -158,10 +158,7 @@
 			if (err instanceof ApiError && err.errors) {
 				serverErrors = mapApiFieldErrors(err.errors);
 			}
-			const errorMsg =
-				err instanceof Error && 'detail' in err
-					? (err as unknown as { detail: string }).detail
-					: 'Failed to update device';
+			const errorMsg = getApiErrorMessage(err, 'Failed to update device');
 			showToast({ type: 'error', message: errorMsg });
 			throw err;
 		}

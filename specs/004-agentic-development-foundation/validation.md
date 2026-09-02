@@ -1,8 +1,8 @@
 ---
 id: 004-agentic-development-foundation
 document: validation
-status: T001–T004 evidence recorded; T103 evidence recorded; T102 evidence recorded and INDEPENDENTLY VERIFIED — APPROVED; T101 APPROVED at re-review (§7.8); T104 REJECTED by Apone §10, REVISED by Hicks §11, pending Apone re-review; T105 not authorized to begin
-last_updated: 2026-09-02 (T104 revised by Hicks — closed B-1/B-2/B-3 from Apone's §10 review; not self-approved, pending Apone re-review)
+status: T001–T004 evidence recorded; T103 evidence recorded; T102 evidence recorded and INDEPENDENTLY VERIFIED — APPROVED; T101 APPROVED at re-review (§7.8); T104 DONE — APPROVED at Apone's re-review (§12) after REJECTION (§10) and Hicks's revision (§11); AC-008 met; T105 AUTHORIZED to begin
+last_updated: 2026-09-02 (T104 re-reviewed and APPROVED by Apone at `b3c092f` — B-1/B-2/B-3 verified closed by reviewer-run evidence, full `task verify` observed exit 0, T105 authorized — §12)
 base_sha: d303cd6537392e2489222d5a0d5c946f39f2af0c
 ---
 
@@ -14,11 +14,12 @@ artefact exists demonstrating the criterion is met (for research tasks it *is*
 the deliverable) — and **GATE PASSED** — a machine control exists, ran, and
 blocked or allowed correctly.
 
-**No gate in this work package has been implemented.** No row below claims GATE
-PASSED, and none may until the corresponding Phase-2 task in
-[`tasks.md`](./tasks.md) is complete and observed. This is the lesson of the
-PR #140 chain (`evidence.md` §5): green checks were recorded as completion
-evidence for a criterion no check covered.
+**No gate in this work package is merge-required on GitHub.** The T104 checks
+exist, run, and fail closed — reviewer-proven at commit `b3c092f`
+(§12) — but no row claims a *GitHub-required* GATE PASSED, and none may until
+T105 enumerates and requires them and the state is observed. This is the
+lesson of the PR #140 chain (`evidence.md` §5): green checks were recorded as
+completion evidence for a criterion no check covered.
 
 ---
 
@@ -33,8 +34,8 @@ evidence for a criterion no check covered.
 | **AC-005** | Playwright harness retired safely: `tests/e2e/**` gone as an executable contract, behaviour inventoried first, **zero** references in manifests/scripts/workflows/docs/PR template, stale-reference guard added, #89 closed citing retirement + migration | T101 | ✅ `DONE` — **rejected then revised then independently re-reviewed and APPROVED** (Ripley, 2026-09-02, §7.8). Rejected at the first gate (§7, B1 stale `task test:e2e` instructions in `.github/T47-CI-SETUP-CHECKLIST.md`, B2 blanket `specs/` guard exemption hiding backlog Playwright promises); revised by Apone (§7.7); both blockers verified closed by the reviewer directly, not from the revision summary (§7.8) | `tests/e2e/**` (28 tracked files), `scripts/run-e2e.ps1`/`.sh`, `.squad/skills/playwright-e2e-scaffolding/` deleted — cross-checked file-by-file against `coverage-migration.md` §4 waves D1–D5/D8 before deletion, nothing removed outside the matrix. Dependencies: only `tests/e2e/package.json` (deleted) ever declared Playwright; root/`src/TechInventory.Web/package.json` never did; `pnpm-lock.yaml`'s sole remaining Playwright-named string is `@vitest/browser-playwright`, vitest's own optional peer dependency, never installed (§5.6). Clean-install proof: `Remove-Item -Recurse -Force node_modules; pnpm install --frozen-lockfile` in `src/TechInventory.Web` — 617 packages resolved, **0 downloaded**, no Playwright package present, `%LOCALAPPDATA%\ms-playwright` browser-cache mtime unchanged (dated 2026-08-24, pre-dates this work). `Taskfile.yml`/`scripts/verify.ps1`/`verify.sh`/`.github/workflows/ci.yml` — every invocation removed, replaced by `check:stale-refs`. Stale-reference guard: `scripts/check-stale-playwright-references.mjs` (keyword scan + two structural hard-fails: any `tests/e2e/` path, any `playwright.config.*`), wired into `Taskfile.yml` and both `verify` scripts; repository-native coverage `scripts/check-stale-playwright-references.test.mjs`, **15/15 `node:test` cases pass** (not tamper-tested — that is T105's job, not claimed here). Live guard run: **`Stale-reference guard passed: 0 active Playwright references across 901 tracked file(s).`** Issue #89: closed by `briandenicola` prior to this session (state reason `NOT_PLANNED`, no evidence comment yet); durable retirement+migration evidence comment added at closing time — https://github.com/briandenicola/tech-inventory/issues/89#issuecomment-5515917506. **Two exceptions recorded — and reframed by the reviewer at the re-review (§7.8):** `.specify/memory/constitution.md` and `docs/prd.md` still name Playwright as mandatory. They are **outside AC-005's enumerated surface list** (`package.json`, `pnpm-lock.yaml`, `Taskfile.yml`, `scripts/**`, `.github/workflows/**`, `docs/testing.md`, PR template) — *out of scope*, not *exceptions to zero*. Amending those normative clauses requires a separate ADR, which §5.4 requires this task to *surface, not perform*. Recorded as a **mandatory package-closure precondition** (T105 / ADR), not a T101 gap. **Judgment call flagged for independent review, not a silent decision:** `.squad/log/**` and `.squad/orchestration-log/**` contain dated historical session logs not individually enumerated in §5.5's RETAIN list; they were exempted from the guard on the same historical-record principle already applied to `.squad/session-log.md`/`.squad/agents/*/history.md` (already gitignored for future writes, narrative past tense, dated filenames) — reasoning recorded in the guard's own header comment for Ripley/`briandenicola` to confirm or override. Full file-by-file diff and reference classification in `coverage-migration.md` §13 (T101 completion record) | ✅ `Stale-reference guard passed: 0 active Playwright references across 901 tracked file(s)`; guard test suite 15/15; clean install 0 downloads; `dotnet build -c Release` 0 errors; `dotnet test -c Release` 278 unit + 292 integration passed (4 pre-existing skips, unrelated); `pnpm run lint` clean; `pnpm test -- --run` 83 files / 649 tests passed, incl. `DeviceForm.test.ts` 27/27 (the previously-stale-skip tests are genuinely green). **Re-review re-run by Ripley 2026-09-02 (§7.8), not accepted from the revision report:** live guard `0 active Playwright references across 901 tracked file(s)`; guard tests **18/18**; three independent tamper tests (active `specs/_backlog/**` file, a brand-new unlisted `specs/005-*` path, structural `tests/e2e/` revival) each exit 1 with the exact file:line, all restored **byte-identically** (`git hash-object` match) and `git status --porcelain` diffed to **0 lines** against the pre-review baseline |
 | **AC-006** | Valuable coverage live at lower layers — real HTTP integration/contract, component tests, and an owned manual checklist for browser-only behaviour; seed-fixture drift replaced by typed builders/generated-contract checks, `fixtures/api.ts` **not** repaired for continued use | T102 | ✅ `DONE` — **independently verified, APPROVED** (§6) | `coverage-migration.md` §12 (5 `H-` done — including the B1-expanded `ViewerRoleAuthorizationTests` and B4's 26-case `OpenApiDriftTests.AdminOrMemberGatedOperation_DeclaresForbiddenResponse`; 20/22 `C-` done, **C-04**/**C-12** genuinely closed only after Hicks's third-surface fix — 649/649 Vitest tests, corrected from 645/645 — + C-18 partial (5/6 route axe harnesses; `/devices` is accepted gap **G-09**) + C-20 accepted gap, 15-check manual checklist published), `docs/testing/manual-pwa-validation.md` (`t102-backend-results.md`, `t102-frontend-results.md`, and `viewer-auth-fix-results.md` are session artefacts from the original T102 execution, not present in this repository — the durable evidence is the test names and `coverage-migration.md` §12 sections cited here) | n/a — manual checklist is `REVIEWED`, not a gate; HTTP/component suites re-run green after the B1/B3 fixes and again after Hicks's B3/B2-R/B4 fixes — durable evidence is the test names and files cited in `coverage-migration.md` §12, not the session artefacts alone. **Reviewer re-ran every cited command directly (§6) — no reviewer claim rests on an executing agent's summary.** |
 | **AC-007** | Coverage migration matrix and deletion map covering **every** existing Playwright spec — test count, behaviour, destination layer, named replacement or accepted-gap owner; no spec deleted without a row; **precedes** T101/T102 deletion | T103 | ✅ `DONE` | `coverage-migration.md` §2 (inventory: 28 tracked files, 17 specs, counts reconciled against `--list`), §3 (17 spec rows / per-test rows), §4 (deletion waves D1–D8), §5 (110 referencing files classified), §6 (5 `H-` + 22 `C-`), §7 (15 `M-`), §8 (8 `G-`), §9 (PRD §7.5.4 traceability), §10 (retirement completion definition) | n/a — analysis task, no gate |
-| **AC-008** | One authoritative Task/local/CI verification surface with **no Playwright dependency**, covering format · build · type-check · lint · unit · component · HTTP integration · contract-drift · migration | T104 | 🟡 `VALIDATING` — **REVISED by Hicks (§11), pending Apone re-review**. Apone rejected Hudson's implementation on three blockers (§10); Hicks closed all three: **B-1** `check:client-drift` rewritten (`scripts/check-client-drift.mjs`) to snapshot the working-tree artifact, regenerate, compare like-for-like, and always restore — no longer compares against index/HEAD; **B-2** `check:vulnerable` rewritten (`scripts/check-vulnerable.mjs`) to parse `dotnet list package --vulnerable --format json` and fail closed on any Moderate+ advisory per constitution.md §5.8; **B-3** `ci.yml` now installs PyYAML identically to `quality-gate.yml` before the shared `task verify` entrypoint. Not self-approved; Apone owns the re-review gate | `Taskfile.yml` (`check:client-drift`, `check:vulnerable` targets rewritten), new `scripts/check-client-drift.mjs` + `.test.mjs`, new `scripts/check-vulnerable.mjs` + `.test.mjs`, `.github/workflows/ci.yml` (PyYAML install step added), `.github/workflows/README.md` (corrected descriptions/threshold) — see §11 | **Hicks-run, this machine, Windows, no Docker, no browser (§11):** `task verify:fast` **exit 0** (278 unit / 649 frontend); `task verify:contracts` **exit 0**, including `check:client-drift` **exit 0** for the first time in this work package; `task verify:full` **exit 0** (production frontend build, `check:vulnerable` exit 0); **`task verify` (the authoritative alias) ran end-to-end and exited 0** — the gap in Apone's §10.1 table is closed. New unit tests: 9/9 for client-drift (clean/stale/restore-on-failure), 13/13 for vulnerability parsing (clean/vulnerable/malformed/tool-failure, including a live tamper against a real Newtonsoft.Json 12.0.1 probe returning exit 1). GitHub Actions execution: **still not observed**, not claimed |
-| **AC-009** | Required checks and protection posture aligned to the checks that exist after T104; every critical non-browser guard tamper-tested | T105 | ⛔ `APPROVED` / **not started — and not authorized to start**. T104 is still `VALIDATING` pending Apone's re-review of Hicks's revision (§11); T105's first job — enumerating check names and tamper-testing them — cannot begin until AC-008 is met | Floor-mechanism tamper evidence pre-recorded by the reviewer in §10.2 (4 cases, both mechanisms) — T105 still owns the full guard matrix, plus the two rewritten checks from §11 | **NOT IMPLEMENTED** |
+| **AC-008** | One authoritative Task/local/CI verification surface with **no Playwright dependency**, covering format · build · type-check · lint · unit · component · HTTP integration · contract-drift · migration | T104 | ✅ `DONE` — **rejected (§10), revised by Hicks (§11), independently re-reviewed and APPROVED by Apone at `b3c092f` (§12)**. All three blockers verified closed by reviewer-run evidence, not from the revision report: **B-1** `check:client-drift` proven to pass a dirty-but-synchronized tree that the retired `git diff --exit-code` comparison fails, to fail a genuinely stale client, and to restore byte-identically on pass, on drift, and on generator failure; **B-2** `check:vulnerable` proven to exit 1 on real **direct** *and* **transitive** vulnerable probes that the bare `dotnet list package` command exits 0 on, and to fail closed on tool failure; **B-3** `ci.yml` and `quality-gate.yml` are the only two workflows invoking `task verify`, and both install PyYAML identically | `Taskfile.yml` (`check:client-drift`, `check:vulnerable` targets rewritten), `scripts/check-client-drift.mjs` + `.test.mjs`, `scripts/check-vulnerable.mjs` + `.test.mjs`, `.github/workflows/ci.yml` (PyYAML install step), `.github/workflows/README.md` — see §11 (revision) and §12 (independent re-review) | 🟡 **Fail-closed and observed locally; NOT yet a merge-required GitHub check** (that is AC-009/T105). Reviewer-run at `b3c092f`, Windows, no Docker, no browser (§12.4):** `task verify:fast` **exit 0** (unit 278/278, frontend 649 tests / 83 files); `task verify:contracts` **exit 0** (stale-refs 0/**933** + guard suite 18/18, OpenAPI drift current, `check:client-drift` exit 0, migration drift clean, integration **296 collected**); **`task verify` — the authoritative alias — ran end to end and exited 0 in 5m32s**, including the production frontend build and `check:vulnerable`. Checker unit suites re-run by the reviewer: **9/9** client-drift, **13/13** vulnerable. Floors unchanged by hash (`fe45ebb…`) from the §10.2 tamper-approved file. **GitHub Actions execution still NOT observed** — the only run at `b3c092f` is the ops workflow `Sync Squad Labels`; Quality Gate has not run and is not claimed to have passed |
+| **AC-009** | Required checks and protection posture aligned to the checks that exist after T104; every critical non-browser guard tamper-tested | T105 | 🟢 `APPROVED` / **not started — now AUTHORIZED to begin**. T104 is `DONE` and AC-008 is met (Apone re-review, §12), so the check names T105 must enumerate, require, and tamper-test now exist and have been observed running | Floor-mechanism tamper evidence pre-recorded by the reviewer in §10.2 (4 cases, both mechanisms) and re-confirmed unchanged by hash in §12.5; the two rewritten checks (`check:client-drift`, `check:vulnerable`) carry reviewer-run tamper evidence in §12.1–§12.2 — T105 still owns the **full** guard matrix, plus findings F-5, F-10–F-13 (§12.7) | **NOT IMPLEMENTED** |
 | **AC-010** | No claim asserts a gate passed before it existed | all | ✅ `HOLDING` | This document, §3 | n/a — a discipline |
 
 ---
@@ -68,8 +69,12 @@ Key measurements carried forward: instruction corpus 254 files / 30,184 lines
 
 ## 3. Explicit Non-Claims
 
-1. **No gate has been implemented, run, or passed.** T001–T004 produced
-   documents; `specs/004-agentic-development-foundation/` is the entire diff.
+1. **No gate is merge-required on GitHub, and no GitHub Actions verification
+   run has been observed.** T001–T004 produced documents; T104's checks are
+   implemented, run locally, and fail closed (reviewer-proven, §12), but
+   Quality Gate has not executed at `b3c092f` — the only run on the branch is
+   the ops workflow `Sync Squad Labels` — and requiring the checks is T105's
+   work.
 2. **The E2E suite has not been observed passing, and never will be.** Issue #89
    remains `OPEN` and Docker was unavailable here. Under `brief.md` §2.1 the
    suite is **retired rather than repaired**, so the question has no subject.
@@ -1179,3 +1184,162 @@ evidence. Did not touch Apone's non-blocking F-5–F-9 findings (none is a
 prerequisite to closing B-1/B-2/B-3). Did not start T105. Did not mark T104
 `DONE` or authorize T105 — both remain Apone's and the reviewer gate's calls.
 No commit, no push.
+
+
+---
+
+## 12. T104 Re-Review Gate — Apone, 2026-09-02 — **APPROVED**
+
+Reviewer: Apone (Tester / QA). Author under re-review: Hicks (revision owner
+assigned by the §10 rejection; Hudson locked out for the cycle). Reviewed
+state: commit `b3c092f` on `chore/agentic-development-foundation`, pushed to
+origin, working tree clean. **Every result below was produced by the reviewer
+on this machine at that commit. No line rests on Hicks's §11 summary.**
+Team-level record: `.squad/decisions/inbox/apone-t104-rereview.md`.
+
+**Verdict: APPROVED. T104 is `DONE`. AC-008 is met. T105 is AUTHORIZED to
+begin.**
+
+### 12.1 B-1 — CLOSED (comparison basis proven, not read)
+
+`Taskfile.yml`'s `check:client-drift` now runs `scripts/check-client-drift.mjs`,
+which snapshots the working-tree artifact, regenerates in place, compares
+regeneration against that snapshot, and restores in a `finally`. Four
+reviewer-run cases:
+
+| # | Reviewer scenario | Result |
+| --- | --- | --- |
+| 1 | Clean committed state | **exit 0**, `types.ts` SHA-256 `0EF52149…` unchanged |
+| 2 | **Dirty-but-synchronized** — appended a `ZReviewerProbeB1` schema to the working-tree `openapi.yaml`, regenerated `types.ts` (SHA-256 `3BA1F9C5…`); both files now differ from HEAD | **exit 0** — while `git diff --exit-code -- types.ts` (the retired B-1 comparison) **exits 1** on the identical tree. This is the decisive proof: same input, old check red, new check green, and the client genuinely is current |
+| 3 | **Genuinely stale client** — kept the probed spec, reverted `types.ts` to its pre-probe bytes | **exit 1**, "differs from a fresh regeneration starting at line 4952 (4961 -> 4964 lines)"; file restored to the exact **stale** bytes (`0EF52149…` before and after) — no silent auto-fix |
+| 4 | **Generator failure** — replaced `openapi.yaml` with invalid YAML | **exit 1**, "'pnpm run generate:client' failed (exit code 1) — cannot verify the client is current"; artifact restored byte-identically. Fails closed |
+
+It compares working-tree to working-tree only; git is never consulted for the
+comparison. `scripts/check-client-drift.test.mjs` re-run by the reviewer:
+**9/9 pass**. `openapi.yaml` and `types.ts` were restored and confirmed
+byte-identical to `HEAD` (`be64bf6b…` / `cc678f4e…`).
+
+### 12.2 B-2 — CLOSED (fail-closed proven against real vulnerable inputs)
+
+`check:vulnerable` now runs `scripts/check-vulnerable.mjs`, consuming
+`dotnet list package --vulnerable --include-transitive --format json`.
+Reviewer-run evidence, throwaway probes created outside the tracked tree and
+deleted afterwards:
+
+| # | Reviewer scenario | Raw `dotnet` | New check |
+| --- | --- | --- | --- |
+| 1 | **Direct** vulnerability — probe pinned to `Newtonsoft.Json 12.0.1` | prints `High … GHSA-5crp-9r3c-p9vr`, **exit 0** | `HIGH Newtonsoft.Json 12.0.1 (topLevelPackages, net10.0)` → "FAILED — 1 advisory(ies) at or above the policy threshold (moderate+, constitution.md §5.8)", **exit 1** |
+| 2 | **Transitive** vulnerability — probe on `Newtonsoft.Json.Bson 1.0.1`, pulling `Newtonsoft.Json 10.0.1` | advisory reported | `HIGH … (transitivePackages, net10.0)`, **exit 1** — transitive coverage is real, not just parsed in fixtures |
+| 3 | **Tool failure** — nonexistent project path | exit 1 | "exited 1 — treating as a failed scan, not a clean one", **exit 1** |
+| 4 | **Clean** — this repository | — | "passed — no advisories at or above the policy threshold (moderate+)", **exit 0** |
+
+Malformed-JSON fail-closed behaviour is covered by fixture, not by live
+probe: `scripts/check-vulnerable.test.mjs` re-run by the reviewer, **13/13
+pass**, including the malformed-output case, the Moderate-at-the-floor
+transitive case, the Low-only non-failing case, and the unranked-severity
+fail-closed case. Threshold verified against source authority, not the
+revision note: `.specify/memory/constitution.md:188` — "`dotnet list package
+--vulnerable` clean (no Moderate+)".
+
+### 12.3 B-3 — CLOSED (no setup contradiction remains)
+
+A workflow-wide search confirms `ci.yml` and `quality-gate.yml` are the only
+two workflows that invoke `task verify` (directly or via `scripts/verify.sh`),
+and both now run the identical
+`python3 -m pip install --quiet --disable-pip-version-check pyyaml` step
+immediately before it (`ci.yml:84-85`, `quality-gate.yml:38`). The dependency
+is real — `scripts/compare-openapi.py` imports `yaml`. Both files parse as
+valid YAML (reviewer-run `yaml.safe_load`). One setup contract, stated the
+same way in both places.
+
+### 12.4 Authoritative graph — run end to end at `b3c092f`
+
+| Command | Reviewer result — Windows, no Docker, no browser |
+| --- | --- |
+| `task verify:fast` | **exit 0** — format clean · backend Release build · svelte-check · ESLint · unit **278/278** · frontend **649 tests / 83 files** |
+| `task verify:contracts` | **exit 0** — stale-refs **0 active Playwright references across 933 tracked files** + guard suite 18/18 · `check:openapi-drift` "OpenAPI document is current" · **`check:client-drift` exit 0** · `check:migration-drift` "No changes have been made to the model" · integration **296 collected** (292 passed, 4 skipped) |
+| **`task verify`** (authoritative alias) | **exit 0, 5m32s, complete end-to-end run** — every stage above plus production frontend build (`built in 15.15s`) and **`check:vulnerable` exit 0** |
+
+No stage started a container or downloaded a browser; the only integration
+host is in-process `WebApplicationFactory<Program>` over real SQLite files.
+**The gap recorded in §10.1 — "`task verify` never observed to complete" — is
+closed by the reviewer's own run, not by report.**
+
+Guard-coverage note worth keeping: the stale-reference guard now scans **933**
+tracked files, up from 901/898, because `specs/004-*` and `.squad/**` are
+tracked as of `b3c092f`. The blind spot flagged during T101 — a git-aware
+guard reporting "0 references" over a file set that excluded this entire spec
+package — is now closed by observation, and the newly visible files are clean.
+
+### 12.5 Single surface, wrappers, floors, competing signals
+
+- **Task remains the single command surface.** `scripts/verify.ps1` and
+  `scripts/verify.sh` are unchanged thin wrappers: PATH probe, then
+  `task verify`, with zero pipeline logic. `verify.sh` remains unexecuted on
+  this host (no bash) — still disclosed, not claimed.
+- **Quality Gate invokes the same task.** `quality-gate.yml:39` is a bare
+  `task verify`; no command logic is duplicated in the workflow.
+- **Floors unchanged and still fail-closed.** `scripts/check-test-floors.mjs`
+  hashes `fe45ebbde7c0c62957025868ee73e16817f34b62` — byte-identical to the
+  file the reviewer tamper-tested in §10.2 (4 cases across both mechanisms,
+  including the decisive all-green-but-59%-collected case). The approved
+  behaviour is intact by identity, and it fired correctly in all three runs
+  above.
+- **No weaker competing success signal.** Trigger audit of all eight
+  workflows: only `quality-gate.yml` runs on `pull_request`/`push: main`;
+  `ci.yml` is `workflow_dispatch` only; `release-images.yml` /
+  `security-scan.yml` are post-merge/manual; the four `squad-*` workflows are
+  ops automation. Check name `Quality Gate / verify` is stable for T105.
+
+### 12.6 Not claimed — and verified as not claimed
+
+- **GitHub Actions execution is still unobserved.** `gh run list` for
+  `chore/agentic-development-foundation` shows exactly one run at `b3c092f`:
+  **Sync Squad Labels** (path-triggered on `.squad/team.md`, success). Quality
+  Gate has **not** run; no PR exists for the branch. No document claims it
+  passed. AC-010 holds.
+- **The constitution/PRD Playwright contradiction remains explicit and
+  unresolved.** `docs/testing.md:7-15` still states that PRD §7.5.2–§7.5.4 and
+  constitution §6.5.7/§7 name a harness this tree has removed, and that
+  amending them requires a separate ADR. `constitution.md` and `docs/prd.md`
+  are untouched by T104. `plan.md` L288 and `validation.md` §7.8.5 keep it as a
+  **mandatory package-closure precondition**. No T104 file claims AC-008
+  satisfies the Playwright-smoke mandate.
+- **Document alignment checked, not assumed.** `brief.md`, `plan.md`,
+  `tasks.md`, `validation.md`, and `coverage-migration.md` §14 describe the
+  same state; the counts they cite (278 / 649 / 296 / floors) match the
+  reviewer's own runs.
+
+### 12.7 Findings — NOT blockers, carried to T105
+
+- **F-5 (carried, unchanged):** `scripts/check-security.mjs` is still not a
+  Task target; `.github/workflows/README.md:164` labels it
+  `Enforced (ci.yml, manual)`, but a `workflow_dispatch`-only workflow plus a
+  `--no-verify`-bypassable hook is not enforcement. Add a `check:security`
+  task or reword the row.
+- **F-10 (new):** `scripts/check-client-drift.test.mjs` and
+  `scripts/check-vulnerable.test.mjs` are executed by **no** task —
+  `check:stale-refs` runs `node --test` on its own suite inline, these two do
+  not. The regression tests protecting the two newly fail-closed guards can
+  rot unobserved. Wire them into the pipeline in T105.
+- **F-11 (new):** `check:vulnerable`'s malformed-output path is fixture-proven
+  only; no live probe produced unparseable `dotnet` output. Acceptable, but
+  T105's guard matrix should cover it end to end.
+- **F-12 (new):** §11.6 and `coverage-migration.md` §14.4 state "No commit was
+  made and nothing was pushed" — true when written, now superseded by the
+  coordinator checkpoint `b3c092f`. Reconcile at package closure.
+- **F-13 (new):** the only green check currently visible on this branch is
+  **Sync Squad Labels**. T105's required-check enumeration must ensure an ops
+  workflow's success can never be read as verification.
+- **F-6 – F-9 (carried unchanged):** repeated `restore` resolution; missing
+  `permissions:` on the `verify` job; no numeric coverage gate; the dropped
+  empty-output guard from `check-openapi-drift.sh`.
+
+### 12.8 Reviewer non-interference
+
+No implementation file was repaired, and none was left modified. Every tamper
+was reverted and hash-verified: `openapi.yaml` `be64bf6b…` and
+`src/TechInventory.Web/src/lib/api/generated/types.ts` `cc678f4e…`, both
+identical to `HEAD:b3c092f`; `git status --porcelain` shows only the
+reviewer's own scratch directory, which was deleted at the end of the review.
+Both throwaway vulnerability probes were deleted; neither was ever tracked.

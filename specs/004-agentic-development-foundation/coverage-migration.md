@@ -1311,7 +1311,7 @@ Full verdict: `validation.md` §7.8.
   visibly. Findings F-1..F-4 (`validation.md` §7.8.6) are carried to the F045
   owner, T104, and T105.
 
-## 14. T104 Completion Record — Hudson, 2026-09-02 — `VALIDATING` (**REJECTED, then REVISED by Hicks, pending re-review**)
+## 14. T104 Completion Record — Hudson, 2026-09-02 — `DONE` (**REJECTED → REVISED by Hicks → RE-REVIEWED and APPROVED by Apone at `b3c092f`, `validation.md` §12**)
 
 > **Reviewer gate 2026-09-02 — Apone: REJECTED** (`validation.md` §10).
 > The file-level record below is accurate as a description of what was
@@ -1323,6 +1323,22 @@ Full verdict: `validation.md` §7.8.
 > tamper-tested by the reviewer and **approved** (`validation.md` §10.2).
 > **Revision owner Hicks closed all three blockers 2026-09-02 — see §14.4.
 > Not self-approved; awaiting Apone re-review.**
+>
+> **Re-review 2026-09-02 — Apone: APPROVED at commit `b3c092f`**
+> (`validation.md` §12). All three blockers verified closed by reviewer-run
+> evidence: a dirty-but-synchronized tree passes `check:client-drift` where
+> `git diff --exit-code` fails on the identical tree; a genuinely stale
+> client is caught and restored byte-identically; direct **and** transitive
+> vulnerable probes each exit 1 where the bare `dotnet list package` exits 0;
+> `ci.yml` and `quality-gate.yml` install PyYAML identically and are the only
+> workflows invoking `task verify`; and **`task verify` was observed running
+> end to end at exit 0 (5m32s, no Docker, no browser)**. **T104 is `DONE`,
+> AC-008 is met, and T105 is AUTHORIZED to begin.** GitHub Actions execution
+> remains unobserved and unclaimed. Non-blocking findings F-5, F-10–F-13
+> carried to T105 (`validation.md` §12.7) — including that neither new
+> checker's unit suite is executed by any task, and that §14.4's "No commit
+> was made and nothing was pushed" is now superseded by the coordinator
+> checkpoint `b3c092f`.
 
 Full acceptance evidence is `validation.md` §9; this section records the
 exact file-level changes for reviewer convenience and does not duplicate

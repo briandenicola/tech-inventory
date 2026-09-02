@@ -2,7 +2,7 @@
 id: 004-agentic-development-foundation
 document: tasks
 tier: T2
-status: T001–T004 DONE; T103 DONE; T102 DONE and REVIEWER-APPROVED (Ripley, 2026-09-02 — `validation.md` §6); T101 DONE and REVIEWER-APPROVED (Ripley re-review, 2026-09-02 — `validation.md` §7.8) after REJECTION (`validation.md` §7) and Apone's revision (`coverage-migration.md` §13.9) closing blockers B1/B2; T104 VALIDATING — REJECTED by Apone 2026-09-02 (`validation.md` §10), REVISED by Hicks 2026-09-02 closing B-1/B-2/B-3 (`validation.md` §11), awaiting Apone re-review; T105 APPROVED / NOT STARTED — not authorized to begin until T104 clears re-review
+status: T001–T004 DONE; T103 DONE; T102 DONE and REVIEWER-APPROVED (Ripley, 2026-09-02 — `validation.md` §6); T101 DONE and REVIEWER-APPROVED (Ripley re-review, 2026-09-02 — `validation.md` §7.8) after REJECTION (`validation.md` §7) and Apone's revision (`coverage-migration.md` §13.9) closing blockers B1/B2; T104 **DONE and REVIEWER-APPROVED** (Apone re-review at `b3c092f`, 2026-09-02 — `validation.md` §12) after REJECTION (`validation.md` §10) and Hicks's revision (`validation.md` §11) closing B-1/B-2/B-3 — AC-008 met; T105 APPROVED and **AUTHORIZED to begin**
 approved_by: briandenicola
 approved_at: 2026-09-02T10:06:57-05:00
 revised_at: 2026-09-02 (T102 completed and evidence consolidated by Apone —
@@ -44,8 +44,8 @@ automated browser execution: **there is no future automated Playwright role.**
 | T103 | Coverage migration matrix and deletion map | `DONE` | T2 | — | AC-007 |
 | T101 | Retire the broken Playwright harness safely | `DONE` · rejected → revised by Apone → **reviewer-APPROVED** (Ripley, `validation.md` §7.8) | T2 | T103 | AC-005 |
 | T102 | Migrate valuable coverage to lower reliable layers | `DONE` · **reviewer-APPROVED** | T2 | T103 | AC-006 |
-| T104 | One authoritative verification interface, Playwright-free | **`VALIDATING`** — rejected by Apone (`validation.md` §10), revised by Hicks closing B-1/B-2/B-3 (`validation.md` §11), **awaiting Apone re-review before `DONE`** | T2 | T101, T102 | AC-008 |
-| T105 | Align required GitHub checks and tamper-test guards | `APPROVED` / not started — **not authorized to begin** until T104 clears re-review | T3 | T104 | AC-009 |
+| T104 | One authoritative verification interface, Playwright-free | **`DONE`** — rejected by Apone (`validation.md` §10), revised by Hicks closing B-1/B-2/B-3 (`validation.md` §11), **independently re-reviewed and APPROVED by Apone at `b3c092f`** (`validation.md` §12); AC-008 met | T2 | T101, T102 | AC-008 |
+| T105 | Align required GitHub checks and tamper-test guards | `APPROVED` / not started — **AUTHORIZED to begin** (T104 cleared re-review, `validation.md` §12) | T3 | T104 | AC-009 |
 
 ---
 
@@ -107,7 +107,7 @@ automated browser execution: **there is no future automated Playwright role.**
 
 ---
 
-## Phase 2 — Implementation · T103, T102, **T101 DONE** (T101 rejected → revised by Apone → reviewer-APPROVED, `validation.md` §7.8); T104 VALIDATING (rejected by Apone → revised by Hicks, awaiting re-review, `validation.md` §11), T105 APPROVED, NOT STARTED
+## Phase 2 — Implementation · T103, T102, **T101 DONE** (T101 rejected → revised by Apone → reviewer-APPROVED, `validation.md` §7.8); **T104 DONE** (rejected by Apone → revised by Hicks → reviewer-APPROVED at `b3c092f`, `validation.md` §12), T105 APPROVED and AUTHORIZED, NOT STARTED
 
 > **T103 is complete.** Its deliverable is
 > [`coverage-migration.md`](./coverage-migration.md) — the deletion authority
@@ -376,7 +376,26 @@ count to 649, added the missing `[ProducesResponseType(403)]` to all 26 (not
 DeclaresForbiddenResponse` (26 cases) — see `coverage-migration.md` §12
 second revision note and `t102-hicks-final-revision.md` (session artefact).
 
-### T104 — One authoritative verification interface, Playwright-free · **`VALIDATING` — REJECTED at reviewer gate, REVISED by Hicks** · AC-008
+### T104 — One authoritative verification interface, Playwright-free · **`DONE` — REJECTED, REVISED, then independently RE-REVIEWED and APPROVED** · AC-008
+
+> **Re-review gate 2026-09-02 — Apone: APPROVED** (`validation.md` §12;
+> `.squad/decisions/inbox/apone-t104-rereview.md`), reviewing commit
+> `b3c092f`. All three blockers verified closed by reviewer-run evidence, not
+> from Hicks's summary: **B-1** — `check:client-drift` passes a
+> dirty-but-synchronized working tree that the retired `git diff --exit-code`
+> comparison fails on the identical tree, fails a genuinely stale client at
+> the exact line, and restores byte-identically on pass, on drift, and on
+> generator failure; **B-2** — `check:vulnerable` exits 1 on real **direct**
+> *and* **transitive** vulnerable probes where the bare `dotnet list package`
+> command exits 0, and fails closed on tool failure; **B-3** — `ci.yml` and
+> `quality-gate.yml` are the only workflows invoking `task verify` and both
+> install PyYAML identically. **`task verify` was observed by the reviewer to
+> run end to end and exit 0 (5m32s, no Docker, no browser)** — the §10.1 gap
+> is closed. **T104 is `DONE`; AC-008 is met; T105 is AUTHORIZED to begin.**
+> Not claimed: GitHub Actions execution (only the ops workflow `Sync Squad
+> Labels` has run at `b3c092f`) and the constitution/PRD Playwright
+> contradiction, which remains an explicit package-closure precondition.
+> Findings F-5, F-10–F-13 carried to T105, none blocking.
 
 > **Reviewer gate 2026-09-02 — Apone: REJECTED** (`validation.md` §10;
 > `.squad/decisions/inbox/apone-t104-review.md`). Most of the surface is
@@ -451,16 +470,31 @@ second revision note and `t102-hicks-final-revision.md` (session artefact).
       tests against a real stale-client edit and a real Newtonsoft.Json
       12.0.1 vulnerable probe, both restored/cleaned up; full `task verify`
       run exited 0. **Not self-approved** — awaiting Apone re-review.
+- [x] **Re-review gate cleared (Apone, 2026-09-02, commit `b3c092f`):** all
+      three blockers independently re-verified closed and the authoritative
+      graph observed complete · *evidence:* `validation.md` §12 — B-1's four
+      reviewer-run cases (clean · dirty-but-synchronized passing where
+      `git diff --exit-code` fails · genuinely stale caught at line 4952 ·
+      generator failure fail-closed, all restored byte-identically), B-2's
+      direct **and** transitive live vulnerable probes both exiting 1 where
+      the bare `dotnet list package` exits 0, B-3's two-workflow PyYAML
+      parity, checker suites 9/9 and 13/13, and **`task verify` exit 0 end to
+      end in 5m32s with no Docker and no browser**
 
-### T105 — Align required GitHub checks and tamper-test guards · `APPROVED` · **not authorized to start** · AC-009
+### T105 — Align required GitHub checks and tamper-test guards · `APPROVED` · **AUTHORIZED to start** · AC-009
 
-> **Blocked pending Apone's re-review of the T104 revision** (`validation.md`
-> §11). T105's first job is to enumerate and require the check names that
-> exist after T104; `check:client-drift` and `check:vulnerable` changed shape
-> under the Hicks revision and must be tamper-tested by T105's full guard
-> matrix once T104 clears re-review. Reviewer-recorded floor-mechanism
-> tamper evidence is in `validation.md` §10.2 — T105 still owns the complete
-> guard matrix.
+> **Authorized 2026-09-02 by Apone's T104 re-review** (`validation.md` §12).
+> T104 is `DONE` and AC-008 is met, so the check names T105 must enumerate,
+> require, and tamper-test now exist and have been observed running.
+> `check:client-drift` and `check:vulnerable` changed shape under the Hicks
+> revision and carry reviewer-run tamper evidence (`validation.md` §12.1–§12.2);
+> the floor mechanism carries §10.2's four-case evidence and is unchanged by
+> hash (§12.5). T105 still owns the **complete** guard tamper matrix, and
+> inherits findings F-5 and F-10–F-13 (`validation.md` §12.7) — notably that
+> the two new checkers' own unit suites run in no task, and that the only
+> green check currently visible on the branch is the ops workflow
+> `Sync Squad Labels`. T105's first job is to enumerate and require the check
+> names that exist after T104.
 
 - [ ] Enumerate the check names that exist after T104 and produce a **written
       branch-protection recommendation** for `briandenicola` to apply, with

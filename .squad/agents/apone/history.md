@@ -676,3 +676,91 @@ was edited except the two tamper targets, both restored and hash-verified. No
 commit, no push. Recorded the verdict in `validation.md` §10 / `tasks.md` /
 `plan.md` / `coverage-migration.md` §14 and left the fix to Hicks, per the
 reviewer-lockout rule.
+
+
+---
+
+## 2026-09-02 — T104 re-review gate (Apone, reviewer) — APPROVED
+
+Re-reviewed Hicks's revision of the three blockers I raised against T104,
+at the coherent checkpoint `b3c092f`. Approved: T104 `DONE`, AC-008 met,
+T105 authorized. Full record: `validation.md` §12,
+`.squad/decisions/inbox/apone-t104-rereview.md`.
+
+**The test that actually settled B-1 was the one nobody had run — a
+dirty-but-synchronized tree.** Reading the new script and re-running it on a
+clean checkout proves almost nothing: a clean tree passes under the old
+`git diff` check too. So I manufactured the exact condition the old check got
+wrong — appended a probe schema to the working-tree `openapi.yaml`,
+regenerated `types.ts` from it, so both files were internally consistent and
+both differed from HEAD — and ran the two comparisons side by side on that
+identical tree: **new check exit 0, `git diff --exit-code` exit 1.** That one
+line is the whole blocker, closed. **Lesson: to verify a fix to a
+comparison-basis defect, reconstruct the state that exposed the defect and
+run old and new against it together; a green run on a clean tree is not
+evidence about a dirty one.**
+
+**Restoration is a claim, and I checked it in the failure direction.** The
+stale case matters more than the clean case: I reverted `types.ts` to
+pre-probe bytes (genuinely stale), ran the check, got exit 1 at line 4952 —
+and then confirmed the file still carried the *stale* hash afterwards, not
+the regenerated one. A guard that "restores" by leaving a silently corrected
+file behind would look identical in a passing log and would quietly turn a
+drift gate into an autofix. I also corrupted `openapi.yaml` into invalid YAML
+so the generator itself failed: exit 1, artifact restored. **Prove restore on
+the failure path, and prove it restores what it started with, not what it
+produced.**
+
+**On B-2 I did not stop where the fix's own evidence stopped.** Hicks proved
+the direct-dependency case with `Newtonsoft.Json 12.0.1` — the same probe I
+used to expose the fail-open defect. But the constitution's rule (§5.8,
+`constitution.md:188`) covers transitive packages too, and the transitive path
+existed only as a JSON fixture. So I built a second probe on
+`Newtonsoft.Json.Bson 1.0.1`, which drags in `Newtonsoft.Json 10.0.1`
+transitively: `HIGH … (transitivePackages)`, exit 1. **When a policy names two
+categories and the evidence covers one, the untested category is where the
+gate is still theoretical — build the second probe.**
+
+**A PowerShell trap worth remembering:** `node script.mjs | Select-Object
+-First 3` reported `$LASTEXITCODE = 0` for a run that genuinely exits 1 —
+`-First` tears down the pipeline early and the exit code is lost. I nearly
+recorded a fail-closed check as fail-open because of it. Re-ran redirecting to
+a file: exit 1. **Never read an exit code through a truncating pipeline; use
+`-Last`, or redirect to a file and read `$LASTEXITCODE` directly.**
+
+**What I checked that wasn't in the blocker list, and would have changed the
+verdict if wrong:** the floors. Rather than re-run my four §10.2 tampers, I
+hashed `check-test-floors.mjs` — `fe45ebb…`, byte-identical to the file I
+already tamper-approved — which settles it faster and more conclusively than
+re-testing would. **A hash match against previously-proven evidence is a
+legitimate, cheaper proof of "unchanged behaviour" than re-running the
+tamper.** I also audited all eight workflows' triggers rather than the two
+under discussion, confirming no competing green, and checked `gh run list`
+for the branch: the only run at `b3c092f` is `Sync Squad Labels`, an ops
+workflow. That became finding F-13 — a green ops check on a branch with no
+Quality Gate run is exactly the kind of ambient green this whole package
+exists to stop being mistaken for verification.
+
+**A blind spot I flagged during T101 closed itself here, and I only saw it by
+reading a number that changed.** The stale-reference guard now reports
+**933** tracked files, up from 901/898, because `specs/004-*` and `.squad/**`
+are tracked as of this checkpoint — the spec package that was invisible to
+every git-aware tool during T101 is now scanned, and is clean. **Watch the
+denominators in guard output across runs; a moving file count is a statement
+about what the guard can see, not noise.**
+
+**New findings carried to T105 (none blocking):** F-10 — the two new
+checkers' own unit suites run in *no* task, unlike `check:stale-refs` which
+runs `node --test` inline; the regression tests protecting the two guards I
+just forced to be fail-closed can rot unobserved. F-11 — the malformed-output
+path is fixture-only. F-12 — the revision records still say "nothing was
+committed or pushed," now superseded by `b3c092f`. F-13 above. F-5 stands
+unchanged: `check-security.mjs` is still outside the Task surface while the
+README calls it "Enforced (ci.yml, manual)".
+
+**Boundary honored:** repaired nothing. Every tamper reverted and hash-verified
+against HEAD (`openapi.yaml` `be64bf6b…`, `types.ts` `cc678f4e…`), both
+throwaway probes deleted, scratch directory removed, `git status` back to
+clean. Recorded the verdict in `validation.md` §12 / `tasks.md` / `plan.md` /
+`coverage-migration.md` §14 and authorized T105. No commit, no push — the
+coordinator checkpoints reviewer records.

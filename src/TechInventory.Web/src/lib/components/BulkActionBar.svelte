@@ -7,6 +7,7 @@
 -->
 <script lang="ts">
 	import { t } from '$lib/i18n';
+	import { displayMode } from '$lib/stores/displayMode.svelte';
 
 	type BulkField = 'category' | 'owner' | 'brand' | 'location' | 'status';
 
@@ -18,11 +19,17 @@
 	}
 
 	let { count, onClear, onChangeField, onDelete }: Props = $props();
+
+	// F045 §5.7: sits flush with the viewport bottom by default, but that's
+	// exactly where AppBottomNav's pill floats in standalone-PWA mode — raise
+	// it above the nav instead of stacking underneath.
+	const bottomOffset = $derived(displayMode.isPwa ? 'calc(env(safe-area-inset-bottom, 0px) + 5.5rem)' : '0px');
 </script>
 
 {#if count > 0}
 	<div
-		class="fixed inset-x-0 bottom-0 z-30 border-t border-neutral-200 bg-white/95 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95"
+		class="fixed inset-x-0 z-30 border-t border-neutral-200 bg-white/95 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95"
+		style="bottom: {bottomOffset};"
 		role="region"
 		aria-label={t('devices.bulk.actions')}
 	>

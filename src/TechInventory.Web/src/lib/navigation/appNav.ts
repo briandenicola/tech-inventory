@@ -10,7 +10,7 @@ export interface AppNavItem {
 }
 
 const adminRoles = ['Admin'] as const satisfies readonly AppNavRole[];
-const memberRoles = ['Admin', 'Member'] as const satisfies readonly AppNavRole[];
+export const memberRoles = ['Admin', 'Member'] as const satisfies readonly AppNavRole[];
 
 export const primaryNavItems = [
 	{

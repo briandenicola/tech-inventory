@@ -588,3 +588,83 @@ No HouseholdId foreign key on Device, Brand, Category, Location, etc.
 
 **Learning:** When EF Core SQLite dependencies have known vulnerabilities and the latest EF version hasn't caught up, adding an explicit SQLitePCLRaw.bundle_e_sqlite3 PackageReference at a patched version (3.0.3+) forces NuGet to resolve the safer transitive dependency chain.
 
+---
+
+### 2026-09-02: F045 PWA Revision under reviewer-lockout (Hicks)
+
+**Context:** Reassigned by Ripley to independently correct the rejected F045
+(PWA Device Shell/Device List) frontend feature on
+`feature/pwa-device-navigation` — a backend task for me, but Vasquez (the
+original author) was locked out from touching production artifacts this
+cycle. Full decision record: `.squad/decisions/inbox/hicks-f045-revision.md`.
+
+**Discipline that mattered:** re-derived every blocker from the spec, the
+decision inbox, and the actual `git diff main` — not from Vasquez's own
+summary (read as evidence only, per the lockout protocol). This caught a
+subtlety the task brief didn't spell out: B2's actual defect was the *write*
+path (`updateFilters` inferring "explicit None" from mere falsy/untouched
+`groupBy`), while the *read* path (`effectiveGroupBy`) was already correct —
+fixing the read side instead would have missed the real bug entirely.
+
+**Six blockers fixed, all independently verified:**
+- **B1** (z-index): closed-header baseline was demoted from `--z-fixed` (30)
+  to `--z-sticky` (20), tying with page sub-headers and burying the desktop
+  user-dropdown. Extracted the ternary into a pure `headerZIndexToken()`
+  helper so the regression has a fast unit test without mounting the full
+  authenticated layout (MSAL/auth-store/reference-data graph).
+- **B2** (groupBy sentinel): the write path wrote `groupBy=none` on *every*
+  search/sort/page/filter change in app mode, not just an explicit "None"
+  pick — permanently killing the implicit category default on first
+  keystroke. Fixed by widening the type to a real `'none'` literal (distinct
+  from `undefined`/untouched) and extracting the URL-building logic into a
+  pure `buildDevicesUrlParams()` so "search/sort/page changes must never
+  write the sentinel" has a fast, mount-free unit test — this is the
+  extraction pattern to reach for whenever a page-component's URL-writing
+  logic needs testing but the full component is too heavy to mount.
+- **B3** (view control): the app-mode title bar's Cards/Table toggle was
+  fully hidden by an `{#if !displayMode.isPwa}`, contradicting the spec's own
+  acceptance checklist. Restored it, and made `DeviceTable.svelte` actually
+  honor `mobileViewMode` under `presentation='pwa'` — the component's own
+  top-of-file comment already described the correct behavior; the code was
+  stale relative to its own documentation, not the reverse.
+- **B4** (500-row cap): confirmed via `git diff main` that F023's grouped
+  fetch was unbounded on `main` — the "existing cap" claim in F045 §5.6, its
+  R5 risk row, and the F023 backlog's 2026-09-02 history entry were all
+  factually wrong. Scoped the cap to an optional `maxRows` param, applied
+  only by the standalone-PWA call site (option (a) from Ripley's D-182);
+  desktop/mobile-web stay unbounded, matching `main`. Corrected all three
+  doc locations; left the F023 spec's pre-existing 2026-05-19 entry alone
+  since it predates this branch.
+- **B5(i)** (AppBottomNav): added the missing `role="group"`; replaced a
+  tautological "positioning" test (selected by `.app-nav`, asserted
+  `toHaveClass('app-nav')`) with real containment/sibling/structural
+  assertions — the exact anti-pattern Ripley's own audit had flagged.
+- **B6** (AppMenuPopover): added a new `.containing-block.test.ts` modeled on
+  `PullToRefresh`'s prior art (DOM/style proxies, since JSDOM can't compute
+  the CSS containing-block algorithm) — no inline `transform`, no body
+  scroll-lock, no full-screen backdrop.
+
+**Follow-ups also resolved:** rendered a dead i18n key
+(`devices.groups.pwaDefaultNote`) as a presentation-only implicit-grouping
+note; gave `DevicePwaRow.svelte`'s row body real `<a href>` semantics when no
+`onOpenDevice` handler is supplied (mirroring `DeviceTableCards.svelte`'s
+existing pattern) instead of a button + `window.location.href` fallback;
+gated the `?add=1` URL param the same way `AppBottomNav`'s own Add button is
+role-gated, closing a Viewer bypass; corrected F045 §5.3/§7.3 spec text for
+the D-180 (Settings icon-only exception) and D-181 (theme-block-after-Sign-Out
+order) decisions the code already implemented correctly.
+
+**Validation:** `pnpm run check` (0 errors), `pnpm run lint` (clean), full
+Vitest (**68 files / 560 passed, 1 pre-existing skip, 0 failed**), and
+`pnpm run build` all green from `src/TechInventory.Web`. Confirmed
+`api/generated/types.ts` byte-identical via `git hash-object` before and
+after (CRLF stat artifact only, not manually touched). Did not touch
+`tests/e2e/**` (Vasquez's isolated revision), backend/API/schema, or run
+Playwright/commit/push, per task boundaries.
+
+**Learning:** a rejected-artifact revision under reviewer lockout is exactly
+the situation where re-deriving root cause from primary sources (spec, code,
+`git diff main`) instead of the original author's own summary earns its cost
+— the summary is frequently right about *what* changed but can be subtly
+wrong about *why* it was rejected (read-path vs. write-path in B2 here), and
+trusting it would have produced a second rejected revision.

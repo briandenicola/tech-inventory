@@ -72,3 +72,67 @@ Reference repos (`docs/references.md`): **R1 drinks-and-desserts** (MediatR hand
 - Session log at `.squad/log/2026-06-14T00-17-12Z-engineering-audit.md`
 
 **Status:** Audit complete. Findings logged for team review and prioritization.
+
+---
+
+### 2026-09-02: Design Review — PWA Device Navigation (`feature/pwa-device-navigation`)
+
+**Deliverables:** `specs/_backlog/F045-pwa-shell-and-device-list.md` (implementation boundary for Vasquez, test boundary for Apone), `.squad/decisions/inbox/ripley-pwa-device-navigation.md` (D-175..D-179), F027 scope-narrowing note, F023 extension note, `docs/backlog.md` row.
+
+**Learnings:**
+
+- **`isStandalonePwa()` already exists** in `src/TechInventory.Web/src/lib/auth/index.ts` (~line 62), ORing `matchMedia('(display-mode: standalone)')` with `navigator.standalone` for iOS. It landed with D-170/D-171 for the iOS silent-SSO work. Any future "is this the installed app?" question reuses it — the auth module owns the primitive; UI wraps it reactively. Do not re-derive it and do not "simplify" the OR: iOS Safari home-screen apps do not reliably report `display-mode: standalone`.
+- **Presentation mode ≠ viewport.** The project has repeatedly conflated "mobile" with "PWA" (`md:hidden` everywhere). Codified three modes — `pwa` / `mobile` / `desktop` — where installed-app chrome keys off standalone detection only. A narrow desktop window must never grow a bottom tab bar. This is the load-bearing rule of F045.
+- **The implicit-default pattern is now project canon.** F026's `statusIsImplicitActive` (devices page ~line 142) established: apply a default, do *not* write it to the URL, do *not* count it in `activeFilterCount`, provide an explicit sentinel to defeat it. F045's PWA category grouping reuses it verbatim. URL-writing on mount would fight `setDevicesViewState` session restore and poison shared links.
+- **F023 grouping has a hidden cost:** it switches the page to a 500-row fetch and disables infinite scroll. Making grouping a *default* moves the heaviest fetch path onto the weakest device on the network at a stated 500–1000 device scale. Held the 500 cap and required a truncation note rather than raising it — raising it is an API conversation, not a UI one.
+- **Fixed-element collision is the recurring failure mode in this codebase.** `AddDeviceFab`, `BackToTopFab`, `BulkActionBar` (`fixed inset-x-0 bottom-0 z-30`), `ToastContainer`, and `PullToRefresh` all compete for the bottom of the screen. Adding a persistent bottom nav forces an explicit audit of all five. There is already a dedicated `PullToRefresh.containing-block.test.ts` guarding transform-containing-block clipping — required an equivalent test for the new menu popover.
+- **`DeviceTable.svelte` is at 596 lines against a 200-line guideline** and already carries three renderers (desktop table, mobile 2-up cards, mobile scrollable table). A fourth renderer inline is not acceptable; made the split into a thin selector + per-mode renderers a precondition of the feature rather than a follow-up. Deferred refactors on this file have not happened on their own since the 2026-06-14 audit flagged it.
+- **`visibleColumns` (Table Columns pref) is desktop-only by accident, not by contract** — the mobile card renderer simply never reads it. Brian's requirement makes it an invariant, so it now needs a unit assertion plus a user-visible label in Settings. Accidental invariants are the ones that break silently.
+- **Mobile device cards ship no actions menu today.** `DeviceActionsMenu.svelte` (F042) is used only inside `DeviceDetailModal.svelte`, so every mobile action costs an extra tap through the detail modal. F045 reuses that component in the row rather than forking it.
+- **Environment note:** UNC network paths (`\\nas...`) are blocked for file reads. One of three supplied reference images was unreadable; flagged in the decision record rather than guessing at its content.
+- **Scope discipline call:** recorded as a new backlog entry (F045) rather than amending F027. F027's nav section *describes the drawer being replaced* — editing it in place would erase the record of why the drawer existed. Narrow the old entry, point it at the new one, keep both histories intact. Same reasoning as the 2026-05-20 "new spec 003, not an amendment to 002" call.
+
+---
+
+### 2026-09-02: QC Audit — F045 PWA Shell (`feature/pwa-device-navigation`, uncommitted) — REJECTED
+
+**Verdict:** rejected; 4 blockers. Revision owner: Hicks (Vasquez locked out as
+original author of the rejected frontend production artifacts).
+
+**Learnings:**
+
+- **A z-index token is not a drop-in for a Tailwind z-class.** D-E's recommended
+  `style="z-index: {open ? var(--z-popover) : var(--z-sticky)}"` on `<header>`
+  silently demoted the closed-state header from `z-30` to `20`. Seven pages
+  (`devices` + six `admin/*`) carry an opaque `sticky top-[73px] z-20` sub-header
+  that is *later in DOM order*, so an equal z-index hands them the tie and the
+  desktop user-menu dropdown — the sole desktop nav entry — now paints beneath
+  them. When a review prescribes a stacking fix, prescribe the *closed-state*
+  value too, and enumerate the equal-z siblings before approving it.
+- **Verify the premise before writing it into a decision.** D-177 asserted F023
+  "already" had a 500-row grouped fetch cap. It did not — `fetchAllDevicesForGrouping`
+  was unbounded. That error propagated into the F023 amendment text and produced
+  a genuine desktop truncation change that no non-goal authorized. Read the
+  function, don't recall it.
+- **Two-sided implicit defaults need the write path spec'd, not just the read path.**
+  The `effectiveGroupBy` read path is faithful to F026, but `updateFilters` writes
+  the `groupBy=none` sentinel on *any* falsy `groupBy` in app mode — so the first
+  search keystroke defeats the implicit grouping and pollutes the URL. F045 §5.6
+  described the read path in detail and the write path in one clause. Spec the
+  sentinel's *trigger condition* (explicit user selection only), not just its value.
+- **Parallel test/implementation authoring needs a contract-freeze checkpoint.**
+  Apone authored `15-pwa-shell.spec.ts` against F045 §5.2's `role="group"` pill and
+  §7.3's "every nav item has a visible label"; Drake's D-D then made the Settings
+  bubble deliberately icon-only and Vasquez omitted `role="group"`. Neither side is
+  wrong in isolation; the branch is simply internally inconsistent and no one could
+  run the E2E suite to find out. Require a selector-contract reconciliation pass
+  before the two workstreams are declared done.
+- **"Renders X inside Y" test names must actually assert containment.**
+  `AppBottomNav.test.ts` claims pill/bubble structure but only checks that four
+  elements exist, and its positioning test selects by `.app-nav` then asserts
+  `toHaveClass('app-nav')`. Tautological assertions pass forever and guard nothing.
+- **`git status` M with an empty diff is a CRLF stat artifact, not drift.**
+  `src/lib/api/generated/types.ts` is rewritten byte-identically by
+  `pnpm run check`'s `generate:client` step; with `core.autocrlf=true` and an
+  LF-stored blob, git can never settle the stat cache. Confirmed by comparing
+  `git hash-object` against `HEAD:` — identical. Check hashes, not status letters.

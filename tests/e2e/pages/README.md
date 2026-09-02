@@ -10,7 +10,9 @@ pages/
 ├── DeviceListPage.ts     # Device list/browse page selectors & actions
 ├── DeviceFormPage.ts     # Create/edit device form
 ├── SignInPage.ts         # Sign-in flow (Entra ID)
-└── AdminPage.ts          # Reference data admin pages
+├── AdminPage.ts          # Reference data admin pages
+└── AppShellPage.ts       # F045 installed-PWA app shell (bottom nav, menu
+                           # popover, device rows) + display-mode emulation
 ```
 
 ## Rules

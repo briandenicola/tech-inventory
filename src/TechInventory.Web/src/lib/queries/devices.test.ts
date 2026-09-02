@@ -3,6 +3,7 @@ import { devices as devicesApi } from '$lib/api/client';
 import {
 	DEFAULT_DEVICE_PAGE_SIZE,
 	MAX_DEVICE_PAGE_SIZE,
+	MAX_GROUPED_DEVICES,
 	clampDevicePage,
 	clampDevicePageSize,
 	fetchDevicesPage,
@@ -290,6 +291,47 @@ describe('devices query helpers', () => {
 				BrandId: 'brand-123',
 				CategoryId: 'cat-456',
 				IncludeAllStatuses: true
+			});
+		});
+
+		describe('maxRows scoping (F045 B4/D-182)', () => {
+			const page = (length: number, pageNum: number, totalCount: number) => ({
+				items: Array.from({ length }, () => ({ ...sampleResponse.items[0] })),
+				totalCount,
+				page: pageNum,
+				pageSize: MAX_DEVICE_PAGE_SIZE
+			});
+
+			it('is unbounded when maxRows is omitted, even past 500 — desktop/mobile-web must keep pre-F045 parity', async () => {
+				mockedList
+					.mockResolvedValueOnce(page(200, 1, 650))
+					.mockResolvedValueOnce(page(200, 2, 650))
+					.mockResolvedValueOnce(page(200, 3, 650))
+					.mockResolvedValueOnce(page(50, 4, 650));
+
+				const result = await fetchAllDevicesForGrouping({ page: 1, pageSize: 25, status: ['Active'] });
+
+				expect(mockedList).toHaveBeenCalledTimes(4);
+				expect(result.totalCount).toBe(650);
+				expect(result.items?.length).toBe(650);
+			});
+
+			it('caps at MAX_GROUPED_DEVICES when the caller passes maxRows — the standalone-PWA-only scope', async () => {
+				mockedList
+					.mockResolvedValueOnce(page(200, 1, 650))
+					.mockResolvedValueOnce(page(200, 2, 650))
+					.mockResolvedValueOnce(page(200, 3, 650));
+
+				const result = await fetchAllDevicesForGrouping(
+					{ page: 1, pageSize: 25, status: ['Active'] },
+					MAX_GROUPED_DEVICES
+				);
+
+				// rowsNeeded = min(650, 500) = 500 => ceil(500/200) = 3 pages,
+				// never the 4th page that the unbounded case above needed.
+				expect(mockedList).toHaveBeenCalledTimes(3);
+				expect(result.totalCount).toBe(650); // real match count, uncapped
+				expect(result.items?.length).toBe(500); // rendered items, capped
 			});
 		});
 	});

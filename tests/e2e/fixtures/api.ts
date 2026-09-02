@@ -61,6 +61,7 @@ export async function seedCategory(
 export interface SeededDevice extends SeededEntity {
   brandId: string;
   categoryId: string;
+  model?: string;
 }
 
 /**
@@ -78,6 +79,7 @@ export async function seedDevice(
     categoryId: string;
     serialNumber: string;
     notes: string;
+    model: string;
   }> = {}
 ): Promise<SeededDevice> {
   const brandId = overrides.brandId ?? (await seedBrand(request)).id;
@@ -88,6 +90,7 @@ export async function seedDevice(
     categoryId,
     serialNumber: overrides.serialNumber,
     notes: overrides.notes,
+    model: overrides.model,
     status: 'Active'
   };
   const res = await request.post('/api/v1/devices', { data: body });
@@ -95,5 +98,11 @@ export async function seedDevice(
     throw new Error(`seedDevice failed (${res.status()}): ${await res.text()}`);
   }
   const json = await res.json();
-  return { id: json.id, name: json.name ?? body.name, brandId, categoryId };
+  return {
+    id: json.id,
+    name: json.name ?? body.name,
+    brandId,
+    categoryId,
+    model: json.model ?? overrides.model
+  };
 }

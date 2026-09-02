@@ -101,8 +101,12 @@ export interface DeviceFilters {
 	sortDir?: DeviceSortDirection;
 	page?: number;
 	pageSize?: number;
-	/** F023: client-side grouping dimension. Undefined => flat list. */
-	groupBy?: 'category' | 'owner' | 'year';
+	/** F023: client-side grouping dimension. Undefined => flat list. 'none' is
+	 *  an explicit user choice to defeat the PWA's implicit category default
+	 *  (F045 B2) — distinct from undefined/"untouched". Never sent to the API
+	 *  (grouping is 100% client-side); `effectiveGroupBy` collapses it back
+	 *  to `undefined` before use. */
+	groupBy?: 'category' | 'owner' | 'year' | 'none';
 }
 
 /**
@@ -238,17 +242,42 @@ export async function fetchDevicesPage(
 }
 
 /**
+ * Grouped mode's row ceiling for standalone-PWA callers only (F045 R5,
+ * scoped by D-182 following QC audit rejection). Grouping needs the full
+ * matching result set to correctly partition devices, and the installed
+ * PWA's row list renders every fetched device inline (no virtualization), so
+ * an unbounded household (or a shared/no-filter URL) opened in the installed
+ * PWA could force a many-hundred-row fetch and render on the weakest device
+ * on the network.
+ *
+ * Desktop and mobile-web grouped fetches remain unbounded — matching their
+ * pre-F045 behavior, which this cap must never change. It is applied only
+ * when a caller explicitly passes it as `fetchAllDevicesForGrouping`'s
+ * `maxRows` argument (see `devices/+page.svelte`'s PWA-gated call site). Do
+ * not raise it, and do not apply it to non-PWA callers, without a matching
+ * decision record.
+ */
+export const MAX_GROUPED_DEVICES = 500;
+
+/**
  * Fetch all pages of devices for the given filters (grouped mode).
- * 
+ *
  * Grouped mode needs the full matching result set to correctly partition
  * devices into groups. For a household scale of 500-1000 devices, this
- * fetches multiple pages (200 per page max) and merges them.
- * 
+ * fetches multiple pages (200 per page max) and merges them, stopping early
+ * only when `maxRows` is supplied and reached.
+ *
  * @param filters Base filters for the query
- * @returns Combined paginated response with all items
+ * @param maxRows Optional row ceiling. Omit for desktop/mobile-web callers —
+ *   they must stay unbounded (pre-F045 parity, F045 D-182). Pass
+ *   `MAX_GROUPED_DEVICES` only from the standalone-PWA caller.
+ * @returns Combined paginated response with at most `maxRows` items (all
+ *   matching items when `maxRows` is omitted); `totalCount` is always the
+ *   real (uncapped) match count.
  */
 export async function fetchAllDevicesForGrouping(
-	filters: DeviceFilters
+	filters: DeviceFilters,
+	maxRows?: number
 ): Promise<PaginatedResponse<DeviceResponse>> {
 	const pageSize = MAX_DEVICE_PAGE_SIZE; // 200
 
@@ -257,9 +286,11 @@ export async function fetchAllDevicesForGrouping(
 	const totalCount = firstPage.totalCount;
 	const allItems = [...(firstPage.items ?? [])];
 
-	// If there are more pages, fetch them in parallel
-	if (totalCount > pageSize) {
-		const totalPages = Math.ceil(totalCount / pageSize);
+	// If there are more pages, fetch only as many as needed to reach the cap
+	// (or, when uncapped, the real total — desktop/mobile-web parity).
+	const rowsNeeded = maxRows === undefined ? totalCount : Math.min(totalCount, maxRows);
+	if (rowsNeeded > pageSize) {
+		const totalPages = Math.ceil(rowsNeeded / pageSize);
 		const remainingPagePromises = [];
 
 		for (let page = 2; page <= totalPages; page++) {
@@ -272,11 +303,13 @@ export async function fetchAllDevicesForGrouping(
 		}
 	}
 
+	const cappedItems = maxRows === undefined ? allItems : allItems.slice(0, maxRows);
+
 	return {
-		items: allItems,
+		items: cappedItems,
 		totalCount,
 		page: 1,
-		pageSize: allItems.length
+		pageSize: cappedItems.length
 	};
 }
 

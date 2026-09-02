@@ -20,6 +20,61 @@
 
 ## Learnings
 
+### 2026-09-02 — F045 — Installed-PWA App Shell: Visual Rules & Contrast Budget
+
+**What I shipped:** `.squad/decisions/inbox/drake-pwa-visual-rules.md` — the
+complete visual spec for the bottom nav pill, the Settings bubble, the anchored
+menu popover, and the PWA device row. **Zero production edits.** No new tokens,
+no new icon files, no new dependency.
+
+**Key rulings (D-A … D-H):**
+- **No global tokens for a single-component surface.** The nav's translucent
+  blurred surface lives as component-scoped custom properties on `.app-nav`,
+  derived from `--app-color-*`. `tokens.css` stays untouched.
+- **Alpha is a contrast decision.** Because the pill is translucent, its surface
+  luminance depends on scrolled content. I computed every label pair at the
+  *worst case* (pill over pure black in light theme / pure white in dark). That
+  forced light `0.92` / dark `0.88`. At `0.82` — the intuitive "frosted" value —
+  the light active label lands at 3.8:1 and dark inactive at 4.4:1. Both fail.
+  **Translucent chrome must be contrast-budgeted against worst-case underlay,
+  never against the page background.**
+- **Rejected solid-fill active state.** White on `primary-600` passes in light
+  (5.6:1) but the dark equivalent `#0a84ff` is 3.7:1 and fails at 10px. A tinted
+  chip (12% light / 22% dark) passes in both with one recipe. Same-recipe-both-
+  themes beat per-theme special cases.
+- **The global `letter-spacing: -0.011em` on `body` is hostile at 10px.** It's
+  right at 17px display sizes and closes the counters on tiny nav labels. Local
+  `letter-spacing: 0.005em` neutralises it. Worth remembering for any future
+  micro-type in this project.
+- **`outline`, not `ring-offset`, on translucent surfaces.** Tailwind's
+  `ring-offset-2` paints a solid offset colour and punches an opaque halo
+  through frosted glass.
+- **Settings bubble is icon-only** — chord geometry: at the y-offset where a
+  label would sit in a 59.5px circle the usable chord is ~44px, and "Settings"
+  at 10px/500 measures ~42px. Any longer localisation overflows the curve.
+  Documented the math and an escape hatch rather than just asserting taste.
+- **Status pill goes on line 2, not line 1** (Ripley left this to me). Keeps the
+  device title from ever competing with the kebab; verified with a 360px pixel
+  budget in selection mode (~166px of truncatable brand·model remains).
+- **Inset grouped list, not per-row cards.** 500 shadowed rectangles is noise;
+  inset hairlines starting at the text column is the Apple-native pattern and
+  matches the reference.
+
+**Two amendments to F045 I had to make (both contrast):**
+- F045 §5.4 specified `text-neutral-500` for the device row's second line. Light
+  `#86868b` on white is **3.62:1** — fails AA for 14px. Corrected to
+  `text-neutral-600` (`#6e6e73`, 5.06:1).
+- The ADMIN section heading in the existing dropdown recipe has the same bug.
+  Corrected in the new component; flagged the pre-existing instances as a
+  separate backlog item rather than widening the PR.
+
+**Future Drake:** `text-neutral-500` on white is an app-wide AA failure —
+desktop user dropdown, mobile cards, several admin lists. It needs a dedicated
+contrast-sweep entry. Also: the header is `sticky z-30` and therefore its own
+stacking context, so `--z-popover` inside it does **not** beat `BulkActionBar`
+at `z-30`. Raising the header to `--z-popover` while the menu is open is the
+one-line fix; portalling is the fallback (D-167 precedent).
+
 ### 2026-05-20 — P4 Round 1 (F029) — JSON Diff Semantic Color Tokens
 
 **What I shipped:**

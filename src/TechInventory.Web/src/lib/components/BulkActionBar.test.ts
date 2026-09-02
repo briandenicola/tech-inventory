@@ -6,12 +6,26 @@
  * an onDelete handler is supplied (Admin-only gate is the caller's responsibility).
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import BulkActionBar from './BulkActionBar.svelte';
 
+// F045 §5.7: the bar's bottom offset must clear AppBottomNav's pill in
+// standalone-PWA mode instead of stacking flush under it. `displayMode` is a
+// module-level singleton, so it's mocked here rather than injected as a prop.
+let mockIsPwa = false;
+vi.mock('$lib/stores/displayMode.svelte', () => ({
+	get displayMode() {
+		return { isPwa: mockIsPwa };
+	}
+}));
+
 describe('BulkActionBar', () => {
+	afterEach(() => {
+		mockIsPwa = false;
+	});
+
 	const baseProps = {
 		count: 0,
 		onClear: vi.fn(),
@@ -56,5 +70,20 @@ describe('BulkActionBar', () => {
 
 		await user.click(screen.getByRole('button', { name: /delete selected/i }));
 		expect(onDelete).toHaveBeenCalledOnce();
+	});
+
+	it('sits flush with the viewport bottom outside standalone-PWA mode', () => {
+		mockIsPwa = false;
+		const { container } = render(BulkActionBar, { props: { ...baseProps, count: 1 } });
+		expect(container.querySelector('[role="region"]')?.getAttribute('style')).toContain('bottom: 0px');
+	});
+
+	it('raises above AppBottomNav in standalone-PWA mode', () => {
+		mockIsPwa = true;
+		const { container } = render(BulkActionBar, { props: { ...baseProps, count: 1 } });
+		// jsdom's CSSOM reformats/reorders multi-term calc()+env() values on
+		// assignment, so assert on the distinguishing literal rather than the
+		// exact serialized string.
+		expect(container.querySelector('[role="region"]')?.getAttribute('style')).toContain('5.5rem');
 	});
 });

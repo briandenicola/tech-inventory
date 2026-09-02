@@ -47,6 +47,7 @@ Fixes and improvements for the progressive web app (phone-first) experience.
 | F042 | Hamburger menu for device actions | Device edit / claim / release / history / delete actions now live behind a shared kebab overflow menu with a mobile action sheet and desktop dropdown. | P2 | Done |
 | F043 | Device details table layout | Device details now render through a horizontal key-value table component, replacing the old stacked label/value layout for better scanability. | P2 | Done |
 | F044 | Admin column order settings | Backend API persists per-household device list/detail display order at `/api/v1/settings/display`. Frontend admin screen not pursued. | P3 | Closed — not required |
+| F045 | Installed-PWA app shell & device list reshape | Persistent bottom navigation (Home/Add/Reports in a rounded pill + Settings bubble), hamburger becomes a compact anchored popover instead of a full-screen drawer, full-width search under the title bar, two-line device rows with the existing `...` actions menu, and category grouping by default — all gated on `isStandalonePwa()` so desktop and mobile-web are unchanged. Spec: `specs/_backlog/F045-pwa-shell-and-device-list.md`. | P1 | Ready — design reviewed 2026-09-02 |
 
 ---
 

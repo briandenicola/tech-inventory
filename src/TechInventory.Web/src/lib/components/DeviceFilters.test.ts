@@ -85,4 +85,67 @@ describe('DeviceFilters', () => {
 
 		expect(await axe(container)).toHaveNoViolations();
 	});
+
+	describe('groupBy select (F045 B2)', () => {
+		it('selects "None" by default when no groupBy is set and no implicit default is active', () => {
+			render(DeviceFilters, {
+				props: { filters: defaultFilters, onFiltersChange: vi.fn() }
+			});
+
+			expect(screen.getByLabelText('Group by')).toHaveValue('none');
+		});
+
+		it('sends the explicit "none" sentinel — not undefined — when the user picks None', async () => {
+			const user = userEvent.setup();
+			const onFiltersChange = vi.fn();
+			render(DeviceFilters, {
+				props: { filters: { ...defaultFilters, groupBy: 'category' }, onFiltersChange }
+			});
+
+			await user.selectOptions(screen.getByLabelText('Group by'), 'None');
+
+			expect(onFiltersChange).toHaveBeenCalledWith(
+				expect.objectContaining({ groupBy: 'none', page: 1 })
+			);
+		});
+
+		it('sends the explicit dimension when the user picks a grouping option', async () => {
+			const user = userEvent.setup();
+			const onFiltersChange = vi.fn();
+			render(DeviceFilters, {
+				props: { filters: defaultFilters, onFiltersChange }
+			});
+
+			await user.selectOptions(screen.getByLabelText('Group by'), 'Owner');
+
+			expect(onFiltersChange).toHaveBeenCalledWith(
+				expect.objectContaining({ groupBy: 'owner', page: 1 })
+			);
+		});
+
+		it('shows Category selected and renders the implicit-default note when implicitGroupingActive is true (dead i18n key follow-up)', () => {
+			render(DeviceFilters, {
+				props: {
+					filters: defaultFilters,
+					onFiltersChange: vi.fn(),
+					implicitGroupingActive: true
+				}
+			});
+
+			expect(screen.getByLabelText('Group by')).toHaveValue('category');
+			expect(screen.getByText('Grouped by category')).toBeInTheDocument();
+		});
+
+		it('does not render the implicit-default note when a groupBy value is already explicit', () => {
+			render(DeviceFilters, {
+				props: {
+					filters: { ...defaultFilters, groupBy: 'category' },
+					onFiltersChange: vi.fn(),
+					implicitGroupingActive: false
+				}
+			});
+
+			expect(screen.queryByText('Grouped by category')).not.toBeInTheDocument();
+		});
+	});
 });

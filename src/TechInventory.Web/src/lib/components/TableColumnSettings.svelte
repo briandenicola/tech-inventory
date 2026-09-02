@@ -114,6 +114,9 @@
 			<p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
 				{t('settings.tableColumns.subheading')}
 			</p>
+			<p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+				{t('settings.tableColumns.desktopOnly')}
+			</p>
 		</div>
 		<button
 			type="button"

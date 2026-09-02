@@ -389,6 +389,36 @@ Phase 1 complete: 48/48 tasks shipped. Merged 7 decision inbox files (Hudson's 2
 - Verified the rule fired with temporary lint fixtures, then removed them and reran `pnpm run lint` successfully
 - `pnpm run check` still fails on the pre-existing unused `@ts-expect-error` in `src/TechInventory.Web/vite.config.ts`
 
+## 2026-09-02 — F045 PWA Device Navigation & App Shell — Design review → QC audit → independent revision → approval consolidation
+
+**Feature:** `feature/pwa-device-navigation`, spec at `specs/_backlog/F045-pwa-shell-and-device-list.md`
+
+**Team deliverables:**
+- **Ripley** (Architect): design review (D-175 through D-179) + QC audit (REJECTED: B1–B6) + amendment decisions (D-180, D-181, D-182)
+- **Vasquez** (Frontend): standalone-PWA shell/device list implementation + parallel E2E test revision; fixed QC blockers (B1–B4, B7), asserted architectural invariants (D-H1 through D-H4)
+- **Apone** (QA): E2E journey `15-pwa-shell.spec.ts` with `AppShellPage.ts` page object + standalone-PWA emulation fixture; 126 test cases collected, all red pending implementation (Docker/Playwright unavailable for live execution locally); updated selector assumptions for Vasquez contract (D-Apone-1 through D-Apone-5)
+- **Drake** (Designer/Visual): bottom-nav pill + anchored-menu popover glyphs (Home/Add/Reports/Settings) + contrast-budget visual spec (D-A through D-B, highest risk: ~10px labels on translucent blurred pill in both themes)
+- **Hicks** (Backend, reassigned for QC revision): independent code audit + fix B1–B6 (z-index, sentinel logic, view control, 500-row cap scope, aria roles, containing-block safety) + specs corrected (D-H1 through D-H7)
+
+**Validation status:**
+- **Backend/frontend linting:** ✅ green (`dotnet format --verify`, `pnpm run lint`)
+- **Frontend TypeScript check:** ✅ green (`pnpm run check`)
+- **Backend unit/integration tests:** ✅ 278 unit + 216 integration (5 skipped)
+- **Frontend component/unit tests:** ✅ 560 Vitest tests (appended D-H7 follow-up coverage)
+- **Build:** ✅ green (`pnpm run build`)
+- **Vulnerability scan:** ✅ green
+- **E2E Playwright (Docker-backed):** ⏸ Collected 126 test cases (journey + a11y smoke); execution deferred to CI (`localhost:3000` unreachable locally)
+
+**Branch status:** Not yet committed/pushed. Awaiting coordinator PR + manual CI E2E validation.
+
+**Deferred GitHub issues (PDF triage):** #127–#139 (no code work started, tracked for next workstream)
+
+**Decisions merged into `.squad/decisions.md`:** D-175 (presentation-mode gating), D-176 (F045 backlog record), D-177 (implicit PWA grouping + F023 context), D-178 (visibleColumns assertion), D-179 (menu option set reuse), D-180 (Settings icon-only narrowing), D-181 (menu popover theme block order), D-182 (500-row cap scope to PWA), D-183 (scope split), D-184 (Vasquez technical choices), D-185 (Apone E2E contract), D-186 (Drake visual spec), D-187 (Hicks QC revision fixes)
+
+**Inbox cleanup:** Removed 6 F045-related decision inbox files (ripley-pwa-device-navigation, vasquez-pwa-device-shell, apone-pwa-shell-tests, drake-pwa-visual-rules, ripley-f045-qc-audit-amendments, hicks-f045-revision). Unrelated inbox entries (copilot-directive-2026-06-13-device-list-ux, vasquez-device-viewstate) left in place.
+
+**Next:** Coordinator inspects consolidated decisions + branches. PR merge + GitHub `ci.yml` E2E run required before feature is live.
+
 ## YYYY-MM-DD — Bootstrap
 - Created project structure
 - Populated constitution, PRD, backlog README

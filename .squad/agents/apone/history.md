@@ -472,3 +472,67 @@ expect(nameCell.textContent).toContain(devices[0].name);
 
 **Next Steps:** Add E2E regression test for create→filter→grouped flow, configure Lighthouse CI, audit E2E retry logs for hidden failures.
 
+## 2026-09-02: F045 PWA App Shell — Playwright Coverage Authored Ahead of Implementation
+
+**Branch:** `feature/pwa-device-navigation`. **Design authority:** Ripley
+(`.squad/decisions/inbox/ripley-pwa-device-navigation.md`, D-175..D-179) +
+Drake (`.squad/decisions/inbox/drake-pwa-visual-rules.md`) + F045 spec
+(`specs/_backlog/F045-pwa-shell-and-device-list.md`).
+
+**Delivered:** `tests/e2e/journeys/15-pwa-shell.spec.ts` (21 scenarios × 6
+browser/viewport projects = 126 test cases) + `tests/e2e/pages/AppShellPage.ts`
+(new page object: `emulateStandalonePwa()` matchMedia override per F045 R8,
+plus locators for the bottom nav pill/Settings bubble/menu popover/PWA rows)
++ a `pages/README.md` structure-list update + an additive `model` field on
+`fixtures/api.ts`'s `seedDevice()` (needed for the two-line row's `brand ·
+model` assertion; purely additive, no existing call sites touched).
+
+**Key fact: Vasquez had not started implementation yet at authoring time.**
+`displayMode.svelte.ts`, `AppBottomNav`, `AppMenuPopover`, `DevicePwaRow`, and
+the `DeviceTable` renderer split did not exist on the branch. This spec is
+therefore written **against the F045 contract, not the DOM** — it is
+expected to be entirely red until Vasquez's PR lands. This is the intended
+parallel-workstream shape per the design doc's boundary split, not a mistake.
+
+**Selector-assumption pattern used (documented in `AppShellPage.ts`'s class
+doc so it travels with the code, not just this log):**
+- Bottom `<nav>` located by "contains a link named /home/i", not by the
+  `navigation.primary` aria-label text (copy not fixed yet at authoring time).
+- Nav items matched by loose case-insensitive substrings (`/home/i`,
+  `/^add$/i`, `/report/i`, `/settings/i`) rather than exact copy, so the spec
+  survives minor i18n wording changes.
+- Popover targeted via `getByRole('menu')`, safe only because the existing
+  desktop user-menu dropdown (also `role="menu"`) is `hidden md:block` and
+  therefore absent from the a11y tree at the narrow viewports these tests use.
+- **New requirement flagged to Vasquez, not yet in the F045 spec text:**
+  `DevicePwaRow.svelte`'s root needs `data-testid="device-pwa-row"`, matching
+  the existing `device-group-header` / `device-group-section-mobile`
+  convention already in `DeviceTable.svelte`. Without it the two-line-row and
+  no-primary-control-obscured tests have no stable anchor.
+
+**Fixture-scope finding:** only a seeded local Admin account exists for
+Playwright E2E (`fixtures/auth.ts`); there is no Member/Viewer sign-in path
+(Journey 11 — role enforcement — is entirely `test.describe.skip`d for the
+same reason). F045 §6.1's three-role (Admin/Member/Viewer) popover
+option-set/order regression is therefore correctly scoped to Vitest
+component snapshots, not Playwright; my E2E coverage only asserts the
+Admin-role option order end-to-end and says so in the file's own header
+comment, so a future reader doesn't mistake the gap for an oversight.
+
+**Verification performed without touching environment/dependencies:**
+`npx playwright test journeys/15-pwa-shell.spec.ts --list` — collects
+cleanly, 126 cases, confirming the spec parses/transpiles and every locator
+call is syntactically valid. Confirmed the `seedDevice()` fixture edit is
+additive by re-listing `03-create-device.spec.ts` / `06-browse-filter.spec.ts`
+/ `13-a11y-smoke.spec.ts` afterward — unchanged counts. Could not run tests
+live: no Docker/`task up` stack available in this environment
+(`localhost:3000` unreachable), so red/green execution against a real
+backend is deferred to whoever runs `task test` next. Noted, but did not
+touch: a pre-existing unrelated collection error (`test.todo is not a
+function`) in `11-role-enforcement.spec.ts` / `12-offline-app-shell.spec.ts`
+breaks a *whole-suite* `--list`; per-file listing is unaffected and this predates
+my change.
+
+**Boundary honored:** touched only `tests/e2e/**`; zero edits to
+`src/TechInventory.Web/**`. No commit/push per instructions.
+

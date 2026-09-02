@@ -106,3 +106,14 @@ A single coordinated nav + responsive-tables pass.
 ## History
 - 2026-05-19: created from Brian's PWA field-test feedback (items 4, 9, 10 in
   session plan).
+- 2026-09-02: **scope narrowed** (Ripley, design review D-176). The responsive
+  management-pages half is delivered via
+  `src/lib/components/admin/ResponsiveAdminList.svelte`. The mobile navigation
+  chrome half — the full-screen hamburger drawer described above — is
+  **superseded by F045** (`specs/_backlog/F045-pwa-shell-and-device-list.md`),
+  which replaces the drawer with a compact anchored popover and adds a
+  persistent bottom navigation for installed-PWA mode. The drawer description
+  above is retained as the record of the original design, not as pending work.
+  The open question "persistent desktop rail vs. hamburger-on-all-sizes" was
+  closed in favor of hamburger-on-all-sizes (see docs/backlog.md, "Persistent
+  desktop rail — not pursued").

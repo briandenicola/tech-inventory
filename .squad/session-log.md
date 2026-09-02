@@ -1,5 +1,126 @@
 # Session Log — Tech Inventory Squad
 
+## F045 PWA Device Navigation — Design → QC Audit → Independent Revision → Approval & Consolidation (2026-09-02)
+
+**Headline:** F045 (standalone-PWA shell: bottom nav pill, anchored menu, grouped device list) approved after design review → QC rejection (B1–B6) → independent revision (Hicks) → full decision consolidation (Scribe).
+
+### Session Summary
+
+| Metric | Value |
+|--------|-------|
+| **Design Phase** | Ripley (D-175–D-179) |
+| **QC Audit Verdict** | ❌ REJECTED (B1–B6) |
+| **Implementation** | Vasquez (parallel with Apone E2E) |
+| **E2E Coverage** | Apone: 126 test cases collected (`15-pwa-shell.spec.ts`) |
+| **Visual Spec** | Drake (no new tokens, component-scoped contrast rules) |
+| **Independent Revision** | Hicks: all B1–B6 fixed + architectural assertions |
+| **Final Status** | ✅ APPROVED (ready for commit/push + CI E2E) |
+| **Decisions Merged** | D-175 through D-187 (13 new decisions) |
+| **Branch** | `feature/pwa-device-navigation` (uncommitted) |
+
+### Key Deliverables
+
+**Ripley's Design Review (D-175–D-179):**
+- Presentation modes (`pwa`/`mobile`/`desktop`) gated on `isStandalonePwa()`, never viewport breakpoints
+- F045 recorded as backlog entry; F027 narrowed; F023 annotated
+- Implicit PWA category grouping (no URL pollution) + 500-row cap constraint
+- `DeviceTable` split required (desktop table / mobile cards / PWA rows)
+- Menu popover reuses desktop structure; option set preserved exactly
+
+**QC Audit Blockers (Ripley REJECTED, then Hicks fixed):**
+
+| Blocker | Ripley Finding | Hicks Fix | Test |
+|---------|---|---|---|
+| **B1** | Header z-index tie with sticky sub-headers | Closed → `--z-fixed` (30), extracted helper | `headerStacking.test.ts` |
+| **B2** | Sentinel `groupBy=none` on every filter change in PWA | Type widened to literal `'none'`, URL builder extracted | `deviceFilterUrl.test.ts` (8 cases) |
+| **B3** | View control hidden in app mode | Restored with conditional class, `DeviceTable` honors mode | `DeviceTable.test.ts` |
+| **B4** | 500-row cap truncates desktop | Scoped to PWA caller via optional `maxRows` | `devices.test.ts` (650-row case) |
+| **B5** | `role="group"` missing, tautological test | Added `role`, replaced with real structural tests | `AppBottomNav.test.ts` |
+| **B6** | Popover containing-block risk | New `AppMenuPopover.containing-block.test.ts` | 3 assertions |
+
+**Vasquez's Implementation (D-183/D-184):**
+- `displayMode.svelte.ts` (reactive `isStandalonePwa()` wrapper)
+- `AppBottomNav` (3.5rem pill, 3 equal-width items, Settings bubble)
+- `AppMenuPopover` (anchored, no scroll-lock/backdrop)
+- `DevicePwaRow` (two-line grouped rows)
+- `DeviceTable` split (thin selector, `DeviceTableDesktop`/`Cards`/`PwaList`)
+- Implicit grouping via `effectiveGroupBy` (separate from URL-written `urlFilters.groupBy`)
+- Sentinel write-path fixed; view control restored
+
+**Apone's E2E Contract (D-185):**
+- `15-pwa-shell.spec.ts`: 21 scenarios × 6 projects = 126 test cases (all collected, execution deferred to CI)
+- `AppShellPage.ts`: `emulateStandalonePwa()` via `page.addInitScript`, selector assumptions documented
+- `seedDevice()` fixture: optional `model` override for row-contract verification
+- Role coverage: Admin-only Playwright (Member/Viewer → component snapshot Vitest)
+
+**Drake's Visual Spec (D-186):**
+- No new global tokens; component-scoped custom properties
+- Light theme: `rgb(255 255 255 / 0.92)` surface, `#515154` inactive, `#005bb5` active
+- Dark theme: `rgb(29 29 31 / 0.88)` surface, `#d2d2d7` inactive, `#a3cdff` active
+- Pill: `min-height: 3.5rem` × 3 items (flex equal thirds), label 10.6px with `letter-spacing: 0.005em` (critical: neutralizes global tightening)
+- Highest risk: 10px labels on translucent blurred pill (both themes)
+
+**Spec Amendments (D-180–D-182):**
+- Settings bubble icon-only (geometry constraint); pill items remain labeled
+- Theme block moved outside `role="menu"` boundary (axe compliance)
+- 500-row cap scoped to PWA only (desktop unbounded)
+
+### Validation Status
+
+| Check | Backend | Frontend |
+|-------|---------|----------|
+| **Format** | ✅ `dotnet format --verify` | ✅ `pnpm run lint` |
+| **TypeScript** | N/A | ✅ `pnpm run check` |
+| **Build** | ✅ `dotnet build -c Release` | ✅ `pnpm run build` |
+| **Unit Tests** | ✅ 278 passed | ✅ 560 Vitest passed |
+| **Integration** | ✅ 216 passed (5 skipped) | N/A |
+| **Vulnerability** | ✅ scan clean | ✅ no audit issues |
+| **E2E Playwright** | N/A | ⏸ 126 cases collected (CI deferred) |
+
+### No Regressions
+
+- ✅ Desktop Playwright suite (no edits required per D-175 constraint)
+- ✅ Mobile web (viewport-based split unchanged)
+- ✅ Menu option set (roles preserved)
+- ✅ Token storage (sessionStorage only)
+- ✅ API (no backend changes; grouping 100% client-side)
+
+### Deferred Work
+
+**GitHub issue triage (#127–#139):** PDF-captured; no code work started. Next phase: agentic-development audit (watch-tracker-app, Aurearia, drinks-and-desserts codebases).
+
+### Decision Consolidation
+
+**13 new decisions merged into `.squad/decisions.md`:**
+- D-175: Presentation modes gated on `isStandalonePwa()`
+- D-176: F045 backlog record
+- D-177: Implicit PWA grouping + 500-row cap
+- D-178: `visibleColumns` assertion + `DeviceTable` split
+- D-179: Menu popover structure reuse
+- D-180: Settings icon-only narrowing
+- D-181: Theme block order (outside `role="menu"`)
+- D-182: 500-row cap scope to PWA
+- D-183: Scope split (Vasquez/Apone/Drake/Hicks)
+- D-184: Vasquez technical choices
+- D-185: Apone E2E contract
+- D-186: Drake visual spec
+- D-187: Hicks QC revision fixes
+
+**Inbox cleanup:** Removed 6 F045-related decision files (ripley-pwa-device-navigation, vasquez-pwa-device-shell, apone-pwa-shell-tests, drake-pwa-visual-rules, ripley-f045-qc-audit-amendments, hicks-f045-revision). Unrelated inbox entries preserved.
+
+### Coordinator's Next Steps
+
+1. Inspect consolidated decisions (D-175–D-187)
+2. Create PR from `feature/pwa-device-navigation`
+3. Await GitHub CI E2E Playwright execution (126 cases, full 6-project matrix)
+4. Merge after E2E green
+
+### Key Insight
+
+QC audit + independent revision cycle validated architectural decisions (D-175 presentation-mode gating, D-182 PWA-scoped cap) and surfaced implicit assumptions (D-184 effective-vs-URL grouping pattern, D-185 standalone-PWA emulation strategy). All blockers were defensible; resolution strengthened test coverage and spec precision rather than bypassing requirements.
+
+---
+
 ## Phase 1 Complete: 48/48 tasks shipped (2026-05-18)
 
 **Headline:** Core API Phase 1 delivered end-to-end with full verify pipeline green.

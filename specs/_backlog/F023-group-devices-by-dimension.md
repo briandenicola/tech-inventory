@@ -97,3 +97,16 @@ When a grouping is active:
   sort order (year desc, alpha otherwise), and the Unknown (no
   purchaseDate) bucket. Multi-level grouping and group-level bulk actions
   remain explicitly out of scope.
+- 2026-09-02: extended by **F045** (Ripley, design review D-177). Installed-PWA
+  mode gains an *implicit* `groupBy=category` default, modeled on the F026
+  implicit-Active-status pattern: not written to the URL, not counted in the
+  active-filter badge, and defeatable via `?groupBy=none`. No F023 behavior
+  changes for desktop/mobile-web — both still default to None and their
+  grouped fetch remains unbounded, exactly as before this entry.
+  **Correction (D-182, QC audit 2026-09-02):** an earlier draft of this entry
+  stated the 500-row grouped-fetch cap was "existing" and universally
+  "retained." That was incorrect — `fetchAllDevicesForGrouping` was unbounded
+  on `main`; F045 introduces the cap as **new, standalone-PWA-only** behavior
+  via an optional `maxRows` parameter, applied solely by the app-mode caller.
+  Desktop and mobile-web grouped fetches remain unbounded and never show a
+  truncation note.

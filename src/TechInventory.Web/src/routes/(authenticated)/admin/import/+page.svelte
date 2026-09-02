@@ -40,6 +40,7 @@
 		ImportRowError,
 		MissingLookup
 	} from '$lib/api/types';
+	import { getApiErrorMessage } from '$lib/utils/apiErrors';
 
 	const currentUser = $derived($authStore.currentUser);
 	const isAdmin = $derived(currentUser?.role === 'Admin');
@@ -165,17 +166,6 @@
 		fileInputRef?.click();
 	}
 
-	function extractErrorMessage(err: unknown, fallback: string): string {
-		if (err instanceof Error) {
-			const detail =
-				'detail' in err
-					? (err as unknown as { detail?: string }).detail
-					: undefined;
-			return detail ?? err.message ?? fallback;
-		}
-		return fallback;
-	}
-
 	async function handlePreview() {
 		if (!selectedFile || isLoading) return;
 		isLoading = true;
@@ -187,7 +177,7 @@
 			step = 'preview';
 		} catch (err) {
 			console.error('[admin/import] Preview failed:', err);
-			errorMessage = extractErrorMessage(err, 'Failed to preview import');
+			errorMessage = getApiErrorMessage(err, 'Failed to preview import');
 			addToast({ type: 'error', message: errorMessage });
 		} finally {
 			isLoading = false;
@@ -207,7 +197,7 @@
 			step = 'committed';
 		} catch (err) {
 			console.error('[admin/import] Commit failed:', err);
-			errorMessage = extractErrorMessage(err, 'Failed to commit import');
+			errorMessage = getApiErrorMessage(err, 'Failed to commit import');
 			addToast({ type: 'error', message: errorMessage });
 		} finally {
 			isLoading = false;

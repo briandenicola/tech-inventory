@@ -19,6 +19,7 @@
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import TableColumnSettings from '$lib/components/TableColumnSettings.svelte';
+	import { getApiErrorMessage } from '$lib/utils/apiErrors';
 
 	const currentUser = $derived($authStore.currentUser);
 
@@ -42,7 +43,7 @@
 			displayName = originalName;
 		} catch (err: unknown) {
 			console.error('[Settings] Load failed:', err);
-			loadError = err instanceof Error ? err.message : 'Failed to load profile';
+			loadError = getApiErrorMessage(err, 'Failed to load profile');
 		} finally {
 			loading = false;
 		}
@@ -80,7 +81,7 @@
 			addToast({ type: 'success', message: t('settings.profile.toast.success') });
 		} catch (err: unknown) {
 			console.error('[Settings] Update failed:', err);
-			const message = err instanceof Error ? err.message : 'Failed to update profile';
+			const message = getApiErrorMessage(err, 'Failed to update profile');
 			addToast({ type: 'error', message });
 		} finally {
 			saving = false;

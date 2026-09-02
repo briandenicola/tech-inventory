@@ -29,6 +29,7 @@
 	import PaginationControls from '$lib/components/PaginationControls.svelte';
 	import AuditDiffDrawer from '$lib/components/admin/AuditDiffDrawer.svelte';
 	import { buildActorDisplayNameMap, formatActor as formatAuditActor } from '$lib/utils/auditActors';
+	import { getApiErrorMessage } from '$lib/utils/apiErrors';
 
 	type AuditEvent = components['schemas']['AuditEventResponse'];
 	type AuditAction = components['schemas']['AuditAction'];
@@ -129,7 +130,7 @@
 			await ensureOwnerActorMap();
 		} catch (err: unknown) {
 			console.error('[AuditLog] Load failed:', err);
-			error = err instanceof Error ? err.message : 'Failed to load audit events';
+			error = getApiErrorMessage(err, 'Failed to load audit events');
 		} finally {
 			loading = false;
 		}

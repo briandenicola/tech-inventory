@@ -30,6 +30,7 @@
 		toggleAllVisibleReferenceSelections,
 		toggleReferenceSelection
 	} from '$lib/utils/referenceSelection';
+	import { getApiErrorMessage } from '$lib/utils/apiErrors';
 
 	/**
 	 * T31: Networks Admin — paginated list with Add/Edit/Deactivate
@@ -126,7 +127,7 @@
 			totalCount = response.totalCount ?? 0;
 		} catch (err: unknown) {
 			console.error('[NetworksAdmin] Load failed:', err);
-			error = err instanceof Error ? err.message : 'Failed to load networks';
+			error = getApiErrorMessage(err, 'Failed to load networks');
 		} finally {
 			loading = false;
 		}
@@ -181,7 +182,7 @@
 			await loadNetworks();
 		} catch (err: unknown) {
 			console.error('[NetworksAdmin] Submit failed:', err);
-			const message = err instanceof Error ? err.message : 'Failed to save network';
+			const message = getApiErrorMessage(err, 'Failed to save network');
 			addToast({ type: 'error', message });
 		} finally {
 			formSubmitting = false;
@@ -207,7 +208,7 @@
 			await loadNetworks();
 		} catch (err: unknown) {
 			console.error('[NetworksAdmin] Deactivate failed:', err);
-			const message = err instanceof Error ? err.message : 'Failed to deactivate network';
+			const message = getApiErrorMessage(err, 'Failed to deactivate network');
 			addToast({ type: 'error', message });
 		}
 	}
@@ -302,7 +303,7 @@
 			await Promise.all([loadNetworks(), fetchReferenceData({ force: true })]);
 		} catch (err: unknown) {
 			console.error('[NetworksAdmin] Merge failed:', err);
-			mergeError = err instanceof Error ? err.message : t('admin.merge.error');
+			mergeError = getApiErrorMessage(err, t('admin.merge.error'));
 		} finally {
 			mergeSubmitting = false;
 		}

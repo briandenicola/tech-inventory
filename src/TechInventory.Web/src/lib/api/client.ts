@@ -74,7 +74,10 @@ export class ApiError extends Error {
 		public instance?: string,
 		public errors?: Record<string, string[]>
 	) {
-		super(`${title}${detail ? `: ${detail}` : ''}`);
+		// A blank-but-present `detail` (whitespace, or an empty string from a
+		// ProblemDetails body) must not tack a dangling `": "` onto the message.
+		const trimmedDetail = detail?.trim();
+		super(trimmedDetail ? `${title}: ${trimmedDetail}` : title);
 		this.name = 'ApiError';
 	}
 }

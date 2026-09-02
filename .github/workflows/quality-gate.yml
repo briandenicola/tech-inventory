@@ -34,14 +34,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-
       - run: pnpm install --frozen-lockfile
-      # Non-blocking for now: main currently carries ~110 pre-existing
-      # svelte-check errors unrelated to any single change, so making this
-      # step required would red-mark every PR on day one. It still runs and
-      # surfaces new failures (e.g. #80's TypeScript 7 / svelte-check
-      # incompatibility) in the PR checks UI; flip continue-on-error to
-      # false once the existing backlog is cleared.
+      # Blocking. The ~110 "pre-existing" svelte-check errors this step used to
+      # tolerate were not a backlog: every one of them came from the generated
+      # OpenAPI client being absent. `src/lib/api/generated/types.ts` is
+      # gitignored and only `scripts/verify.sh` regenerated it, so on a fresh
+      # checkout every `paths`/`components` lookup collapsed to `never` and the
+      # whole API surface type-checked as untyped. `pnpm run check` now runs
+      # `generate:client` first, which takes the count to zero.
       - run: pnpm run check
-        continue-on-error: true
       - run: pnpm run lint
       - run: pnpm run test -- --run
       - run: pnpm run build

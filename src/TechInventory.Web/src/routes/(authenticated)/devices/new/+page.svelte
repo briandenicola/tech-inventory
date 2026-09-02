@@ -10,7 +10,7 @@
 	import { fetchReferenceData } from '$lib/stores/referenceData';
 	import { registerPullToRefresh } from '$lib/stores/pullToRefresh';
 	import { showToast } from '$lib/stores/toast';
-	import { mapApiFieldErrors } from '$lib/utils/apiErrors';
+	import { getApiErrorMessage, mapApiFieldErrors } from '$lib/utils/apiErrors';
 
 	/**
 	 * T20: Device create page — /devices/new
@@ -70,10 +70,7 @@
 			if (err instanceof ApiError && err.errors) {
 				serverErrors = mapApiFieldErrors(err.errors);
 			}
-			const errorMsg =
-				err instanceof Error && 'detail' in err
-					? (err as unknown as { detail: string }).detail
-					: 'Failed to create device';
+			const errorMsg = getApiErrorMessage(err, 'Failed to create device');
 			showToast({ type: 'error', message: errorMsg });
 			throw err;
 		}

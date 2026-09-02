@@ -10,6 +10,7 @@
 
 import { devices } from '$lib/api/client';
 import { z } from 'zod';
+import { getApiErrorMessage } from '$lib/utils/apiErrors';
 
 export const DEFAULT_DEVICE_PAGE_SIZE = 25;
 export const MAX_DEVICE_PAGE_SIZE = 200;
@@ -339,7 +340,7 @@ export function useDevices(getFilters: () => DeviceFilters): DevicesQueryResult 
 			data = validated;
 		} catch (err) {
 			console.error('[devices] Fetch error:', err);
-			error = err instanceof Error ? err.message : 'Failed to fetch devices';
+			error = getApiErrorMessage(err, 'Failed to fetch devices');
 		} finally {
 			isLoading = false;
 		}

@@ -21,6 +21,7 @@
 	import { addToast } from '$lib/stores/toast';
 	import { referenceDataStore, fetchReferenceData } from '$lib/stores/referenceData';
 	import type { DeviceStatus, ExportFormat } from '$lib/api/types';
+	import { getApiErrorMessage } from '$lib/utils/apiErrors';
 
 	const currentUser = $derived($authStore.currentUser);
 	const isAdmin = $derived(currentUser?.role === 'Admin');
@@ -107,13 +108,7 @@
 			addToast({ type: 'success', message: t('export.success') });
 		} catch (err) {
 			console.error('[admin/export] Download failed:', err);
-			const fallback = 'Failed to download export';
-			errorMessage =
-				err instanceof Error
-					? ('detail' in err ? (err as unknown as { detail?: string }).detail : null) ??
-						err.message ??
-						fallback
-					: fallback;
+			errorMessage = getApiErrorMessage(err, 'Failed to download export');
 			addToast({ type: 'error', message: errorMessage });
 		} finally {
 			isDownloading = false;

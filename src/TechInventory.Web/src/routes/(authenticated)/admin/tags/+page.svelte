@@ -13,6 +13,7 @@
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import PaginationControls from '$lib/components/PaginationControls.svelte';
 	import DeactivateConfirmModal from '$lib/components/admin/DeactivateConfirmModal.svelte';
+	import { getApiErrorMessage } from '$lib/utils/apiErrors';
 
 
 	/**
@@ -71,7 +72,7 @@
 			totalCount = response.totalCount ?? 0;
 		} catch (err: unknown) {
 			console.error('[TagsAdmin] Load failed:', err);
-			error = err instanceof Error ? err.message : 'Failed to load tags';
+			error = getApiErrorMessage(err, 'Failed to load tags');
 		} finally {
 			loading = false;
 		}
@@ -126,7 +127,7 @@
 			await loadTags();
 		} catch (err: unknown) {
 			console.error('[TagsAdmin] Submit failed:', err);
-			const message = err instanceof Error ? err.message : 'Failed to save tag';
+			const message = getApiErrorMessage(err, 'Failed to save tag');
 			addToast({ type: 'error', message });
 		} finally {
 			formSubmitting = false;
@@ -152,7 +153,7 @@
 			await loadTags();
 		} catch (err: unknown) {
 			console.error('[TagsAdmin] Deactivate failed:', err);
-			const message = err instanceof Error ? err.message : 'Failed to deactivate tag';
+			const message = getApiErrorMessage(err, 'Failed to deactivate tag');
 			addToast({ type: 'error', message });
 		}
 	}

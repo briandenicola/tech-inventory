@@ -24,6 +24,7 @@
 	} from '$lib/utils/deviceRetirement';
 	import type { DeviceResponse } from '$lib/queries/devices.svelte';
 	import type { components } from '$lib/api/generated/types';
+	import { getApiErrorMessage } from '$lib/utils/apiErrors';
 
 	type TagResponse = components['schemas']['TagResponse'];
 
@@ -86,7 +87,7 @@
 			) {
 				notFound = true;
 			} else {
-				error = err instanceof Error ? err.message : 'Failed to load device';
+				error = getApiErrorMessage(err, 'Failed to load device');
 			}
 		} finally {
 			isLoading = false;
@@ -173,10 +174,7 @@
 			onClose();
 		} catch (err) {
 			console.error('[DeviceDetailModal] Delete failed:', err);
-			const errorMsg =
-				err instanceof Error && 'detail' in err
-					? (err as unknown as { detail: string }).detail
-					: 'Failed to delete device';
+			const errorMsg = getApiErrorMessage(err, 'Failed to delete device');
 			showToast({ type: 'error', message: errorMsg });
 		} finally {
 			showDeleteModal = false;
@@ -197,10 +195,7 @@
 			onChanged?.();
 		} catch (err) {
 			console.error('[DeviceDetailModal] Claim failed:', err);
-			const errorMsg =
-				err instanceof Error && 'detail' in err
-					? (err as unknown as { detail: string }).detail
-					: 'Failed to claim ownership';
+			const errorMsg = getApiErrorMessage(err, 'Failed to claim ownership');
 			showToast({ type: 'error', message: errorMsg });
 		} finally {
 			showClaimModal = false;
@@ -221,10 +216,7 @@
 			onChanged?.();
 		} catch (err) {
 			console.error('[DeviceDetailModal] Release failed:', err);
-			const errorMsg =
-				err instanceof Error && 'detail' in err
-					? (err as unknown as { detail: string }).detail
-					: 'Failed to release ownership';
+			const errorMsg = getApiErrorMessage(err, 'Failed to release ownership');
 			showToast({ type: 'error', message: errorMsg });
 		} finally {
 			showReleaseModal = false;
@@ -245,10 +237,7 @@
 			onChanged?.();
 		} catch (err) {
 			console.error('[DeviceDetailModal] Retire failed:', err);
-			const errorMsg =
-				err instanceof Error && 'detail' in err
-					? (err as unknown as { detail: string }).detail
-					: 'Failed to retire device';
+			const errorMsg = getApiErrorMessage(err, 'Failed to retire device');
 			showToast({ type: 'error', message: errorMsg });
 		} finally {
 			showRetireModal = false;
@@ -269,10 +258,7 @@
 			onChanged?.();
 		} catch (err) {
 			console.error('[DeviceDetailModal] Unretire failed:', err);
-			const errorMsg =
-				err instanceof Error && 'detail' in err
-					? (err as unknown as { detail: string }).detail
-					: 'Failed to unretire device';
+			const errorMsg = getApiErrorMessage(err, 'Failed to unretire device');
 			showToast({ type: 'error', message: errorMsg });
 		}
 	}

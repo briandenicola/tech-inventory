@@ -29,6 +29,7 @@
 		toggleAllVisibleReferenceSelections,
 		toggleReferenceSelection
 	} from '$lib/utils/referenceSelection';
+	import { getApiErrorMessage } from '$lib/utils/apiErrors';
 
 	/**
 	 * T27: Brands Admin — paginated list with Add/Edit/Deactivate
@@ -137,7 +138,7 @@
 			totalCount = response.totalCount ?? 0;
 		} catch (err: unknown) {
 			console.error('[BrandsAdmin] Load failed:', err);
-			error = err instanceof Error ? err.message : 'Failed to load brands';
+			error = getApiErrorMessage(err, 'Failed to load brands');
 		} finally {
 			loading = false;
 		}
@@ -200,7 +201,7 @@
 			await loadBrands();
 		} catch (err: unknown) {
 			console.error('[BrandsAdmin] Submit failed:', err);
-			const message = err instanceof Error ? err.message : 'Failed to save brand';
+			const message = getApiErrorMessage(err, 'Failed to save brand');
 			addToast({ type: 'error', message });
 		} finally {
 			formSubmitting = false;
@@ -229,7 +230,7 @@
 			await loadBrands();
 		} catch (err: unknown) {
 			console.error('[BrandsAdmin] Deactivate failed:', err);
-			const message = err instanceof Error ? err.message : 'Failed to deactivate brand';
+			const message = getApiErrorMessage(err, 'Failed to deactivate brand');
 			addToast({ type: 'error', message });
 		}
 	}
@@ -322,7 +323,7 @@
 			await Promise.all([loadBrands(), fetchReferenceData({ force: true })]);
 		} catch (err: unknown) {
 			console.error('[BrandsAdmin] Merge failed:', err);
-			mergeError = err instanceof Error ? err.message : t('admin.merge.error');
+			mergeError = getApiErrorMessage(err, t('admin.merge.error'));
 		} finally {
 			mergeSubmitting = false;
 		}

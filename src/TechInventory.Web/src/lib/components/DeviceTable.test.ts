@@ -280,6 +280,96 @@ describe('DeviceTable', () => {
 		});
 	});
 
+	describe('presentation="pwa" (F045 D-175/D-178)', () => {
+		it('renders installed-PWA rows instead of the desktop table, regardless of container width', () => {
+			const devices = createDeviceList(2);
+			render(DeviceTable, { props: { ...defaultProps, devices, presentation: 'pwa' } });
+
+			// No desktop <table> at all — not just hidden by CSS, actually absent,
+			// because app mode is gated on display-mode, not viewport (D-175).
+			expect(screen.queryByRole('table')).not.toBeInTheDocument();
+
+			for (const device of devices) {
+				expect(screen.getByText(device.name!)).toBeInTheDocument();
+				expect(screen.getByText(new RegExp(device.model!))).toBeInTheDocument();
+			}
+		});
+
+		it('shows device title first, then brand/model, then status, and keeps the actions ellipsis reachable', () => {
+			const devices = createDeviceList(1);
+			devices[0].name = 'Living Room TV';
+			devices[0].model = 'OLED77';
+			devices[0].status = 'Active';
+			const adminUser = {
+				id: 'user-1',
+				entraObjectId: null,
+				displayName: 'Admin User',
+				role: 'Admin' as const
+			};
+
+			render(DeviceTable, {
+				props: { ...defaultProps, devices, presentation: 'pwa', currentUser: adminUser }
+			});
+
+			const title = screen.getByText('Living Room TV');
+			const lineTwo = screen.getByText(/OLED77/);
+			expect(title.compareDocumentPosition(lineTwo) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+			expect(screen.getByText('Active')).toBeInTheDocument();
+
+			// DeviceActionsMenu's ellipsis trigger — reuses the same component as
+			// the desktop table and DeviceDetailModal, not a bespoke menu.
+			expect(screen.getByRole('button', { name: /more actions/i })).toBeInTheDocument();
+		});
+
+		it('ignores visibleColumns entirely — PWA rows always show the same fields', () => {
+			const devices = createDeviceList(1);
+			devices[0].model = 'OnlyNameColumnModel';
+
+			render(DeviceTable, {
+				props: { ...defaultProps, devices, presentation: 'pwa', visibleColumns: ['name'] }
+			});
+
+			// If visibleColumns leaked into the PWA renderer, the model text
+			// (a non-"name" column) would be suppressed. It must still show.
+			expect(screen.getByText(/OnlyNameColumnModel/)).toBeInTheDocument();
+		});
+
+		it('does not render the 2-up mobile card grid when presentation is "pwa"', () => {
+			const devices = createDeviceList(1);
+			const { container } = render(DeviceTable, {
+				props: { ...defaultProps, devices, presentation: 'pwa' }
+			});
+
+			// DeviceTableCards' 2-up grid uses this exact class; DevicePwaList
+			// uses a single-column inset-grouped list instead.
+			expect(container.querySelector('.grid-cols-2')).not.toBeInTheDocument();
+		});
+
+		it('honors mobileViewMode="table" by rendering the scrollable desktop table instead of the row list (F045 B3)', () => {
+			const devices = createDeviceList(2);
+			render(DeviceTable, {
+				props: { ...defaultProps, devices, presentation: 'pwa', mobileViewMode: 'table' }
+			});
+
+			// The app-mode "Table" view control must actually change what
+			// renders — previously presentation='pwa' ignored mobileViewMode
+			// entirely and always forced the row list.
+			expect(screen.getByRole('table')).toBeInTheDocument();
+		});
+
+		it('defaults to the installed-PWA row list when mobileViewMode is "cards" (the PWA default)', () => {
+			const devices = createDeviceList(2);
+			render(DeviceTable, {
+				props: { ...defaultProps, devices, presentation: 'pwa', mobileViewMode: 'cards' }
+			});
+
+			expect(screen.queryByRole('table')).not.toBeInTheDocument();
+			for (const device of devices) {
+				expect(screen.getByText(device.name!)).toBeInTheDocument();
+			}
+		});
+	});
+
 	describe('modal navigation hook', () => {
 		it('uses the open-device callback for mobile cards when provided', async () => {
 			const user = userEvent.setup();

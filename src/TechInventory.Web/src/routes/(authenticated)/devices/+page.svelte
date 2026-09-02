@@ -10,10 +10,15 @@
 		invalidateDevicesCache,
 		serializeDeviceFilters,
 		useDevices,
+		MAX_GROUPED_DEVICES,
 		type DeviceFilters as DeviceFiltersType,
 		type DeviceResponse
 	} from '$lib/queries/devices.svelte';
 	import { registerPullToRefresh } from '$lib/stores/pullToRefresh';
+	import { registerDeviceCreateHandler } from '$lib/stores/deviceCreate';
+	import { displayMode } from '$lib/stores/displayMode.svelte';
+	import { buildDevicesUrlParams, STATUS_ALL_SENTINEL, GROUP_BY_NONE_SENTINEL } from '$lib/utils/deviceFilterUrl';
+	import { memberRoles, isNavItemVisible, type AppNavItem } from '$lib/navigation/appNav';
 	import AddDeviceFab from '$lib/components/AddDeviceFab.svelte';
 	import BackToTopFab from '$lib/components/BackToTopFab.svelte';
 	import {
@@ -61,6 +66,10 @@
 	 */
 
 	const currentUser = $derived($authStore.currentUser);
+	// F045 B follow-up: same role gate AppBottomNav applies to its own Add
+	// button — reused here so `?add=1` (the URL the bottom-nav Add action
+	// navigates to) can't bypass the Viewer restriction.
+	const addGateItem: AppNavItem = { href: '', labelKey: '', activePaths: [], roles: memberRoles };
 	// #78: kept as a JS matchMedia check (not superseded by the app.css global
 	// override) because it gates actual behavior, not just animation timing —
 	// it switches between infinite-scroll and paginated mode and chooses
@@ -95,8 +104,9 @@
 	// The `all` sentinel is required so we can distinguish "user explicitly
 	// asked for every status" from "user has not chosen anything yet"; without
 	// it the bare URL would always be re-coerced to Active and there would be
-	// no way to opt back out.
-	const STATUS_ALL_SENTINEL = 'all';
+	// no way to opt back out. (STATUS_ALL_SENTINEL is imported from
+	// deviceFilterUrl so the read side here and the write side in
+	// `updateFilters` share one definition.)
 	type DeviceStatus = NonNullable<DeviceFiltersType['status']>[number];
 	const KNOWN_STATUSES: DeviceStatus[] = ['Active', 'Retired', 'Disposed', 'InRepair', 'Lent'];
 	function isDeviceStatus(value: string): value is DeviceStatus {
@@ -132,7 +142,7 @@
 			purchaseYearMax: params.get('yearMax') ? parseInt(params.get('yearMax')!, 10) : undefined,
 			sort: (params.get('sort') as 'name' | 'purchaseDate' | 'createdAt') || undefined,
 			sortDir: (params.get('sortDir') as 'asc' | 'desc') || 'asc',
-			groupBy: (params.get('groupBy') as 'category' | 'owner' | 'year' | null) || undefined
+			groupBy: (params.get('groupBy') as 'category' | 'owner' | 'year' | 'none' | null) || undefined
 		};
 		return filters;
 	});
@@ -142,13 +152,39 @@
 	const statusIsImplicitActive = $derived($page.url.searchParams.get('status') === null);
 	const showingAllStatuses = $derived($page.url.searchParams.get('status') === STATUS_ALL_SENTINEL);
 
+	// F045 R2/R5: in installed-PWA mode only, absent an explicit `groupBy`,
+	// implicitly group by category. This never round-trips to the URL and
+	// never counts as an active filter — it is pure presentation, not a user
+	// choice. `?groupBy=none` is a real sentinel (not just "param absent") so a
+	// user who explicitly picks "None" while in app mode can override the
+	// implicit default; see `buildDevicesUrlParams` (deviceFilterUrl.ts) for
+	// the write side — B2's fix lives there, not here: the read side below
+	// was already correct.
+	const groupByExplicitlyNone = $derived(
+		$page.url.searchParams.get('groupBy') === GROUP_BY_NONE_SENTINEL
+	);
+	// implicitGroupingActive: true only when the PWA's implicit category
+	// default is in effect with no explicit user choice at all — distinct
+	// from groupByExplicitlyNone (explicit opt-out) and from an explicit
+	// dimension pick. Drives the presentation-only note in DeviceFilters
+	// (never written to the URL or counted in activeFilterCount).
+	const implicitGroupingActive = $derived(
+		displayMode.isPwa && !urlFilters.groupBy && !groupByExplicitlyNone
+	);
+	const effectiveGroupBy = $derived.by(() => {
+		if (groupByExplicitlyNone) return undefined;
+		if (urlFilters.groupBy && urlFilters.groupBy !== 'none') return urlFilters.groupBy;
+		if (displayMode.isPwa) return 'category';
+		return undefined;
+	});
+
 	// Devices query (reactive — pass a getter so filter changes propagate).
 	// Grouped mode uses a separate loading path via fetchAllDevicesForGrouping,
 	// so the standard query stays on page 1 with a small page size for the initial
 	// load only. Infinite scroll keeps the API on page 1 and progressively appends
 	// pages on the client unless reduced motion requests the classic pagination fallback.
 	const queryFilters = $derived.by(() => {
-		if (urlFilters.groupBy) {
+		if (effectiveGroupBy) {
 			// Grouped mode: query is only for the loading state, actual data comes from groupedDevices
 			return { ...urlFilters, page: 1, pageSize: 25 };
 		}
@@ -158,9 +194,11 @@
 	const query = useDevices(() => queryFilters);
 	const infiniteBaseFilters = $derived.by(() => ({ ...urlFilters, page: 1 }));
 	const infiniteFiltersKey = $derived(serializeDeviceFilters(infiniteBaseFilters));
-	const groupedFiltersKey = $derived(serializeDeviceFilters({ ...urlFilters, page: 1 }));
+	const groupedFiltersKey = $derived(
+		serializeDeviceFilters({ ...urlFilters, groupBy: effectiveGroupBy, page: 1 })
+	);
 	const displayedDevices = $derived.by(() => {
-		if (urlFilters.groupBy) {
+		if (effectiveGroupBy) {
 			return groupedDevices;
 		}
 		
@@ -171,7 +209,7 @@
 		return infiniteItems.length > 0 ? infiniteItems : (query.data?.items ?? []);
 	});
 	const hasMorePages = $derived(
-		!urlFilters.groupBy &&
+		!effectiveGroupBy &&
 			!prefersReducedMotion &&
 			displayedDevices.length > 0 &&
 			displayedDevices.length < totalCount
@@ -195,34 +233,7 @@
 
 	// Update URL when filters change
 	function updateFilters(newFilters: DeviceFiltersType) {
-		const params = new URLSearchParams();
-
-		if (newFilters.page && newFilters.page !== 1) params.set('page', newFilters.page.toString());
-		if (newFilters.pageSize && newFilters.pageSize !== 25)
-			params.set('pageSize', newFilters.pageSize.toString());
-		if (newFilters.search) params.set('search', newFilters.search);
-		if (newFilters.brandId) params.set('brandId', newFilters.brandId);
-		if (newFilters.categoryId) params.set('categoryId', newFilters.categoryId);
-		if (newFilters.ownerId) params.set('ownerId', newFilters.ownerId);
-		if (newFilters.locationId) params.set('locationId', newFilters.locationId);
-		if (newFilters.networkId) params.set('networkId', newFilters.networkId);
-		// F026: status round-trip rules.
-		//   undefined or []           → user cleared status → STATUS_ALL_SENTINEL
-		//   ['Active']                → matches implicit default → omit
-		//   any other single value    → write as-is
-		if (!newFilters.status || newFilters.status.length === 0) {
-			params.set('status', STATUS_ALL_SENTINEL);
-		} else if (newFilters.status.length === 1 && newFilters.status[0] === 'Active') {
-			// omit — implicit default
-		} else {
-			params.set('status', newFilters.status[0]);
-		}
-		if (newFilters.purchaseYearMin) params.set('yearMin', newFilters.purchaseYearMin.toString());
-		if (newFilters.purchaseYearMax) params.set('yearMax', newFilters.purchaseYearMax.toString());
-		if (newFilters.sort) params.set('sort', newFilters.sort);
-		if (newFilters.sortDir && newFilters.sortDir !== 'asc')
-			params.set('sortDir', newFilters.sortDir);
-		if (newFilters.groupBy) params.set('groupBy', newFilters.groupBy);
+		const params = buildDevicesUrlParams(newFilters, { isPwa: displayMode.isPwa });
 
 		const url = params.toString() ? `?${params.toString()}` : $page.url.pathname;
 		goto(url, { replaceState: true, keepFocus: true, noScroll: true });
@@ -318,6 +329,24 @@
 			void goto(`?${storedDefault}`, { replaceState: true, keepFocus: true, noScroll: true });
 		}
 
+		// F045 R2/B follow-up: `?add=1` is how the bottom-nav Add action reaches
+		// this page when the user was elsewhere (see deviceCreate.ts). Gated the
+		// same way AppBottomNav gates its own Add button — a Viewer navigating
+		// straight to `?add=1` must not get a create modal via URL bypass.
+		// Strip the param unconditionally (so it never reopens on
+		// refresh/back-navigation) but only open the modal when permitted.
+		if ($page.url.searchParams.get('add') === '1') {
+			if (isNavItemVisible(addGateItem, currentUser?.role ?? null)) {
+				createModalOpen = true;
+			}
+			const strippedParams = new URLSearchParams($page.url.searchParams);
+			strippedParams.delete('add');
+			const strippedUrl = strippedParams.toString()
+				? `?${strippedParams.toString()}`
+				: $page.url.pathname;
+			void goto(strippedUrl, { replaceState: true, keepFocus: true, noScroll: true });
+		}
+
 		const savedViewMode = getDevicesViewMode(currentUser?.id);
 		if (savedViewMode) {
 			mobileViewMode = savedViewMode;
@@ -382,17 +411,17 @@
 	// Pulls reference data for human-readable labels (Category/Owner names).
 	const refData = $derived($referenceDataStore);
 	const groupedView = $derived.by(() => {
-		if (!urlFilters.groupBy || groupedDevices.length === 0) return undefined;
+		if (!effectiveGroupBy || groupedDevices.length === 0) return undefined;
 		return groupDevices(
 			groupedDevices,
-			urlFilters.groupBy,
+			effectiveGroupBy,
 			{ categories: refData.categories, owners: refData.owners },
 			t('devices.groups.unknown')
 		);
 	});
 
 	async function loadNextPage() {
-		if (prefersReducedMotion || urlFilters.groupBy || isLoadingMore || !hasMorePages) {
+		if (prefersReducedMotion || effectiveGroupBy || isLoadingMore || !hasMorePages) {
 			return;
 		}
 
@@ -420,14 +449,14 @@
 		invalidateDevicesCache();
 		loadMoreError = null;
 
-		if (!prefersReducedMotion && !urlFilters.groupBy) {
+		if (!prefersReducedMotion && !effectiveGroupBy) {
 			activeInfiniteKey = '';
 			infiniteItems = [];
 			infinitePage = 0;
 			totalCount = 0;
 		}
 
-		if (urlFilters.groupBy) {
+		if (effectiveGroupBy) {
 			activeGroupedKey = '';
 			groupedDevices = [];
 			groupedTotalCount = 0;
@@ -438,7 +467,7 @@
 	}
 
 	async function loadGroupedDevices() {
-		if (!urlFilters.groupBy || isLoadingGrouped) {
+		if (!effectiveGroupBy || isLoadingGrouped) {
 			return;
 		}
 
@@ -446,7 +475,13 @@
 		groupedError = null;
 
 		try {
-			const result = await fetchAllDevicesForGrouping(urlFilters);
+			// F045 B4/D-182: the row cap is scoped to the standalone-PWA caller
+			// only — desktop and mobile-web grouped fetches stay unbounded,
+			// matching their pre-F045 behavior, which F045 must not change.
+			const result = await fetchAllDevicesForGrouping(
+				{ ...urlFilters, groupBy: effectiveGroupBy },
+				displayMode.isPwa ? MAX_GROUPED_DEVICES : undefined
+			);
 			groupedDevices = result.items ?? [];
 			groupedTotalCount = result.totalCount;
 		} catch (err) {
@@ -474,9 +509,19 @@
 		return unregister;
 	});
 
+	// F045 R2: bridges the bottom-nav Add action (owned by the root layout) to
+	// this page's create-modal state, mirroring the pullToRefresh registration
+	// above. Only registered while this page is mounted.
+	$effect(() => {
+		const unregister = registerDeviceCreateHandler('/devices', () => {
+			createModalOpen = true;
+		});
+		return unregister;
+	});
+
 	// Effect: Load all devices when grouped mode is active
 	$effect(() => {
-		if (!urlFilters.groupBy) {
+		if (!effectiveGroupBy) {
 			return;
 		}
 
@@ -493,7 +538,7 @@
 	});
 
 	$effect(() => {
-		if (prefersReducedMotion || urlFilters.groupBy) {
+		if (prefersReducedMotion || effectiveGroupBy) {
 			return;
 		}
 
@@ -510,7 +555,7 @@
 	});
 
 	$effect(() => {
-		if (prefersReducedMotion || urlFilters.groupBy || !query.data) {
+		if (prefersReducedMotion || effectiveGroupBy || !query.data) {
 			return;
 		}
 
@@ -526,7 +571,7 @@
 	});
 
 	$effect(() => {
-		if (prefersReducedMotion || urlFilters.groupBy || !sentinel || !hasMorePages || loadMoreError) {
+		if (prefersReducedMotion || effectiveGroupBy || !sentinel || !hasMorePages || loadMoreError) {
 			return;
 		}
 
@@ -575,7 +620,7 @@
 		void urlFilters.purchaseYearMax;
 		void urlFilters.sort;
 		void urlFilters.sortDir;
-		void urlFilters.groupBy;
+		void effectiveGroupBy;
 		void urlFilters.page;
 		void urlFilters.pageSize;
 		selectedIds = new Set<string>();
@@ -695,6 +740,7 @@
 	onClearDefault={handleClearDefault}
 	{hasStoredDefault}
 	{canSaveDefault}
+	{implicitGroupingActive}
 />
 
 <!-- Main content -->
@@ -712,9 +758,13 @@
 
 				<!-- Right-side actions -->
 				<div class="flex items-center gap-2">
-					<!-- Mobile view-mode toggle (cards vs table) -->
+					<!-- Cards/Table view-mode toggle — F045 B3: the spec's acceptance
+						 checklist requires "Devices + view control + Filter" in the
+						 app-mode title bar too, so this must render (and be honored by
+						 DeviceTable, see mobileViewMode/presentation wiring below) at
+						 every width in app mode, not just below the md breakpoint. -->
 					<div
-						class="md:hidden inline-flex items-center rounded-full bg-neutral-100 p-1 dark:bg-neutral-800"
+						class="{displayMode.isPwa ? '' : 'md:hidden'} inline-flex items-center rounded-full bg-neutral-100 p-1 dark:bg-neutral-800"
 						role="group"
 						aria-label={t('devices.viewMode.toggleLabel')}
 					>
@@ -791,7 +841,9 @@
 						{/if}
 					</button>
 
-					<!-- Add Device CTA (desktop only; mobile uses the FAB below) -->
+					<!-- Add Device CTA (desktop-browser only; mobile-web uses the FAB below,
+						 app mode uses the bottom-nav pill's Add action instead). -->
+					{#if !displayMode.isPwa}
 					<button
 						type="button"
 						onclick={() => (createModalOpen = true)}
@@ -813,11 +865,12 @@
 						</svg>
 						{t('devices.list.addButton')}
 					</button>
+					{/if}
 				</div>
 			</div>
 
-			<!-- Search input -->
-			<div class="mt-4 w-full md:max-w-lg">
+			<!-- Search input (F045: full-width in app mode, capped on desktop browser) -->
+			<div class="mt-4 w-full {displayMode.isPwa ? '' : 'md:max-w-lg'}">
 				<div class="relative">
 					<div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
 						<svg
@@ -855,13 +908,14 @@
 		</div>
 	</div>
 
-	<!-- Scrollable content area -->
-	<div class="pt-4">
+	<!-- Scrollable content area (F045: extra bottom padding in app mode clears
+		 the fixed bottom-nav pill/bubble; safe-area-aware). -->
+	<div class="pt-4" style={displayMode.isPwa ? 'padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 5.5rem);' : ''}>
 
 	<!-- Content: loading / error / empty / success -->
-	{#if query.isLoading || (urlFilters.groupBy && isLoadingGrouped)}
+	{#if query.isLoading || (effectiveGroupBy && isLoadingGrouped)}
 		<LoadingSkeleton rows={7} />
-	{:else if query.error || (urlFilters.groupBy && groupedError)}
+	{:else if query.error || (effectiveGroupBy && groupedError)}
 		<ErrorState error={query.error || groupedError || 'Unknown error'} onRetry={refreshDevicesList} />
 	{:else if displayedDevices.length === 0}
 		<!--
@@ -887,13 +941,21 @@
 			{mobileViewMode}
 			onOpenDevice={openDeviceDetail}
 			visibleColumns={tableColumns}
+			presentation={displayMode.isPwa ? 'pwa' : 'auto'}
+			{currentUser}
+			onChanged={refreshDevicesList}
 		/>
 
-		{#if urlFilters.groupBy}
-			<!-- Grouped mode renders a single expanded page with all matching devices. -->
+		{#if effectiveGroupBy}
+			<!-- Grouped mode renders a single expanded page with all matching devices,
+				 capped at MAX_GROUPED_DEVICES for standalone-PWA callers only
+				 (F045 R5/B4/D-182) — desktop/mobile-web grouped fetches are
+				 unbounded, so the truncation note must never render for them. -->
 			<div class="mt-6 text-center text-sm text-neutral-600 dark:text-neutral-400">
-				{#if groupedTotalCount > 0}
-					Showing all {groupedTotalCount} {groupedTotalCount === 1 ? 'device' : 'devices'}
+				{#if displayMode.isPwa && groupedTotalCount > MAX_GROUPED_DEVICES}
+					{t('devices.list.showingFirst', { count: MAX_GROUPED_DEVICES, total: groupedTotalCount })}
+				{:else if groupedTotalCount > 0}
+					{t('devices.grouped.showingAll', { count: groupedTotalCount })}
 				{/if}
 			</div>
 		{:else if prefersReducedMotion}
@@ -997,7 +1059,7 @@
 {/if}
 
 <AddDeviceFab
-	visible={selectedIds.size === 0 && !createModalOpen && !selectedDeviceId}
+	visible={selectedIds.size === 0 && !createModalOpen && !selectedDeviceId && !displayMode.isPwa}
 	label={t('devices.list.addFab')}
 	onClick={() => (createModalOpen = true)}
 />

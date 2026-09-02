@@ -134,6 +134,7 @@
 		}
 	},
 	"navigation": {
+		"primary": "Primary navigation",
 		"home": "Home",
 		"devices": "Devices",
 		"reports": "Reports",
@@ -163,7 +164,8 @@
 			"addButton": "Add Device",
 			"addFab": "Add device",
 			"emptyState": "No devices yet. Add your first device to get started.",
-			"emptyFiltered": "No devices match your filters."
+			"emptyFiltered": "No devices match your filters.",
+			"showingFirst": "Showing first {count} of {total} devices. Narrow your filters to see the rest."
 		},
 		"viewMode": {
 			"cards": "Cards",
@@ -328,7 +330,8 @@
 			"loadError": "Could not load more devices."
 		},
 		"grouped": {
-			"loadError": "Could not load grouped devices."
+			"loadError": "Could not load grouped devices.",
+			"showingAll": "Showing all {count} devices"
 		},
 		"filters": {
 			"title": "Filters",
@@ -366,7 +369,8 @@
 			"unknown": "Unknown",
 			"countBadge": "{count}",
 			"expandGroup": "Expand {label}",
-			"collapseGroup": "Collapse {label}"
+			"collapseGroup": "Collapse {label}",
+			"pwaDefaultNote": "Grouped by category"
 		},
 		"bulk": {
 			"selectAllVisible": "Select all visible devices",
@@ -1031,6 +1035,7 @@
 		"tableColumns": {
 			"heading": "Table Columns",
 			"subheading": "Choose which columns to display in the devices table and their order. Drag to reorder.",
+			"desktopOnly": "This affects table views only — the desktop browser table and the installed app's Table view. The installed app's default Cards view uses its own compact layout.",
 			"resetToDefault": "Reset to Default",
 			"moveUp": "Move up",
 			"moveDown": "Move down",

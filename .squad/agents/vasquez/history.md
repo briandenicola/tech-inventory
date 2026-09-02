@@ -475,6 +475,82 @@ Constitution violation (§4.3: components <200 lines):
 - Admin pages: Create generic ResponsiveReferenceDataTable (DRY up 4 similar pages)
 - DeviceTable: Extract Header, Row, Card, GroupHeader sub-components
 
+## 2026-09-02 — F045 PWA app shell + device list reshape (branch `feature/pwa-device-navigation`)
+
+Implemented end-to-end: `displayMode.svelte.ts` (D-175 reactive standalone-PWA
+detection, viewport-independent), `AppBottomNav.svelte` (pill + circular
+Settings bubble), `AppMenuPopover.svelte` (compact anchored popover replacing
+the full-screen hamburger drawer), `DevicePwaRow.svelte` + `DevicePwaList.svelte`
+(two-line grouped rows reusing `DeviceActionsMenu`), split `DeviceTable.svelte`
+into a thin selector + `DeviceTableDesktop`/`DeviceTableCards` renderers
+(D-178), implicit PWA category grouping in `devices/+page.svelte`
+(`effectiveGroupBy` + `none` sentinel so an explicit opt-out sticks), and
+bottom-offset fixes for `BackToTopFab`/`BulkActionBar` so they clear the new
+nav instead of stacking under it in standalone mode.
+
+**Real bugs found and fixed while building this (not just new features):**
+1. `DeviceTable.svelte` was gating desktop-vs-mobile purely on CSS breakpoints
+   even when `presentation="pwa"` — an installed desktop-width PWA would have
+   shown the raw `<table>` instead of the PWA row list. D-175 says gate on
+   display-mode, not viewport; fixed by making `pwa` an unconditional branch.
+2. `fetchAllDevicesForGrouping` in `devices.svelte.ts` had no cap — grouped
+   view could fetch unbounded pages. Added the real `MAX_GROUPED_DEVICES = 500`
+   enforcement (was previously a TODO-shaped gap).
+3. Svelte 5 `$effect` footgun: `AppMenuPopover`'s route-change effect called
+   `closeMenu()` unconditionally; `closeMenu()` internally reads `isOpen` for
+   its early-return guard, and *that read* (even though it's inside a called
+   function, not the effect's own lexical body) still registers `isOpen` as a
+   tracked dependency of the effect. Net effect: opening the menu re-triggered
+   the "close on route change" effect and self-closed the panel the instant it
+   opened. Fix: `import { untrack } from 'svelte'`, wrap the call site:
+   `untrack(() => closeMenu())`. Lesson: any state read *transitively* inside
+   an `$effect` — not just state read directly in its body — becomes a
+   dependency. Use `untrack()` around calls to helper functions that read
+   state you don't want the effect reacting to.
+4. `aria-required-children` (axe): a `role="menu"` container's children must
+   all resolve to the `menuitem` family (`menuitem`/`menuitemradio`/`group`/
+   `separator`/...). Embedding a real widget like `ThemeToggle` (three
+   `<button aria-label>`s) directly inside `role="menu"` fails this rule even
+   when wrapped in an intermediate `role="group"` div — axe still walks down
+   into the group's own descendants looking for menu-item-family roles and
+   flags the raw buttons. There is no cheap ARIA-valid way to embed an
+   arbitrary widget inside a `menu`/`menuitem` composite; the only clean fix
+   was to structurally move the widget *outside* the `role="menu"` boundary
+   (as a trailing sibling in the same visual popover panel) rather than trying
+   to reclassify its buttons as `menuitemradio`. Precedent check: the desktop
+   user-menu dropdown in `+layout.svelte` (still untouched, pre-existing) never
+   embedded `ThemeToggle` at all — so this conflict was new, introduced by my
+   own choice to lift `role="menu"`/`menuitem` semantics (not literally
+   "required" by the charter, which only asked to lift `DeviceActionsMenu`'s
+   *keyboard* model) onto a widget that also had to carry over the drawer's
+   pre-existing theme-toggle feature.
+5. Pre-existing hard-coded string found and fixed in the same block I was
+   already touching: the grouped-view "Showing all N devices" text in
+   `devices/+page.svelte` was raw interpolation, not i18n. Replaced with
+   `devices.grouped.showingAll`.
+
+**Testing note**: `displayMode` and other module-level singletons exported
+from `.svelte.ts` stores can't be prop-injected into every consumer — when a
+component imports the singleton directly (e.g. `BackToTopFab`, `BulkActionBar`
+importing `displayMode` from `$lib/stores/displayMode.svelte`), test it via
+`vi.mock('$lib/stores/displayMode.svelte', () => ({ get displayMode() { return { isPwa: mockIsPwa }; } }))`
+with a mutable module-scoped flag, rather than trying to construct the real
+store with fake `matchMedia` wiring in every consumer test.
+
+**jsdom quirk**: setting an inline `style` attribute containing
+`calc(... + env(prop, fallback))` gets reformatted/reordered by jsdom's CSSOM
+on read-back (e.g. `env(0px * , * safe-area-inset-bottom)`) — don't assert on
+the exact serialized `style` string when it contains multi-term `calc()`/`env()`;
+assert on a distinguishing literal substring instead.
+
+**Deliberately not done**: no dedicated unit test file for
+`devices/+page.svelte` itself (implicit-grouping URL/sentinel logic) — the
+route's dependency surface (MSAL, generated API client, `IntersectionObserver`,
+`matchMedia`, reference-data store) makes a from-scratch harness a poor
+time/value tradeoff versus testing the new standalone components directly and
+letting Playwright/E2E (Apone's territory) cover the integration path. Flagged
+as an open gap for the coordinator.
+
 ### Code Quality Summary
 
 **Strengths** ✅:

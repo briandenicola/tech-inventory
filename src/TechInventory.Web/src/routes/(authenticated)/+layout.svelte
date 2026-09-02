@@ -7,8 +7,12 @@
 	import { t } from '$lib/i18n';
 	import { goto, invalidateAll } from '$app/navigation';
 	import PullToRefresh from '$lib/components/PullToRefresh.svelte';
-	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import ToastContainer from '$lib/components/ToastContainer.svelte';
+	import AppBottomNav from '$lib/components/AppBottomNav.svelte';
+	import AppMenuPopover from '$lib/components/AppMenuPopover.svelte';
+	import { displayMode } from '$lib/stores/displayMode.svelte';
+	import { activeDeviceCreate } from '$lib/stores/deviceCreate';
+	import { headerZIndexToken } from '$lib/utils/headerStacking';
 	import {
 		clearReferenceData,
 		fetchReferenceData,
@@ -31,7 +35,7 @@
 	// real Admin dropdown (replaces previous route-toggle button), 44px+
 	// touch targets, pill-style active state.
 
-	let mobileMenuOpen = $state(false);
+	let popoverOpen = $state(false);
 	let userMenuOpen = $state(false);
 	let isSigningOut = $state(false);
 	let userMenuTrigger = $state<HTMLButtonElement | undefined>(undefined);
@@ -46,6 +50,20 @@
 		const registration = $activePullToRefresh;
 		return registration?.routePath === $page.url.pathname ? registration.onRefresh : invalidateAll;
 	});
+
+	// F045 §5.2: Add lives in the bottom nav, but the create-device modal state
+	// lives on the devices page. When registered (i.e. the user is on
+	// /devices), call the handler directly; otherwise navigate to
+	// /devices?add=1, which the devices page interprets as "open the create
+	// modal on mount" and then strips the param.
+	function handleAdd() {
+		const registration = $activeDeviceCreate;
+		if (registration?.routePath === $page.url.pathname) {
+			registration.onOpenCreate();
+			return;
+		}
+		void goto('/devices?add=1');
+	}
 
 	// T09 + J3: Sign out — branch on auth method.
 	// Local (F025) sessions live in sessionStorage and have no Entra session
@@ -88,7 +106,6 @@
 	$effect(() => {
 		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
 		$page.url.pathname; // Trigger effect on route change
-		mobileMenuOpen = false;
 		userMenuOpen = false;
 	});
 
@@ -148,7 +165,10 @@
 
 <div class="flex min-h-screen flex-col bg-neutral-50 dark:bg-neutral-900">
 	<!-- Header -->
-	<header class="sticky top-0 z-30 border-b border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
+	<header
+		class="sticky top-0 border-b border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950"
+		style="z-index: {headerZIndexToken(popoverOpen)};"
+	>
 		<div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
 			<!-- Left: Logo + App Name -->
 			<a href="/devices" class="flex items-center gap-3 rounded-full px-1 py-1 outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
@@ -285,114 +305,19 @@
 				{/if}
 			</div>
 
-			<!-- Hamburger Menu Button (mobile only — desktop uses user menu as sole nav entry) -->
-			<button
-				type="button"
-				class="inline-flex h-11 w-11 items-center justify-center rounded-full text-neutral-700 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-neutral-300 dark:hover:bg-neutral-800 md:hidden"
-				onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
-				aria-label={mobileMenuOpen ? t('header.closeMenu') : t('header.menu')}
-				aria-expanded={mobileMenuOpen}
-			>
-				<svg
-					class="h-6 w-6"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-					aria-hidden="true"
-				>
-					{#if mobileMenuOpen}
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M6 18L18 6M6 6l12 12"
-						/>
-					{:else}
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M4 6h16M4 12h16M4 18h16"
-						/>
-					{/if}
-				</svg>
-			</button>
+			<!-- F045 §5.3/§5.7: compact anchored popover replaces the former full-screen
+				 drawer — desktop still uses the user menu above as its sole nav entry. -->
+			<AppMenuPopover
+				pathname={$page.url.pathname}
+				{currentUser}
+				onSignOut={handleSignOut}
+				onOpenChange={(open) => (popoverOpen = open)}
+			/>
 			</div>
 		</div>
 
 		<!-- secondary admin nav removed — admin links live in hamburger + user menu
 			 (D-160-style rule extension). -->
-
-		<!-- Hamburger Menu (expanded — mobile only, hidden on md+ via button hide) -->
-		{#if mobileMenuOpen}
-			<nav
-				class="border-t border-neutral-200/70 bg-white/95 px-4 py-4 backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-950/95"
-				aria-label="Primary navigation"
-			>
-				<div class="flex flex-col gap-1.5">
-					{#each visiblePrimaryNavItems as item (item.href)}
-						{@render mobileNavLink(item.href, t(item.labelKey))}
-					{/each}
-
-					{#if visibleAdminNavItems.length > 0}
-						<div class="mt-2 space-y-1 border-t border-neutral-200 pt-3 dark:border-neutral-800">
-							<div class="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-								{t('navigation.admin')}
-							</div>
-							{#each visibleAdminNavItems as item (item.href)}
-								{@render mobileNavLink(item.href, t(item.labelKey))}
-							{/each}
-						</div>
-					{/if}
-
-					<div class="mt-2 space-y-1 border-t border-neutral-200 pt-3 dark:border-neutral-800">
-						{@render mobileNavLink('/settings', t('navigation.settings'))}
-					</div>
-
-					<div class="rounded-2xl border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900/70">
-						<p class="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-							{t('settings.theme.heading')}
-						</p>
-						<ThemeToggle />
-					</div>
-
-					<!-- Mobile: User Info + Sign Out -->
-					{#if currentUser}
-						<div class="mt-3 border-t border-neutral-200 pt-3 dark:border-neutral-800">
-							<div class="mb-2 flex items-center gap-2 rounded-full bg-neutral-100 px-3 py-2 dark:bg-neutral-800">
-								<span class="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-									{currentUser.displayName}
-								</span>
-								<span
-									class="rounded-full px-2 py-0.5 text-xs font-medium"
-									class:bg-primary-100={currentUser.role === 'Admin'}
-									class:text-primary-700={currentUser.role === 'Admin'}
-									class:dark:bg-primary-900={currentUser.role === 'Admin'}
-									class:dark:text-primary-300={currentUser.role === 'Admin'}
-									class:bg-success-100={currentUser.role === 'Member'}
-									class:text-success-700={currentUser.role === 'Member'}
-									class:dark:bg-success-900={currentUser.role === 'Member'}
-									class:dark:text-success-300={currentUser.role === 'Member'}
-									class:bg-neutral-200={currentUser.role === 'Viewer'}
-									class:text-neutral-700={currentUser.role === 'Viewer'}
-									class:dark:bg-neutral-700={currentUser.role === 'Viewer'}
-									class:dark:text-neutral-300={currentUser.role === 'Viewer'}
-								>
-									{currentUser.role}
-								</span>
-							</div>
-							<button
-								type="button"
-								onclick={handleSignOut}
-								class="flex min-h-11 w-full items-center rounded-xl px-3 py-2.5 text-left text-base font-medium text-neutral-700 transition-colors hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
-							>
-								{t('auth.signOut.button')}
-							</button>
-						</div>
-					{/if}
-				</div>
-			</nav>
-		{/if}
 	</header>
 
 	<!-- Main Content Area -->
@@ -402,41 +327,36 @@
 		</PullToRefresh>
 	</main>
 
-	<!-- Footer -->
-	<footer class="border-t border-neutral-200/70 bg-white px-4 py-6 dark:border-neutral-800/70 dark:bg-neutral-950">
-		<div class="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 text-sm text-neutral-600 dark:text-neutral-400 sm:flex-row">
-			<div class="flex items-center gap-4">
-				<span>{t('footer.version', { version: '1.0.0' })}</span>
+	<!--
+		F045 §5.6/§5.7: bottom navigation — sibling of `<main>`, never a
+		descendant of `PullToRefresh` (which animates `transform` and would
+		become an unwanted `position: fixed` containing block for this element;
+		see PullToRefresh.containing-block.test.ts for the exact failure mode).
+	-->
+	{#if displayMode.isPwa}
+		<AppBottomNav pathname={$page.url.pathname} {currentUser} onAdd={handleAdd} />
+	{/if}
+
+	<!-- Footer (F045 §5.7: hidden in app mode — version/GitHub links belong in
+		 Settings on a phone, and the footer otherwise sits behind the nav pill). -->
+	{#if !displayMode.isPwa}
+		<footer class="border-t border-neutral-200/70 bg-white px-4 py-6 dark:border-neutral-800/70 dark:bg-neutral-950">
+			<div class="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 text-sm text-neutral-600 dark:text-neutral-400 sm:flex-row">
+				<div class="flex items-center gap-4">
+					<span>{t('footer.version', { version: '1.0.0' })}</span>
+				</div>
+				<a
+					href="https://github.com/briandenicola/tech-inventory"
+					target="_blank"
+					rel="noopener noreferrer"
+					class="rounded-full px-2 py-1 hover:text-primary-600 dark:hover:text-primary-400"
+				>
+					{t('footer.github')}
+				</a>
 			</div>
-			<a
-				href="https://github.com/briandenicola/tech-inventory"
-				target="_blank"
-				rel="noopener noreferrer"
-				class="rounded-full px-2 py-1 hover:text-primary-600 dark:hover:text-primary-400"
-			>
-				{t('footer.github')}
-			</a>
-		</div>
-	</footer>
+		</footer>
+	{/if}
 
 	<!-- Toast notifications (fixed top-right, z-50) -->
 	<ToastContainer />
 </div>
-
-{#snippet mobileNavLink(href: string, label: string)}
-	{@const active = $page.url.pathname.startsWith(href)}
-	<a
-		{href}
-		class="flex min-h-11 items-center rounded-xl px-3 py-2.5 text-base font-medium"
-		class:bg-neutral-100={active}
-		class:text-primary-700={active}
-		class:dark:bg-neutral-800={active}
-		class:dark:text-primary-300={active}
-		class:text-neutral-700={!active}
-		class:hover:bg-neutral-100={!active}
-		class:dark:text-neutral-300={!active}
-		class:dark:hover:bg-neutral-800={!active}
-	>
-		{label}
-	</a>
-{/snippet}

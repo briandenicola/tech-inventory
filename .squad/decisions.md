@@ -4481,3 +4481,199 @@ D-170 contains the security gates and constraints. D-171 is the implementation v
 - All meaningful changes require team consensus
 - Document architectural decisions here
 - Keep history focused on work, decisions focused on direction
+
+---
+
+## F045 — Installed-PWA App Shell & Device List Reshape (D-175 – D-187)
+
+### D-175: Installed-PWA chrome is a distinct presentation mode, gated on `isStandalonePwa()` — not on viewport
+
+- **Author:** Ripley (Lead / Architect)
+- **Date:** 2026-09-02
+- **Status:** Approved
+- **Related:** `specs/_backlog/F045-pwa-shell-and-device-list.md` §4, F027, F023, F026, D-170/D-171
+
+**Context.** The requested bottom-nav pill, anchored menu popover and two-line device rows are trivially implemented with a `md:hidden` viewport switch — which would wrongly give a narrow desktop browser window a native-app tab bar.
+
+**Decision.** There are exactly three presentation modes: `pwa`, `mobile`, `desktop`. App-mode chrome is gated on `isStandalonePwa()` (owned by `src/lib/auth/index.ts`, ORing `display-mode: standalone` with the iOS `standalone` flag) and never on viewport width; viewport only splits `mobile` from `desktop`. `src/lib/stores/displayMode.svelte.ts` wraps that existing primitive reactively rather than re-deriving it.
+
+**Consequences.** Desktop and mobile-web behaviour is contractually unchanged, so the existing Playwright desktop suite must pass unedited — a test that needs editing signals a design violation, not a test fix. SSR resolves to `desktop` with `isMounted: false` to avoid hydration mismatch and nav flash.
+
+---
+
+### D-176: Record this work as new backlog entry F045; narrow F027; annotate F023
+
+- **Author:** Ripley (Lead / Architect)
+- **Date:** 2026-09-02
+- **Status:** Approved
+- **Related:** D-175, `specs/_backlog/F045-pwa-shell-and-device-list.md`, F027, F023
+
+**Context.** The reshape touches surfaces already described by F027 (global nav overhaul) and F023 (group by dimension).
+
+**Decision.** Create F045 as a new `specs/_backlog/` entry rather than amend F027. F027's nav section describes the drawer this work replaces; editing it in place would erase why the drawer was built, so F027 is narrowed to responsive admin pages and its mobile-nav-chrome section is superseded by F045. F023 is shipped and unchanged in behaviour, so it receives a one-line history annotation, not a reopening. This is also not a `specs/00X-*` spec: those are reserved for phase-scale programs, and P4 pulls from the backlog.
+
+**Consequences.** One new backlog entry carrying the full implementation and test boundary, two small annotations, one row in `docs/backlog.md`. No constitution amendment required.
+
+---
+
+### D-177: App mode groups by category implicitly, without polluting URL or filter badge
+
+- **Author:** Ripley (Lead / Architect)
+- **Date:** 2026-09-02
+- **Status:** Approved
+- **Related:** D-175, D-182, F045 §5.6, F026, F023
+
+**Context.** App mode should open on grouped categories, but writing a default into the URL on mount fights `setDevicesViewState` session restore and makes every shared device link silently category-grouped.
+
+**Decision.** In app mode, absent an explicit `groupBy` parameter, group by category implicitly: never write it to the URL, never count it in `activeFilterCount`, and honour an explicit `?groupBy=none` opt-out. This mirrors the `statusIsImplicitActive` pattern in `devices/+page.svelte`. Implementation keeps a derived `effectiveGroupBy` for fetching and rendering, separate from the raw URL filter used for display.
+
+**Consequences.** Desktop and mobile-web still default to no grouping. Grouped fetch volume in app mode is bounded separately — see D-182. The implicit-default-without-URL-write pattern is now established for future filters.
+
+---
+
+### D-178: `visibleColumns` is a desktop-table-only preference, permanently and assertably
+
+- **Author:** Ripley (Lead / Architect)
+- **Date:** 2026-09-02
+- **Status:** Approved
+- **Related:** D-175, F045 §5.5, Constitution §6.5.4
+
+**Context.** The Table Columns preference happens to be ignored by the mobile card renderer today, purely by accident of prop plumbing.
+
+**Decision.** Make it explicit: `visibleColumns` feeds the desktop `<table>` renderer only, never PWA compact rows or cards. The invariant is unit-asserted and Settings labels the preference as applying to the desktop table view only.
+
+**Consequences.** `DeviceTable.svelte` (596 lines against a 200-line guideline) cannot absorb a third renderer inline. It is split into a thin selector plus `DeviceTableDesktop`, `DeviceTableCards` and `DevicePwaList`; that extraction is in scope for F045.
+
+---
+
+### D-179: The compact menu popover preserves today's option set exactly — reuse, don't fork
+
+- **Author:** Ripley (Lead / Architect)
+- **Date:** 2026-09-02
+- **Status:** Approved
+- **Related:** D-175, D-181, F045 §5.3, `src/lib/navigation/appNav.ts`
+
+**Context.** Replacing the full-screen drawer with an anchored popover risks quietly re-authoring navigation and duplicating menu styling.
+
+**Decision.** The popover renders the same items, in the same order, with the same role gates, sourced from `appNav.ts`. It uses `--z-popover`, no scroll lock and no full-screen backdrop, and reuses the desktop user-menu visual recipe. Device rows reuse the shipped `DeviceActionsMenu` (F042) rather than forking it, and desktop primary nav links stay removed per the binding `regression-watch` comment in `+layout.svelte`.
+
+**Consequences.** Three role-based snapshot tests (Admin / Member / Viewer) guard the option set and order; a containing-block test modeled on `PullToRefresh.containing-block.test.ts` guards against clipping by the sticky header's stacking context.
+
+---
+
+### D-180: The Settings bubble is intentionally icon-only; the visible-label gate applies to pill items
+
+- **Author:** Ripley (Lead / Architect)
+- **Date:** 2026-09-02
+- **Status:** Approved (upon amendment)
+- **Related:** D-175, D-179, F045 §5.2, §7.3
+
+**Context.** F045 §7.3 required a visible text label on every nav item. Inside the circular Settings bubble the usable chord at label height is roughly 44px while the label itself measures roughly 42px, so any localisation overflows the curve.
+
+**Decision.** Accept the geometry: §7.3 is narrowed to "every item inside the pill has a visible text label" — Home, Add and Reports keep visible labels — while the Settings bubble carries its accessible name via `aria-label` and `title` only.
+
+**Consequences.** The E2E journey does not assert a visible Settings label. If the icon-only bubble is later overruled, the recorded escape hatch is the wider bubble variant.
+
+---
+
+### D-181: The popover's theme block trails identity and Sign Out, outside `role="menu"`
+
+- **Author:** Ripley (Lead / Architect)
+- **Date:** 2026-09-02
+- **Status:** Approved (upon amendment)
+- **Related:** D-175, D-179, F045 §5.3
+
+**Context.** The spec pinned the order as Settings → theme block → identity and Sign Out, but the theme toggle is a composite three-button widget; nested inside `role="menu"` it fails axe's `aria-required-children` even when wrapped in `role="group"`, and a single contiguous menu cannot interleave a non-menu sibling.
+
+**Decision.** Amend the order so the theme block sits after the menu boundary, as a trailing sibling below identity and Sign Out. General constraint: ARIA `menu` composites in this codebase host command items only — no embedded widgets.
+
+**Consequences.** The menuitem set and their relative order are unchanged, which is what the accessibility gate actually guards; the popover passes axe with valid ARIA.
+
+---
+
+### D-182: The 500-row grouped fetch cap is app-mode-only; desktop grouping stays unbounded
+
+- **Author:** Ripley (Lead / Architect)
+- **Date:** 2026-09-02
+- **Status:** Approved (option a)
+- **Related:** D-175, D-177, F045 §3, §5.6, F023
+
+**Context.** Earlier F045 and F023 notes claimed a 500-row grouped-fetch cap already existed. It did not: `fetchAllDevicesForGrouping` fetched every page unbounded on `main`, so `MAX_GROUPED_DEVICES = 500` is new behaviour, and living in the shared query it also truncated the desktop grouped view — a hard non-goal.
+
+**Decision.** Scope the cap to app mode (option a). `fetchAllDevicesForGrouping(filters, maxRows?)` takes an optional ceiling: omitted means unbounded, supplied means capped. `devices/+page.svelte` passes the cap only when app mode is active, and the "showing first 500" truncation note is gated the same way. The false "existing cap" claim is corrected in the F023 history note.
+
+**Consequences.** Desktop and mobile-web grouped fetches behave exactly as on `main` and never show a truncation note. Raising the cap or adding server-side grouping is a future decision that touches the API.
+
+---
+
+### D-183: F045 implementation ownership and split
+
+- **Author:** Ripley (Lead / Architect)
+- **Date:** 2026-09-02
+- **Status:** Approved
+- **Related:** D-175 – D-182, F045 §5, §6
+
+**Decision.** Ownership is split three ways. Vasquez owns implementation: the presentation-mode store, bottom nav, menu popover, compact device row, the `DeviceTable` split into desktop/cards/PWA renderers, and the layout, devices and settings page edits. Apone owns tests: the Vitest matrix, the `15-pwa-shell.spec.ts` journey, the app-mode accessibility pass, and updating page objects for the moved Add affordance in the same PR. Drake owns visuals: nav glyphs, pill and bubble treatment, and label contrast in both themes.
+
+**Consequences.** Hard fences: no API, DTO, handler or migration changes; no auth or role-gate changes; no new grouping dimensions; no new icon dependency; no desktop visual change. E2E is authored ahead of implementation and expected red until the implementation lands.
+
+---
+
+### D-184: F045 implementation technical choices
+
+- **Author:** Vasquez (Frontend Developer)
+- **Date:** 2026-09-02
+- **Status:** Approved
+- **Related:** D-175, D-183, F045 §5
+
+**Decision.** Four choices define the implementation:
+
+1. A reactive display-mode store wraps the existing standalone detection; when presentation is `pwa` the table component short-circuits to the compact list unconditionally rather than falling back to CSS breakpoints, so an installed desktop PWA never renders the raw table.
+2. Implicit grouping is expressed as a derived effective value plus an explicit `none` sentinel, and URL building is a pure helper so the sentinel is written only on deliberate opt-out.
+3. Creating a device is triggered through a shared store so the bottom-nav Add button and the desktop Add Device button drive the same modal, with the same role gate.
+4. The bottom nav and popover use fixed overlay positioning with safe-area-aware offsets, and page-level fixed affordances are offset to clear the nav.
+
+**Consequences.** The implicit-default and pure-URL-builder patterns are reusable; the unconditional presentation branch keeps D-175 enforceable in tests.
+
+---
+
+### D-185: F045 Playwright standalone emulation and E2E test contract
+
+- **Author:** Apone (Tester / QA)
+- **Date:** 2026-09-02
+- **Status:** Approved
+- **Related:** D-175, D-183, F045 §6.2
+
+**Decision.** Playwright cannot emulate `display-mode: standalone`, so `tests/e2e/pages/AppShellPage.ts` overrides the media query through an init script applied before page scripts and re-applied on every navigation; future standalone-PWA specs import it rather than re-implementing. The journey asserts semantic selectors only — the bottom-nav landmark, accessible names for Home / Add / Reports / Settings, the Add button distinguished from the desktop Add Device button, the Settings bubble as a sibling of the pill group, the popover by menu role, and reuse of the existing group-section test ids. The device seeding fixture gains an optional model override, purely additive, to assert the compact row's second line deterministically.
+
+**Consequences.** Role coverage in Playwright is Admin-only because only an Admin sign-in fixture exists; per-role popover option sets remain a Vitest responsibility with a mocked auth store. The suite collects 126 cases across browser and viewport projects; live execution requires the running stack and is deferred to CI.
+
+---
+
+### D-186: F045 visual rules — grouped pill, separate bubble, compact popover, two-line rows
+
+- **Author:** Drake (Designer / Visual Engineer)
+- **Date:** 2026-09-02
+- **Status:** Approved
+- **Related:** D-175, D-180, D-181, F045 §5, §7
+
+**Decision.** No new global tokens: the nav surface uses component-scoped custom properties derived from existing `tokens.css` values, defined for light and dark themes through both the explicit theme attribute and the media query, with an opaque fallback when backdrop blur is unsupported. Structure is a grouped pill holding the labelled items plus a separate circular Settings bubble of matching height. Touch targets clear 44px, labels are letter-spaced to stay legible at their small size, and focus rings are explicit. The menu is a compact anchored popover rather than a full-screen sheet, and device rows are two-line: name on line one, brand and model on line two.
+
+**Consequences.** The highest visual risk is small-label contrast on a translucent blurred surface; contrast verification in both themes is a merge gate, and the opaque fallback protects browsers without backdrop blur.
+
+---
+
+### D-187: F045 QC correction cycle — rejection, independent revision, final approval
+
+- **Author:** Ripley (Lead / Architect), with Hicks (independent revision)
+- **Date:** 2026-09-02
+- **Status:** Approved
+- **Related:** D-175 – D-186
+
+**Context.** The first implementation submission was rejected by QC audit with six blocking findings: a header z-index regression in the layout, an implicit-grouping sentinel written on every filter change instead of on explicit opt-out only, the view-mode control hidden entirely in app mode, the 500-row cap applied to desktop as well, a missing group role plus a tautological nav test, and an unguarded popover containing-block risk.
+
+**Decision.** Under reviewer lockout the revision was performed independently by Hicks rather than the original author. Each finding was fixed with a regression guard: the header z-index rule extracted into a tested helper, URL parameter building extracted into a tested pure function with the sentinel distinguished from absence, the view control restored with conditional visibility, the cap scoped per D-182 with a test proving desktop stays unbounded, real containment and touch-target assertions replacing the tautological test, and a containing-block test for the popover. Follow-ups resolved in the same pass: real anchor semantics for compact rows when no handler is supplied, a role gate on the create-from-URL parameter, the spec corrections from D-180, D-181 and D-182, and confirmation that generated API types are unchanged. Vasquez's E2E correction was scoped narrowly to the changed selectors only.
+
+**Consequences.** Final approval granted. Validation: full Vitest suite green (560 passing, one pre-existing skip), type check, lint and build clean, backend unit and integration suites passing; Playwright execution deferred to CI, which owns the browser matrix.
+
+---

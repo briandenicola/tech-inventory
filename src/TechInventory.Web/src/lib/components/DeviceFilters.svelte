@@ -24,6 +24,11 @@
 		onClearDefault?: () => void;
 		hasStoredDefault?: boolean;
 		canSaveDefault?: boolean;
+		/** F045 B2 follow-up: true when the installed PWA's implicit
+		 *  category-grouping default is in effect (no explicit user choice).
+		 *  Presentation-only — never written to the URL or counted toward an
+		 *  active-filter badge. */
+		implicitGroupingActive?: boolean;
 	}
 
 	let {
@@ -34,7 +39,8 @@
 		onSaveDefault,
 		onClearDefault,
 		hasStoredDefault = false,
-		canSaveDefault = true
+		canSaveDefault = true,
+		implicitGroupingActive = false
 	}: Props = $props();
 
 	const refData = $derived($referenceDataStore);
@@ -216,22 +222,36 @@
 		</label>
 		<select
 			id="groupBy"
-			value={filters.groupBy || ''}
+			value={filters.groupBy || (implicitGroupingActive ? 'category' : 'none')}
 			onchange={(e) => {
 				const value = (e.target as HTMLSelectElement).value;
 				onFiltersChange({
 					...filters,
-					groupBy: value === '' ? undefined : (value as 'category' | 'owner' | 'year'),
+					groupBy: value as 'none' | 'category' | 'owner' | 'year',
 					page: 1
 				});
 			}}
 			class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:bg-neutral-900"
 		>
-			<option value="">{t('devices.filters.groupByNone')}</option>
+			<option value="none">{t('devices.filters.groupByNone')}</option>
 			<option value="category">{t('devices.filters.groupByCategory')}</option>
 			<option value="owner">{t('devices.filters.groupByOwner')}</option>
 			<option value="year">{t('devices.filters.groupByYear')}</option>
 		</select>
+		{#if implicitGroupingActive}
+			<!--
+				F045 follow-up: devices.groups.pwaDefaultNote existed in en.json
+				but was never rendered anywhere (a dead key). It belongs here: the
+				<select> above shows "Category" (the effective value) even though
+				no explicit choice was ever made, so a one-line note clarifies that
+				this is the app's default, not a persisted user selection. Purely
+				presentational — never written to the URL or counted in
+				activeFilterCount.
+			-->
+			<p class="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
+				{t('devices.groups.pwaDefaultNote')}
+			</p>
+		{/if}
 	</div>
 
 	<!-- Brand -->

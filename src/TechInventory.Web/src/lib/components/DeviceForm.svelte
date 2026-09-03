@@ -17,7 +17,9 @@
 	import { onMount, untrack } from 'svelte';
 	import { t } from '$lib/i18n';
 	import { fetchReferenceData, referenceDataStore } from '$lib/stores/referenceData';
+	import { authStore } from '$lib/stores/auth';
 	import DeviceTagSelector from '$lib/components/DeviceTagSelector.svelte';
+	import QuickCreateReferenceModal from '$lib/components/QuickCreateReferenceModal.svelte';
 	import { deviceFormSchema, deviceStatusValues, type DeviceFormInput } from '$lib/schemas/device';
 	import type { ZodError } from 'zod';
 
@@ -42,6 +44,32 @@
 	}: Props = $props();
 
 	const refData = $derived($referenceDataStore);
+
+	// #136: Admin-only quick-create affordance for Category, Brand, Location.
+	const isAdmin = $derived($authStore.currentUser?.role === 'Admin');
+
+	type QuickCreateType = 'brand' | 'category' | 'location';
+	let activeQuickCreate = $state<{ type: QuickCreateType; trigger: HTMLElement } | null>(null);
+
+	function openQuickCreate(type: QuickCreateType, trigger: HTMLElement) {
+		activeQuickCreate = { type, trigger };
+	}
+
+	async function handleQuickCreated(id: string) {
+		if (!activeQuickCreate) return;
+		const { type } = activeQuickCreate;
+		activeQuickCreate = null;
+		// Auto-select the new entity immediately so the field is not blank while refreshing.
+		if (type === 'brand') formData.brandId = id;
+		else if (type === 'category') formData.categoryId = id;
+		else if (type === 'location') formData.locationId = id;
+		// Force-refresh so the new option appears in the select.
+		await fetchReferenceData({ force: true });
+	}
+
+	function handleQuickCancelled() {
+		activeQuickCreate = null;
+	}
 
 	onMount(() => {
 		void fetchReferenceData();
@@ -281,6 +309,16 @@
 		{#if touched.brandId && errors.brandId}
 			<p class="mt-1 text-sm text-danger-600 dark:text-danger-400">{errors.brandId}</p>
 		{/if}
+		{#if isAdmin}
+			<button
+				type="button"
+				aria-haspopup="dialog"
+				onclick={(e) => openQuickCreate('brand', e.currentTarget)}
+				class="mt-1.5 text-xs font-medium text-primary-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1 dark:text-primary-400"
+			>
+				{t('referenceCreate.addNew')}
+			</button>
+		{/if}
 	</div>
 
 	<!-- Category -->
@@ -305,6 +343,16 @@
 		</select>
 		{#if touched.categoryId && errors.categoryId}
 			<p class="mt-1 text-sm text-danger-600 dark:text-danger-400">{errors.categoryId}</p>
+		{/if}
+		{#if isAdmin}
+			<button
+				type="button"
+				aria-haspopup="dialog"
+				onclick={(e) => openQuickCreate('category', e.currentTarget)}
+				class="mt-1.5 text-xs font-medium text-primary-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1 dark:text-primary-400"
+			>
+				{t('referenceCreate.addNew')}
+			</button>
 		{/if}
 	</div>
 
@@ -377,6 +425,16 @@
 		</select>
 		{#if touched.locationId && errors.locationId}
 			<p class="mt-1 text-sm text-danger-600 dark:text-danger-400">{errors.locationId}</p>
+		{/if}
+		{#if isAdmin}
+			<button
+				type="button"
+				aria-haspopup="dialog"
+				onclick={(e) => openQuickCreate('location', e.currentTarget)}
+				class="mt-1.5 text-xs font-medium text-primary-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1 dark:text-primary-400"
+			>
+				{t('referenceCreate.addNew')}
+			</button>
 		{/if}
 	</div>
 
@@ -685,3 +743,14 @@
 		</button>
 	</div>
 </form>
+
+{#if activeQuickCreate}
+	<QuickCreateReferenceModal
+				type={activeQuickCreate.type}
+				triggerElement={activeQuickCreate.trigger}
+				onCreated={(id) => {
+					void handleQuickCreated(id);
+				}}
+				onCancel={handleQuickCancelled}
+	/>
+{/if}

@@ -1079,5 +1079,34 @@
 			"reload": "Reload",
 			"dismiss": "Dismiss"
 		}
+	},
+	"referenceCreate": {
+		"addNew": "Add new…",
+		"nameLabel": "Name",
+		"submit": "Create",
+		"submitting": "Creating…",
+		"cancel": "Cancel",
+		"brand": {
+			"dialogTitle": "New Brand",
+			"namePlaceholder": "e.g., Apple, Samsung",
+			"duplicateError": "A brand with this name already exists.",
+			"createError": "Failed to create brand."
+		},
+		"category": {
+			"dialogTitle": "New Category",
+			"namePlaceholder": "e.g., Smartphones, Laptops",
+			"duplicateError": "A category with this name already exists.",
+			"createError": "Failed to create category."
+		},
+		"location": {
+			"dialogTitle": "New Location",
+			"namePlaceholder": "e.g., Living Room, Garage",
+			"typeLabel": "Type",
+			"typeHome": "Home",
+			"typeStorage": "Storage",
+			"typeExternal": "External",
+			"duplicateError": "A location with this name already exists.",
+			"createError": "Failed to create location."
+		}
 	}
 }

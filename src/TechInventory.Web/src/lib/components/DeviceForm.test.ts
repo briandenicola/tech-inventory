@@ -47,6 +47,24 @@ vi.mock('$lib/stores/referenceData', async () => {
 
 import { referenceDataStore } from '$lib/stores/referenceData';
 
+// Mock the auth store — default to no authenticated user (non-Admin) so the
+// 38 pre-existing tests are unaffected; permission-gate tests override role.
+vi.mock('$lib/stores/auth', async () => {
+	const { writable } = await import('svelte/store');
+	return {
+		authStore: writable({
+			currentUser: null,
+			isAuthenticated: false,
+			isLoading: false,
+			error: null,
+			authMethod: null,
+			mustChangePassword: false
+		})
+	};
+});
+
+import { authStore } from '$lib/stores/auth';
+
 const testBrandId = '00000000-0000-4000-8000-000000000301';
 const testCategoryId = '00000000-0000-4000-8000-000000000201';
 const testOwnerId = '00000000-0000-4000-8000-000000000401';
@@ -87,6 +105,16 @@ describe('DeviceForm', () => {
 			error: null
 		};
 		referenceDataStore.set(refData);
+
+		// Reset auth store to non-admin baseline so permission-gate tests don't bleed.
+		authStore.set({
+			currentUser: null,
+			isAuthenticated: false,
+			isLoading: false,
+			error: null,
+			authMethod: null,
+			mustChangePassword: false
+		});
 	});
 
 	const mockOnSubmit = vi.fn<
@@ -781,6 +809,53 @@ describe('DeviceForm', () => {
 
 			const results = await axe(container);
 			expect(results).toHaveNoViolations();
+		});
+	});
+
+	// ──────────────────────────────────────────────────────────────
+	// Permission gate — quick-create affordance (#136)
+	// The "Add new…" button is Admin-only per the #136 design review.
+	// These tests confirm the frontend gate by controlling authStore.
+	// Backend enforcement (POST /api/v1/brands|categories|locations
+	// requires AdminOrMember) is verified by the integration suite.
+	// ──────────────────────────────────────────────────────────────
+
+	describe('permission gate — quick-create affordance (#136)', () => {
+		it('renders no "Add new…" buttons when the user is unauthenticated (null)', () => {
+			// authStore.currentUser is null by default (reset in beforeEach).
+			render(DeviceForm, { props: defaultProps });
+			expect(screen.queryAllByText('referenceCreate.addNew')).toHaveLength(0);
+		});
+
+		it('renders no "Add new…" buttons for Member-role users', () => {
+			authStore.update((s) => ({
+				...s,
+				currentUser: { id: 'u-member', entraObjectId: null, displayName: 'Alice', role: 'Member' as const },
+				isAuthenticated: true
+			}));
+			render(DeviceForm, { props: defaultProps });
+			expect(screen.queryAllByText('referenceCreate.addNew')).toHaveLength(0);
+		});
+
+		it('renders no "Add new…" buttons for Viewer-role users', () => {
+			authStore.update((s) => ({
+				...s,
+				currentUser: { id: 'u-viewer', entraObjectId: null, displayName: 'Bob', role: 'Viewer' as const },
+				isAuthenticated: true
+			}));
+			render(DeviceForm, { props: defaultProps });
+			expect(screen.queryAllByText('referenceCreate.addNew')).toHaveLength(0);
+		});
+
+		it('renders exactly three "Add new…" buttons for Admin-role users (Brand, Category, Location only)', () => {
+			authStore.update((s) => ({
+				...s,
+				currentUser: { id: 'u-admin', entraObjectId: null, displayName: 'Admin User', role: 'Admin' as const },
+				isAuthenticated: true
+			}));
+			render(DeviceForm, { props: defaultProps });
+			// Brand + Category + Location = 3. Owner and Network explicitly absent per #136 design review.
+			expect(screen.getAllByText('referenceCreate.addNew')).toHaveLength(3);
 		});
 	});
 });

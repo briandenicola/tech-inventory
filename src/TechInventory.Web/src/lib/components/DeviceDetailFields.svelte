@@ -4,7 +4,7 @@
 	import type { DeviceResponse } from '$lib/queries/devices.svelte';
 
 	type TagResponse = components['schemas']['TagResponse'];
-	type DetailRow = {
+	type DetailField = {
 		key: string;
 		label: string;
 		value: string;
@@ -39,8 +39,8 @@
 		formatDateTime
 	}: Props = $props();
 
-	const detailRows = $derived.by(() => {
-		const rows: DetailRow[] = [
+	const detailFields = $derived.by(() => {
+		const fields: DetailField[] = [
 			{ key: 'serial', label: t('devices.columns.serial'), value: device.serialNumber ?? '—' },
 			{ key: 'model', label: t('devices.columns.model'), value: device.model ?? '—' },
 			{ key: 'brand', label: t('devices.columns.brand'), value: brandName },
@@ -64,17 +64,17 @@
 		];
 
 		if (device.operatingSystem) {
-			rows.push({
+			fields.push({
 				key: 'operatingSystem',
 				label: t('devices.columns.operatingSystem'),
 				value: device.operatingSystem
 			});
 		}
 		if (device.version) {
-			rows.push({ key: 'version', label: t('devices.columns.version'), value: device.version });
+			fields.push({ key: 'version', label: t('devices.columns.version'), value: device.version });
 		}
 		if (device.ipAddress) {
-			rows.push({
+			fields.push({
 				key: 'ipAddress',
 				label: t('devices.columns.ipAddress'),
 				value: device.ipAddress,
@@ -82,7 +82,7 @@
 			});
 		}
 		if (device.macAddress) {
-			rows.push({
+			fields.push({
 				key: 'macAddress',
 				label: t('devices.columns.macAddress'),
 				value: device.macAddress,
@@ -90,7 +90,7 @@
 			});
 		}
 		if (device.productUrl) {
-			rows.push({
+			fields.push({
 				key: 'productUrl',
 				label: t('devices.columns.productUrl'),
 				value: device.productUrl,
@@ -98,21 +98,21 @@
 			});
 		}
 		if (device.retiredDate) {
-			rows.push({
+			fields.push({
 				key: 'retiredDate',
 				label: t('devices.columns.retiredDate'),
 				value: formatDate(device.retiredDate)
 			});
 		}
 		if (device.disposalMethod) {
-			rows.push({
+			fields.push({
 				key: 'disposalMethod',
 				label: t('devices.columns.disposalMethod'),
 				value: device.disposalMethod
 			});
 		}
 		if (device.purpose) {
-			rows.push({
+			fields.push({
 				key: 'purpose',
 				label: t('devices.columns.purpose'),
 				value: device.purpose,
@@ -120,7 +120,7 @@
 			});
 		}
 		if (device.notes) {
-			rows.push({
+			fields.push({
 				key: 'notes',
 				label: t('devices.columns.notes'),
 				value: device.notes,
@@ -128,7 +128,7 @@
 			});
 		}
 
-		return rows;
+		return fields;
 	});
 </script>
 
@@ -141,120 +141,108 @@
 		</span>
 	</div>
 
+	<!-- Main attribute grid: single-column mobile, two-column desktop -->
 	<div
-		class="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-950"
+		class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950 sm:p-6"
 	>
-		<table class="w-full table-fixed border-collapse">
-			<tbody>
-				{#each detailRows as row, index (row.key)}
-					<tr class:border-t={index > 0} class="border-neutral-200 dark:border-neutral-800">
-						<th
-							scope="row"
-							class="w-32 px-4 py-3 text-left align-top text-sm font-medium text-neutral-600 dark:text-neutral-400 sm:w-40"
-						>
-							{row.label}
-						</th>
-						<td class="px-4 py-3 align-top text-sm text-neutral-900 dark:text-neutral-100">
-							{#if row.href}
-								<a
-									href={row.href}
-									target="_blank"
-									rel="noopener noreferrer"
-									class="break-all text-primary-600 hover:text-primary-500 hover:underline dark:text-primary-400 dark:hover:text-primary-300"
-								>
-									{row.value}
-								</a>
-							{:else if row.mono}
-								<span class="font-mono break-all">{row.value}</span>
-							{:else}
-								<span class:whitespace-pre-wrap={row.multiline} class="break-words"
-									>{row.value}</span
-								>
-							{/if}
-						</td>
-					</tr>
-				{/each}
-				<tr class="border-t border-neutral-200 dark:border-neutral-800">
-					<th
-						scope="row"
-						class="w-32 px-4 py-3 text-left align-top text-sm font-medium text-neutral-600 dark:text-neutral-400 sm:w-40"
-					>
-						{t('devices.tags.label')}
-					</th>
-					<td class="px-4 py-3 align-top text-sm text-neutral-900 dark:text-neutral-100">
-						{#if deviceTags.length > 0}
-							<ul class="flex flex-wrap gap-2" aria-label={t('devices.tags.label')}>
-								{#each deviceTags as tag (tag.id)}
-									<li
-										class="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200"
-									>
-										{#if tag.color}
-											<span
-												class="inline-block h-2 w-2 rounded-full"
-												style={`background-color: ${tag.color};`}
-												aria-hidden="true"
-											></span>
-										{/if}
-										{tag.name}
-									</li>
-								{/each}
-							</ul>
+		<dl class="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2">
+			{#each detailFields as field (field.key)}
+				<div class={field.multiline ? 'col-span-full' : ''}>
+					<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+						{field.label}
+					</dt>
+					<dd class="mt-1 text-sm text-neutral-900 dark:text-neutral-100">
+						{#if field.href}
+							<a
+								href={field.href}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="break-all text-primary-600 hover:text-primary-500 hover:underline dark:text-primary-400 dark:hover:text-primary-300"
+							>
+								{field.value}
+							</a>
+						{:else if field.mono}
+							<span class="break-all font-mono">{field.value}</span>
 						{:else}
-							<span class="text-neutral-500 dark:text-neutral-400"
-								>{t('devices.detail.tagsEmpty')}</span
+							<span class:whitespace-pre-wrap={field.multiline} class="break-words"
+								>{field.value}</span
 							>
 						{/if}
-					</td>
-				</tr>
-			</tbody>
-		</table>
+					</dd>
+				</div>
+			{/each}
+
+			<!-- Tags always span the full width to accommodate the chip list -->
+			<div class="col-span-full">
+				<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+					{t('devices.tags.label')}
+				</dt>
+				<dd class="mt-1 text-sm text-neutral-900 dark:text-neutral-100">
+					{#if deviceTags.length > 0}
+						<ul class="flex flex-wrap gap-2" aria-label={t('devices.tags.label')}>
+							{#each deviceTags as tag (tag.id)}
+								<li
+									class="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200"
+								>
+									{#if tag.color}
+										<span
+											class="inline-block h-2 w-2 rounded-full"
+											style={`background-color: ${tag.color};`}
+											aria-hidden="true"
+										></span>
+									{/if}
+									{tag.name}
+								</li>
+							{/each}
+						</ul>
+					{:else}
+						<span class="text-neutral-500 dark:text-neutral-400"
+							>{t('devices.detail.tagsEmpty')}</span
+						>
+					{/if}
+				</dd>
+			</div>
+		</dl>
 	</div>
 
+	<!-- Audit trail: same definition-list grid system as main fields -->
 	<div
-		class="rounded-2xl border border-neutral-200 bg-white px-4 py-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950"
+		class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-950 sm:p-6"
 	>
 		<h2 class="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
 			{t('devices.detail.audit.title')}
 		</h2>
-		<table class="mt-3 w-full table-fixed border-collapse">
-			<tbody>
-				<tr>
-					<th
-						scope="row"
-						class="w-32 text-left align-top text-sm font-medium text-neutral-600 dark:text-neutral-400 sm:w-40"
-					>
-						{t('devices.detail.audit.created')}
-					</th>
-					<td class="text-sm text-neutral-900 dark:text-neutral-100">
-						<time datetime={device.createdAt} title={formatDateTime(device.createdAt)}>
-							{formatDateTime(device.createdAt)}
-						</time>
-						{#if device.createdBy}
-							<span class="text-neutral-500 dark:text-neutral-400">
-								{t('devices.detail.audit.by', { actor: device.createdBy })}
-							</span>
-						{/if}
-					</td>
-				</tr>
-				<tr class="border-t border-neutral-200 dark:border-neutral-800">
-					<th
-						scope="row"
-						class="w-32 py-3 text-left align-top text-sm font-medium text-neutral-600 dark:text-neutral-400 sm:w-40"
-					>
-						{t('devices.detail.audit.lastModified')}
-					</th>
-					<td class="py-3 text-sm text-neutral-900 dark:text-neutral-100">
-						<time datetime={device.modifiedAt} title={formatDateTime(device.modifiedAt)}>
-							{formatDateTime(device.modifiedAt)}
-						</time>
-						{#if device.modifiedBy}
-							<span class="text-neutral-500 dark:text-neutral-400">
-								{t('devices.detail.audit.by', { actor: device.modifiedBy })}
-							</span>
-						{/if}
-					</td>
-				</tr>
-			</tbody>
-		</table>
+		<dl class="mt-4 grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2">
+			<div>
+				<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+					{t('devices.detail.audit.created')}
+				</dt>
+				<dd class="mt-1 text-sm text-neutral-900 dark:text-neutral-100">
+					<time datetime={device.createdAt} title={formatDateTime(device.createdAt)}>
+						{formatDateTime(device.createdAt)}
+					</time>
+					{#if device.createdBy}
+						<span class="text-neutral-500 dark:text-neutral-400">
+							{t('devices.detail.audit.by', { actor: device.createdBy })}
+						</span>
+					{/if}
+				</dd>
+			</div>
+			<div>
+				<dt class="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+					{t('devices.detail.audit.lastModified')}
+				</dt>
+				<dd class="mt-1 text-sm text-neutral-900 dark:text-neutral-100">
+					<time datetime={device.modifiedAt} title={formatDateTime(device.modifiedAt)}>
+						{formatDateTime(device.modifiedAt)}
+					</time>
+					{#if device.modifiedBy}
+						<span class="text-neutral-500 dark:text-neutral-400">
+							{t('devices.detail.audit.by', { actor: device.modifiedBy })}
+						</span>
+					{/if}
+				</dd>
+			</div>
+		</dl>
 	</div>
 </div>

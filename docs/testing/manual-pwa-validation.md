@@ -70,8 +70,9 @@ as an explicit exception under `plan.md` §2.10, not silently dropped.
 | M-23 | **#164 — Settings Table Columns Reset button (installed PWA, portrait, 320/375/390/430 CSS px):** Navigate to Settings → Table Columns on each viewport. The Reset button label reads exactly **"Reset"** (single word, the localized value from `settings.tableColumns.resetToDefault`) — no longer copy such as "Reset to Default". The label fits on a single line at all four widths with no wrapping. Tap the button and confirm the column list reverts to defaults and a success toast appears. `REVIEWED/manual — not jsdom-proven.` | | |
 | M-24 | **#165 — Per-device action menu layering (installed PWA, portrait, 320/375/390/430 CSS px):** On the device list in PWA Cards view, tap the ⋮ kebab/ellipsis button on the **first** row, a **middle** row, and the **last** row in a group. Each time the action menu (Edit / Clone / Claim / Release / Change Status / View change history / Delete) must appear **fully visible above** all other content — it must not be clipped by the row container, the group boundary, or any sibling element; the full menu height is visible without scrolling; tapping outside dismisses it. `REVIEWED/manual — not jsdom-proven.` | | |
 | M-25 | **#148 — Add/Edit Device form containment at narrow viewports (installed PWA, portrait, 320/375/390/430 CSS px):** On each viewport, open the Add Device form (and separately the Edit Device form from a device detail row). Verify: (a) the Purchase Date field label and native date input stay within the form column width — no horizontal overflow; (b) tapping the date input opens the native iOS date picker and the form does not scroll wider than the viewport at any picker stage; (c) the Purchase Price number input stays within its grid column (no overflow); (d) the Notes textarea fills its column without overflow; (e) the form as a whole does not cause the modal to scroll horizontally. `REVIEWED/manual — not jsdom-proven.` | | |
+| M-26 | **#170 — Ellipsis right-alignment (installed PWA, portrait, iPhone width ≈ 375 CSS px):** Open `/devices` in PWA Cards view. Verify five specific rows across groups: "Mohu Leaf Stitch 60m Range / Mohu · Leaf Stitch", "4-Door French Door Fridge / Samsung · RF28JBEDBSG/AA", "Air Fryer / Ninja · DZ400 A", "Aqua Flosser / AquaSonic · Aqua Flosser PRO", "Coffee Maker / Keurig · K-Classic". All five ⋮ ellipsis buttons must form a **visibly straight vertical column** at the right inset — none displaced inward by short or long text. Text that is too long must truncate (ellipsis) rather than pushing the action button left or right. Each ⋮ button must be comfortably tappable (≥44 px touch target). Compact ghost style (no large border circle). Verify in both light and dark themes. `REVIEWED/manual — not jsdom-proven.` | | |
 
-**25 checks, all owner `briandenicola`.** M-16 compensates for the route-level
+**26 checks, all owner `briandenicola`.** M-16 compensates for the route-level
 composition gap identified by the post-major-work QC audit; M-17 and M-18 cover
 the mobile-popover and desktop-nav tap-target density introduced by issues #134
 and #144 (branch `squad/134-144-desktop-nav-density`); M-19 covers the real
@@ -97,7 +98,12 @@ or CSS stacking resolution in jsdom;
 M-25 covers the full Add/Edit Device form containment at narrow viewports
 (#148) — component tests prove `date-input-contain`, `min-w-0`, `w-full`, and
 modal `overflow-hidden` but cannot exercise iOS WebKit's intrinsic sizing,
-native picker layout, or real overflow clipping. The remaining
+native picker layout, or real overflow clipping;
+M-26 covers the ellipsis right-alignment in the PWA device list (#170) —
+component tests prove `.pwa-row` uses the two-column grid class contract
+(`minmax(0,1fr) auto`) ensuring the action column is always last and carries
+`h-11 w-11`, but cannot measure rendered pixel positions or verify the
+visually-straight column in a real browser. The remaining
 checks exist only because their risks require a real browser environment. None
 duplicates an existing Vitest or HTTP
 integration/contract assertion — each exists only because the risk is

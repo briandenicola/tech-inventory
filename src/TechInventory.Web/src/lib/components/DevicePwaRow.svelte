@@ -75,7 +75,7 @@
 	}
 </script>
 
-<div class="pwa-row">
+<div class="pwa-row w-full" class:pwa-row--selectable={selectable}>
 	{#if selectable}
 		<label class="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center">
 			<input
@@ -179,11 +179,16 @@
 	.pwa-row {
 		position: relative;
 		display: grid;
-		grid-template-columns: auto minmax(0, 1fr) auto; /* [checkbox] [text] [kebab] */
+		grid-template-columns: minmax(0, 1fr) auto; /* [text] [kebab] */
 		align-items: center;
 		column-gap: var(--space-3);
 		min-height: 4rem; /* 68px */
 		padding: var(--space-3) var(--space-4);
+	}
+
+	/* When selection mode is active, prepend the fixed-width checkbox column. */
+	.pwa-row--selectable {
+		grid-template-columns: auto minmax(0, 1fr) auto; /* [checkbox] [text] [kebab] */
 	}
 
 	/*

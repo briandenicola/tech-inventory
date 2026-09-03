@@ -4678,15 +4678,15 @@ D-170 contains the security gates and constraints. D-171 is the implementation v
 
 ---
 
-### D-188: Core-Only State Policy — durable core in feature PRs, derived state via Scribe post-merge
+### D-CORE-STATE-POLICY: Core-Only State Policy — durable core in feature PRs, derived state via Scribe post-merge
 
-- **Author:** Ripley (Lead / Architect)
+- **Author:** Ripley (Lead / Architect), with Hudson (independent revision)
 - **Date:** 2026-09-03
 - **Status:** Approved
-- **Related:** Source of Truth Hierarchy, Feature-Branch State Policy (`.github/agents/squad.agent.md`)
+- **Related:** Source of Truth Hierarchy, Feature-Branch State Policy (`.github/agents/squad.agent.md`), D-187 (reviewer-lockout revision precedent)
 
 **Decision.** `.squad` state splits into two tiers. **Durable core** — `team.md`, `routing.md`, `ceremonies.md`, `config.json`, `casting/*`, `agents/{name}/charter.md`, the canonical *content* of `decisions.md`, `skills/*/SKILL.md`, `templates/**`, and `identity/wisdom.md` — is tracked and reviewable in any PR, including feature PRs. **Transient / derived state** — `agents/{name}/history.md`, `identity/now.md`, `.squad/log/**`, `.squad/orchestration-log/**`, and the *consolidation act* of merging `.squad/decisions/inbox/` into `decisions.md` — is high-churn and must never be written by feature agents on a feature branch or land in a product feature PR. Feature agents instead report reusable learnings in their final response or a `.squad/decisions/inbox/{name}-{brief-slug}.md` artifact (itself durable-safe, since it is a report, not consolidated state). Scribe performs the full consolidation pass only after a feature PR merges to `main`, or through one dedicated state-only PR (`squad/state-sync-{date}`) — never mid-feature.
 
-**Consequences.** Product feature PRs stay focused on reviewable, durable changes; noisy per-session history/log churn no longer appears in diffs feature reviewers must read. Existing tracked history, decisions, and logs are unaffected — this governs future writes only, not past content. `squad.agent.md`'s per-agent spawn template, drop-box pattern description, and Scribe spawn template were updated to gate on a new `IS_FEATURE_BRANCH` flag; `.squad/templates/squad.agent.md` mirrors the change. Because this changes coordinator behavior, any active session must restart after merge to pick up the new rules.
+**Consequences.** Product feature PRs stay focused on reviewable, durable changes; noisy per-session history/log churn no longer appears in diffs feature reviewers must read. Existing tracked history, decisions, and logs are unaffected — this governs future writes only, not past content. `squad.agent.md`'s per-agent spawn template, drop-box pattern description, and Scribe spawn template were updated to gate on a new `IS_FEATURE_BRANCH` flag; `.squad/templates/squad.agent.md` mirrors the change. Under reviewer lockout, Hudson's independent revision (1) renamed this entry from the originally proposed `D-188` to the nonnumeric `D-CORE-STATE-POLICY` key, since `D-188`/`D-189` were already claimed informally elsewhere (a `.squad/decisions/inbox/` proposal and a pre-existing code comment reference) and the canonical ledger did not clearly establish a safe next numeric ID once those claims were accounted for, and (2) gated the `.copilot/skills/git-workflow/SKILL.md` and `.copilot/skills/init-mode/SKILL.md` files (and their `.squad/templates/skills/` mirrors), which still told worktree/init agents to append derived state (`history.md`, logs, `decisions.md`) directly and rely on the `.gitattributes` union merge driver — a premise this policy supersedes, since GitHub never runs that local driver on a PR merge and feature agents must not write that transient state at all. Because this changes coordinator behavior, any active session must restart after merge to pick up the new rules.
 
 ---

@@ -60,14 +60,14 @@ No team exists yet. Propose one — but **DO NOT create any files until the user
 
 **Team.md structure:** `team.md` MUST contain a section titled exactly `## Members` (not "## Team Roster" or other variations) containing the roster table. This header is hard-coded in GitHub workflows (`squad-heartbeat.yml`, `squad-issue-assign.yml`, `squad-triage.yml`, `sync-squad-labels.yml`) for label automation. If the header is missing or titled differently, label routing breaks.
 
-**Merge driver for append-only files:** Create or update `.gitattributes` at the repo root to enable conflict-free merging of `.squad/` state across branches:
+**Merge driver for append-only files:** Create or update `.gitattributes` at the repo root so a locally-run `git merge`/rebase across append-only files stays conflict-free when they are actually written (e.g., during Scribe's post-merge/state-only consolidation — see `.github/agents/squad.agent.md` → Feature-Branch State Policy):
 ```
 .squad/decisions.md merge=union
 .squad/agents/*/history.md merge=union
 .squad/log/** merge=union
 .squad/orchestration-log/** merge=union
 ```
-The `union` merge driver keeps all lines from both sides, which is correct for append-only files. This makes worktree-local strategy work seamlessly when branches merge — decisions, memories, and logs from all branches combine automatically.
+The `union` merge driver keeps all lines from both sides for local git operations on these append-only files. **This is not an enforcement mechanism on its own:** GitHub does not execute local merge drivers when merging a PR, and under the Core-Only State Policy, feature-branch agents must not write these transient/derived files at all — they report learnings via their final response or a `.squad/decisions/inbox/{name}-{brief-slug}.md` artifact instead. This driver only helps when the files are legitimately written — i.e. during Scribe's post-merge/state-only consolidation pass.
 
 7. Say: *"✅ Team hired. Try: '{FirstCastName}, set up the project structure'"*
 

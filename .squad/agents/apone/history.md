@@ -764,3 +764,107 @@ throwaway probes deleted, scratch directory removed, `git status` back to
 clean. Recorded the verdict in `validation.md` §12 / `tasks.md` / `plan.md` /
 `coverage-migration.md` §14 and authorized T105. No commit, no push — the
 coordinator checkpoints reviewer records.
+
+## T105 — guard-proof implementation and tamper matrix (this checkpoint)
+
+Closed both findings I carried out of T104. **F-5**: `check-security.mjs` was
+"Enforced" only by convention (ci.yml + a manual invocation nobody exercised
+end-to-end). Its first-ever full-repo run (`--repo`, 933 files) failed on
+three real false positives that diff-range CI scans had simply never reached
+— a checker can be "passing" for months while its full-scope path has never
+executed once. Fixed via `.gitleaks.toml` allowlist entries, then wired
+`check:security` into `Taskfile.yml`'s `verify:full` so it is no longer a
+side-channel. **The fix took two attempts**: `gitleaks stdin` (what
+`check-security.mjs` always uses — no `detect --source`, so there is no file
+path in play) carries no path context, so a `paths`-scoped allowlist entry is
+silently inert; only `regexTarget = "match"` (against gitleaks' `Match`
+field — the text *with* surrounding context — not the narrower `Secret`
+field) actually suppresses it. **A security allowlist that "looks correct"
+but targets the wrong gitleaks field is a false negative waiting to happen —
+verify the allowlist entry actually fires, don't just add it and move on.**
+
+**F-10**: added `node --test scripts/check-client-drift.test.mjs` and
+`node --test scripts/check-vulnerable.test.mjs` inline in their respective
+Task targets, matching the existing `check:stale-refs` pattern, so both
+guards' regression suites now run under `task verify` and can't rot unseen.
+
+**Tamper matrix — ten guards, every one broken and restored with hash
+proof**: stale-Playwright (keyword + structural path), OpenAPI drift (title
+field — confirmed the comparator is structural/parsed, not textual; a
+comment-only edit produces no detected drift by design), client-drift (stale
+artifact *and* a live generator failure, which confirmed a subtlety worth
+repeating: **`check-client-drift.mjs` restores whatever it snapshotted at the
+start of its own run — the tampered bytes — not a freshly regenerated
+correct file. A drift guard's "restore" is not the same claim as "fix"; don't
+let a passing restore imply correctness it never asserted.**), EF
+migration/model drift, all three collected-test floors at both zero and
+below-floor-nonzero (dotnet TRX and Vitest JSON mechanisms differ enough that
+each needed its own tamper, not one representative case), vulnerable-package
+scan (direct HIGH, transitive HIGH via an untracked scratch project so no
+tracked file needed restoring, and a live tool-failure case), the security
+scan itself (localStorage token pattern), and the verification entrypoint
+(`task verify:contracts` with a tampered file stops at the first failing
+subtask, exit 201, and never reaches the later stages — Task's default
+abort-on-nonzero is real, not assumed).
+
+**One self-corrected mistake, worth keeping as a check on my own tamper
+craft:** the first README tamper for the entrypoint-propagation proof omitted
+the keyword the guard scans for — a copy-paste slip — so the guard correctly
+passed instead of failing, and I nearly logged a false green. Caught it by
+re-reading the tampered file's content before trusting the exit code, fixed
+the tamper, reran, got the expected failure. **A guard that passes on a
+tamper you *intended* to break is a signal to re-check the tamper, not the
+guard — read what you actually wrote before trusting what ran.**
+
+**What remains fixture-only, unchanged from T104:** `check:vulnerable`'s
+malformed-JSON-output branch (F-11) — `dotnet list package --format json`
+reliably emits valid JSON on every path this session could force; proving it
+live would require corrupting the tool under test, which is out of scope.
+Disclosed, not silently left unproven.
+
+**Boundary honored:** every tamper reverted and hash-verified (`README.md`
+`a2b177ab…`, `openapi.yaml` `be64bf6b…`, `types.ts` `cc678f4e…`,
+`Device.cs` `5f38b6f1…`, `check-test-floors.mjs` `fe45ebbd…` — unchanged
+from the hash T104 already cited, `msal.ts` `908386d5…`), throwaway spec file
+and scratch project deleted, `git status` clean of tamper leftovers. Full
+`task verify` run once, end-to-end, after all restores: exit 0 in 00:13:23,
+933/933 files clean on `check:security`. No commit, no push, no edit to
+`plan.md`/`tasks.md`/`validation.md` or any file Ripley owned in parallel
+(confirmed via `git status` before starting). Evidence recorded in
+`specs/004-agentic-development-foundation/t105-tamper-evidence.md`; T105 not
+marked DONE — governance evidence and independent integration review remain
+for others to close.
+
+## T105 addendum — exact-path exemption for Ripley's accepted ADR
+
+Integration note from Ripley: her accepted `docs/adr/0002-retire-browser-e2e-
+framework.md` intentionally names Playwright nine times as retirement
+history and tripped the stale-reference guard. Added a single **exact-path**
+exemption (`EXEMPT_EXACT_PATHS`, not a `docs/adr/**` prefix) plus two focused
+unit tests: one proving this exact ADR is allowed, one proving a different,
+unlisted ADR containing a genuine Playwright *promise* (not a historical
+citation) still fails — the regression guard against ever widening this to a
+directory prefix. Live-proved both directions: `task check:stale-refs`
+passes 0/933 with the real ADR in the tree; a scratch
+`docs/adr/0003-t105-tamper-probe.md` (staged, never committed) with a
+"we will adopt Playwright" line fails at exit 201 with an exact line
+citation, then is fully removed and the guard is green again. Only the
+checker script and its test file were touched — the ADR remained Ripley's
+file throughout, read-only to this session.
+
+**Worth repeating:** an ADR is exactly the shape of document where a
+directory-prefix exemption would be tempting and wrong — ADRs are
+constitution §0 authority sources that can *propose* future work, not just
+record the past. The instinct to write `docs/adr/**` the first time this
+came up would have quietly reopened the same blanket-exemption failure mode
+`validation.md` §7 B2 already found and closed for `specs/**`. **Any new
+document-tree exemption for this guard should default to an exact path,
+and only widen to a prefix with an explicit, reviewed reason it can't
+regress into a promise-hiding hole.**
+
+Also confirmed, incidentally: `TechInventory.IntegrationTests.Contract.
+OpenApiDriftTests` has an existing, non-deterministic `SQLitePCL.sqlite3`
+disposed-object flake in its database-reset path (291/292 on one run,
+292/292 on the immediate re-run, floor still satisfied either way) —
+unrelated to this addendum, not investigated further, noted here so a future
+agent doesn't mistake it for a regression this session caused.

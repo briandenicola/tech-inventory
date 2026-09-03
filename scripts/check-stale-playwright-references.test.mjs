@@ -191,3 +191,58 @@ test('does not exempt unrelated docs or agent charters — regression guard for 
 
   assert.equal(violations.length, 2);
 });
+
+test('exempts the retirement ADR by its exact path — historical evidence, not living instruction', () => {
+  const violations = findStaleReferences([
+    {
+      path: 'docs/adr/0002-retire-browser-e2e-framework.md',
+      content:
+        '# 2. Retire the browser end-to-end test framework (Playwright)\n\n' +
+        'Supersedes: the Playwright mandates in `.specify/memory/constitution.md`\n\n' +
+        '**Playwright is retired from Tech Inventory, entirely.**\n',
+    },
+  ]);
+
+  assert.deepEqual(violations, []);
+});
+
+test('does NOT exempt an unlisted/new ADR naming Playwright — regression guard against a docs/adr/** blanket exemption', () => {
+  const violations = findStaleReferences([
+    {
+      path: 'docs/adr/0003-add-visual-regression-suite.md',
+      content: '# 3. Add a visual regression suite\n\nWe will adopt Playwright for visual snapshot testing.\n',
+    },
+  ]);
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].file, 'docs/adr/0003-add-visual-regression-suite.md');
+  assert.equal(violations[0].line, 3);
+});
+
+test('exempts t105-tamper-evidence.md by its exact path — historical tamper-matrix evidence, not living instruction (T105 revision, B-1)', () => {
+  const violations = findStaleReferences([
+    {
+      path: 'specs/004-agentic-development-foundation/t105-tamper-evidence.md',
+      content:
+        '### 2.1 Keyword tamper\n\n' +
+        '- Break: appended `<!-- tamper-test: playwright keyword probe -->` to README.md\n' +
+        '- Command: `npx playwright test`\n' +
+        '- Observed: exit 1 — Stale-reference guard failed: 1 active Playwright reference(s) found.\n',
+    },
+  ]);
+
+  assert.deepEqual(violations, []);
+});
+
+test('does NOT exempt an unlisted/different foundation evidence file naming an active future Playwright promise — regression guard against a specs/004-agentic-development-foundation/** blanket exemption (T105 revision, B-1)', () => {
+  const violations = findStaleReferences([
+    {
+      path: 'specs/004-agentic-development-foundation/t105-evidence-revision-probe.md',
+      content: 'Follow-up: we will add a new Playwright suite next sprint to cover this gap.\n',
+    },
+  ]);
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].file, 'specs/004-agentic-development-foundation/t105-evidence-revision-probe.md');
+  assert.equal(violations[0].line, 1);
+});

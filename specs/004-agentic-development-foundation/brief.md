@@ -106,6 +106,13 @@ instruction corpus (`evidence.md` §3).
   optional automated browser suite in the target state.
 - **Not** rewriting the constitution and **not** creating an ADR yet — see
   [`plan.md`](./plan.md) §6.
+  > **Scope amendment, 2026-09-02 (`briandenicola`).** This non-goal is
+  > **lifted for T105 only**: the approver directed that the retirement ADR
+  > (`docs/adr/0002-retire-browser-e2e-framework.md`) and the narrow
+  > constitution/PRD amendments be completed inside this package, closing the
+  > §6.1 package-closure precondition. The lift is limited to the clauses that
+  > mandated the retired framework or executable browser journeys; no other
+  > governance is rewritten.
 - **Not** requiring a promoted multi-file spec for every implementation.
   Ceremony is scaled per [`plan.md`](./plan.md) §2.4.
 - **Not** editing `.squad/`, `.copilot-state.md`, `SESSION-NOTES.md`,

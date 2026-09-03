@@ -15,7 +15,8 @@ jobs:
   # unit/component tests) + verify:contracts (retired-harness stale-reference
   # guard, OpenAPI/generated-client drift, EF migration drift, real-HTTP
   # integration tests) + verify:full's remaining stages (frontend production
-  # build, vulnerable-package scan). No stage requires Docker.
+  # build, vulnerable-package scan, auth-token/secret scan). No stage
+  # requires Docker.
   verify:
     runs-on: ubuntu-latest
     steps:
@@ -36,6 +37,12 @@ jobs:
       # openapi drift comparison parses the freshly-exported document, which
       # OpenApiYamlWriter emits as real YAML — PyYAML is required to read it.
       - run: python3 -m pip install --quiet --disable-pip-version-check pyyaml
+      # `task restore` is the clean-checkout contract (docs/prd.md §7.5.5) and
+      # also provisions the pinned gitleaks binary check:security resolves
+      # from .tools/gitleaks (Taskfile.yml `tools:gitleaks`, T105 revision ·
+      # B-4) — no separate install step duplicates that logic here; Task owns
+      # it once, and `task verify` depends on `restore` transitively.
+      - run: task restore
       - run: task verify
 
   codeql:

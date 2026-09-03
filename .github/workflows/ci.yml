@@ -45,8 +45,14 @@ jobs:
         with:
           version: '3.x'
 
-      - name: Install pinned gitleaks
-        run: bash ./scripts/install-gitleaks.sh
+      - name: Restore dependencies (incl. pinned gitleaks)
+        # `task restore` is the clean-checkout contract (docs/prd.md §7.5.5)
+        # and provisions the pinned gitleaks binary check-security.mjs
+        # resolves from .tools/gitleaks (Taskfile.yml `tools:gitleaks`, T105
+        # revision · B-4). Runs before the direct check-security.mjs call
+        # below (which pre-dates `task verify`) and before `task verify`
+        # itself so neither path duplicates install logic Task now owns.
+        run: task restore
 
       - name: Run auth token and secret scan
         shell: bash

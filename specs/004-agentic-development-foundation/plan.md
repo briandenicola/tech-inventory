@@ -210,7 +210,7 @@ The control baseline and target class per control is tabulated once, in
 Outputs: `evidence.md` §1/§2/§4 (T001), §3 (T002), §5 (T003), `plan.md` §2
 (T004). Checklists and unknowns are in [`tasks.md`](./tasks.md) Phase 1.
 
-### T101–T105 — implementation · T103, T102, **T101 `DONE`** (T101 rejected → revised by Apone → reviewer-APPROVED, `validation.md` §7.8); **T104 `DONE`** (rejected by Apone → revised by Hicks → re-reviewed and APPROVED by Apone at `b3c092f`, `validation.md` §12); T105 `APPROVED` and AUTHORIZED, not started
+### T101–T105 — implementation · T103, T102, **T101 `DONE`** (T101 rejected → revised by Apone → reviewer-APPROVED, `validation.md` §7.8); **T104 `DONE`** (rejected by Apone → revised by Hicks → re-reviewed and APPROVED by Apone at `b3c092f`, `validation.md` §12); T105 **`DONE`** (rejected three times by Bishop — `validation.md` §13, §14, §15 — revised by Hicks, Hudson, Scribe and Vasquez, then reviewer-APPROVED, `validation.md` §16; AC-009 met)
 
 Each boundary is fixed here so scope cannot silently expand at execution.
 Checklists are in [`tasks.md`](./tasks.md); the diagnosis is in `evidence.md`.
@@ -221,7 +221,7 @@ Checklists are in [`tasks.md`](./tasks.md); the diagnosis is in `evidence.md`.
 | **T102** — Migrate valuable coverage to lower reliable layers · AC-006 · **`DONE`** | The suite's assertions were the only stated coverage for export, role enforcement, reference-data admin, and the PWA shell — all unexecuted. Its `seedDevice()` fixture had also drifted from `CreateDeviceRequest` (`src/TechInventory.Api/Controllers/DevicesController.cs` L200–220), proving the fixture layer was unverified too. | Rebuild each T103-valuable assertion at its destination layer. **Real HTTP integration/contract tests** for API behaviour, authorization, export, reference-data mutation, CRUD, serialization — real app + real SQLite, no mocked API, non-2xx failing loudly with status and body. **Component tests** (Vitest + Testing Library + axe-core) for Svelte rendering, state, navigation affordances, accessibility. **Explicit manual validation checklist** — named owner, release cadence, recorded as a gap — for PWA install/offline/browser-engine behaviour. Replace seed-fixture drift risk with **typed HTTP integration/request builders or generated-contract checks** so drift is a compile error. | *Out:* repairing `tests/e2e/fixtures/api.ts` for continued use; changing the API contract to suit tests; presenting manual items as automated coverage. *Precondition:* **T103**. **Delivered 2026-09-02, corrected 2026-09-02 (Ripley B1–B3 review; Bishop fix), corrected again (Ripley second REJECTED verdict, findings B3/B2-R/B4; Hicks fix):** 5 `H-` backend + 20/22 `C-` frontend items done (2 accepted-gap items — **C-18** partial, 5 of 6 route axe harnesses, `/devices` is **G-09**; and **C-20**), the 15-check manual checklist published at [`docs/testing/manual-pwa-validation.md`](../../docs/testing/manual-pwa-validation.md), and a real-HTTP-discovered Viewer authorization defect fixed under explicit approval, then found to also affect the six reference-entity controllers (B1) and device claim/release ownership actions (B3) and closed there too. Ripley's second review found Bishop's B3 fix left a third, independently ungated `canClaim`/`canRelease` copy in `devices/[id]/+page.svelte` (fixed, +3 Vitest cases, test count corrected 645→649), **C-04**/**C-12** evidence overstated (now genuinely closed, all three surfaces), and 26 (not 21) `AdminOrMember`-gated operations undocumented for a `403` OpenAPI response (fixed, `openapi.yaml`/`types.ts` regenerated, a new 26-case parameterized contract test added) — `coverage-migration.md` §12. |
 | **T103** — Coverage migration matrix and deletion map · AC-007 · **`DONE`** | 17 spec files (15 `journeys/`, 1 `security/`, 1 outside `testMatch`), no recorded justification per spec, **0 executing**. | Analysis only, and it precedes all deletion. One row per spec — and per test where they differ — recording: test count, behaviour asserted, valuable or not, destination layer (HTTP integration/contract · component · manual checklist · accepted gap), the named replacement, and the owner of any accepted gap. Every removed test must name replacement coverage or an explicitly accepted manual gap. Resolve U-08 (`tests/e2e/theme-fouc.spec.ts`, outside `testMatch`) as a matrix row like any other. Preserve PRD §7.5.4 traceability and surface any needed PRD amendment as an **ADR candidate, not an authorization**. The map is the deletion authority for T101 and the work list for T102. | *Out:* any assumption that browser coverage must be preserved; file deletion (T101); test authoring (T102). *Precondition:* none. **Delivered 2026-09-02 as [`coverage-migration.md`](./coverage-migration.md)** — 17 spec rows, 60 collectable cases reconciled against `--list`, 19 `test.todo` accounted for, U-08 closed, 5 `H-` + 22 `C-` T102 items, a 15-check manual checklist, and 9 owned accepted gaps (**G-09** added post-review for the `/devices` route axe harness the T102 execution did not author — see T102 row below). The earlier stopped run's artefact `e2e-classification.md` is **deleted** and carries nothing forward. |
 | **T104** — One authoritative verification interface, Playwright-free · AC-008 · **`DONE` — REJECTED at Apone's independent reviewer gate 2026-09-02 (`validation.md` §10), REVISED by Hicks 2026-09-02 (`validation.md` §11), RE-REVIEWED and APPROVED by Apone at commit `b3c092f` 2026-09-02 (`validation.md` §12); AC-008 met, T105 authorized** | `Taskfile.yml` (305 lines, 27 tasks) is invoked by **zero** workflows; `scripts/verify.sh` is invoked only by the muted `ci.yml` and blocks on Docker at step 9/9 for E2E; the readiness-poll loop is written four times (`evidence.md` §2.2). | Make Task the single entrypoint humans and CI both invoke, covering **format · build · type-check · lint · unit · component · HTTP integration · contract-drift · migration**, with a recorded collected-test floor per surviving suite. Delete the browser stage and the readiness-poll duplication it existed for. Verify must run to completion on a clean checkout **without browser downloads**; state plainly which stages need Docker and whether local verify is partial. Declare platform-forced divergence inline. **The PR #140 author hit exactly this and it is not their error to absorb.** | *Out:* changing what is verified beyond removing the browser stage; rewriting `Taskfile.yml` wholesale. *Precondition:* T101, T102 — the entrypoint must reflect the retired harness and the migrated suites. **Delivered 2026-09-02:** `verify:fast`/`verify:contracts`/`verify:full`/`verify` implemented in `Taskfile.yml`; `scripts/check-test-floors.mjs` adds fail-closed collected-test floors for unit (278 measured / floor 250), integration (296 measured / floor 265), and frontend (649 tests, 83 files measured / floor 580 tests, 74 files) — floor-check zero-collection failure mode proven directly. `dotnet-ef` pinned via `.config/dotnet-tools.json`. `scripts/verify.ps1`/`.sh` rewritten as thin `task verify` wrappers. `.github/workflows/quality-gate.yml` rewritten to a single `verify` job calling `task verify`, closing F-4 (stale-reference guard now runs in the merge-blocking workflow). `.env.e2e`/`docker-compose.e2e.yml` deleted (no real non-browser role; all HTTP integration tests are in-process, no Docker). **No stage of `verify` requires Docker.** **Rejected 2026-09-02 (`validation.md` §10)** on three blockers: B-1 `check:client-drift` compared regenerated-from-working-tree output against the index/HEAD client and failed with provably zero drift; B-2 `check:vulnerable` could not fail (`dotnet list package --vulnerable` exits 0 regardless of advisories) yet was documented "Enforced"; B-3 `ci.yml` depended on PyYAML without installing it. **Revised 2026-09-02 by Hicks:** B-1 closed via `scripts/check-client-drift.mjs` (snapshot/regenerate/compare/always-restore, no index/HEAD dependency, 9/9 new unit tests, live tamper-tested); B-2 closed via `scripts/check-vulnerable.mjs` (parses `--format json`, fails closed on Moderate+ per constitution.md §5.8, 13/13 new unit tests, live-tamper-verified against a real Newtonsoft.Json 12.0.1 probe returning exit 1); B-3 closed by adding an identical PyYAML install step to `ci.yml`. `task verify` (the authoritative alias) now runs end-to-end and **exits 0** on this machine. Full evidence: `validation.md` §11. **Re-reviewed and APPROVED by Apone at `b3c092f` 2026-09-02** — every blocker re-verified by reviewer-run evidence, not from the revision report: a dirty-but-synchronized working tree passes `check:client-drift` while `git diff --exit-code` fails on the identical tree; a genuinely stale client is caught at the exact line and the file restored byte-identically; a generator failure fails closed; **direct and transitive** vulnerable probes each exit 1 where the bare `dotnet list package` exits 0; tool failure fails closed; PyYAML parity holds across the only two workflows invoking `task verify`; and **`task verify` was observed exit 0 end to end in 5m32s with no Docker and no browser**. Checker suites 9/9 and 13/13; floors unchanged by hash from the §10.2 tamper-approved file. **T104 is `DONE`; AC-008 is met; T105 is AUTHORIZED to begin** (`validation.md` §12). **Not claimed:** the constitution/PRD contradiction is not resolved (§7.8.5 condition honored); T105's branch-protection/tamper-testing work is not started; GitHub Actions execution is unobserved until a push — the only run at `b3c092f` is the ops workflow `Sync Squad Labels`. |
-| **T105** — Align required checks and tamper-test guards · AC-009 | PR #140 merged with 0 reviews, 2 unchecked DoD boxes, a placeholder CODEOWNERS, no branch protection, and a 284-line unexecuted CI checklist (`evidence.md` §3.6, §5.2, §5.4). | Enumerate the check names that exist after T104 and produce a **written branch-protection recommendation** for `briandenicola` (Aurearia's `strict: true`, force-push and deletion disabled, `enforce_admins: false` is the observed single-operator precedent). **Tamper-test every critical non-browser guard** — stale-Playwright-reference guard, contract-drift gates, migration gate, collected-test floors, verification entrypoint — each with a recorded deliberate-break run. Require recorded acceptance evidence per criterion in `.github/pull_request_template.md`, replacing "All CI checks green" with named checks. Fix or remove `.github/CODEOWNERS`. Resolve `.github/T47-CI-SETUP-CHECKLIST.md`. Record the T102 manual PWA checklist — and declined branch protection, if declined — as explicit visible exceptions under §2.10 with named owners. | *Out:* applying GitHub repository settings from within this package; requiring any browser check. *Precondition:* T104 — check names must exist before they can be required or tampered with, and T104 must clear Apone's re-review first. |
+| **T105** — Align required checks and tamper-test guards · AC-009 · **`DONE` — REJECTED three times at Bishop's independent reviewer gate (`validation.md` §13, §14, §15), REVISED by Hicks (B-1/B-2), Hudson (B-3/B-4), Scribe (B-5) and Vasquez (B-6), RE-REVIEWED and APPROVED by Bishop 2026-09-02 (`validation.md` §16); AC-009 met, merge readiness separate and still open (§16.8)** | PR #140 merged with 0 reviews, 2 unchecked DoD boxes, a placeholder CODEOWNERS, no branch protection, and a 284-line unexecuted CI checklist (`evidence.md` §3.6, §5.2, §5.4). | Enumerate the check names that exist after T104 and produce a **written branch-protection recommendation** for `briandenicola` (Aurearia's `strict: true`, force-push and deletion disabled, `enforce_admins: false` is the observed single-operator precedent). **Tamper-test every critical non-browser guard** — stale-Playwright-reference guard, contract-drift gates, migration gate, collected-test floors, verification entrypoint — each with a recorded deliberate-break run. Require recorded acceptance evidence per criterion in `.github/pull_request_template.md`, replacing "All CI checks green" with named checks. Fix or remove `.github/CODEOWNERS`. Resolve `.github/T47-CI-SETUP-CHECKLIST.md`. Record the T102 manual PWA checklist — and declined branch protection, if declined — as explicit visible exceptions under §2.10 with named owners. | *Out:* applying GitHub repository settings from within this package; requiring any browser check. *Precondition:* T104 — check names must exist before they can be required or tampered with, and T104 must clear Apone's re-review first. |
 
 ---
 
@@ -234,7 +234,7 @@ Checklists are in [`tasks.md`](./tasks.md); the diagnosis is in `evidence.md`.
 | T101 | T103 | Nothing may be deleted before its behaviour has a matrix row. **`DONE`** — rejected at the reviewer gate (2026-09-02, `validation.md` §7), revised by Apone (`validation.md` §7.7 / `coverage-migration.md` §13.9), and **re-reviewed and APPROVED by Ripley** (2026-09-02, `validation.md` §7.8 / `coverage-migration.md` §13.10). The deletion map is `coverage-migration.md` §4 (waves D1–D8), the reference classification is §5, and the completion record is §13. |
 | T102 | T103 | The matrix is the work list of what must be rebuilt, and where. **`DONE`** — `coverage-migration.md` §12 (5 `H-` items done, 20/22 `C-` items done + 2 accepted-gap items [C-18 partial, C-20], 15 `M-` items published, 9 `G-` gaps owned). |
 | T104 | T101, T102 | The verification surface must reflect the retired harness and the migrated suites. **T101, T102 and T104 are all `DONE` and reviewer-approved.** T104 was rejected at Apone's independent reviewer gate 2026-09-02 (`validation.md` §10) on B-1/B-2/B-3, **revised by Hicks** closing all three (`validation.md` §11), and **re-reviewed and APPROVED by Apone at commit `b3c092f`** (`validation.md` §12) with `task verify` observed exit 0 end to end — both §7.8.5/§7.8.6 conditions remain honored (contradiction not deepened; F-4 closed; `docker-compose.e2e.yml`/`.env.e2e` deleted with no real non-browser role). |
-| T105 | T104 | Required check names must exist before they can be required or tampered with. **AUTHORIZED to begin** — T104 cleared Apone's re-review (`validation.md` §12); `check:client-drift` and `check:vulnerable` changed shape under the T104 revision (`validation.md` §11.1, §11.2) and carry reviewer-run tamper evidence (§12.1–§12.2), but T105 still owns the complete guard matrix. |
+| T105 | T104 | Required check names must exist before they can be required or tampered with. **COMPLETE — T105 is `DONE` and reviewer-APPROVED (`validation.md` §16).** — T104 cleared Apone's re-review (`validation.md` §12); `check:client-drift` and `check:vulnerable` changed shape under the T104 revision (`validation.md` §11.1, §11.2) and carry reviewer-run tamper evidence (§12.1–§12.2), but T105 still owns the complete guard matrix. |
 
 **Order: T103 → T101 / T102 (parallel) → T104 → T105.**
 
@@ -262,14 +262,39 @@ retired, not repaired. Governance consolidation is deferred (`brief.md` §3).
 
 ## 6. ADR Position
 
-No ADR is created here. Candidates for explicit decision rather than default
-implementation: **branch protection with required status checks on `main`**
-(T105 — changes who may merge, not reversible by code alone); and **Playwright
-retirement**, decided by `briandenicola` on 2026-09-02 (`brief.md` §2.1), which
-warrants a durable `docs/adr/` record alongside
-`docs/adr/0001-record-architecture-decisions.md`. Retirement also implies a
-**PRD §7.5.3/§7.5.4 amendment** (those sections require browser journeys, and
-§7.5.4 requires an ADR to remove one) — T103 surfaces it, without authorizing it.
+**Amended 2026-09-02 (human decision, `briandenicola`).** The original position
+below — "no ADR is created here" — was superseded during T105: the approver
+directed that the Playwright-retirement ADR **and** the constitution/PRD
+amendments be written *inside* T105 rather than deferred to a follow-up package.
+That is now done:
+
+- **[`docs/adr/0002-retire-browser-e2e-framework.md`](../../docs/adr/0002-retire-browser-e2e-framework.md)**
+  records the 2026-09-02 decision: zero automated browser role in any form, no
+  substitute framework, valuable behaviour at HTTP/component/manual layers,
+  reversal only by a new superseding ADR.
+- **Constitution amended to 1.1.0** — §6.5.6, §6.5.14, §7.2, §7.4, §9, §13
+  (browser layer removed, `task verify` named), and §8.3 (real check names +
+  observed unprotected posture recorded as `REVIEWED`, not `ENFORCED`).
+- **PRD amended** — §7.5.2 table, §7.5.3 rewritten as "Browser End-to-End —
+  Retired", §7.5.4 preserved as thirteen journeys re-pointed to their
+  destination layers, §7.5.5 restated as the `task verify` contract.
+- **§6.1's package-closure precondition is therefore closed** (see below).
+
+*Original position (retained for the record):* No ADR is created here.
+Candidates for explicit decision rather than default implementation:
+**branch protection with required status checks on `main`** (T105 — changes who
+may merge, not reversible by code alone); and **Playwright retirement**, decided
+by `briandenicola` on 2026-09-02 (`brief.md` §2.1), which warrants a durable
+`docs/adr/` record alongside `docs/adr/0001-record-architecture-decisions.md`.
+Retirement also implies a **PRD §7.5.3/§7.5.4 amendment** (those sections
+require browser journeys, and §7.5.4 requires an ADR to remove one) — T103
+surfaces it, without authorizing it.
+
+**Branch protection remains recommendation-only** inside this package
+(`brief.md` §4): T105 produces the written posture with exact check names
+(`t105-governance-evidence.md` §4) for `briandenicola` to apply. If it is not
+applied, that is an explicit visible exception under §2.10 with `briandenicola`
+as the named owner — not silence.
 
 ### 6.1 Package-closure precondition — recorded under §2.10 (Ripley, 2026-09-02)
 
@@ -294,4 +319,116 @@ warrants a durable `docs/adr/` record alongside
   its verification surface satisfies constitution §9/§6.5.14/L442's
   "Playwright smoke", and this exception must be carried forward visibly
   rather than inherited in silence.
+- **CLOSED 2026-09-02 (Ripley, T105 governance scope).** The closure trigger
+  is satisfied: `docs/adr/0002-retire-browser-e2e-framework.md` exists;
+  constitution §6.5.6/§6.5.14/§7.2/§7.4/§9/§13 and §8.3 are amended
+  (version 1.1.0, §15 revision history); PRD §7.5.2–§7.5.5 are amended with the
+  thirteen journeys preserved and re-pointed. Neither document mandates a
+  framework this repository does not contain. Evidence:
+  [`t105-governance-evidence.md`](./t105-governance-evidence.md) §2.
+
+### 6.2 Branch protection recommended, not applied — recorded under §2.10 (Hudson, 2026-09-02)
+
+**Named exception, scoped, attributed, and dated — not a silent gap.** Opened
+in response to Bishop's T105 reviewer-gate blocker B-3
+(`validation.md` §13.2): constitution §8.3 and `docs/adr/0002-…` §4.4 each
+assert this gap "is" recorded as a §2.10 exception, but until this entry, no
+register entry existed for either of them to point at. This is that entry.
+
+- **Rule contradicted:** `.specify/memory/constitution.md` §8.3 ("`main`
+  requires: signed commits, linear history, CI green, review" and named
+  required status checks `verify`, `codeql`, `secrets`,
+  `container-config-scan`).
+- **Scope of the exception:** the `main` branch of this repository carries
+  **no branch protection and no rulesets** — `gh api
+  repos/briandenicola/tech-inventory/branches/main/protection` returns `404
+  Branch not protected`; `gh api repos/briandenicola/tech-inventory/rulesets`
+  returns `[]`. Re-verified 2026-09-02 (`t105-governance-evidence.md` §4.1;
+  independently re-confirmed by Bishop at the reviewer gate, `validation.md`
+  §13.5.2). Consequently every check named in constitution §9 is `REVIEWED`
+  — it reports, but nothing on GitHub prevents a merge without it, and no
+  merge to `main` is currently blocked by CI status, review, linear history,
+  or signature state.
+- **Reason declined-for-now, not declined outright:** applying a GitHub
+  repository setting is explicitly out of this work package's scope
+  (`brief.md` §4; `plan.md` §3 — T105's *Out of scope* line reads "applying
+  GitHub repository settings from within this package"). The written,
+  ready-to-apply recommendation exists — exact payload, field-by-field
+  rationale, and the Aurearia precedent it is modelled on — at
+  [`t105-governance-evidence.md`](./t105-governance-evidence.md) §4.3. Its own
+  sequencing note is binding: apply only **after** one PR from this branch has
+  run Quality Gate and the exact required-context strings are confirmed with
+  `gh pr checks`, because a required context that never reports leaves a PR
+  permanently "Expected — waiting for status to be reported." As of this
+  entry, `verify` has never run on GitHub Actions (`validation.md` §13.5.1) —
+  applying the payload today would be a self-inflicted outage, not a gate.
+- **Owner:** `briandenicola` — the only human able to change a GitHub
+  repository setting, and the addressee of `t105-governance-evidence.md` §4's
+  recommendation.
+- **Start date:** 2026-09-02 (posture first observed and recorded at the T105
+  reviewer gate; the underlying unprotected state predates this record and is
+  not newly introduced by it).
+- **Review / closure trigger:** closes the moment `briandenicola` applies the
+  `t105-governance-evidence.md` §4.3 payload (or a revision of it, confirmed
+  against a real Quality Gate run) and `gh api
+  .../branches/main/protection` no longer returns `404`. Until then, this
+  entry is re-reviewed at every future T3-tier package touching CI/branch
+  policy, and at minimum whenever this plan is next opened for a governance
+  change.
+- **Class:** `REVIEWED`, not `ENFORCED` — a green PR under this posture proves
+  a check ran, not that a gate held. No control in constitution §9 may be
+  cited as `ENFORCED` while this entry is open.
+- **Accepted consequence, stated plainly:** force-push, branch deletion,
+  unreviewed merges, and non-linear history are all currently *possible* on
+  `main`, not merely undesired. The single-operator precedent
+  (`enforce_admins: false` even once applied) means this remains true by
+  design even after the recommendation is adopted — recorded here so the gap
+  is visible in the highest-authority document a reader consults, not only in
+  the evidence file that produced the recommendation.
+
+### 6.3 Manual PWA validation checklist — recorded under §2.10 (Hudson, 2026-09-02)
+
+**Named exception, scoped, attributed, and dated — not a silent gap.** Opened
+in response to the same B-3 blocker: `docs/adr/0002-…` §"Negative / accepted"
+(L111) already states this checklist is "record[ed] … as an explicit visible
+exception (`plan.md` §2.10)"; this is that entry.
+
+- **Rule contradicted:** the general expectation, stated across constitution
+  §9 (Quality Gate) and §7.2/§7.4 (test pyramid / local-first testing), that a
+  PR's behavioural coverage is automated and reproducible by `task verify`.
+  PWA install/offline/service-worker/shell/navigation behaviour is the one
+  named exception to that expectation (ADR 0002 §"Decision").
+- **Scope of the exception:** the 15-check manual checklist at
+  [`docs/testing/manual-pwa-validation.md`](../../docs/testing/manual-pwa-validation.md)
+  (`M-01`…`M-15`, published by T102, `coverage-migration.md` §12) is **run by
+  a human, on a real browser engine, and is not executed by any CI job or
+  `task verify` stage.** It is declared, not gated: `.github/pull_request_template.md`'s
+  "Manual PWA Checklist Declaration" section records a tri-state answer (not
+  applicable / run with results / applicable-but-not-run-as-exception) and
+  does not block a merge in any of the three states — GitHub has no mechanism
+  to enforce a checkbox is ticked truthfully, and none is claimed here.
+- **Reason:** ADR 0002 retired the only automated browser-execution layer this
+  repository ever had (`tests/e2e/**`, T101) without a substitute framework,
+  by explicit human decision (`brief.md` §2.1, `briandenicola`, 2026-09-02).
+  These behaviours have **no automated replacement by design** — an owned,
+  named manual check is the honest alternative to a suite that asserted the
+  same thing while crashing at load (`evidence.md` §5.3; `plan.md` R-2).
+- **Owner:** `briandenicola` — accountable for the checklist's per-release
+  cadence continuing to run; individual PR authors declare per-PR execution
+  in the template, but the standing exception itself (that no automation
+  exists) is owned at the repository-decision level, not per-contributor.
+- **Start date:** 2026-09-02 (checklist published and declared in the PR
+  template at T102/T105; the underlying gap — no automated PWA/offline/shell
+  coverage — has existed since T101 removed the crashing Playwright suite and
+  is not newly introduced by this record).
+- **Review / closure trigger:** re-reviewed at every release (the checklist's
+  own stated cadence, `docs/testing/manual-pwa-validation.md`) and at any
+  point a new ADR supersedes ADR 0002 to reintroduce an automated
+  browser-execution role — the only event that would close this exception by
+  replacing it with real coverage rather than renewing it. Decaying into "a
+  box nobody ticks" is the specific failure this record exists to make
+  visible before it becomes silent (`plan.md` R-2).
+- **Class:** `REVIEWED`, not `ENFORCED` — never reported as automated
+  coverage, and no `task verify` stage or CI job may claim these fifteen
+  checks as satisfied by a green run.
 

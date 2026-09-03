@@ -9,6 +9,19 @@
 // manifest, script, workflow, config file, doc/instruction, or executable
 // test tree.
 //
+// Scan surface (T105 revision, `t105-evidence-revision.md`): this guard
+// enumerates `git ls-files --cached --others --exclude-standard` —
+// **tracked files plus untracked-but-not-git-ignored files** — not `git
+// ls-files` alone. A guard that only ever saw the index could pass clean
+// while a brand-new, never-staged active file sat right next to it
+// promising to bring Playwright back; nothing would catch that until the
+// moment someone ran `git add`, which is exactly the moment a developer is
+// least likely to re-run the full guard by hand. Scanning untracked-but-not-
+// ignored files closes that window without needing anyone to remember to
+// stage first. Git-ignored paths (`.tools/`, `node_modules/`, build output,
+// etc.) are still excluded — they are not part of the repository's active
+// instruction surface.
+//
 // Exemptions (deliberate, not oversights — see `coverage-migration.md` §5.3/§5.4/§5.5/§5.6):
 //   - An explicit, named allowlist of historical/work-package spec files —
 //     NOT a `specs/**` prefix. `coverage-migration.md` §5.5 previously
@@ -41,6 +54,29 @@
 //     `WebApplicationFactory<Program>`, no Docker), so both were deleted
 //     rather than renamed (`coverage-migration.md` §5.3). No exemption is
 //     needed for files that no longer exist.
+//   - `docs/adr/0002-retire-browser-e2e-framework.md` — this ADR's own
+//     retirement narrative names Playwright nine times to record why it was
+//     retired; that is exactly the historical-evidence case this guard
+//     exists to allow, not the living-instruction case it exists to block.
+//     Exempted by its **exact path only** — deliberately NOT a `docs/adr/**`
+//     prefix. An ADR is a forward-looking, precedent-setting document
+//     (constitution §0 authority source); a future ADR that names Playwright
+//     as a live plan or promise (not a retired-thing citation) must still
+//     fail this guard like anything else in the repository. See the T105
+//     tamper matrix for the paired proof: this exact path passes, an
+//     unlisted/new ADR containing a Playwright promise still fails.
+//   - `specs/004-agentic-development-foundation/t105-tamper-evidence.md` —
+//     the guard's own tamper matrix necessarily quotes retired-harness
+//     invocations (`npx playwright test`, config paths, etc.) verbatim as
+//     evidence of what was broken and restored. That is historical proof of
+//     a completed test, not a living instruction to run Playwright.
+//     Exempted by its **exact path only** — deliberately NOT a
+//     `specs/004-agentic-development-foundation/**` or `specs/**` prefix.
+//     A different, unlisted foundation-evidence file that names Playwright
+//     as an active future promise (not a quoted historical tamper) must
+//     still fail this guard. See `t105-evidence-revision.md` for the paired
+//     positive/negative proof and `EXEMPT_SPEC_PATHS` below for where this
+//     is registered.
 //   - `.specify/memory/constitution.md`, `docs/prd.md` — normative documents;
 //     amending their Playwright-mandating clauses requires an ADR and is
 //     "surfaced, not performed" by T101 (`coverage-migration.md` §5.4,
@@ -90,6 +126,11 @@ const EXEMPT_SPEC_PATHS = [
   'specs/004-agentic-development-foundation/validation.md',
   'specs/004-agentic-development-foundation/evidence.md',
   'specs/004-agentic-development-foundation/coverage-migration.md',
+  // Exact path only — this file's own tamper matrix quotes retired-harness
+  // invocations verbatim as evidence of what was broken and restored, not a
+  // living instruction. A different/unlisted foundation-evidence file with
+  // an active future Playwright promise is NOT exempt and must still fail.
+  'specs/004-agentic-development-foundation/t105-tamper-evidence.md',
   'specs/001-core-api/plan.md',
   'specs/001-core-api/tasks.md',
   'specs/002-frontend-mvp/plan.md',
@@ -107,6 +148,9 @@ const EXEMPT_EXACT_PATHS = new Set([
   'docs/testing/manual-pwa-validation.md',
   '.specify/memory/constitution.md',
   'docs/prd.md',
+  // Exact path only — historical retirement narrative, not a docs/adr/**
+  // prefix. See the header comment above and the T105 tamper matrix.
+  'docs/adr/0002-retire-browser-e2e-framework.md',
 ]);
 
 const selfPath = toRepoRelative(fileURLToPath(import.meta.url));
@@ -208,12 +252,21 @@ async function main() {
   const repoRoot = getRepoRoot();
   process.chdir(repoRoot);
 
-  const trackedFiles = execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8' })
+  // Tracked files (`--cached`) PLUS untracked-but-not-git-ignored files
+  // (`--others --exclude-standard`) — a brand-new active file must not be
+  // able to hide from this guard merely because it has not been `git add`ed
+  // yet (T105 revision; see `t105-evidence-revision.md`). Git-ignored paths
+  // (`.tools/`, `node_modules/`, build output, etc.) are still excluded.
+  const scannedFiles = execFileSync(
+    'git',
+    ['ls-files', '-z', '--cached', '--others', '--exclude-standard'],
+    { encoding: 'utf8' },
+  )
     .split('\u0000')
     .filter(Boolean);
 
   const files = [];
-  for (const filePath of trackedFiles) {
+  for (const filePath of scannedFiles) {
     const absolutePath = path.join(repoRoot, filePath);
     let buffer;
     try {
@@ -236,7 +289,7 @@ async function main() {
   const violations = findStaleReferences(files);
 
   if (violations.length === 0) {
-    console.log(`Stale-reference guard passed: 0 active Playwright references across ${files.length} tracked file(s).`);
+    console.log(`Stale-reference guard passed: 0 active Playwright references across ${files.length} tracked + untracked non-ignored file(s).`);
     process.exit(0);
   }
 
@@ -250,8 +303,9 @@ async function main() {
   console.error('Playwright is retired (specs/004-agentic-development-foundation/brief.md §2.1).');
   console.error('If this reference is genuinely historical evidence, it belongs under an explicit');
   console.error('exemption (a named specs/004-.../001-.../002-.../003-... file, .squad/decisions*,');
-  console.error('.squad/agents/*/history.md, SESSION-NOTES.md, .copilot-state.md) — not in an active');
-  console.error('manifest, script, workflow, config, doc, test tree, or specs/_backlog/** entry.');
+  console.error('.squad/agents/*/history.md, SESSION-NOTES.md, .copilot-state.md, or the exact-path');
+  console.error('docs/adr/0002-retire-browser-e2e-framework.md) — not in an active manifest, script,');
+  console.error('workflow, config, doc, test tree, another/new ADR, or specs/_backlog/** entry.');
   process.exit(1);
 }
 

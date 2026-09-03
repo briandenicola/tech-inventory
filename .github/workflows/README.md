@@ -15,12 +15,24 @@
 > pipeline logic. See `verify:fast` / `verify:contracts` / `verify:full`
 > in `Taskfile.yml` for the exact command graph.
 
+> **T105 accuracy note (2026-09-02, `specs/004-agentic-development-foundation`)**:
+> "Enforced" in this document means **"runs on every PR and fails the job"**.
+> It does **not** mean "blocks merge". As observed on 2026-09-02, `main` has
+> **no branch protection and no rulesets**, so every check below reports and
+> none of them prevents a merge. The written recommendation (exact check names
+> + JSON) is
+> `specs/004-agentic-development-foundation/t105-governance-evidence.md` §3–§4;
+> until it is applied, treat these gates as `REVIEWED`, not `ENFORCED`
+> (`plan.md` §2.5).
+
 This document describes the CI/CD workflows that enforce code quality and security gates on Tech Inventory.
 
 ## Quality Gate (`quality-gate.yml`)
 
 **Triggers:** Push to `main`, Pull requests, weekly schedule (Monday 06:00 UTC)
-**Status:** The active merge-blocking workflow
+**Status:** The workflow intended to gate merges — and the only one whose jobs
+should ever be listed as required status checks. It is not merge-blocking until
+branch protection is applied (see the T105 note above).
 
 ### `verify` job
 
@@ -185,28 +197,36 @@ git commit --no-verify
 
 ---
 
-## Manual Branch Protection Setup (GitHub UI)
+## Manual Branch Protection Setup (GitHub UI or API)
 
-> **Not verified as part of T104.** Confirming/aligning the actual branch
-> protection configuration against this workflow's job names is T105's
-> job (tamper-testing and branch-protection alignment). The steps below
-> describe the intended setup; the required-check name must match the
-> current merge-blocking workflow/job (`Quality Gate / verify`), not the
-> retired `ci / verify` name from before Quality Gate existed.
+> **Recommendation only — not applied.** The full written recommendation, with
+> the exact check names, the API payload, and the honest list of what is
+> declined or unobserved, lives in
+> `specs/004-agentic-development-foundation/t105-governance-evidence.md` §3–§4
+> (T105 / AC-009). Applying repository settings is out of scope for that work
+> package; `briandenicola` owns the decision.
 
-For the CI gates to actually block PRs, Brian must configure branch protection on `main`:
+For the CI gates to actually block PRs, `briandenicola` must configure branch
+protection on `main`. Summary of the recommendation:
 
-1. Go to **Settings → Branches**
-2. Click **Add rule** (or edit existing `main` rule)
-3. Enable:
-   - **Require status checks to pass before merging**
-   - Select `Quality Gate / verify` as a required check (and any other Quality Gate jobs intended to block merge)
-   - **Require branches to be up to date before merging**
-   - **Require code reviews before merging** (at least 1)
-   - **Require signed commits**
-4. Click **Save changes**
+1. **Settings → Branches → Add rule**, pattern `main`
+2. Enable **Require status checks to pass before merging** + **Require branches
+   to be up to date before merging** (`strict: true`)
+3. Required checks — only jobs that actually run on pull requests:
+   `verify`, `codeql`, `secrets`, `container-config-scan`
+   - **Not** `sbom` (runs on `main` pushes only; it is not a PR check)
+   - **Not** `Build, Test, and Verify` from `ci.yml` (`workflow_dispatch` only)
+   - The context strings are the **job names** as they appear in
+     `gh pr checks <PR>` — confirm them against the first Quality Gate run on a
+     real PR before saving, rather than typing them from memory
+4. Disable **force pushes** and **branch deletion**; leave
+   **Do not allow bypassing** (`enforce_admins`) **off** — the observed
+   single-operator precedent in `briandenicola/Aurearia`
+5. Code-owner review is **not** recommended: GitHub cannot request a review from
+   the author, and this repository has one maintainer (`.github/CODEOWNERS`)
 
-After this, PRs will be blocked if the selected Quality Gate jobs fail.
+After this, PRs are blocked if the required Quality Gate jobs fail. Until then,
+they are not.
 
 ---
 

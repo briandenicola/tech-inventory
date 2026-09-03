@@ -35,7 +35,7 @@ completion evidence for a criterion no check covered.
 | **AC-006** | Valuable coverage live at lower layers — real HTTP integration/contract, component tests, and an owned manual checklist for browser-only behaviour; seed-fixture drift replaced by typed builders/generated-contract checks, `fixtures/api.ts` **not** repaired for continued use | T102 | ✅ `DONE` — **independently verified, APPROVED** (§6) | `coverage-migration.md` §12 (5 `H-` done — including the B1-expanded `ViewerRoleAuthorizationTests` and B4's 26-case `OpenApiDriftTests.AdminOrMemberGatedOperation_DeclaresForbiddenResponse`; 20/22 `C-` done, **C-04**/**C-12** genuinely closed only after Hicks's third-surface fix — 649/649 Vitest tests, corrected from 645/645 — + C-18 partial (5/6 route axe harnesses; `/devices` is accepted gap **G-09**) + C-20 accepted gap, 15-check manual checklist published), `docs/testing/manual-pwa-validation.md` (`t102-backend-results.md`, `t102-frontend-results.md`, and `viewer-auth-fix-results.md` are session artefacts from the original T102 execution, not present in this repository — the durable evidence is the test names and `coverage-migration.md` §12 sections cited here) | n/a — manual checklist is `REVIEWED`, not a gate; HTTP/component suites re-run green after the B1/B3 fixes and again after Hicks's B3/B2-R/B4 fixes — durable evidence is the test names and files cited in `coverage-migration.md` §12, not the session artefacts alone. **Reviewer re-ran every cited command directly (§6) — no reviewer claim rests on an executing agent's summary.** |
 | **AC-007** | Coverage migration matrix and deletion map covering **every** existing Playwright spec — test count, behaviour, destination layer, named replacement or accepted-gap owner; no spec deleted without a row; **precedes** T101/T102 deletion | T103 | ✅ `DONE` | `coverage-migration.md` §2 (inventory: 28 tracked files, 17 specs, counts reconciled against `--list`), §3 (17 spec rows / per-test rows), §4 (deletion waves D1–D8), §5 (110 referencing files classified), §6 (5 `H-` + 22 `C-`), §7 (15 `M-`), §8 (8 `G-`), §9 (PRD §7.5.4 traceability), §10 (retirement completion definition) | n/a — analysis task, no gate |
 | **AC-008** | One authoritative Task/local/CI verification surface with **no Playwright dependency**, covering format · build · type-check · lint · unit · component · HTTP integration · contract-drift · migration | T104 | ✅ `DONE` — **rejected (§10), revised by Hicks (§11), independently re-reviewed and APPROVED by Apone at `b3c092f` (§12)**. All three blockers verified closed by reviewer-run evidence, not from the revision report: **B-1** `check:client-drift` proven to pass a dirty-but-synchronized tree that the retired `git diff --exit-code` comparison fails, to fail a genuinely stale client, and to restore byte-identically on pass, on drift, and on generator failure; **B-2** `check:vulnerable` proven to exit 1 on real **direct** *and* **transitive** vulnerable probes that the bare `dotnet list package` command exits 0 on, and to fail closed on tool failure; **B-3** `ci.yml` and `quality-gate.yml` are the only two workflows invoking `task verify`, and both install PyYAML identically | `Taskfile.yml` (`check:client-drift`, `check:vulnerable` targets rewritten), `scripts/check-client-drift.mjs` + `.test.mjs`, `scripts/check-vulnerable.mjs` + `.test.mjs`, `.github/workflows/ci.yml` (PyYAML install step), `.github/workflows/README.md` — see §11 (revision) and §12 (independent re-review) | 🟡 **Fail-closed and observed locally; NOT yet a merge-required GitHub check** (that is AC-009/T105). Reviewer-run at `b3c092f`, Windows, no Docker, no browser (§12.4):** `task verify:fast` **exit 0** (unit 278/278, frontend 649 tests / 83 files); `task verify:contracts` **exit 0** (stale-refs 0/**933** + guard suite 18/18, OpenAPI drift current, `check:client-drift` exit 0, migration drift clean, integration **296 collected**); **`task verify` — the authoritative alias — ran end to end and exited 0 in 5m32s**, including the production frontend build and `check:vulnerable`. Checker unit suites re-run by the reviewer: **9/9** client-drift, **13/13** vulnerable. Floors unchanged by hash (`fe45ebb…`) from the §10.2 tamper-approved file. **GitHub Actions execution still NOT observed** — the only run at `b3c092f` is the ops workflow `Sync Squad Labels`; Quality Gate has not run and is not claimed to have passed |
-| **AC-009** | Required checks and protection posture aligned to the checks that exist after T104; every critical non-browser guard tamper-tested | T105 | 🟢 `APPROVED` / **not started — now AUTHORIZED to begin**. T104 is `DONE` and AC-008 is met (Apone re-review, §12), so the check names T105 must enumerate, require, and tamper-test now exist and have been observed running | Floor-mechanism tamper evidence pre-recorded by the reviewer in §10.2 (4 cases, both mechanisms) and re-confirmed unchanged by hash in §12.5; the two rewritten checks (`check:client-drift`, `check:vulnerable`) carry reviewer-run tamper evidence in §12.1–§12.2 — T105 still owns the **full** guard matrix, plus findings F-5, F-10–F-13 (§12.7) | **NOT IMPLEMENTED** |
+| **AC-009** | Required checks and protection posture aligned to the checks that exist after T104; every critical non-browser guard tamper-tested | T105 | ✅ **`DONE` — REVIEWER-APPROVED (Bishop, 2026-09-02 — §16).** Rejected three times and revised each time: §13 (B-1…B-4) → Hicks/Hudson → §14 (B-1…B-4 **CLOSED**, new B-5) → Scribe → §15 (B-5 fix sound, new B-6) → Vasquez → **§16 APPROVED.** B-6 line split across backtick boundaries and non-matching, meaning preserved, count surface named; **0** pattern matches across all **940** tracked + untracked non-ignored files; with the **complete change set staged**, `check:security --repo` → exit 0 over **940** files and **full `task verify` → exit 0**; index reset with all **30** files byte-identical. Paired positive/negative probes prove the scanner still blocks the real call and that no exemption was added. Every AC-009 element supported (§16.6) | Full guard matrix reviewer-reproduced across every mechanism class (stale refs, OpenAPI/client/migration drift, test floors, direct **and** transitive vulnerable packages, security scan, subtask failure propagation); check names enumerated from workflow job ids; exception register `plan.md` §6.2/§6.3; §16.2–§16.5. **Merge readiness is separate and still open — §16.8** | **IMPLEMENTED AND VERIFIED LOCALLY; CI EXECUTION STILL UNOBSERVED** |
 | **AC-010** | No claim asserts a gate passed before it existed | all | ✅ `HOLDING` | This document, §3 | n/a — a discipline |
 
 ---
@@ -148,7 +148,11 @@ whose deliverable *is* its evidence.
 | 2026-09-02 | AC-006 | T102 | `coverage-migration.md` §12 — 5 `H-` backend tests done (integration suite **292 passed / 4 skipped / 296 total** as re-verified by Ripley on the final revision; the "240/245" figure recorded earlier in this row's history was the count immediately after the first Viewer authorization fix and is superseded); 20/22 `C-` frontend items done, C-18 partial (5/6 route axe harnesses; `/devices` recorded as accepted gap **G-09**, not previously disclosed — corrected per Ripley's B2 finding), C-20 an accepted, rationale-backed gap; 15-check manual PWA checklist published at `docs/testing/manual-pwa-validation.md`, owner `briandenicola`, `REVIEWED`; seed-fixture drift replaced by typed request builders (H-01); Viewer-mutation gap on Brands/Categories/Locations/Networks/Tags/Owners closed and the permanently-skipped `AuthIntegrationTests.ViewerRoleOnAdminEndpoint_Returns403Forbidden` removed (Ripley's B1 finding) | EVIDENCE RECORDED, then CORRECTED 2026-09-02, then **INDEPENDENTLY VERIFIED 2026-09-02 (§6)** | Apone; corrected by Bishop, then Hicks; verified by Ripley |
 | 2026-09-02 | AC-007 | T103 | `coverage-migration.md` §1–§11 — 17 specs and 11 support files given a disposition; 52 `test(` + 19 `test.todo` + 1 `test.fixme` reconciled against `--list` (60 collectable × 6 projects = 360; full run exits 1 with 0 collected); deletion waves D1–D8; 110 referencing files classified; 5 `H-` + 22 `C-` T102 items; 15-check manual checklist; 9 owned accepted gaps (**G-09** added post-review for the `/devices` route axe harness — see AC-006); U-08 closed | EVIDENCE RECORDED | Apone |
 | 2026-09-02 | AC-008 | T104 | `Taskfile.yml` `verify:fast`/`verify:contracts`/`verify:full`/`verify`; `scripts/check-test-floors.mjs` (unit/integration/frontend collected-test floors, fail-closed proven with a deliberate zero-collection filter); `.config/dotnet-tools.json` pinning `dotnet-ef` 10.0.11; `scripts/verify.ps1`/`.sh` rewritten as thin `task verify` wrappers; `.github/workflows/quality-gate.yml` rewritten to a single `verify` job calling `task verify` (closes F-4); `.github/workflows/ci.yml` updated to install Task and updated header comment; `.github/workflows/README.md` rewritten; `.env.e2e`/`docker-compose.e2e.yml` deleted (no real non-browser role — confirmed via grep, all HTTP integration tests use in-process `WebApplicationFactory<Program>`); `scripts/check-openapi-drift.sh` deleted (logic now lives only in `Taskfile.yml`, avoiding duplication); guard exemption list and its test file updated to match; `.gitleaks.toml` dead allowlist entry removed; stale `docker-compose.yml` comment fixed — full detail in §9 | EVIDENCE RECORDED — **implementation complete, awaiting independent review; not self-marked `DONE`** (`plan.md` §2.3) | Hudson |
-| — | AC-009 | T105 | — | pending | — |
+| 2026-09-02 | AC-009 | T105 | `docs/adr/0002-retire-browser-e2e-framework.md`; constitution 1.1.0; PRD §7.5.2–§7.5.5; `.github/pull_request_template.md`; `.github/CODEOWNERS`; `.github/T47-CI-SETUP-CHECKLIST.md` (retired in place); `.github/workflows/README.md`; `Taskfile.yml` `check:security` + checker suites wired into `verify`; `t105-governance-evidence.md`; `t105-tamper-evidence.md` | EVIDENCE RECORDED, then **REJECTED at the independent reviewer gate (§13)** — `task verify` exit 0 and the full guard tamper matrix reproduced by the reviewer; blockers **B-1** (T105's own tamper-evidence file fails `check:stale-refs` with 18 violations once tracked), **B-2** (false "933-file live positive proof" for an untracked ADR; stale recorded hash), **B-3** (AC-009's §2.10 exception clause unmet while constitution §8.3 and ADR 0002 assert it is met), **B-4** (`task verify` needs a gitleaks binary `task restore` never installs, contradicting the amended PRD §7.5.5 clean-checkout contract). **AC-009 NOT MET.** | Ripley (governance) + Apone (guard proof); **rejected by Bishop**; revision assigned to Hicks (B-1, B-2) and Hudson (B-3, B-4) |
+| 2026-09-02 | AC-009 | T105 | **Hudson's revision — B-3, B-4 only** (`t105-setup-revision.md` full record). **B-3:** `plan.md` §6.2 (branch protection exception — rule, scope, owner `briandenicola`, start date, closure trigger, class `REVIEWED`) and §6.3 (manual PWA checklist exception — same five fields, owner `briandenicola`) added; constitution §8.3 (→ v1.1.1) and `docs/adr/0002-…` L111 corrected from forward-referencing an empty register to citing the live entries; `t105-governance-evidence.md` §6 open item 3 marked resolved. **B-4:** `Taskfile.yml` new `tools:gitleaks` task (idempotent — `scripts/check-gitleaks-installed.mjs` status check, 10/10 unit tests in `check-gitleaks-installed.test.mjs`, wired into `restore`'s own cmds so the suite is always reached); `restore` and `hooks:install` both depend on it instead of duplicating the download logic; `check:security` gained `deps: [restore]`. Reviewer-run clean-state proof (this session): `.tools/gitleaks/gitleaks.exe` moved aside via a controlled backup (not deleted); `node scripts/check-gitleaks-installed.mjs 8.30.1` correctly exit 1 (not installed); `task restore` re-provisioned it (`gitleaks.exe version` → `8.30.1`, SHA-256 `17157e2e…` byte-identical to the pre-test binary); `task check:security` then ran gitleaks successfully end-to-end (no "not installed" error — failed only on an unrelated pre-existing content match in this file's own §13.2 quoted tamper-test text; recorded as a new observation in `t105-setup-revision.md` for the next reviewer, not added to Bishop's §13.4 by Hudson). `quality-gate.yml`/`ci.yml`'s separate `bash ./scripts/install-gitleaks.sh` steps replaced with `task restore` so Task is the single install owner in both workflows. Windows path executed directly; Linux/bash path (`install-gitleaks.sh`, already CI-proven on `ubuntu-latest`) verified by inspection only — no WSL/bash available in this environment, disclosed not hidden. `task check:stale-refs` (22/22 guard tests), `task hooks:install`, and `task --list-all` all re-verified green after these changes. | EVIDENCE RECORDED — **not self-approved; not a re-review.** Ripley and Apone remain locked out this cycle. T105 stays `REJECTED` per §13 until Bishop or another qualified reviewer re-reviews. | Hudson |
+| 2026-09-02 | AC-009 | T105 | **Bishop's independent re-review gate — §14.** Reviewer-run, Windows, no Docker, no browser. **B-1 CLOSED:** guard scan surface widened to `git ls-files --cached --others --exclude-standard`; reviewer probes confirm an untracked never-staged file with a live retired-harness promise now fails, an untracked new ADR fails, a sibling copy of the exempt evidence file fails with 19 violations, a git-ignored path is still excluded, baseline 0/**940** exit 0, suite **22/22**. **B-2 CLOSED:** the false "included in that 933" claim is struck through in place with the true reproducible proof beside it, the ADR hash corrected to `70a965da…`, and denominator drift (936 → 940) disclosed. **B-3 CLOSED:** `plan.md` §6.2/§6.3 are real five-field register entries; constitution §8.3 (v1.1.1) and `docs/adr/0002-…` L111 now resolve to them; no bar weakened, thirteen journeys intact. **B-4 CLOSED:** `.tools/gitleaks` deleted outright, `task restore` re-provisioned byte-identically (`17157E2E…`), 10/10 provisioning suite, idempotent second run skips, install logic centralised in `tools:gitleaks`. **B-5 OPEN (new):** full `task verify` exits **1** at `check:security` on `.squad/agents/hudson/history.md:687` and `validation.md:1407`, growing to four files once the untracked evidence files are committed; every other stage passes (278 unit · 296 integration · 649 frontend/83 files · 940 stale-refs · OpenAPI current · client clean · migration clean · vulnerable clean · suites 22/22, 9/9, 13/13, 10/10). | **REJECTED — AC-009 NOT MET.** Remedy is exact contextual redaction of four quoted payloads; scanner must not be weakened, documentation must not be broadly exempted (§14.1). Merge readiness remains separately blocked (§14.9). | Bishop (reviewer) → revision owner **Scribe** |
+| 2026-09-02 | AC-009 | T105 | **Bishop's final re-review gate — §15.** Reviewer-run, Windows, no Docker, no browser. **B-1…B-4 re-verified CLOSED** against the current tree, not carried forward: stale-refs baseline 0/**940** with all three negative probes still failing correctly (untracked spec promise → 1, untracked new ADR → 1, sibling copy of the exempt file → **19**), suites **22/22**, **10/10**, **9/9**, **13/13**. **Scribe's B-5 redaction verified sound:** scope limited to the four named sites, `scripts/check-security.mjs` byte-identical (absent from the diff entirely), `.gitleaks.toml` carrying only prior-cycle entries, no `EXEMPT_*`/markdown/`specs/**` carve-out, and every diagnostic fact preserved at each site (`msal.ts:79`, `--staged` mode, exit code, restore hash `908386d5…`). **B-6 OPEN (new):** the redaction's own §8 changelog note at `t105-setup-revision.md:258` re-quotes the literal it removed. Full `task verify` exits **0** with `Security scan (repo) passed for 933 file(s)` — but 933 is `git ls-files` (tracked-only) and the seven T105 deliverables are untracked; staging them and running `check-security.mjs --staged` exits **1** on that line. | **REJECTED — AC-009 NOT MET.** A green run whose denominator excludes the artefact under test is not proof (the B-2/B-5 pattern, third occurrence). One-line remedy; scanner and config must stay untouched. Merge readiness remains separately blocked (§15.7). | Bishop (reviewer) → revision owner **Vasquez** |
+| 2026-09-02 | AC-009 | T105 | **Bishop's final reviewer gate — §16 · APPROVED.** Reviewer-run, Windows, no Docker, no browser. **B-6 CLOSED:** `t105-setup-revision.md:258` now splits the literal across backtick boundaries (non-matching, meaning preserved) and states its count as "933 **tracked** files clean", naming its surface. Independent regex sweep of the scanner's own pattern across all **940** tracked + untracked non-ignored files → **0 matches**. **The staged-checkpoint proof §15 required:** the complete change set (23 modified tracked + 7 untracked deliverables) staged so `git ls-files` = **940**, then `check-security.mjs --repo` → exit 0 over **940** files, and **full `task verify` → exit 0** (278 unit · 296 integration [292/4 skip] · 649 frontend/83 files · stale-refs 0/940 suite 22/22 · OpenAPI current · client drift 9/9 · migration drift clean · vulnerable 13/13 · gitleaks provisioning 10/10 · `Security scan (repo) passed for 940 file(s)`; 16 suite runs, `fail 0` in every one). Index reset; **30/30** files byte-identical to the pre-staging SHA-256 snapshot. **Scanner not weakened — proven:** unredacted literal staged → exit **1** with file/line; redacted form staged → exit **0**; `check-security.mjs` byte-identical and absent from the change set; `.gitleaks.toml` carries only the two prior narrow entries; no `EXEMPT_*` or `specs/**` carve-out added. **B-1…B-5 re-verified closed** (§16.5), including live negative probes: untracked spec promise → 1 violation, untracked new ADR → 1 violation, sibling copy of the exempt file → **19** violations. **T105 `DONE`, AC-009 satisfied.** New finding F-21 (ADR SHA1 provenance drift from Hudson's B-3 edit — non-blocking, and it corrects §14.3); F-17 elevated as the highest-value follow-up. Merge readiness remains open — §16.8 | Reviewer verdict recorded; nothing committed or pushed |
 | 2026-09-02 | AC-010 | all | This document — §1 separates *evidence recorded* from *gate passed*; §3 lists eight explicit non-claims | HOLDING | Ripley |
 
 ---
@@ -1343,3 +1347,656 @@ was reverted and hash-verified: `openapi.yaml` `be64bf6b…` and
 identical to `HEAD:b3c092f`; `git status --porcelain` shows only the
 reviewer's own scratch directory, which was deleted at the end of the review.
 Both throwaway vulnerability probes were deleted; neither was ever tracked.
+
+---
+
+## 13. T105 Independent Integrated Reviewer Gate — **REJECTED**
+
+**Reviewer:** Bishop (Security & Auth). **Date:** 2026-09-02.
+**Branch:** `chore/agentic-development-foundation`, uncommitted working tree atop
+pushed commit `764282e`. **Verdict:** **REJECTED.**
+**Under review:** Ripley's governance half (`t105-governance-evidence.md`) and
+Apone's guard-proof half (`t105-tamper-evidence.md`), reviewed as one integrated
+change set.
+
+Every figure below was produced by the reviewer running the command directly.
+No line is carried over from either executing agent's summary. No tamper was
+restored with `git checkout --`/`git restore`; every restoration was a
+`Copy-Item` from a reviewer-controlled snapshot or the deletion of an
+never-committed scratch path, each hash-verified. Final `git status --short` is
+byte-identical to the pre-review baseline (17 modified, 3 untracked).
+
+### 13.1 Verdict summary
+
+Most of this work is genuinely good and was independently reproduced. It is
+rejected on four blockers, one of which breaks the pipeline the task exists to
+prove, and three of which are truthfulness defects in normative documents.
+
+### 13.2 Blockers
+
+| ID | Blocker | Evidence | Revision owner |
+| --- | --- | --- | --- |
+| **B-1** | **T105's own tamper-evidence file fails `check:stale-refs` the moment it is tracked.** `specs/004-agentic-development-foundation/t105-tamper-evidence.md` is untracked today, so no run in the record ever scanned it. Staged, it produces **18** active retired-harness references and `task verify` fails. The coordinator cannot commit T105 without breaking the guard T105 certifies. | Reviewer-run: staging the three new files raises `git ls-files` from 933 → 936; `node ./scripts/check-stale-playwright-references.mjs` → **exit 1**, `18 active … reference(s) found` at `t105-tamper-evidence.md` lines 100, 105, 116, 133, 142, 145, 150, 160, 171, 184, 191, 203, 209, 210, 215, 218, 223, 230. Unstaged and hash-verified byte-identical afterwards. Ripley's file is clean (0 violations); the ADR is clean (exemption works). | **Hicks** (not the author) |
+| **B-2** | **False live-proof claim.** `t105-tamper-evidence.md` §2.3 records "*exit 0 — 0 active … references across 933 tracked file(s). The real ADR … is included in that 933 and no longer flagged.*" `docs/adr/0002-retire-browser-e2e-framework.md` is **untracked** (`??`); `git ls-files` returns 933 entries and does not contain it. The guard never saw the ADR, so the exemption's positive case was never proven live — only by a synthetic unit-test excerpt. The same section records the ADR's SHA1 as `4ddc1978…`; the file's actual hash is `70a965da…`. | Reviewer-run: `git ls-files -- docs/adr/` → only `0001-…`. Reviewer **did** produce the missing live proof: with the ADR staged, 934 tracked files, guard **exit 0**. | **Hicks** (not the author) |
+| **B-3** | **AC-009's exception clause is unmet, and two normative documents already assert it is met.** AC-009 requires: *"If protection is not adopted, it is recorded as an explicit visible exception with a named owner."* Protection is not adopted (`404 Branch not protected`, `rulesets == []`, re-verified). No exception entry exists: `plan.md` §2.10 is a principle statement with no register, and its one recorded exception (§6.1) was just **CLOSED** by this same change set. Yet `.specify/memory/constitution.md` L461 states the gap *"is an explicit visible exception under specs/004-agentic-development-foundation/plan.md §2.10, owned by `briandenicola`"*, and `docs/adr/0002-…` L111 states the manual PWA checklist is *"record[ed] … as an explicit visible exception (`plan.md` §2.10)"*. Both are forward references to records that do not exist. `tasks.md` T105 checklist item 5 (manual PWA checklist + declined branch protection as §2.10 exceptions with owners) is also unmet — Ripley lists it as an open item in `t105-governance-evidence.md` §6. | Reviewer-run `gh api …/branches/main/protection` → 404; `…/rulesets` → `[]`. Full-tree search for a §2.10 exception register returns only principle text and the now-closed §6.1. | **Hudson** (not the author) |
+| **B-4** | **`task verify` no longer runs from a clean checkout, and the amended PRD says it does.** T105 wired `check:security` into `verify:full`. That checker resolves a pinned `gitleaks` from `.tools/`, which is **gitignored**; `install-gitleaks` runs only under `task hooks:install`, never under `restore`, and `check:security` declares no dependency on it. Apone fixed the CI path (`quality-gate.yml` gained an install step) but not the local path. Meanwhile `docs/prd.md` §7.5.5, as amended by Ripley, now states the clean-checkout contract is `task restore` → `task verify`, and constitution §7.4 points at §7.5.5 as the local-first guarantee. That contract is false as written. | Reviewer-run with the binary unresolvable: `node scripts/check-security.mjs --repo` → **exit 1**, *"gitleaks is not installed. Run task hooks:install …"*. `git check-ignore -v .tools/gitleaks/gitleaks.exe` → `.gitignore:42:.tools/`. `Select-String Taskfile.yml install-gitleaks` → only under `hooks:install`. Behaviour is correctly **fail-closed**; the defect is the undeclared dependency and the false documented contract. | **Hudson** (not the author) |
+
+### 13.3 What the reviewer independently verified as sound
+
+**`task verify` — reproduced end to end, exit 0**, on Windows, no Docker, no
+browser: `check:format` · `build:backend` 0 warnings/0 errors ·
+`check:frontend` *svelte-check found 0 errors and 0 warnings* · `lint` ·
+`test:unit` **278 collected** (floor 250) · `test:frontend` **649 tests / 83
+files** (floors 580/74) · `check:stale-refs` **0/933** + **20/20** guard tests ·
+`check:openapi-drift` current · `check:client-drift` passed + **9/9** ·
+`check:migration-drift` clean · `test:integration` **296 collected** (floor 265)
+· `build:frontend` · `check:vulnerable` passed + **13/13** · `check:security`
+**933/933 files**.
+
+**Reviewer-run tamper matrix** — every class, deliberate break, observed
+fail-closed diagnostic, byte-identical restore:
+
+| Mechanism class | Break | Observed | Restore |
+| --- | --- | --- | --- |
+| Stale-reference guard — exemption negative case | new unlisted `docs/adr/0099-…md` containing a live future promise, staged | **exit 1**, `docs/adr/0099-…md:3`, offending line quoted | unstaged + deleted; `git status` clean |
+| Stale-reference guard — exemption positive case | the real ADR staged (934 files) | **exit 0** | unstaged; hash `70a965da…` unchanged |
+| OpenAPI drift | `info.title` → `Tech Inventory API BISHOP-PROBE` | **exit 201**, `info.title: 'Tech Inventory API BISHOP-PROBE' -> 'Tech Inventory API'` | `openapi.yaml` back to `be64bf6b…` |
+| Generated-client drift | one comment line appended to `types.ts` | **exit 1**, *differs from a fresh regeneration starting at line 4961* | `types.ts` back to `cc678f4e…` |
+| EF migration drift | compiling `string? BishopTamperProbe` added to `Device.cs` | **exit 1**, *Changes have been made to the model since the last migration* | `Device.cs` back to `5f38b6f1…` |
+| Collected-test floor (frontend) | runner narrowed to one green test file | runner **2/2 green**, guard **exit 1** — *2 test(s), below the floor of 580*; *1 file(s), below the floor of 74* | `check-test-floors.mjs` back to `fe45ebbd…` |
+| Vulnerability — direct | scratch project on `Newtonsoft.Json 12.0.1` | **exit 1**, `HIGH … (topLevelPackages, net10.0)` | untracked scratch deleted |
+| Vulnerability — transitive | scratch project on `Newtonsoft.Json.Bson 1.0.1` | **exit 1**, `HIGH Newtonsoft.Json 10.0.1 (transitivePackages, net10.0)`; **bare `dotnet list package --vulnerable` exits 0 on the identical project** | untracked scratch deleted |
+| Auth-token persistence | `localStorage` . `setItem('access_token', [REDACTED AUTH-TOKEN PERSISTENCE PAYLOAD])` appended to `msal.ts`, staged | **exit 1**, `msal.ts:79`, offending line quoted | unstaged; `msal.ts` back to `908386d5…` |
+| Secret detection | real PEM `-----BEGIN RSA PRIVATE KEY-----` block, staged | **exit 1**, *Possible secrets detected by gitleaks* | unstaged + deleted |
+| Subtask failure propagation | stale-reference break under `task verify:contracts` | **exit 201** at `check:stale-refs`; `check:openapi-drift`, `check:client-drift`, `check:migration-drift`, `test:integration` **never ran** | restored; `git status` clean |
+
+**`.gitleaks.toml` allowlist additions are narrow and do not weaken secret
+detection.** Both new regexes are literal-text anchored (`\[A-Z \]\+PRIVATE KEY`
+matches only the quoted regex syntax, never a real PEM header). A genuine
+private key is still caught (above). A separately observed miss on a
+*low-entropy, patterned* PEM body reproduces **identically with and without**
+`--config .gitleaks.toml`, so it is an inherited upstream default-rule
+characteristic, not a T105 regression. Recorded as **F-14**, non-blocking.
+
+**Checker regression suites are all reached by the authoritative Task graph**
+(review requirement 8): `check-stale-playwright-references.test.mjs` →
+`check:stale-refs`; `check-client-drift.test.mjs` → `check:client-drift`;
+`check-vulnerable.test.mjs` → `check:vulnerable`. No suite exists on disk that
+the graph fails to reach. (`check-security.mjs` and `check-test-floors.mjs` have
+no own suite — recorded as **F-15**, non-blocking; both were tamper-proven
+directly above.)
+
+**Check-name enumeration is accurate.** Job names in
+`.github/workflows/quality-gate.yml` are `verify`, `codeql`, `secrets`,
+`container-config-scan`, `sbom`, with no `name:` overrides, so the check names
+are the job ids. `gh pr checks 140` confirms bare job names in practice
+(`codeql`, `secrets`, `container-config-scan` pass; `sbom` *skipping*). The
+recommended context set (`verify`, `codeql`, `secrets`,
+`container-config-scan`), the `sbom` exclusion, `strict: true`,
+`enforce_admins: false`, force-push/deletion disabled, and the declined
+review/code-owner fields all match the approved Aurearia precedent and the
+declines are disclosed rather than hidden. Recommendation is clearly separated
+from applied state.
+
+**Governance artefacts that pass review as written:** ADR 0002 (correct
+number/status/date/deciders, records the decision, consequences, nine accepted
+gaps, and a reversal contract that cannot be undone by a code or workflow edit);
+constitution 1.0.0 → 1.1.0 (narrow, semantically consistent with ADR 0002, §15
+history row accurate, **no** weakening of accessibility, security, coverage or
+acceptance bars); PRD §7.5.2–§7.5.4 (all **13** journeys preserved as mandatory
+intents with per-journey destination evidence); the PR template (per-AC evidence
+table, *"CI is green is not evidence"*, named checks with the `sbom` caveat,
+collected-test-floor declaration, tri-state manual PWA declaration, exceptions
+table with owner and closure trigger); `.github/CODEOWNERS` (every path
+existence-verified, states plainly what GitHub cannot enforce for a single
+maintainer); the T47 checklist retired in place with *"No control described in
+this file is enforced by this file"*; and the workflow README's redefinition of
+"Enforced" as *"runs on every PR and fails the job"*, not *"blocks merge"*.
+
+**Disclosed malformed-vulnerability-output limitation — accepted, not a
+blocker.** `main()` → `evaluateScanResult()` → `parseVulnerabilityReport()` is
+the identical production path the fixtures drive; the `JSON.parse` catch returns
+`ok: false` and the caller maps that to exit 1. With the live tool-failure probe
+and the live direct **and** transitive probes reproduced above, every realizable
+branch is proven. Fixture proof is adequate. **F-11 may be closed.**
+
+**Review requirements 10 and 11 pass.** The ADR exemption is exact-path only
+and an unlisted ADR carrying a live future promise still fails (proven above).
+No stage of `task verify` requires Docker or downloads a browser, and no
+artefact in this change set reintroduces an automated browser role in any form.
+
+### 13.4 Non-blocking findings carried forward
+
+- **F-14** — gitleaks' upstream `private-key` rule misses low-entropy/patterned
+  PEM bodies; identical with and without the repository config. Inherited, not
+  introduced.
+- **F-15** — `check-security.mjs` and `check-test-floors.mjs` have no own
+  regression suite, unlike the other three checkers.
+- **F-16** — `.github/workflows/README.md` L176 still describes the
+  auth-token/secret scan as *"Enforced (`ci.yml`, manual)"*, stale now that
+  `check:security` runs inside `task verify` and therefore inside Quality Gate.
+  Understates rather than overclaims.
+
+### 13.5 What still blocks the foundation PR, independent of these blockers
+
+Even once B-1…B-4 are closed, **AC-009 is not merge-readiness**:
+
+1. **The post-T104 `verify` job has never executed on GitHub Actions.** The only
+   run on this branch remains `Sync Squad Labels` (2026-09-02T22:50:58Z). Every
+   statement about `verify` as a check name is derived from the workflow
+   definition, not from an observed run.
+2. **`main` has no branch protection and no rulesets.** Nothing gates a merge.
+   The recommendation is written and correct; it is not applied, and applying it
+   is `briandenicola`'s decision, out of this package's scope.
+3. **Context strings must be confirmed against a real run before the payload is
+   applied.** A required context that never reports leaves PRs permanently
+   *"Expected — waiting for status to be reported"*.
+4. **The PR-template evidence requirement has no first PR using it** — the
+   `tasks.md` item names that as its evidence.
+
+`tasks.md`'s T105 item also specifies *"one run URL per guard"* as tamper
+evidence. No run URL exists or can exist before a PR runs Quality Gate. Local
+evidence is acceptable under review requirement 13, but the substitution must be
+recorded as an explicit §2.10 exception with an owner — which is the same gap as
+**B-3**.
+
+### 13.6 Reviewer non-interference
+
+No implementation file was repaired and none was left modified. Every tamper was
+restored from a reviewer-controlled snapshot and hash-verified:
+`openapi.yaml` `be64bf6b…`, `types.ts` `cc678f4e…`, `Device.cs` `5f38b6f1…`,
+`msal.ts` `908386d5…`, `check-test-floors.mjs` `fe45ebbd…`,
+`docs/adr/0002-…md` `70a965da…`. Restore-to-HEAD was never used on this dirty
+branch. All scratch paths (`bishop-vuln-probe/`, `docs/adr/0099-bishop-probe.md`,
+`bishop-secret-probe.md`, review logs) were deleted. `git status --short` is
+identical to the pre-review baseline.
+
+---
+
+## 14. T105 Independent Integrated Reviewer Gate — Re-Review after revision — **REJECTED**
+
+**Reviewer:** Bishop (Security & Auth) · independent integrated reviewer
+**Date:** 2026-09-02 · **Branch:** `chore/agentic-development-foundation` · **Base:** `764282e` (pushed)
+**Scope reviewed:** the assembled uncommitted tree — Ripley's governance half and Apone's guard-proof half
+as revised by **Hicks** (B-1/B-2, `t105-evidence-revision.md`) and **Hudson** (B-3/B-4, `t105-setup-revision.md`).
+**Prior verdict:** §13 — REJECTED on B-1…B-4.
+
+### 14.0 Verdict
+
+**REJECTED.** B-1, B-2, B-3 and B-4 are all verified **CLOSED** by reviewer-run evidence, not by
+revision report. One new blocker replaces them.
+
+| ID | Blocker | Evidence | Revision owner |
+|---|---|---|---|
+| **B-5** | **`task verify` does not pass on the assembled tree.** `check:security` — the guard T105 itself added to the authoritative pipeline (F-5) — fails because T105's own evidence and history prose reproduces a literal auth-token-persistence call, which is precisely the pattern the scanner exists to block. The pipeline T105 certifies cannot be run green by the coordinator, so AC-009 cannot be marked met. | Reviewer-run `task verify` on the assembled tree, Windows, no Docker, no browser: every stage passes through `check:vulnerable`, then `task: [check:security] node scripts/check-security.mjs --repo` → `Security scan (repo) failed.` → `Blocked auth token persistence in localStorage:` `.squad/agents/hudson/history.md:687` and `specs/004-agentic-development-foundation/validation.md:1407` → `task: Failed to run task "verify": exit status 1`. Two further matches exist at `specs/004-agentic-development-foundation/t105-setup-revision.md:150` and `:194` and `specs/004-agentic-development-foundation/t105-tamper-evidence.md:532`; they are invisible today **only** because `check-security.mjs --repo` enumerates `git ls-files` (tracked-only) and those two files are still untracked — the moment the coordinator commits this change set the failure grows from 2 files to 4. | **Scribe** |
+
+**Why this is a real blocker and not a nitpick.** AC-009 requires the aligned check set to be
+tamper-tested *and* runnable. `check:security` was moved into `task verify` by this very work
+package; a pipeline that cannot be run green by the person asked to adopt it is not an aligned
+check set, it is a broken one. The failure is also not incidental to T105 — every one of the four
+matching lines was written by T105 (three by this revision cycle, one by the reviewer's own §13
+record), so the defect is wholly inside the artefact under review.
+
+### 14.1 Adjudication of the disclosed integration issue (charter requirement)
+
+Hudson disclosed this honestly and in the right place (`t105-setup-revision.md` §4, first bullet)
+rather than working around it. The disclosure is correct in every particular. My adjudication of
+the remedy:
+
+1. **The scanner must not be weakened.** `scripts/check-security.mjs`'s `tokenStoragePattern` is
+   doing exactly its job. Its value comes from being unconditional: a snippet in a document that
+   shows a developer how to persist an auth token in `localStorage` is *precisely* as dangerous as
+   the same line in `msal.ts`, arguably more so, because documentation is copied. No change to the
+   regex is acceptable.
+2. **No broad documentation exemption.** Adding `*.md`, `specs/**`, `validation.md`, or an
+   `EXEMPT_*` list to the token scan would create the exact hole the guard exists to close, and
+   would repeat — in the security scanner — the mistake §13's B-1 caught in the stale-reference
+   guard. Explicitly rejected.
+3. **Exact contextual sanitization at the point of quotation is required.** Each of the four lines
+   is prose *describing* a tamper test, not a tamper test. The evidentiary value is the fact that
+   the guard fired at `msal.ts:79`, not the byte-exact reproduction of the payload. Replacing the
+   literal argument with a redacted placeholder — for example `localStorage.setItem(<auth-token-key>, …)`,
+   which no longer matches because the pattern requires a quote character immediately after the
+   opening parenthesis — preserves the meaning completely and restores a green pipeline. The
+   surrounding sentences must state that the payload was redacted and why, so the record stays
+   truthful.
+4. **Scope of the fix:** exactly four lines in four files — `validation.md:1407`,
+   `.squad/agents/hudson/history.md:687`, `t105-setup-revision.md:150` and `:194`,
+   `t105-tamper-evidence.md:532`. Nothing else. After the edit, `task verify` must be re-run end to
+   end and its exit status recorded.
+5. **Ownership.** `validation.md` §13 is the reviewer's own record and Bishop does not repair work
+   at a gate; the other three files were authored by Hudson and Apone/Hicks in cycles they are
+   locked out of. The work is documentation redaction across all four. Assigned to **Scribe**
+   (documentation specialist — history, decisions and technical records), who authored none of the
+   rejected artefacts. Scribe must not alter any verdict, finding, count, hash, or conclusion — only
+   redact the four literal payloads and add the redaction note.
+
+### 14.2 B-1 — CLOSED (verified independently)
+
+The fix is better than the minimum. Rather than only exempting the offending file, Hicks widened
+the guard's scan surface from `git ls-files` to `git ls-files --cached --others --exclude-standard`,
+so an untracked-but-not-ignored file can no longer hide from the guard until someone remembers to
+stage it. Reviewer-run proof on the assembled tree:
+
+| # | Probe | Expected | Observed |
+|---|---|---|---|
+| 1 | Baseline, assembled tree | pass | `0 active … across 940 tracked + untracked non-ignored file(s)`, exit 0 |
+| 2 | New **untracked, never-staged** spec file promising to re-add the retired harness | fail | `1 active … reference(s) found` at `t105-bishop-probe.md:3` — **the capability B-1 was missing** |
+| 3 | New **untracked** ADR promising to adopt the retired framework next quarter | fail | `1 active …` at `docs/adr/0099-bishop-probe.md:5` — exemption is exact-path, not `docs/adr/**` |
+| 4 | Byte-identical **copy** of the exempt evidence file at a sibling name | fail | `19 active …` at `t105-tamper-evidence-copy.md` — exemption is exact-path, not `specs/004-…/**` |
+| 5 | Retired-harness instruction inside a git-ignored path (`.tools/probe/note.md`) | pass | exit 0, denominator unchanged at 940 — ignore semantics preserved |
+| 6 | Guard's own suite | pass | **22/22**, including the two new negative cases |
+
+All probes removed; `git status --short` returned to the 30-entry baseline. The exact-path
+exemption for `t105-tamper-evidence.md` is narrow, registered in `EXEMPT_SPEC_PATHS` beside the
+pre-existing `validation.md`/`evidence.md` entries, and documented in the script header with its
+rationale. Charter requirements 10 and 11 re-confirmed: the exemption is narrow, an unlisted ADR
+with a live promise still fails, and no Docker, browser download, or active promise to reinstate
+the retired framework returned anywhere in the tree.
+
+### 14.3 B-2 — CLOSED (verified independently)
+
+The false claim was not quietly deleted; it is struck through in place with the correction beside
+it, which is the right way to amend a record. `t105-tamper-evidence.md` §2.3 now strikes
+*"included in that 933 and no longer flagged"*, states plainly that the ADR was untracked and that
+933 was tracked-only so the tool could not have seen it, and supplies the true reproducible proof.
+The stale ADR hash `4ddc1978…` is struck and corrected to `70a965da…`, which matches the file on
+disk. `t105-evidence-revision.md` §3.3 additionally discloses **denominator drift** — 936 at the
+time of writing versus 940 now, the difference being this revision's own new files — which is
+exactly the honesty B-2 was about.
+
+### 14.4 B-3 — CLOSED (verified independently)
+
+Two real register entries now exist where §13 found only a forward reference to nothing:
+
+- `plan.md` §6.2 — branch protection recommended, not applied. Names the contradicted rule
+  (constitution §8.3), the observed posture, the reason it is declined-for-now rather than
+  outright, owner `briandenicola`, start date, closure trigger, class `REVIEWED` not `ENFORCED`,
+  and states the accepted consequence plainly (force-push, deletion, unreviewed merges and
+  non-linear history are currently *possible*, not merely undesired).
+- `plan.md` §6.3 — the manual PWA checklist as a declared gap. Correctly records that the PR
+  template's tri-state declaration blocks nothing in any of its three states and that no
+  enforcement is claimed.
+
+Both citations now resolve: constitution §8.3 points at §6.2 (was §2.10) and
+`docs/adr/0002-…md:111` points at §6.3 (was §2.10). The constitution version history records
+**1.1.1** attributing the correction to Hudson and stating explicitly that it is a citation
+correction, not a rule change — verified true by diff: no requirement, check, bar, or posture was
+weakened, and all thirteen journeys remain intact.
+
+### 14.5 B-4 — CLOSED (verified independently)
+
+Reviewer-run clean-state proof, not a re-reading of the report. I hashed the pinned binary
+(`SHA-256 17157E2E…`), moved it aside, **deleted `.tools/gitleaks` entirely**, confirmed absence,
+then ran `task restore`:
+
+- `task: [tools:gitleaks] … install-gitleaks.ps1 -Version '8.30.1'` executed, printed `8.30.1`
+- `.tools/gitleaks/gitleaks.exe` re-provisioned, **SHA-256 byte-identical** to the pre-test binary
+- `node --test scripts/check-gitleaks-installed.test.mjs` → **10/10**
+- `task restore` exit **0**
+
+Idempotency and detection semantics also proven directly: a second `task tools:gitleaks` reports
+`Task "tools:gitleaks" is up to date` with no re-download; `check-gitleaks-installed.mjs` exits 1
+with the binary absent, exits 1 for a non-matching pinned version, exits 0 for `8.30.1`, and its
+suite includes a case rejecting a version string that merely *contains* the pin as a substring.
+The install logic now lives in exactly one place (`tools:gitleaks`); `hooks:install` and both
+workflows consume it instead of each carrying a copy. The clean-checkout contract in
+`docs/prd.md` §7.5.5 (`task restore` → `task verify`) is now true.
+
+### 14.6 Full `task verify` on the assembled tree — reviewer-run
+
+Windows, no Docker, no browser. Every stage below is reproduced from my own run, not quoted:
+
+| Stage | Result |
+|---|---|
+| `check:format` | pass |
+| `build:backend` (Release) | pass, 0 warnings, 0 errors |
+| `check:frontend` | `svelte-check found 0 errors and 0 warnings` |
+| `lint` | pass |
+| `test:unit` | **278** collected, 278 passed, floor held |
+| `test:frontend` | **649** tests / **83** files, floor held |
+| `check:stale-refs` | pass — 0 active across **940** tracked + untracked non-ignored files; suite **22/22** |
+| `check:openapi-drift` | `OpenAPI document is current (openapi.yaml)` |
+| `check:client-drift` | pass; suite **9/9** |
+| `check:migration-drift` | `No changes have been made to the model since the last migration` |
+| `test:integration` | **296** collected (292 passed / 4 skipped), floor held |
+| `build:frontend` | pass |
+| `check:vulnerable` | pass; suite **13/13** |
+| `check:security` | **FAIL — B-5** (2 tracked files; 4 once committed) |
+| **`task verify`** | **exit 1** |
+
+A first attempt at this run failed at `check:migration-drift`. I traced it to contaminated
+incremental **Debug** build artefacts left by my own §13 migration-drift tamper — the source tree
+was clean (`git status` on `src/` and `tests/` empty; no `BishopTamperProbe` anywhere in `.cs`),
+but stale `obj/Debug`/`bin/Debug` assemblies still carried the compiled probe, which `dotnet ef`
+loaded. Purging the Debug output directories and rebuilding cleared it. **This was reviewer residue,
+not a defect in the change set, and is not charged against T105** — but see F-18.
+
+### 14.7 Branch-protection recommendation — re-verified truthful
+
+Re-checked live at the re-review, unchanged from §13: `gh api …/branches/main/protection` →
+`Branch not protected (HTTP 404)`; `gh api …/rulesets` → `[]`; the only workflow run on this
+branch remains `Sync Squad Labels` at `2026-09-02T22:50:58Z`, so the post-T104 `verify` job has
+**still never executed on GitHub Actions**. `quality-gate.yml` declares job ids `verify`, `codeql`,
+`secrets`, `container-config-scan`, `sbom` with no `name:` overrides, so the check names in the
+recommendation, the PR template, and constitution §8.3 are the real ones. Recommendation and
+applied state remain clearly separated everywhere, and `sbom` is correctly excluded from the PR
+set. The recommendation's own sequencing note — apply only after one PR has run Quality Gate and
+the context strings are confirmed with `gh pr checks` — remains the correct order and is now also
+recorded in `plan.md` §6.2.
+
+### 14.8 Non-blocking findings
+
+- **F-17 (elevated — fix alongside B-5).** The two guards now disagree about what "the repository"
+  means. `check-stale-playwright-references.mjs` scans `--cached --others --exclude-standard`;
+  `check-security.mjs --repo` still scans `git ls-files` only. Hicks's own argument for widening the
+  first applies with *more* force to a secret scanner: a brand-new untracked file containing a live
+  credential passes `task verify` today. This was demonstrated live and unintentionally by B-5
+  itself — five files match the token pattern, and `check:security` reported only the two that
+  happen to be tracked. Recommend aligning `check-security.mjs --repo` to the same enumeration.
+- **F-18 (new).** `check:migration-drift` inherits `dotnet ef`'s incremental build and is therefore
+  sensitive to stale `obj/Debug` artefacts. It produced a **false positive** for me (§14.6); the
+  same mechanism could in principle produce a **false negative**, which is the dangerous direction.
+  Pre-existing, not introduced by T105. Recommend an explicit non-incremental build or a clean step
+  before the drift query.
+- **F-19 (new).** `.github/pull_request_template.md`'s description of the `verify` check still ends
+  at "vulnerable-package scan" and omits the auth-token/secret scan this package added to
+  `verify:full`. Understates; correct while B-5 is being fixed.
+- **F-20 (new).** `restore` runs `node --test scripts/check-gitleaks-installed.test.mjs`
+  unconditionally, and `restore` is a dependency of most tasks, so the suite executes roughly ten
+  times in a single `task verify`. Harmless but noisy; consider a dedicated target.
+- **F-16 (carried, still open).** `.github/workflows/README.md:176` still lists the auth-token
+  persistence scan as "Enforced (`ci.yml`, manual)". It is now a `task verify` stage and therefore
+  a Quality Gate stage. Understates rather than overclaims, so not a blocker.
+- **F-15 (carried, still open).** `check-security.mjs` and `check-test-floors.mjs` remain the only
+  guards without their own regression suites; both are tamper-proven directly instead.
+- **F-11 — closable**, as adjudicated in §13.3.
+
+### 14.9 What still blocks opening or merging the foundation PR
+
+Independent of B-5, and unchanged by this revision:
+
+1. The post-T104 `verify` job has never run on GitHub Actions; no green Quality Gate exists for
+   this pipeline on any commit.
+2. `main` has no branch protection and no rulesets, so every check reports and nothing blocks.
+3. Required-context strings cannot be confirmed until a real PR run produces them; applying the
+   recommendation first would leave a PR permanently awaiting a status that never reports.
+4. No PR has yet exercised the new template, per-AC evidence table, or exception table.
+5. `required_signatures` must not be enabled until local commit signing is confirmed working.
+
+### 14.10 Reviewer non-interference
+
+I repaired nothing in the change set. My only writes were this section, the AC-009 rows above,
+the T105 records in `tasks.md`, the Bishop history entry, and the decision inbox file. All tamper
+probes were created and removed by me; `git status --short` is back to its 30-entry pre-review
+baseline; the pinned gitleaks binary is byte-identical to its pre-test hash; the one tracked file I
+touched outside my own records — `AppDbContextModelSnapshot.cs`, modified transiently by a
+diagnostic `ef migrations add`/`remove` pair — was returned to its HEAD content, and it is not part
+of anyone's uncommitted work. Restore-to-HEAD was never used on any file belonging to the change
+set.
+
+---
+
+## 15. T105 Independent Integrated Reviewer Gate — Final re-review after Scribe's B-5 fix — **REJECTED**
+
+**Reviewer:** Bishop (Security & Auth) · independent integrated reviewer
+**Date:** 2026-09-02 · **Branch:** `chore/agentic-development-foundation` · **Base:** `764282e` (pushed)
+**Prior verdicts:** §13 (B-1…B-4) · §14 (B-1…B-4 closed, B-5 opened)
+
+### 15.0 Verdict
+
+**REJECTED.** B-1, B-2, B-3 and B-4 remain closed and re-verified. Scribe's redaction of the four
+B-5 sites is correct, faithful, and introduced no weakening. But the redaction added a new §8
+note to `t105-setup-revision.md` that **describes** the redaction by quoting the very literal it
+removed, reintroducing the defect one line away from where it was fixed.
+
+| ID | Blocker | Evidence | Revision owner |
+|---|---|---|---|
+| **B-6** | **The B-5 fix reintroduces B-5 in its own changelog note.** `specs/004-agentic-development-foundation/t105-setup-revision.md:258` — inside §8 "B-5 Correction — Scribe" — quotes the unredacted auth-token-persistence call while explaining that all such literals were redacted. The tree is therefore **not** clean, and the coordinator's next checkpoint commit turns a green pipeline red. | Reviewer-run. `task verify` on the assembled tree → **exit 0**, `Security scan (repo) passed for 933 file(s)` — but 933 is `git ls-files`, i.e. **tracked only**, and `t105-setup-revision.md` is one of seven untracked files excluded from that denominator. Staging all seven untracked files and running `node scripts/check-security.mjs --staged` → **exit 1**, `Blocked auth token persistence in localStorage: specs/004-agentic-development-foundation/t105-setup-revision.md:258`. Index restored immediately; working tree back to its 30-entry baseline. An independent regex sweep over `git ls-files --cached --others --exclude-standard` (940 files) finds exactly **one** remaining match, at that same line. | **Vasquez** |
+
+### 15.1 Why this is a blocker and not a nitpick
+
+`task verify` exiting 0 today is an artefact of *when* it was run, not evidence that the pipeline
+is aligned. Every deliverable of T105 that carries the defect is still untracked; `check:security`
+enumerates tracked files only (finding F-17, raised in §14.8 and now demonstrated for the third
+time). Marking T105 `DONE` on a green run whose denominator excludes the files under test would be
+the same false-proof pattern this gate has already rejected twice — as B-2 (a 933-file scan that
+excluded the ADR being certified) and as B-5 (evidence files invisible to the guard they document).
+Scribe's own §8 note reports *"`task check:security` → exit 0 (933 files clean)"*. That sentence is
+literally true and materially misleading, for exactly the reason B-2 was.
+
+The remedy is one line. It is still a rejection, because the acceptance criterion is that the
+aligned check set runs green on the artefact being delivered.
+
+### 15.2 What Scribe got right — preserve it
+
+- **Scope discipline was exact.** Only the four sites named in §14.1 were touched, plus the §8
+  changelog note. `git diff --stat` confirms the reviewer-owned content in `validation.md` and
+  `.squad/agents/hudson/history.md` was otherwise untouched.
+- **No weakening whatsoever.** `scripts/check-security.mjs` does not appear in the diff at all —
+  the token pattern is byte-identical. `.gitleaks.toml`'s diff contains only the two prior-cycle
+  allowlist entries authored by the guard-proof half; Scribe added none. No `EXEMPT_*` list, no
+  markdown carve-out, no `specs/**` prefix. The stale-reference guard and its suite are unchanged
+  from the state approved in §14.2.
+- **Meaning is fully preserved.** The redaction splits the call across backtick boundaries and
+  substitutes `[REDACTED AUTH-TOKEN PERSISTENCE PAYLOAD]` for the argument. Every diagnostic fact
+  survives at each site: the target file and line (`msal.ts:79`), the scan mode exercised
+  (`--staged`), the exit code, the restoration hash (`908386d5…`), and the attribution. A reader
+  can still reconstruct exactly what was tested and what the guard did.
+- **The technique is the right one.** Sanitizing content rather than exempting paths is precisely
+  what §14.1 required, and it is the pattern this repository should keep reaching for.
+
+### 15.3 B-1 … B-4 — re-verified closed at this gate
+
+Re-run against the current tree, not carried forward on trust:
+
+| Blocker | Re-verification |
+|---|---|
+| **B-1** | Baseline `0 active … across 940 tracked + untracked non-ignored file(s)`, exit 0. Negative probes still fail correctly: a new **untracked** spec file promising to reinstate the retired harness → 1 violation; a new **untracked** ADR promising adoption → 1 violation; a byte-identical copy of the exempt evidence file at a sibling name → **19** violations (exemption is exact-path, not a prefix). Guard suite **22/22**. All probes removed. |
+| **B-2** | Struck-through corrections and the `70a965da…` hash remain in place and still match the file on disk. |
+| **B-3** | `plan.md` §6.2/§6.3 intact; constitution §8.3 (v1.1.1) and `docs/adr/0002-…md:111` still resolve to them. |
+| **B-4** | `check-gitleaks-installed.mjs 8.30.1` → exit 0; provisioning suite **10/10**; `tools:gitleaks` reports up-to-date without re-downloading. |
+
+### 15.4 Full `task verify` on the assembled tree — reviewer-run
+
+Windows, no Docker, no browser. Exit **0**, with the denominator caveat in §15.0/§15.1:
+
+| Stage | Result |
+|---|---|
+| `check:format` · `build:backend` · `check:frontend` · `lint` | pass (0 errors, 0 warnings) |
+| `test:unit` | **278** collected/passed, floor held |
+| `test:frontend` | **649** tests / **83** files, floor held |
+| `check:stale-refs` | 0 active across **940** files; suite **22/22** |
+| `check:openapi-drift` | `OpenAPI document is current (openapi.yaml)` |
+| `check:client-drift` | pass; suite **9/9** |
+| `check:migration-drift` | `No changes have been made to the model since the last migration` |
+| `test:integration` | **296** collected (292 passed / 4 skipped), floor held |
+| `build:frontend` · `check:vulnerable` | pass; vulnerable suite **13/13** |
+| `check:security` | `Security scan (repo) passed for 933 file(s)` — **tracked only; 7 untracked deliverables not scanned** |
+| gitleaks provisioning suite | **10/10** (runs on every `restore`) |
+| **`task verify`** | **exit 0** — but see §15.0: the same tree fails once its own deliverables are tracked |
+
+### 15.5 Scan-surface truthfulness
+
+The two counts in this package are both real and must not be conflated:
+
+- **940** — `git ls-files --cached --others --exclude-standard`, the stale-reference guard's surface.
+  Includes the 7 untracked T105 deliverables.
+- **933** — `git ls-files`, the security scanner's surface. Excludes them.
+
+Any statement of the form "the repository is clean" must name which of the two it means. This is
+the third consecutive cycle in which the gap between these numbers concealed a real defect, and it
+elevates F-17 from a recommendation to the single highest-value follow-up in this package.
+
+### 15.6 GitHub state — re-verified, unchanged
+
+`gh api …/branches/main/protection` → `Branch not protected (HTTP 404)`; `…/rulesets` → `[]`; the
+only workflow run on this branch remains `Sync Squad Labels` at `2026-09-02T22:50:58Z`. The
+post-T104 `verify` job has still never executed on GitHub Actions. Check names, the
+branch-protection recommendation, and the recommendation-versus-applied separation remain accurate
+as validated in §13.7/§14.7.
+
+### 15.7 Remaining blockers to opening or merging the foundation PR
+
+Unchanged, and independent of B-6:
+
+1. `verify` has never run on GitHub Actions — no green Quality Gate exists for this pipeline.
+2. `main` has no branch protection and no rulesets; every check reports and nothing blocks.
+3. Required-context strings cannot be confirmed until a real PR run produces them.
+4. No PR has yet exercised the new template, per-AC evidence table, or exception table.
+5. `required_signatures` must not be enabled until local commit signing is confirmed working.
+
+### 15.8 Reviewer non-interference
+
+Nothing in the change set was repaired. The staging used to expose B-6 was reverted with `git reset`
+immediately; every tamper probe was created and removed; `git status --short` is back to its
+30-entry baseline; the pinned gitleaks binary remains at its pinned version. Restore-to-HEAD was
+never used on any file belonging to the change set. Nothing was committed or pushed.
+
+---
+
+## 16. T105 Independent Integrated Reviewer Gate — Final verification of B-6 — **APPROVED**
+
+**Reviewer:** Bishop (Security & Auth) · independent integrated reviewer
+**Date:** 2026-09-02 · **Branch:** `chore/agentic-development-foundation` · **Base:** `764282e` (pushed)
+**Prior verdicts:** §13 (B-1…B-4) · §14 (B-1…B-4 closed, B-5 opened) · §15 (B-5 fix sound, B-6 opened)
+
+### 16.0 Verdict
+
+**APPROVED. T105 is `DONE` and AC-009 is satisfied.**
+
+All six blockers are closed and independently re-verified at this gate. The decisive proof is the
+one §15 demanded and no earlier cycle produced: **the complete intended change set staged, then
+scanned and verified end to end.**
+
+### 16.1 B-6 — closed
+
+| Check | Result |
+|---|---|
+| The exact line, `t105-setup-revision.md:258` | Now split across backtick boundaries in the same style as the other five sites. Reviewer-confirmed **non-matching** against the scanner's own pattern. |
+| Meaning preserved | Yes. The sentence still states which literal pattern the scanner flags, which files contained it, that `check:security` was the guard that caught it, and that the payload was deliberately omitted. Nothing diagnostic was lost. |
+| The misleading count | Corrected in place: §8 now reads **"exit 0 (933 tracked files clean)"**, naming its surface as §15.1 required. |
+| Remaining literals anywhere | **Zero.** Independent regex sweep of the scanner's own pattern across all **940** tracked + untracked non-ignored files → `SCANNED=940 TOTAL_MATCHES=0`. |
+| Scope | `git status` unchanged at 30 entries; no scanner, config, Taskfile, or guard-script change accompanied the fix. |
+
+### 16.2 The staged-checkpoint proof (the test §15 required)
+
+I staged **the complete intended T105 change set** — 23 modified tracked files and all 7 untracked
+deliverables — so that `git ls-files` reported **940** rather than 933, then ran the guards against
+that surface:
+
+- `node scripts/check-security.mjs --repo` → **exit 0**, `Security scan (repo) passed for 940 file(s).`
+- **`task verify` (full pipeline, staged) → exit 0**, ending with
+  `Security scan (repo) passed for 940 file(s).`
+
+This is the first run in the package's history in which the security scanner's denominator actually
+contained every T105 deliverable. The two numbers that concealed three separate defects — the
+stale-reference guard's 940 and the security scanner's 933 — now agree, and the pipeline is green
+on the artefact being delivered, not merely on the tree that excludes it.
+
+**Index and byte-stability.** The index was reset immediately afterwards (`git diff --cached` → 0
+entries). All **30** files in the change set were SHA-256 snapshotted before staging and re-compared
+after the reset: **0 changed**. Staging altered no bytes.
+
+### 16.3 Full `task verify` — reviewer-run, complete change set staged
+
+Windows, no Docker, no browser, exit **0**:
+
+| Stage | Result |
+|---|---|
+| `check:format` · `build:backend` (Release) · `lint` | pass |
+| `check:frontend` | `svelte-check found 0 errors and 0 warnings` |
+| `test:unit` | **278** collected/passed, floor held |
+| `test:frontend` | **649** tests / **83** files, floor held |
+| `check:stale-refs` | 0 active across **940** files; suite **22/22** |
+| `check:openapi-drift` | `OpenAPI document is current (openapi.yaml)` |
+| `check:client-drift` | pass; suite **9/9** |
+| `check:migration-drift` | `No changes have been made to the model since the last migration` |
+| `test:integration` | **296** collected (292 passed / 4 skipped), floor held |
+| `build:frontend` · `check:vulnerable` | pass; suite **13/13** |
+| `check:security` | **`Security scan (repo) passed for 940 file(s)`** |
+| gitleaks provisioning suite | **10/10** |
+| **`task verify`** | **exit 0** — 16 suite runs, `fail 0` in every one |
+
+### 16.4 The scanner was not weakened — proven, not assumed
+
+Two paired probes, both against the current tree:
+
+- **Positive control:** a new file containing the unredacted token-persistence call, staged →
+  `node scripts/check-security.mjs --staged` → **exit 1**, offending file, line, and text reported.
+  The guard still catches the real thing.
+- **Negative control:** a new file containing only the *redacted* form → **exit 0**. The redaction
+  is a genuine change in content, not a bypass: a source file that actually persists a token writes
+  the unsplit call and is still blocked.
+
+`scripts/check-security.mjs` remains byte-identical and absent from the change set entirely.
+`.gitleaks.toml` carries only the two prior-cycle allowlist entries, both previously verified narrow.
+No `EXEMPT_*` entry, markdown carve-out, or `specs/**` prefix was added at any point in this package.
+
+### 16.5 B-1 … B-5 — re-verified closed at this gate
+
+| Blocker | Re-verification |
+|---|---|
+| **B-1** | Baseline 0 active across **940** files. Negative probes still fail correctly: new **untracked** spec file promising to reinstate the retired harness → 1 violation; new **untracked** ADR promising adoption → 1 violation; byte-identical copy of the exempt evidence file at a sibling name → **19** violations. Exemptions remain exact-path, never prefixes. Suite **22/22**. |
+| **B-2** | Struck-through corrections intact; the ADR is unmodified since the pre-staging snapshot. See F-21 for a provenance note that does not affect the verdict. |
+| **B-3** | `plan.md` §6.2 and §6.3 present as five-field register entries; constitution **1.1.1** §8.3 L461 cites §6.2; `docs/adr/0002-…md:111` cites §6.3. Both citations resolve. |
+| **B-4** | `check-gitleaks-installed.mjs 8.30.1` → exit 0; provisioning suite **10/10**; `tools:gitleaks` idempotent. |
+| **B-5** | All four original sites remain redacted with meaning intact; zero matches across 940 files. |
+
+### 16.6 AC-009 element-by-element
+
+| Element | Status |
+|---|---|
+| Required-check names aligned to the checks that exist after T104 | ✅ `verify`, `codeql`, `secrets`, `container-config-scan` enumerated from workflow job ids with no `name:` overrides; `sbom` correctly excluded as push-only |
+| Branch-protection posture written, with recommendation separated from applied state | ✅ `t105-governance-evidence.md` §4; constitution §8.3 records the observed posture as `REVIEWED`, not `ENFORCED` |
+| Not adopted → recorded as an explicit visible exception with a named owner | ✅ `plan.md` §6.2 (branch protection) and §6.3 (manual PWA checklist), owner `briandenicola`, with scope, start date, closure trigger and accepted consequence |
+| PR template requires per-criterion evidence and names the required checks | ✅ per-AC evidence table, named-check list, manual-PWA tri-state declaration, explicit exceptions table |
+| `.github/CODEOWNERS` routes review to a real owner, no placeholder paths | ✅ verified §13 |
+| **Every critical non-browser guard tamper-tested** | ✅ full matrix, reviewer-reproduced across every mechanism class: stale references, OpenAPI drift, generated-client drift, EF migration drift, collected-test floors, vulnerable packages (direct **and** transitive), auth-token persistence, secret detection, and subtask failure propagation |
+| The aligned check set actually runs green on the delivered artefact | ✅ §16.2 — `task verify` exit 0 with the complete change set staged, 940-file security scan |
+
+### 16.7 Findings
+
+- **F-21 (new, non-blocking, provenance only).** `t105-evidence-revision.md` §3.4 and
+  `t105-tamper-evidence.md` §2.3 record the ADR's SHA1 as `70a965da…`. Its current value is
+  `6831448c…`. The file's bytes are unchanged since my pre-staging snapshot; the delta is **Hudson's
+  B-3 citation fix to line 111**, made after Hicks recorded the hash, and separately documented in
+  `plan.md` §6.3, ADR L111 and constitution 1.1.1's revision history. Both records are historically
+  accurate for the session that produced them and the change is fully traceable, so this does not
+  affect the verdict. **It also corrects §14.3 of this document**, where I wrote that the corrected
+  hash "matches the file on disk"; as of the final tree it does not, and this note is the correction.
+  Two parallel revision owners touching the same file in one cycle is the root cause — worth a
+  convention, not a rework.
+- **F-17 (carried, elevated — highest-value follow-up).** `check-security.mjs --repo` enumerates
+  `git ls-files` while the stale-reference guard enumerates
+  `git ls-files --cached --others --exclude-standard`. Three defects in this package hid in that
+  gap. A secret scanner should hold the *wider* surface of the two. Recommend a follow-up task.
+- **F-18, F-19, F-20, F-16, F-15** — carried unchanged from §14.8, all non-blocking.
+- **F-11** — closable, as adjudicated in §13.3.
+
+### 16.8 What still blocks opening or merging the foundation PR
+
+AC-009 is met. **Merge readiness is a separate gate and remains open:**
+
+1. **The `verify` job has never executed on GitHub Actions.** The only run on this branch is
+   `Sync Squad Labels` (2026-09-02T22:50:58Z). Every result above is local. Windows-only —
+   `ubuntu-latest` behaviour for `task restore` → `tools:gitleaks` → `install-gitleaks.sh` is
+   inspection-verified only (disclosed in `t105-setup-revision.md` §3).
+2. **`main` has no branch protection and no rulesets** — re-verified live at this gate
+   (`404 Branch not protected`, `rulesets == []`). Every check reports; nothing blocks a merge.
+3. **Required-context strings are unconfirmed.** Apply the `t105-governance-evidence.md` §4.3
+   payload **only after** one PR from this branch has run Quality Gate and the contexts are
+   confirmed with `gh pr checks`. Applying it first leaves a PR permanently awaiting a status that
+   never reports.
+4. **No PR has exercised the new template**, its per-AC evidence table, or its exception table.
+5. **`required_signatures` must not be enabled** until local commit signing is confirmed working.
+6. **The checkpoint commit must include all seven untracked deliverables.** They are what makes the
+   940-file scan meaningful; committing a subset re-opens the surface gap.
+
+### 16.9 Reviewer non-interference
+
+Nothing in the change set was repaired. Every probe was created and removed; the staging used for
+§16.2 was reset without altering bytes; all 30 change-set files hash-match their pre-staging
+snapshot. One deliverable (`t105-governance-evidence.md`) was transiently modified by a probe and
+restored **byte-identically**, verified by SHA-256. Restore-to-HEAD was never used on any file
+belonging to the change set. Nothing was committed or pushed.

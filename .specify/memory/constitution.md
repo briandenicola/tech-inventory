@@ -10,8 +10,9 @@
 > Violations require an explicit, documented waiver (ADR).
 
 **Project**: Tech Inventory (self-hosted family device catalog)
-**Version**: 1.0.0
+**Version**: 1.1.1
 **Ratified**: 2026-05-17
+**Last amended**: 2026-09-02 (T105 revision — §2.10 exception register entries, see §15)
 **Amendment process**: PR with ADR; affected sections re-versioned
 
 ---
@@ -282,7 +283,10 @@ If a lower document conflicts with a higher one, **stop and raise it**.
 - **Modals**: focus trap, return focus on close, Escape dismisses
 - **Motion**: respect `prefers-reduced-motion`; no auto-playing animation > 5s
 - **Screen reader testing** required for any net-new view (NVDA or VoiceOver)
-- **axe-core** in unit + E2E tests; **zero violations** required to merge
+- **axe-core** in unit and component tests; **zero violations** required to merge
+- Engine-specific accessibility behaviour (WebKit / Firefox) is verified by the
+  owned manual checklist (`docs/testing/manual-pwa-validation.md`), recorded as
+  a declared gap — never as automated coverage (ADR 0002)
 
 ### 6.5.7 Responsive & Mobile
 - **Mobile** PWA first class citizen equal to desktop design
@@ -354,9 +358,20 @@ If a lower document conflicts with a higher one, **stop and raise it**.
 ### 6.5.14 Testing (Web)
 - **Unit**: Vitest + Testing Library; co-located `*.test.ts`
 - **Component**: every interactive component has a test for each state (loading/empty/error/success)
-- **E2E**: Playwright on critical user paths (sign in, list, detail, import, export)
-- **Accessibility**: `axe-core` in unit + Playwright; zero violations
-- **Visual regression**: optional v2 (Percy / Chromatic / Playwright snapshots)
+- **Browser E2E**: **none.** The browser end-to-end layer is retired
+  (**ADR 0002**); no automated browser suite exists in any role — required,
+  scheduled, release, optional, or manual-dispatch — and no substitute
+  browser-automation framework replaces it
+- **Critical user paths** (sign in, list, detail, import, export, export
+  filtering, role enforcement, offline shell) are verified as **real-HTTP
+  integration/contract tests** plus **component tests**, per PRD §7.5.4
+- **Accessibility**: `axe-core` in unit and component tests; zero violations
+- **Manual**: browser-only behaviour (install, service worker/offline,
+  engine-specific rendering) via the owned checklist
+  `docs/testing/manual-pwa-validation.md` — a declared gap with an owner and a
+  release cadence, never reported as automated coverage
+- **Visual regression**: not adopted; any future proposal requires an ADR and
+  must not reintroduce a browser-automation suite by the back door
 - **No snapshot tests** for component HTML (brittle); prefer behavioral assertions
 
 ### 6.5.15 Browser Support
@@ -386,9 +401,12 @@ If a lower document conflicts with a higher one, **stop and raise it**.
 
 ### 7.2 Test Pyramid
 - **Unit tests** (xUnit + FluentAssertions + NSubstitute): fast, deterministic, no I/O
-- **Integration tests** (WebApplicationFactory + Testcontainers for SQL): cover boundaries
-- **E2E tests** (Playwright on PWA + API smoke): critical user paths only
-- **Contract tests** against OpenAPI spec
+- **Integration tests** (WebApplicationFactory + real SQLite): cover boundaries over **real HTTP**, no mocked API
+- **No automated browser layer** (ADR 0002): behaviour a browser suite would
+  have asserted lives in HTTP integration/contract tests, component tests, or
+  the owned manual PWA checklist
+- **Contract tests** against OpenAPI spec, plus generated-client and EF
+  migration drift gates
 
 ### 7.3 Test Discipline
 - **TDD encouraged**: write failing tests first for new logic
@@ -399,7 +417,11 @@ If a lower document conflicts with a higher one, **stop and raise it**.
 ### 7.4 Local-First Testing
 - All required test types must be runnable locally with one documented
   command (see PRD §7.5.5)
-- **Playwright** is the required E2E framework — no substitutes
+- **There is no browser E2E framework** — the layer is retired (**ADR 0002**).
+  Adopting any automated browser-test framework, in any role, requires a new
+  ADR superseding ADR 0002
+- The authoritative verification entrypoint is **`task verify`**; it requires no
+  Docker and downloads no browsers
 - CI runs the same commands a developer runs locally
 - Flaky tests are bugs (see PRD §7.5.8)
 
@@ -422,8 +444,22 @@ If a lower document conflicts with a higher one, **stop and raise it**.
 
 ### 8.3 Branch Protection
 - `main` requires: signed commits, linear history, CI green, review
-- No force-push to `main`
+- Required status checks on `main` are named, not implied. The current target
+  set is the Quality Gate jobs that actually exist: `verify`, `codeql`,
+  `secrets`, `container-config-scan` (`sbom` runs only on `main` pushes and is
+  therefore **not** required on PRs)
+- No force-push to `main`; branch deletion disabled
 - Direct commits to `main` blocked
+
+> **Posture status (observed 2026-09-02, `enforcement: REVIEWED`, not
+> `ENFORCED`):** `main` has **no branch protection and no rulesets**
+> (`404 Branch not protected`, `rulesets == []`). The written recommendation for
+> `briandenicola` to apply — with exact check names and JSON — is
+> `specs/004-agentic-development-foundation/t105-governance-evidence.md` §4.
+> Until it is applied, every check in §9 reports but blocks nothing, and that
+> gap is recorded as an explicit visible exception at
+> `specs/004-agentic-development-foundation/plan.md` §6.2 (§2.10's register
+> entry for this rule), owned by `briandenicola`.
 
 ---
 
@@ -439,7 +475,8 @@ Every PR must pass:
 - [ ] `gitleaks` secret scan clean
 - [ ] `trivy` container scan clean (no High/Critical)
 - [ ] OpenAPI contract validation
-- [ ] Web client: `tsc --noEmit`, ESLint, Vitest, Playwright smoke
+- [ ] Web client: `tsc --noEmit`, ESLint, Vitest unit + component tests (incl. `axe-core`)
+- [ ] Retired-browser-harness stale-reference guard clean (ADR 0002)
 - [ ] Lighthouse CI ≥ 90 across the board
 - [ ] Accessibility (axe-core) zero violations
 - [ ] SBOM generated and stored as artifact
@@ -533,9 +570,11 @@ A task is **done** when:
 - [ ] `tasks.md` checked off
 - [ ] PR merged with signed commits
 - [ ] Constitution compliance self-verified in PR
-- [ ] Playwright tests added or updated for any UI-facing change
-- [ ] `task test` runs green locally on the change branch
-- [ ] No new flaky tests (E2E run twice locally without failure)
+- [ ] Component and/or HTTP integration tests added or updated for any
+      UI-facing change; browser-only behaviour recorded against
+      `docs/testing/manual-pwa-validation.md` (ADR 0002)
+- [ ] `task verify` runs green locally on the change branch
+- [ ] No new flaky tests (the affected suite run twice locally without failure)
 
 ---
 
@@ -557,6 +596,8 @@ A task is **done** when:
 | Version | Date | Author | Changes |
 |---|---|---|---|
 | 1.0.0 | 2026-05-17 | [You] | Initial ratification |
+| 1.1.0 | 2026-09-02 | Ripley (recorded for `briandenicola`) | **ADR 0002 — browser E2E layer retired.** Amended §6.5.6 (axe-core scope), §6.5.14 (web testing layers), §7.2 (test pyramid), §7.4 (local-first testing; `task verify` named as the authoritative entrypoint), §9 (quality-gate checklist), §13 (definition of done). Amended §8.3 to name the actual required check names and to record the observed unprotected posture as `REVIEWED`, not `ENFORCED`. No accessibility, security, coverage, or acceptance requirement was weakened. |
+| 1.1.1 | 2026-09-02 | Hudson (T105 revision — Bishop reviewer-gate blocker B-3, `validation.md` §13.2) | §8.3's posture note pointed at `plan.md` §2.10 as if a live exception register entry existed there; none did (§2.10 is the principle statement, not a register). Corrected the pointer to `plan.md` §6.2, the new register entry that closes this gap (companion entry `plan.md` §6.3 covers the manual PWA checklist referenced by `docs/adr/0002-…` L111). No requirement, check, or posture was weakened — this is a citation correction, not a rule change. |
 
 ---
 

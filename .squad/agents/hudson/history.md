@@ -617,3 +617,92 @@ Conducted comprehensive audit of infrastructure, local automation, container sec
 
 **Next Steps:** Audit and sync prod compose with CI image definitions, add Windows-specific E2E test job, document backup strategy.
 
+
+### 2026-09-02 — T105 revision: closing blockers B-3 and B-4 only
+
+**Branch:** `chore/agentic-development-foundation` (uncommitted) · **Requested
+by:** briandenicola · **Spec:** `specs/004-agentic-development-foundation/`.
+Bishop's independent reviewer gate rejected T105 (`validation.md` §13) with
+four blockers. Ripley and Apone were locked out for this revision cycle;
+Hicks owned B-1/B-2 in parallel (already visible, fixed, in this shared
+working tree — 22/22 `check:stale-refs` tests passing before I touched
+anything). My scope was exactly **B-3** and **B-4**. Full record:
+`specs/004-agentic-development-foundation/t105-setup-revision.md`.
+
+**B-3 — §2.10 exception clause unmet.** Constitution §8.3 and
+`docs/adr/0002-…` L111 both already asserted a `plan.md §2.10` exception
+record existed for (a) unapplied branch protection and (b) the manual PWA
+checklist — but neither record existed after §6.1 closed; both were forward
+references to an empty register. Added `plan.md` §6.2 (branch protection)
+and §6.3 (manual PWA checklist), mirroring §6.1's exact template (Rule
+contradicted / Scope / Reason / Owner `briandenicola` / Start date
+2026-09-02 / Closure trigger / Class `REVIEWED` not `ENFORCED`). Corrected
+the constitution §8.3 and ADR 0002 citations to point at §6.2/§6.3
+precisely instead of the generic `§2.10` (constitution version bumped
+1.1.0→1.1.1, new §15 row explicitly noting no rule was weakened — pure
+citation-precision fix). Annotated `t105-governance-evidence.md` §6 open
+item 3 as resolved (one line, not a rewrite of Ripley's file). Appended a
+"Revised by Hudson" block to `tasks.md`'s T105 section (same pattern as the
+existing Hicks/T104 precedent) and a new AC-009 row to `validation.md` §5 —
+**did not touch Bishop's §13 verdict text**. Reviewed
+`.github/pull_request_template.md`'s Explicit Exceptions table: it's a
+generic per-PR fill-in table, not a `§2.10`-specific citation, so it needed
+no change.
+
+**B-4 — clean-checkout `restore → verify` didn't provision gitleaks.**
+`check:security` depended on a pinned gitleaks binary that only
+`task hooks:install` provisioned, never `task restore`. Added a new
+`tools:gitleaks` Task (idempotent — a `status:` check calling a new
+cross-platform script `scripts/check-gitleaks-installed.mjs`, since Task's
+`status:` field does **not** support the `{cmd, platforms}` object form used
+elsewhere under `cmds:` — using it there raises `cannot unmarshal !!map into
+string`, a real schema gotcha worth remembering). `restore` and
+`hooks:install` now both depend on `tools:gitleaks` instead of each running
+their own copy of `install-gitleaks.ps1`/`.sh` — one install owner.
+`check:security` now declares `deps: [restore]` and documents that it
+consumes, not installs, the binary, failing clearly (no silent network
+fallback) if it's somehow missing. 10/10 new unit tests
+(`check-gitleaks-installed.test.mjs`) cover path resolution per-platform and
+exact-version matching (including a regression guard against substring
+false positives like "8.30.10" matching pinned "8.30.1"), wired into
+`restore`'s own `cmds:` so they always run. Removed the now-duplicate
+"Install pinned gitleaks" steps from both `quality-gate.yml` and `ci.yml`,
+replacing the latter with `task restore` (still needed there for an earlier
+direct `check-security.mjs --diff-range` call before `task verify` runs).
+
+**Clean-state proof, done carefully (no broad deletes, no restore-to-HEAD):**
+moved the pinned `.tools/gitleaks/gitleaks.exe` aside via `Move-Item` (a
+first attempt using `Remove-Item` was silently reversed by something in
+this sandboxed environment before the next command ran — same hash, same
+old timestamp — so I switched to rename+`Test-Path`, which reliably proved
+absence); confirmed the new script independently reports "not installed"
+(exit 1); ran `task restore`, which re-provisioned the exact pinned
+version, byte-identical (SHA-256) to the pre-test backup; ran
+`task check:security` against it — gitleaks executed correctly (no "not
+installed" error). Cleaned up: removed the backup, re-verified the hash,
+confirmed `git status` shows no tracked drift from the experiment.
+
+**Two disclosed, out-of-scope observations, not fixed:** (1)
+`validation.md` §13.2 itself quotes literal tamper-test text
+`localStorage` . `setItem('access_token', [REDACTED AUTH-TOKEN PERSISTENCE PAYLOAD])`, which trips
+`check-security.mjs`'s own `tokenStoragePattern` regex — meaning
+`task check:security`/`task verify` currently fails on the *unmodified*
+tree for a reason wholly unrelated to B-3/B-4; fixing it would mean editing
+Bishop's verdict content, which is out of scope. (2) `check-security.mjs`'s
+bare-`gitleaks`-on-`PATH` fallback can hang indefinitely on Windows when no
+bundled binary and nothing on `PATH` exist (likely an App Execution Alias
+quirk) — pre-existing script behavior, not touched here. Both recorded in
+`t105-setup-revision.md` §4 for the next reviewer.
+
+**Validated:** `task --list-all` parses clean; gitleaks unit suite 10/10;
+`task check:stale-refs` 22/22 (0 violations, 940 files); `task
+check:client-drift` 9/9; `task check:vulnerable` 13/13; `task hooks:install`
+reuses `tools:gitleaks` correctly. Did not run a fully green `task verify`
+— expected to still stop at `check:security` for the disclosed, unrelated
+reason above, not from any regression in this revision. **Did not** mark
+T105 `DONE`, edit Bishop's verdict, touch Ripley/Apone's authored content
+beyond the single annotation noted above, or commit/push anything.
+
+**Refs:** T105, AC-009, `validation.md` §13/§5, `plan.md` §6.2/§6.3,
+`t105-setup-revision.md`, `.squad/decisions/inbox/hudson-t105-setup-revision.md`.
+

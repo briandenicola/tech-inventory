@@ -10,6 +10,13 @@ version: '3'
 # check runs against an in-process ASP.NET Core TestServer + real SQLite file,
 # not a container (specs/004-agentic-development-foundation, T104 · AC-008).
 #
+# `task restore` is the clean-checkout contract (docs/prd.md §7.5.5): it also
+# provisions the pinned `gitleaks` binary `check:security` needs (via
+# `tools:gitleaks`, idempotent — skips the download once the pinned version is
+# already present), so `restore` → `verify` works with no manual setup step and
+# no undeclared network fallback inside `verify` itself (specs/004-agentic-
+# development-foundation, T105 revision · B-4).
+#
 # Core commands:
 #   task up              — Bring up the full dev stack (API, Web, DB) via Docker Compose
 #   task dev:up          — Local (non-Docker) one-command dev: migrate + run API + Web in parallel
@@ -18,7 +25,7 @@ version: '3'
 #   task verify           — THE authoritative verification pipeline (alias for verify:full). No Docker required.
 #   task verify:fast      — format · backend build · frontend type-check · lint · unit · frontend unit/component tests
 #   task verify:contracts — retired-harness stale-reference guard · OpenAPI/client drift · EF migration drift · real-HTTP integration tests
-#   task verify:full      — verify:fast + verify:contracts + frontend production build + vulnerability scan
+#   task verify:full      — verify:fast + verify:contracts + frontend production build + vulnerability scan + auth-token/secret scan
 #
 # Local validation:
 #   task validate:local  — Fresh checkout → working dev environment with DB migrations applied
@@ -35,12 +42,30 @@ silent: false
 method: timestamp
 
 tasks:
+  tools:gitleaks:
+    desc: 'Provision the pinned gitleaks binary into .tools/gitleaks if it is not already present at the pinned version (idempotent — status check below skips the download once the pinned version is present, so restore''s many dependents do not re-download on every call). Single install path for gitleaks; restore (clean checkout) and hooks:install (pre-commit hook) both depend on this instead of each running their own copy of the download logic (specs/004-agentic-development-foundation, T105 revision, B-4)'
+    vars:
+      GITLEAKS_VERSION: '8.30.1'
+    status:
+      - node scripts/check-gitleaks-installed.mjs {{.GITLEAKS_VERSION}}
+    cmds:
+      - cmd: powershell -NoProfile -ExecutionPolicy Bypass -Command "& '.\scripts\install-gitleaks.ps1' -Version '{{.GITLEAKS_VERSION}}'"
+        platforms: [windows]
+      - cmd: bash ./scripts/install-gitleaks.sh {{.GITLEAKS_VERSION}}
+        platforms: [linux, darwin]
+
   restore:
-    desc: Restore .NET dependencies, pinned CLI tools (dotnet-ef), and pnpm dependencies
+    desc: Restore .NET dependencies, pinned CLI tools (dotnet-ef), pnpm dependencies, and the pinned gitleaks binary check:security needs (specs/004-agentic-development-foundation, T105 revision · B-4)
+    deps: [tools:gitleaks]
     cmds:
       - dotnet tool restore
       - dotnet restore
       - pnpm --dir src/TechInventory.Web install --frozen-lockfile
+      # Runs on every restore (not gated by tools:gitleaks' own status skip)
+      # so a regression in the provisioning checker cannot rot unnoticed —
+      # same pattern as check:client-drift/check:vulnerable's own suites
+      # (T105 revision · B-4).
+      - node --test scripts/check-gitleaks-installed.test.mjs
 
   build:backend:
     desc: Build the backend (.NET) in Release configuration
@@ -70,10 +95,11 @@ tasks:
       - pnpm --dir src/TechInventory.Web run check
 
   check:client-drift:
-    desc: Fail if the generated OpenAPI client (types.ts) has drifted from the working-tree openapi.yaml (snapshots the artifact, regenerates, compares, restores on both success and failure — never depends on committing)
+    desc: Fail if the generated OpenAPI client (types.ts) has drifted from the working-tree openapi.yaml (snapshots the artifact, regenerates, compares, restores on both success and failure — never depends on committing); also runs this checker's own unit suite so a regression in the guard itself cannot rot unnoticed (T105 · F-10)
     deps: [restore]
     cmds:
       - node scripts/check-client-drift.mjs
+      - node --test scripts/check-client-drift.test.mjs
 
   check:openapi-drift:
     desc: Fail if the committed OpenAPI document has drifted from the API project (regenerates via export-openapi and diffs structurally, ignoring JSON/YAML serializer noise)
@@ -98,10 +124,17 @@ tasks:
       - dotnet ef migrations has-pending-model-changes --project src/TechInventory.Infrastructure/TechInventory.Infrastructure.csproj --startup-project src/TechInventory.Api/TechInventory.Api.csproj
 
   check:vulnerable:
-    desc: Fail if any direct or transitive .NET package reports a Moderate+ vulnerability (constitution.md §5.8) — parses `dotnet list package --vulnerable --format json`, not just its exit code (the raw command exits 0 even when it reports advisories)
+    desc: Fail if any direct or transitive .NET package reports a Moderate+ vulnerability (constitution.md §5.8) — parses `dotnet list package --vulnerable --format json`, not just its exit code (the raw command exits 0 even when it reports advisories); also runs this checker's own unit suite so a regression in the guard itself cannot rot unnoticed (T105 · F-10)
     deps: [restore]
     cmds:
       - node scripts/check-vulnerable.mjs
+      - node --test scripts/check-vulnerable.test.mjs
+
+  check:security:
+    desc: Fail if any tracked file contains an auth-token-persistence pattern (localStorage token/JWT/MSAL storage) or a gitleaks-detected secret — repo-wide scan of every tracked file, no diff range required (specs/004-agentic-development-foundation, T105 · F-5 — brings the existing check-security.mjs auth-token/secret scan under the one authoritative Task graph instead of leaving it reachable only from a workflow_dispatch-only workflow and a bypassable pre-commit hook). Consumes the gitleaks binary `restore` provisions; does not install it itself and fails clearly (not a silent network fallback) if it is missing (T105 revision · B-4).
+    deps: [restore]
+    cmds:
+      - node scripts/check-security.mjs --repo
 
   lint:
     desc: Lint backend and frontend
@@ -110,12 +143,9 @@ tasks:
       - pnpm --dir src/TechInventory.Web run lint
 
   hooks:install:
-    desc: Install repo-managed git hooks and pinned gitleaks binary
+    desc: Install repo-managed git hooks and the pinned gitleaks binary (gitleaks install logic lives only in tools:gitleaks; restore uses the same task, T105 revision · B-4)
+    deps: [tools:gitleaks]
     cmds:
-      - cmd: powershell -NoProfile -ExecutionPolicy Bypass -Command "& '.\scripts\install-gitleaks.ps1'"
-        platforms: [windows]
-      - cmd: bash ./scripts/install-gitleaks.sh
-        platforms: [linux, darwin]
       - git config core.hooksPath .githooks
       - cmd: chmod +x .githooks/pre-commit
         platforms: [linux, darwin]
@@ -183,12 +213,13 @@ tasks:
       - task: test:integration
 
   verify:full:
-    desc: "Full verification, no Docker: verify:fast + verify:contracts + frontend production build + vulnerability scan"
+    desc: "Full verification, no Docker: verify:fast + verify:contracts + frontend production build + vulnerability scan + auth-token/secret scan"
     cmds:
       - task: verify:fast
       - task: verify:contracts
       - task: build:frontend
       - task: check:vulnerable
+      - task: check:security
 
   verify:
     desc: THE authoritative verification pipeline — alias for verify:full. Same entrypoint humans and CI both run. No Docker required.

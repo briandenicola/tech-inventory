@@ -2,7 +2,7 @@
 id: 004-agentic-development-foundation
 document: tasks
 tier: T2
-status: T001–T004 DONE; T103 DONE; T102 DONE and REVIEWER-APPROVED (Ripley, 2026-09-02 — `validation.md` §6); T101 DONE and REVIEWER-APPROVED (Ripley re-review, 2026-09-02 — `validation.md` §7.8) after REJECTION (`validation.md` §7) and Apone's revision (`coverage-migration.md` §13.9) closing blockers B1/B2; T104 **DONE and REVIEWER-APPROVED** (Apone re-review at `b3c092f`, 2026-09-02 — `validation.md` §12) after REJECTION (`validation.md` §10) and Hicks's revision (`validation.md` §11) closing B-1/B-2/B-3 — AC-008 met; T105 APPROVED and **AUTHORIZED to begin**
+status: T001–T004 DONE; T103 DONE; T102 DONE and REVIEWER-APPROVED (Ripley, 2026-09-02 — `validation.md` §6); T101 DONE and REVIEWER-APPROVED (Ripley re-review, 2026-09-02 — `validation.md` §7.8) after REJECTION (`validation.md` §7) and Apone's revision (`coverage-migration.md` §13.9) closing blockers B1/B2; T104 **DONE and REVIEWER-APPROVED** (Apone re-review at `b3c092f`, 2026-09-02 — `validation.md` §12) after REJECTION (`validation.md` §10) and Hicks's revision (`validation.md` §11) closing B-1/B-2/B-3 — AC-008 met; T105 **DONE and REVIEWER-APPROVED** (Bishop final gate, 2026-09-02 — `validation.md` §16) after three rejections (§13, §14, §15) and revisions by Hicks (B-1/B-2), Hudson (B-3/B-4), Scribe (B-5) and Vasquez (B-6) — AC-009 met; merge readiness separate and still open (§16.8)
 approved_by: briandenicola
 approved_at: 2026-09-02T10:06:57-05:00
 revised_at: 2026-09-02 (T102 completed and evidence consolidated by Apone —
@@ -45,7 +45,7 @@ automated browser execution: **there is no future automated Playwright role.**
 | T101 | Retire the broken Playwright harness safely | `DONE` · rejected → revised by Apone → **reviewer-APPROVED** (Ripley, `validation.md` §7.8) | T2 | T103 | AC-005 |
 | T102 | Migrate valuable coverage to lower reliable layers | `DONE` · **reviewer-APPROVED** | T2 | T103 | AC-006 |
 | T104 | One authoritative verification interface, Playwright-free | **`DONE`** — rejected by Apone (`validation.md` §10), revised by Hicks closing B-1/B-2/B-3 (`validation.md` §11), **independently re-reviewed and APPROVED by Apone at `b3c092f`** (`validation.md` §12); AC-008 met | T2 | T101, T102 | AC-008 |
-| T105 | Align required GitHub checks and tamper-test guards | `APPROVED` / not started — **AUTHORIZED to begin** (T104 cleared re-review, `validation.md` §12) | T3 | T104 | AC-009 |
+| T105 | Align required GitHub checks and tamper-test guards | **`DONE` — REVIEWER-APPROVED at the final independent reviewer gate** (Bishop, 2026-09-02 — `validation.md` §16) · rejected three times and revised each time: B-1/B-2 (Hicks), B-3/B-4 (Hudson), B-5 (Scribe), **B-6 (Vasquez)** — all six closed and re-verified · B-6 literal split across backtick boundaries, non-matching, meaning preserved, count surface named; **0** matches across all **940** tracked + untracked non-ignored files; with the **complete change set staged**, `check:security --repo` → exit 0 over **940** files and **full `task verify` → exit 0**; index reset with **30/30** files byte-identical; paired probes prove the scanner still blocks the real call and no exemption was added · **AC-009 met.** Merge readiness is separate and still open (`validation.md` §16.8) | T3 | T104 | AC-009 |
 
 ---
 
@@ -481,7 +481,197 @@ second revision note and `t102-hicks-final-revision.md` (session artefact).
       parity, checker suites 9/9 and 13/13, and **`task verify` exit 0 end to
       end in 5m32s with no Docker and no browser**
 
-### T105 — Align required GitHub checks and tamper-test guards · `APPROVED` · **AUTHORIZED to start** · AC-009
+### T105 — Align required GitHub checks and tamper-test guards · **`DONE` — REVIEWER-APPROVED** · AC-009 **met**
+
+> **Final reviewer gate 2026-09-02 (Bishop): APPROVED — T105 is `DONE`, AC-009 is satisfied.**
+> Full record: [`validation.md`](./validation.md) §16. This supersedes the three prior rejection
+> preambles below, which are retained as the audit trail.
+>
+> **B-6 closed.** `t105-setup-revision.md:258` now splits the literal across backtick boundaries in
+> the same style as the other five sites — reviewer-confirmed non-matching against the scanner's own
+> pattern, with every diagnostic fact preserved (which pattern, which files, which guard caught it,
+> that the payload was deliberately omitted). The misleading count is corrected in place to
+> "exit 0 (933 **tracked** files clean)", naming its surface. An independent regex sweep of the
+> scanner's pattern across all **940** tracked + untracked non-ignored files returns **0 matches**.
+>
+> **The proof the prior gate demanded.** The complete intended change set — 23 modified tracked
+> files and all 7 untracked deliverables — was staged so `git ls-files` reported **940** rather than
+> 933, and then: `check-security.mjs --repo` → **exit 0**, `Security scan (repo) passed for 940
+> file(s)`; **full `task verify` → exit 0** (278 unit · 296 integration [292 passed / 4 skipped] ·
+> 649 frontend across 83 files · stale-refs 0/940, suite 22/22 · OpenAPI current · client drift 9/9 ·
+> migration drift clean · vulnerable 13/13 · gitleaks provisioning 10/10; 16 suite runs, `fail 0` in
+> every one). This is the first run in the package whose security denominator actually contained
+> every T105 deliverable. The index was reset immediately and all **30** change-set files hash-match
+> their pre-staging SHA-256 snapshot — staging altered no bytes.
+>
+> **The scanner was not weakened — proven, not assumed.** A file containing the unredacted
+> token-persistence call, staged, still fails with file, line and text (**exit 1**); the redacted
+> form passes (**exit 0**). `scripts/check-security.mjs` is byte-identical and absent from the change
+> set; `.gitleaks.toml` carries only the two prior narrow entries; no `EXEMPT_*`, markdown, or
+> `specs/**` carve-out was added at any point in this package.
+>
+> **B-1…B-5 re-verified closed** against the final tree, not carried forward — including live
+> negative probes (untracked spec promise → 1 violation; untracked new ADR → 1 violation; sibling
+> copy of the exempt evidence file → 19 violations), resolving B-3 citations, and gitleaks 8.30.1
+> provisioning at 10/10.
+>
+> **AC-009 is met; merge readiness is a separate gate and remains open.** `verify` has never
+> executed on GitHub Actions, `main` still has no branch protection and no rulesets, the required
+> context strings are unconfirmed against a real run, no PR has exercised the new template, and
+> `required_signatures` must wait on confirmed local commit signing. The checkpoint commit must
+> include all seven untracked deliverables — they are what makes the 940-file scan meaningful. New
+> finding F-21 (ADR SHA1 provenance drift, non-blocking); F-17 elevated as the highest-value
+> follow-up. See `validation.md` §16.7–§16.8.
+
+> **Final re-review gate 2026-09-02 (Bishop): REJECTED — 1 new blocker; B-1…B-5 work verified sound.**
+> Full record: [`validation.md`](./validation.md) §15.
+>
+> **Verified closed / sound:** B-1 and B-2 (Hicks), B-3 and B-4 (Hudson) all re-confirmed against
+> the current tree — stale-refs baseline 0 across **940** files with every negative probe still
+> failing correctly, suites 22/22, 10/10, 9/9, 13/13, gitleaks provisioning idempotent at the pin.
+> **Scribe's B-5 redaction is correct and must be preserved:** scope limited to the four named
+> sites, `scripts/check-security.mjs` byte-identical and absent from the diff, `.gitleaks.toml`
+> carrying only prior-cycle entries, no markdown or `specs/**` carve-out, and every diagnostic fact
+> preserved at each site (target file and line, scan mode, exit code, restoration hash,
+> attribution). Sanitizing content instead of exempting paths was exactly right.
+>
+> **Open — B-6 (revision owner: Vasquez).** The redaction's own §8 changelog note, at
+> `t105-setup-revision.md:258`, explains that all such literals were redacted while quoting one
+> unredacted. `task verify` exits **0** today reporting `Security scan (repo) passed for 933
+> file(s)` — but 933 is `git ls-files`, tracked-only, and all seven T105 deliverables are still
+> untracked. Staging them and re-running the scanner exits **1** on that line, so the coordinator's
+> next checkpoint commit turns the pipeline red. A green run whose denominator excludes the
+> artefact under test is not proof; this is the third cycle in which the gap between the guards'
+> 940-file and 933-file surfaces concealed a real defect.
+>
+> **Remedy:** redact that one line the same way the other four were redacted, and correct the §8
+> sentence that reports a 933-file clean scan so it names which surface it means. Change nothing
+> else — no scanner, no config, no exemption, no verdict, count, hash, or conclusion. Then re-run
+> `task verify` **with the deliverables staged** and record the result.
+>
+> Ripley and Apone remain locked out of their originals; Hicks, Hudson and Scribe are locked out of
+> the artefacts they authored in their own cycles.
+>
+> Merge readiness stays separate and still blocked: `verify` has never run on GitHub Actions,
+> `main` has no protection or rulesets (re-verified live), required-context strings are unconfirmed,
+> no PR has used the new template, and `required_signatures` must wait on confirmed local signing
+> (`validation.md` §15.7).
+
+
+> **Re-review gate 2026-09-02 (Bishop): REJECTED — 1 new blocker; B-1…B-4 CLOSED.**
+> Full record: [`validation.md`](./validation.md) §14. Reviewed the assembled
+> uncommitted tree atop `764282e` — Ripley's governance half and Apone's
+> guard-proof half as revised by **Hicks** (B-1/B-2, `t105-evidence-revision.md`)
+> and **Hudson** (B-3/B-4, `t105-setup-revision.md`).
+>
+> **Closed, verified by reviewer-run evidence rather than revision report:**
+> **B-1** — the stale-reference guard now enumerates
+> `git ls-files --cached --others --exclude-standard`, so a brand-new untracked
+> file can no longer hide from it; reviewer probes confirm an untracked
+> never-staged promise fails, an untracked new ADR fails, a sibling copy of the
+> exempt evidence file fails with 19 violations, git-ignored paths stay excluded,
+> baseline 0 across **940** files, suite **22/22**. **B-2** — the false
+> "included in that 933" claim is struck through in place with the true proof
+> beside it, the ADR hash corrected, and denominator drift disclosed. **B-3** —
+> `plan.md` §6.2 and §6.3 are real, five-field, owned, dated register entries and
+> both dangling citations (constitution §8.3 → v1.1.1, ADR 0002 L111) now
+> resolve to them, with no requirement, bar, or journey weakened. **B-4** —
+> `.tools/gitleaks` deleted outright, `task restore` re-provisioned the pinned
+> binary byte-identically, 10/10 provisioning suite, idempotent re-run skips,
+> install logic centralised in `tools:gitleaks` and consumed by `hooks:install`
+> and both workflows.
+>
+> **Open — B-5 (revision owner: Scribe).** `task verify` does not pass on the
+> assembled tree. It exits 1 at `check:security` — the guard this package itself
+> added to the authoritative pipeline — because T105's own evidence and history
+> prose reproduces a literal auth-token-persistence payload at
+> `validation.md:1407`, `.squad/agents/hudson/history.md:687`,
+> `t105-setup-revision.md:150`/`:194`, and `t105-tamper-evidence.md:532`. Only
+> the two tracked files fail today; the failure grows to four the moment the
+> change set is committed. Every other stage passes (278 unit · 296 integration ·
+> 649 frontend across 83 files · 940 stale-refs · OpenAPI current · client clean ·
+> migration clean · vulnerable clean). The adjudicated remedy is **exact
+> contextual redaction of those four payloads only** — the scanner must not be
+> weakened and documentation must not be broadly exempted (`validation.md`
+> §14.1). Hudson disclosed this issue honestly rather than working around it.
+>
+> Ripley and Apone remain locked out of their original artefacts; Hicks and
+> Hudson are locked out of the artefacts they authored this cycle. Scribe owns
+> the redaction and must change no verdict, count, hash, or conclusion.
+>
+> Merge readiness stays separate and still blocked: `verify` has never run on
+> GitHub Actions, `main` has no protection or rulesets, required-context strings
+> are unconfirmed, no PR has used the new template, and `required_signatures`
+> must wait on confirmed local signing (`validation.md` §14.9).
+
+
+> **Reviewer gate 2026-09-02 — Bishop: REJECTED** (`validation.md` §13;
+> `.squad/decisions/inbox/bishop-t105-review.md`). Both halves were executed —
+> Ripley's governance work (`t105-governance-evidence.md`) and Apone's
+> guard-proof work (`t105-tamper-evidence.md`) — and most of the surface is
+> genuinely sound: the reviewer independently reproduced `task verify` exit 0
+> end to end (278 unit / 296 integration / 649 frontend across 83 files, guard
+> suites 20/20 · 9/9 · 13/13, 933 files scanned, no Docker, no browser) and
+> re-ran a deliberate-break tamper test across **every** mechanism class —
+> stale references, OpenAPI drift, generated-client drift, EF migration drift,
+> collected-test floors, vulnerability direct **and** transitive, secret and
+> auth-token scanning, and subtask failure propagation — each failing closed
+> with a specific diagnostic and restored byte-identically. ADR 0002, the
+> constitution 1.1.0 amendment (13 journeys preserved, no bar weakened), the PRD
+> amendment, the PR template, `CODEOWNERS`, the T47 retirement and the
+> check-name enumeration / branch-protection recommendation all pass review as
+> written. **Four blockers stand:**
+> **B-1** `t105-tamper-evidence.md` itself produces **18** active retired-harness
+> references and fails `check:stale-refs` the moment it is tracked — T105's own
+> deliverable breaks the pipeline it certifies;
+> **B-2** the tamper record's "live positive proof" that the ADR passed inside a
+> 933-file scan is false — the ADR is untracked and was never scanned (the
+> reviewer produced the real proof: staged, 934 files, exit 0), and the recorded
+> ADR hash is stale;
+> **B-3** AC-009's exception clause is unmet — no §2.10 exception entry exists
+> for the unapplied branch protection or the manual PWA checklist, yet
+> constitution §8.3 and ADR 0002 already assert that it does;
+> **B-4** `task verify` now requires a gitleaks binary that neither `task
+> restore` nor the repository provides, while the amended PRD §7.5.5 documents a
+> clean-checkout `restore` → `verify` contract that is therefore false.
+> **Revision owners: Hicks (B-1, B-2), Hudson (B-3, B-4)** — neither authored the
+> rejected artefacts. Ripley and Apone are locked out for this cycle.
+> **Not claimed and still outstanding regardless of the blockers:** the post-T104
+> `verify` job has never run on GitHub Actions, `main` remains unprotected
+> (`404`, `rulesets == []`), context strings are unconfirmed against a real run,
+> and no PR has yet used the new template. Merge readiness stays separate from
+> AC-009 and contingent on actual PR workflow results.
+
+> **Revised by Hudson, 2026-09-02** (B-3, B-4 only —
+> `specs/004-agentic-development-foundation/t105-setup-revision.md`;
+> `.squad/decisions/inbox/hudson-t105-setup-revision.md`). **B-3 closed:**
+> `plan.md` §6.2 (branch protection — declined-for-now, owner
+> `briandenicola`, closure trigger stated) and §6.3 (manual PWA checklist —
+> owner `briandenicola`, per-release review trigger stated) now hold the
+> exception records constitution §8.3 (v1.1.1) and `docs/adr/0002-…` L111
+> already asserted existed; both cross-references corrected to point at the
+> live entries instead of forward-referencing an empty register.
+> **B-4 closed:** `Taskfile.yml`'s new `tools:gitleaks` task provisions the
+> pinned gitleaks binary (idempotent via `scripts/check-gitleaks-installed.mjs`
+> + `.test.mjs`, 10/10 passing, wired into `restore`'s own cmds so the suite
+> is always reached); `restore` and `hooks:install` both depend on it instead
+> of each running their own copy of the download logic; `check:security` now
+> declares `deps: [restore]` and still fails closed with a clear message if
+> the binary is somehow missing — no silent network fallback was added.
+> Reviewer-run clean-state proof: the pinned `.tools/gitleaks/gitleaks.exe`
+> was moved aside (controlled backup, not deleted), `task tools:gitleaks`'s
+> status check correctly reported not-installed, `task restore` re-provisioned
+> the exact pinned version (`gitleaks.exe version` → `8.30.1`, byte-identical
+> SHA-256 to the pre-test binary), and `task check:security` then ran gitleaks
+> successfully end-to-end (no "not installed" error). `quality-gate.yml` and
+> `ci.yml`'s separate `bash ./scripts/install-gitleaks.sh` steps replaced with
+> `task restore` so Task is the single owner of the install logic in both
+> workflows. Windows path executed directly; Linux/bash path verified by
+> inspection only — WSL/bash is not available in this environment (recorded,
+> not hidden). **Not self-approved; not claimed as re-reviewed.** Ripley and
+> Apone remain locked out this cycle. T105 is not re-marked `DONE`; Bishop's
+> `REJECTED` verdict (§13) stands until Bishop (or another qualified reviewer)
+> re-reviews.
 
 > **Authorized 2026-09-02 by Apone's T104 re-review** (`validation.md` §12).
 > T104 is `DONE` and AC-008 is met, so the check names T105 must enumerate,

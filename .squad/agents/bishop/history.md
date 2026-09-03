@@ -445,3 +445,245 @@ This feature closes a legitimate iOS standalone UX gap: per-launch sessionStorag
 
 **Next Steps:** PR from `fix/ios-pwa-silent-sso-redirect` → review → merge.
 
+
+---
+
+### 2026-09-02: T105 Independent Integrated Reviewer Gate — **REJECTED**
+
+**Task:** T105 · AC-009 · `specs/004-agentic-development-foundation/`
+**Verdict record:** `validation.md` §13 · **Inbox:** `.squad/decisions/inbox/bishop-t105-review.md`
+**Reviewed:** Ripley's governance half + Apone's guard-proof half, as one integrated change set on `chore/agentic-development-foundation` atop `764282e`.
+
+**Verdict: REJECTED on four blockers.** B-1 T105's own tamper-evidence file
+produces 18 active retired-harness references and fails `check:stale-refs` the
+moment it is tracked — the deliverable breaks the pipeline it certifies
+(revision: Hicks). B-2 the record's "live positive proof" that the new ADR
+passed inside a 933-file scan is false; the ADR is untracked and was never
+scanned, and its recorded hash is stale (revision: Hicks). B-3 AC-009's
+exception clause is unmet — no §2.10 entry exists for the unapplied branch
+protection or the manual PWA checklist — yet constitution §8.3 and ADR 0002
+already assert that it does (revision: Hudson). B-4 `task verify` now needs a
+gitleaks binary that `task restore` never installs, while the amended PRD §7.5.5
+documents a clean-checkout `restore` → `verify` contract that is therefore false
+(revision: Hudson). Ripley and Apone locked out for this cycle.
+
+**Approved and preserved:** ADR 0002, constitution 1.1.0 (13 journeys intact, no
+security/a11y/coverage/acceptance bar weakened), PRD amendments, PR template,
+CODEOWNERS, T47 retirement, workflow README, and the check-name enumeration /
+branch-protection recommendation. `task verify` reproduced exit 0 end to end,
+and a reviewer-run tamper matrix covering every mechanism class passed.
+
+**Reviewer learnings — durable:**
+
+1. **An untracked file is not a scanned file.** The single most load-bearing
+   error in this cycle was reading a guard's "N tracked files" denominator as if
+   it covered the work under review. `git ls-files` is index-scoped; every new
+   artefact a task produces is invisible to its own guards until staged. From
+   now on, any guard evidence in a review must be re-run **with the task's own
+   new files staged**, and the denominator recorded before and after. Two agents
+   independently missed this; one of them (Ripley) spotted it for the ADR and
+   still did not generalise it to the evidence files.
+
+2. **A forward reference to a governance record is a claim, and claims get
+   verified.** Constitution §8.3 and ADR 0002 both cited a `plan.md` §2.10
+   exception entry that does not exist. The prose was honest in intent — the
+   posture was described accurately — but the citation asserted a record. When
+   the highest-authority document points at a register, open the register.
+
+3. **Adding a check to the authoritative pipeline is a dependency change.**
+   `check:security` was a clean win in principle — it moved a real scanner out
+   of a dispatch-only workflow and a bypassable hook and into `task verify`. But
+   it silently introduced a gitignored binary prerequisite that only the CI path
+   was fixed for. When a guard enters the one authoritative entrypoint, its
+   toolchain must enter `restore` at the same time, or the clean-checkout
+   contract must be amended in the same change.
+
+4. **Fixture-only proof can be adequate — say so explicitly rather than
+   carrying it forever.** Apone's disclosed malformed-JSON limitation was
+   honest and correctly scoped. Because `main()` drives the identical exported
+   function the fixtures drive, and because the live tool-failure and live
+   direct/transitive probes cover every realizable branch, F-11 can close. A
+   disclosed limitation should be adjudicated at the next gate, not inherited
+   indefinitely.
+
+5. **Verify the allowlist, not just the scanner.** Two new `.gitleaks.toml`
+   entries had to be checked for over-suppression before the config change could
+   be cleared. Both are literal-text anchored and a genuine PEM key is still
+   caught. A separate miss on a low-entropy patterned key reproduced identically
+   **without** the repo config — proving the allowlist innocent. Always
+   differentiate an inherited upstream limitation from a locally introduced one
+   by re-running against the default config.
+
+6. **Local guard proof and unobserved CI must stay separated, and this change
+   set mostly did that well.** `main` is still unprotected, `verify` has never
+   run on GitHub Actions, and both documents said so plainly. That discipline is
+   the thing worth protecting; B-2 is the one place it slipped, and it slipped
+   in the direction of overclaiming a scan that never happened.
+
+---
+
+### 2026-09-02: T105 Independent Integrated Re-Review Gate — **REJECTED** (B-1…B-4 closed, new B-5)
+
+**Task:** T105 · AC-009 · **Verdict record:** `validation.md` §14 · **Inbox:** `.squad/decisions/inbox/bishop-t105-review.md`
+**Reviewed:** the assembled uncommitted tree atop `764282e` — Ripley's governance half and Apone's
+guard-proof half as revised by Hicks (B-1/B-2) and Hudson (B-3/B-4).
+
+**Verdict: REJECTED on one new blocker.** All four prior blockers verified closed by my own runs,
+not by revision report. B-5: `task verify` exits 1 at `check:security`, because four lines of
+T105's own evidence and history prose reproduce a literal auth-token-persistence payload — the
+exact pattern the guard this package added to the pipeline exists to block. Two files fail today;
+four fail the moment the change set is committed. Remedy adjudicated as exact contextual redaction
+at the four sites, with the scanner untouched and no documentation exemption. Revision owner:
+Scribe.
+
+**Reviewer learnings — durable:**
+
+1. **A pipeline that cannot be run green is not an aligned check set.** I nearly filed B-5 as a
+   non-blocking finding because it is "only documentation". It is not: the acceptance criterion is
+   about the pipeline being aligned and tamper-tested, and the coordinator is about to be asked to
+   commit a tree whose authoritative verification command fails. Whether the failing bytes are in
+   `msal.ts` or in prose is irrelevant to whether `task verify` exits 0.
+
+2. **Adding a guard to `verify` makes every file in the repository a candidate to break it —
+   including the guard's own evidence.** This is the second time in two cycles that T105's proof
+   artefacts broke a T105 guard (first the retired-harness references, now the token pattern). The
+   generalisable rule: **when a work package both adds a scanner and writes evidence about
+   scanners, run the new scanner over the evidence before declaring done.** Write evidence
+   redacted-by-default; a payload reproduced byte-exactly is almost never the evidence, the
+   detection event is.
+
+3. **Prefer changing scan surface or content over adding an exemption.** Hicks's B-1 fix was the
+   right instinct — widen the guard from index-only to index-plus-untracked rather than merely
+   allowlist the offending file — and my probes confirmed it genuinely closed the hiding window
+   without loosening anything. I applied the same principle to B-5 and refused the tempting
+   markdown/docs exemption. Exemptions should be exact-path and paired with a negative test, as the
+   one new exemption this cycle is.
+
+4. **Guards in the same pipeline must agree on what "the repository" means.** The stale-reference
+   guard now scans tracked + untracked-not-ignored; `check-security.mjs --repo` still scans tracked
+   only. B-5 exposed this live and by accident — five files matched the token pattern and only the
+   two tracked ones were reported. An inconsistent enumeration between a style guard and a *secret*
+   guard is backwards: the stricter surface belongs to the security scanner.
+
+5. **Clean your own tamper residue from build artefacts, not just from source.** My first re-review
+   `task verify` failed at `check:migration-drift` with the source tree provably clean. The cause
+   was my own prior-session probe still compiled into stale `obj/Debug` assemblies that `dotnet ef`
+   loaded. Byte-identical source restoration is necessary but not sufficient — an incremental build
+   can outlive it. This is also a real finding about the guard (F-18): the same mechanism that gave
+   me a false positive could give someone a false negative.
+
+6. **Verify a "clean state" test by destroying the state, not by simulating it.** For B-4 I deleted
+   `.tools/gitleaks` outright and ran `task restore`, rather than pointing an environment variable
+   at a missing path as I did last cycle. The stronger test cost nothing and proved provisioning,
+   byte-identity, and idempotency in one pass.
+
+7. **Struck-through-in-place is the correct way to amend a false record.** Hicks did not delete the
+   B-2 claim; he struck it, said plainly why it was wrong, and put the true proof beside it — then
+   proactively disclosed that his own denominator had since drifted. That is the standard I should
+   hold every corrected evidence file to.
+
+8. **Reward honest disclosure even while rejecting.** Hudson found B-5, diagnosed it correctly,
+   judged it out of his scope, and wrote it down for the next reviewer instead of quietly editing
+   around it. The rejection is about repository state, not conduct, and the verdict record says so
+   explicitly.
+
+---
+
+### 2026-09-02: T105 Final Reviewer Gate — **REJECTED** (B-6; B-1…B-4 closed, Scribe's B-5 redaction sound)
+
+**Task:** T105 · AC-009 · **Verdict record:** `validation.md` §15 · **Inbox:** `.squad/decisions/inbox/bishop-t105-review.md`
+**Reviewed:** the assembled uncommitted tree atop `764282e` after Scribe's B-5 redaction.
+
+**Verdict: REJECTED on one line.** Scribe redacted the four B-5 sites correctly, weakened nothing,
+and preserved every diagnostic fact — then wrote a §8 changelog note explaining the redaction that
+quotes the literal it removed (`t105-setup-revision.md:258`). `task verify` exits 0 only because
+`check:security` scans 933 tracked files while all seven T105 deliverables are untracked; staged,
+the scan exits 1. Revision owner: Vasquez.
+
+**Reviewer learnings — durable:**
+
+1. **The same hiding place caught three different defects in one package.** B-2, B-5 and B-6 all
+   lived in the gap between the stale-reference guard's 940-file surface
+   (`--cached --others --exclude-standard`) and the security scanner's 933-file surface
+   (`git ls-files`). I flagged the inconsistency as a non-blocking finding at the second gate; it
+   then produced a blocker at the third. **When I notice two guards disagreeing about what "the
+   repository" means, that is not a finding to note — it is a defect to escalate.** I under-rated
+   F-17 and should have pushed it into the B-5 cycle as a required companion fix.
+
+2. **Always run the pipeline with the deliverables staged before believing a green result.** This
+   is now my standing pre-approval step. A package whose artefacts are untracked has not been
+   verified by any tracked-file guard, no matter what exit code the run printed. Staging + scan is
+   cheap; I should do it first, not last.
+
+3. **A changelog note about a redaction is itself content the scanner reads.** The meta-level
+   blind spot is remarkably consistent: the tamper matrix broke the tamper guard, the evidence file
+   broke the stale-reference guard, and now the redaction note broke the redaction. **Documents that
+   describe guards must be treated as inputs to those guards, at every level of recursion.**
+
+4. **Reject cleanly on one line without diminishing good work.** Scribe's fix was genuinely correct
+   — right scope, right technique, nothing weakened, meaning fully preserved — and the verdict
+   record says so at length before stating the blocker. A rejection that fails to name what must be
+   preserved invites the next author to undo it.
+
+5. **"Exit 0" and "clean" are different claims.** Scribe reported `exit 0 (933 files clean)`, which
+   was true and materially misleading. I want the team rule to be explicit: never report a scan as
+   clean without naming its surface and confirming the file under test is inside it.
+
+6. **Rotating revision ownership works, and the lockout ledger must be tracked deliberately.** Four
+   cycles in, Ripley, Apone, Hicks, Hudson and Scribe are each locked out of something. I recorded
+   the full ledger in the verdict so the coordinator does not have to reconstruct it, and assigned
+   Vasquez on domain standing (the frontend auth surface this rule protects), not merely on
+   availability.
+
+### 2026-09-02: T105 final reviewer gate — APPROVED after four gates and six blockers
+
+**Verdict: APPROVED.** T105 `DONE`, AC-009 satisfied (`validation.md` §16). Four gates, six
+blockers, five revision owners: Hicks (B-1/B-2), Hudson (B-3/B-4), Scribe (B-5), Vasquez (B-6).
+
+**Learnings worth carrying:**
+
+1. **The recurring root cause was a denominator, not a bug.** Two guards in the same pipeline
+   enumerated two different file sets — the stale-reference guard used
+   `git ls-files --cached --others --exclude-standard` (**940**) while `check-security.mjs --repo`
+   used `git ls-files` (**933**, tracked-only). Three separate defects (B-2, B-5, B-6) lived in that
+   33-file gap, and each time the pipeline reported green. **When a package's deliverables are
+   untracked, a green run proves nothing until they are staged.** I now treat "what is the scan
+   surface, and does it contain the artefact under test?" as the first question of any gate, before
+   reading a single exit code. F-17 recommends aligning the scanner to the wider surface: a secret
+   scanner should always hold the larger of two enumerations.
+
+2. **Documents that describe a guard are inputs to that guard, at every level of recursion.** B-1:
+   the tamper-evidence file failed the stale-reference guard it documented. B-5: the evidence prose
+   quoting the blocked token call failed the security scanner. B-6: the *changelog note announcing
+   the B-5 redaction* re-quoted the literal it removed. Three cycles, one shape. Sanitize content —
+   never exempt paths — and check the fix's own changelog before declaring the fix done.
+
+3. **Prove the negative as well as the positive.** Approving a redaction on the word "it passes now"
+   would have been worthless. I ran paired probes: the unredacted call still fails (exit 1, file and
+   line reported), the redacted form passes (exit 0). That is what distinguishes a genuine content
+   change from a silently weakened scanner — and it is cheap.
+
+4. **Verify provenance hashes at the *final* gate, not the gate that recorded them.** I accepted
+   Hicks's corrected ADR SHA1 as "matching the file on disk" in §14.3; Hudson then edited the same
+   ADR for B-3 in the same cycle, and by the final tree my own sentence was false. Two parallel
+   revision owners touching one file will drift its hash. Recorded as F-21 and corrected in §16.7 —
+   but the discipline is mine to fix: re-hash everything at the last gate.
+
+5. **Snapshot bytes before mutating anything untracked.** My own probe on an untracked evidence file
+   could not be undone with `git checkout`, and my first restore used `Set-Content -NoNewline`,
+   which stripped the trailing CRLF and left the file *close* to correct — the most dangerous kind
+   of wrong. Recovery required byte-level suffix search against the pre-probe SHA-256. Two rules
+   now: take the hash first, and restore with `[IO.File]::WriteAllBytes`, never a text cmdlet.
+   Better still: probe a *new* scratch file, never a deliverable — which is exactly how I ran the
+   final positive/negative controls.
+
+6. **A false positive taught me something real about the pipeline.** `check:migration-drift` failed
+   for me once on contaminated incremental `obj/Debug` artefacts left by an earlier tamper. It
+   inherits `dotnet ef`'s build cache, so it can report drift that isn't there — and, more worryingly,
+   could in principle miss drift that is. F-18.
+
+7. **Separate the finding from the fix, and the criterion from the outcome.** I held AC-009 and
+   merge readiness apart in every gate: guards are proven locally, but `verify` has still never
+   executed on GitHub Actions and `main` still has no protection. Approving AC-009 while naming
+   exactly what remains unproven is the honest verdict — "recommended" is not "applied", and
+   "recorded" is not "observed".

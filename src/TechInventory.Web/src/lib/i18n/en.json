@@ -201,6 +201,9 @@
 			"notFoundTitle": "Device Not Found",
 			"notFoundDescription": "This device does not exist or has been deleted.",
 			"tagsEmpty": "No tags assigned",
+			"info": {
+				"title": "Info"
+			},
 			"audit": {
 				"title": "Audit Trail",
 				"created": "Created",

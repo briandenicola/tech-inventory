@@ -5,24 +5,45 @@
 	drawer. Mobile-only (`md:hidden`); desktop primary nav lives in the header
 	as horizontal links and the Configuration group is in AppDesktopConfigMenu.
 
-	Density (#144 R2 correction — supersedes rejected #166 result):
-	Every menu row uses an exact shared block size: `h-11` (44px fixed height,
-	no vertical padding). Active and inactive items occupy exactly the same
-	44px box; active state may only differ in background/text colour. No
-	`py-*` padding means the entire 44px box is defined by `h-11` alone — no
-	internal blank bands above/below content. Leading icons are rendered from
-	navIcons.ts; role="menu" container carries `gap-0.5` (2px — smallest
-	token gap, tighter than #166's gap-1). Section dividers use `my-1` (4px
-	each side). `rounded-lg` radius on all rows. Focus-visible ring is inset
-	so it is not clipped by the panel's overflow-y-auto.
+	PIXEL VALUES IN THIS FILE ARE RENDERED px, NOT NOMINAL TAILWIND px.
+	tokens.css sets `html { font-size: 17px }` (D-137), so every rem-based
+	utility renders 6.25% larger than its 16px-root name suggests: `h-11` is
+	2.75rem = 46.75px, not 44px; `h-9` is 2.25rem = 38.25px, not 36px. Earlier
+	revisions of this comment quoted the nominal 16px figures and were wrong.
+	Multiply by 17 to check any number below.
 
-	#166 used `min-h-11 py-1.5` (44px minimum + 12px internal padding). The
-	`py-1.5` created 6px blank zones above and below content within the
-	coloured active row, making it visually inflate relative to inactive rows
-	whose transparent background hid the blank zones. Switching to `h-11`
-	locks the element to exactly 44px with no internal padding, so both states
-	share the same visible geometry. The `gap-1` → `gap-0.5` reduction and
-	`my-1.5` → `my-1` dividers further compress overall list height.
+	Density (R3 — supersedes the R2 correction below / rejected #166):
+	The R2 pass kept every row at an exact `h-11` (46.75px) block. Rendered at
+	phone scale that still left a wide blank band above and below the 14.88px
+	label in each row, and the panel read as mostly empty space. R3 keeps the
+	"one shared block, colour-only state difference" contract that R2
+	established and shrinks the block itself: rows are an exact `h-9`
+	(38.25px), the role="menu" container is `gap-0` (rows sit flush; the
+	hover/active tint is what separates them), the panel is `p-1.5`, section
+	dividers are `my-1`, and the Configuration caption, identity chip, and
+	theme card lose their surplus padding to match.
+
+	What that buys, on the 13-row Admin menu (5 primary + 6 config + Settings
+	+ Sign Out): row pitch 48.88px → 38.25px (-22%), and the blank band
+	between one label and the next 27.63px → 17px (-38%), since the 2.13px
+	inter-row gap is gone and the remaining 17px is the tint pill's own
+	padding rather than a gutter. Whole panel ≈820px → ≈652px, ~168px shorter,
+	excluding the unchanged theme toggle.
+
+	Still exactly one block size: `h-9` with no `py-*`, so active and inactive
+	rows occupy identical geometry and the active tint cannot inflate a row
+	(the #166 regression). Leading icons come from navIcons.ts. `rounded-lg`
+	radius on all rows. Focus-visible ring is inset so it is not clipped by
+	the panel's overflow-y-auto.
+
+	Touch target: 38.25px tall x the full row width (w-64 = 272px, less the
+	panel's 12.75px padding and 2px borders = 257.25px) clears WCAG 2.5.8
+	Target Size (Minimum, AA — 24x24 CSS px) with room to spare. It is below
+	the 46.75px that `h-11` was giving against 2.5.5 Target Size (Enhanced,
+	AAA), which this menu now intentionally trades away for legible density
+	per direct product direction; the AAA floor still holds for standalone
+	controls (bottom nav, FABs, row ellipsis buttons, and the hamburger
+	trigger itself, all `h-11` = 46.75px).
 -->
 <script lang="ts">
 	import { tick, untrack } from 'svelte';
@@ -51,17 +72,20 @@
 	let rootElement = $state<HTMLDivElement | null>(null);
 	let triggerElement = $state<HTMLButtonElement | null>(null);
 
-	// Single source of truth for row geometry (#144 R2 correction).
-	// EXACT 44px block via `h-11` — no `min-h-11`, no `py-*`.
+	// Single source of truth for row geometry (R3).
+	// EXACT 38.25px block via `h-9` (2.25rem at the 17px root — see the file
+	// header; it is NOT the 36px its Tailwind name implies) — no `min-h-*`,
+	// no `py-*`.
 	// Every menuitem row — primary, admin, Settings, Sign Out — applies this
 	// exact string. Active/inactive state may only ever add colour via `class:`
 	// bindings alongside it; it must never gain its own padding, margin,
-	// height, min-height, gap, radius, border, or transform. Using `h-11`
-	// (fixed) instead of `min-h-11 py-1.5` eliminates internal vertical
-	// padding that created blank visual bands within the 44px box and could
-	// inflate active rows relative to inactive ones (#166 regression).
+	// height, min-height, gap, radius, border, or transform. A fixed height
+	// with zero internal vertical padding is what keeps active and inactive
+	// rows geometrically identical (#166 regression) — R3 only shrinks that
+	// shared block from 46.75px to 38.25px to remove the blank band around
+	// the label.
 	const menuRowClass =
-		'flex h-11 items-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset';
+		'flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset';
 
 	const currentRole = $derived(currentUser?.role ?? null);
 	const visiblePrimaryNavItems = $derived(getVisibleNavItems(primaryNavItems, currentRole));
@@ -176,7 +200,7 @@
 		<div
 			id="app-menu-popover"
 			style="z-index: var(--z-popover);"
-			class="absolute right-0 top-full mt-2 w-64 max-w-[calc(100vw-var(--space-8))] max-h-[85vh] overflow-y-auto overscroll-contain rounded-2xl border border-neutral-200/70 bg-white/95 p-2 shadow-xl backdrop-blur-md origin-top-right dark:border-neutral-800/70 dark:bg-neutral-950/95"
+			class="absolute right-0 top-full mt-2 w-64 max-w-[calc(100vw-var(--space-8))] max-h-[85vh] overflow-y-auto overscroll-contain rounded-2xl border border-neutral-200/70 bg-white/95 p-1.5 shadow-xl backdrop-blur-md origin-top-right dark:border-neutral-800/70 dark:bg-neutral-950/95"
 		>
 			<!--
 				`role="menu"` only wraps genuine command/navigation items (menuitem
@@ -190,7 +214,7 @@
 				tabindex="-1"
 				aria-label={t('navigation.primary')}
 				onkeydown={handleMenuKeydown}
-				class="flex flex-col gap-0.5"
+				class="flex flex-col gap-0"
 			>
 			{#each visiblePrimaryNavItems as item (item.href)}
 				{@const active = isNavItemActive(pathname, item)}
@@ -222,7 +246,7 @@
 
 			{#if visibleAdminNavItems.length > 0}
 				<hr class="my-1 border-t border-neutral-200 dark:border-neutral-800" />
-				<div class="px-3 py-1 text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+				<div class="px-3 pb-0.5 pt-1 text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
 					{t('navigation.configuration')}
 				</div>
 				{#each visibleAdminNavItems as item (item.href)}
@@ -279,7 +303,7 @@
 
 			{#if currentUser}
 				<hr class="my-1 border-t border-neutral-200 dark:border-neutral-800" />
-				<div class="flex items-center gap-2 rounded-full bg-neutral-100 px-3 py-1.5 dark:bg-neutral-800">
+				<div class="my-0.5 flex items-center gap-2 rounded-full bg-neutral-100 px-3 py-1 dark:bg-neutral-800">
 					<span class="text-sm font-medium text-neutral-900 dark:text-neutral-100">
 						{currentUser.displayName}
 					</span>
@@ -320,15 +344,15 @@
 			{/if}
 			</div>
 
-			<hr class="my-2 border-t border-neutral-200 dark:border-neutral-800" />
+			<hr class="my-1.5 border-t border-neutral-200 dark:border-neutral-800" />
 			<div
 				role="group"
 				aria-labelledby="app-menu-theme-heading"
-				class="rounded-2xl border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900/70"
+				class="rounded-xl border border-neutral-200 bg-neutral-50 p-2 dark:border-neutral-800 dark:bg-neutral-900/70"
 			>
 				<p
 					id="app-menu-theme-heading"
-					class="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-600 dark:text-neutral-400"
+					class="mb-1.5 text-xs font-semibold uppercase tracking-wider text-neutral-600 dark:text-neutral-400"
 				>
 					{t('settings.theme.heading')}
 				</p>

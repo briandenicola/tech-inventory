@@ -145,6 +145,129 @@ describe('DeviceDetailFields', () => {
 		expect(await axe(container)).toHaveNoViolations();
 	});
 
+
+	describe('compact PWA variant', () => {
+		// The default (roomy) variant stacks label above value inside a padded
+		// card with a 21.25px row gap — right for a desktop page, but on a phone
+		// it turns a dozen short values into a long, mostly-blank scroll. The
+		// installed-PWA shell passes `compact` to switch to a flush inset list:
+		// label left / value right on one line, hairline dividers, no grid.
+		//
+		// Tamper evidence, each mutation applied and reverted in isolation
+		// against DeviceDetailFields.svelte (21 tests in the suite):
+		//   · `{#if compact}` → `{#if false}`, so every caller got the roomy
+		//     variant: "opts out of the roomy two-column grid", "lays
+		//     single-value fields out as one-line label/value rows", and
+		//     "separates rows with hairline dividers" all failed.
+		//   · dropped `divide-y` from both compact <dl>s: "separates rows with
+		//     hairline dividers" failed (1 failed | 20 passed).
+		// Green again after restore.
+		const compactProps = { ...props, compact: true };
+
+		function rowFor(container: HTMLElement, label: string): HTMLElement | undefined {
+			return Array.from(container.querySelectorAll<HTMLElement>('dl > div')).find(
+				(div) => div.querySelector('dt')?.textContent?.trim() === label
+			);
+		}
+
+		it('opts out of the roomy two-column grid entirely', () => {
+			const { container } = render(DeviceDetailFields, { props: compactProps });
+
+			for (const dl of Array.from(container.querySelectorAll('dl'))) {
+				expect(dl.className).not.toContain('grid');
+				expect(dl.className).not.toContain('sm:grid-cols-2');
+				expect(dl.className).not.toContain('gap-y-5');
+			}
+		});
+
+		it('lays single-value fields out as one-line label/value rows', () => {
+			const { container } = render(DeviceDetailFields, { props: compactProps });
+
+			for (const label of ['Brand', 'Category', 'Owner', 'Location']) {
+				const row = rowFor(container, label);
+				expect(row, `missing compact row for "${label}"`).toBeDefined();
+				// Single line: label and value are flex siblings pushed apart,
+				// not a stacked dt-over-dd pair.
+				expect(row?.className).toContain('flex');
+				expect(row?.className).toContain('justify-between');
+				expect(row?.querySelector('dd')?.className).toContain('text-right');
+			}
+		});
+
+		it('separates rows with hairline dividers instead of whitespace', () => {
+			const { container } = render(DeviceDetailFields, { props: compactProps });
+
+			const dls = Array.from(container.querySelectorAll('dl'));
+			expect(dls.length).toBeGreaterThanOrEqual(2);
+			for (const dl of dls) {
+				expect(dl.className).toContain('divide-y');
+			}
+
+			// Row padding stays tight — py-2 (8.5px rendered at the 17px root),
+			// not the roomy card's p-4/p-6.
+			const brandRow = rowFor(container, 'Brand');
+			expect(brandRow?.className).toContain('py-2');
+			expect(brandRow?.className).not.toContain('py-4');
+		});
+
+		it('keeps long free-text fields stacked, since they cannot share a line', () => {
+			const fullDevice = {
+				...device,
+				purpose: 'Runs the household media server',
+				notes: 'Replaced fan in 2024'
+			};
+			const { container } = render(DeviceDetailFields, {
+				props: { ...compactProps, device: fullDevice }
+			});
+
+			for (const label of ['Purpose', 'Notes']) {
+				const row = rowFor(container, label);
+				expect(row, `missing compact row for "${label}"`).toBeDefined();
+				expect(row?.className).not.toContain('justify-between');
+			}
+		});
+
+		it('renders the same fields, in the same order, as the roomy variant', () => {
+			const fullDevice = {
+				...device,
+				operatingSystem: 'Windows 11',
+				ipAddress: '192.168.1.42',
+				purpose: 'Runs the household media server'
+			};
+			const roomy = render(DeviceDetailFields, {
+				props: { ...props, device: fullDevice }
+			});
+			const roomyLabels = Array.from(roomy.container.querySelectorAll('dt')).map((el) =>
+				el.textContent?.trim()
+			);
+			roomy.unmount();
+
+			const compact = render(DeviceDetailFields, {
+				props: { ...compactProps, device: fullDevice }
+			});
+			const compactLabels = Array.from(compact.container.querySelectorAll('dt')).map((el) =>
+				el.textContent?.trim()
+			);
+
+			expect(compactLabels).toEqual(roomyLabels);
+		});
+
+		it('keeps <dl>/<dt>/<dd> semantics and the audit <time> elements', () => {
+			const { container } = render(DeviceDetailFields, { props: compactProps });
+
+			expect(container.querySelector('dl')).toBeInTheDocument();
+			expect(container.querySelector('table')).not.toBeInTheDocument();
+			expect(container.querySelectorAll('time').length).toBeGreaterThanOrEqual(2);
+			expect(screen.getAllByText('by Brian')).toHaveLength(2);
+		});
+
+		it('has no accessibility violations', async () => {
+			const { container } = render(DeviceDetailFields, { props: compactProps });
+
+			expect(await axe(container)).toHaveNoViolations();
+		});
+	});
+
 	describe('F034 optional fields (C-08)', () => {
 		it('elides operatingSystem/version/ipAddress/macAddress/productUrl/purpose/notes terms when unset', () => {
 			// The base `props.device` factory leaves every F034 field null —

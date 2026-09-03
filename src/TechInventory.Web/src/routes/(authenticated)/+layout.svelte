@@ -20,11 +20,12 @@
 	} from '$lib/stores/referenceData';
 	import { activePullToRefresh } from '$lib/stores/pullToRefresh';
 	import {
-		adminNavItems,
 		getVisibleNavItems,
 		isNavItemActive,
 		primaryNavItems
 	} from '$lib/navigation/appNav';
+	import AppDesktopConfigMenu from '$lib/components/AppDesktopConfigMenu.svelte';
+	import { navIconPaths } from '$lib/navigation/navIcons';
 
 	let { children } = $props();
 
@@ -45,7 +46,6 @@
 	const currentRole = $derived(currentUser?.role ?? null);
 	const settingsActive = $derived($page.url.pathname.startsWith('/settings'));
 	const visiblePrimaryNavItems = $derived(getVisibleNavItems(primaryNavItems, currentRole));
-	const visibleAdminNavItems = $derived(getVisibleNavItems(adminNavItems, currentRole));
 	const pageRefreshHandler = $derived.by(() => {
 		const registration = $activePullToRefresh;
 		return registration?.routePath === $page.url.pathname ? registration.onRefresh : invalidateAll;
@@ -169,21 +169,57 @@
 		class="sticky top-0 border-b border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950"
 		style="z-index: {headerZIndexToken(popoverOpen)};"
 	>
-		<div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+		<div class="mx-auto flex max-w-7xl items-center px-4 py-4 sm:px-6 lg:px-8">
 			<!-- Left: Logo + App Name -->
-			<a href="/devices" class="flex items-center gap-3 rounded-full px-1 py-1 outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
+			<a href="/devices" class="flex flex-shrink-0 items-center gap-3 rounded-full px-1 py-1 outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
 				<img src="/icons/icon.svg" alt={t('app.title')} class="h-9 w-9" />
 				<span class="text-lg font-semibold tracking-tight text-neutral-900 dark:text-neutral-50">
 					{t('app.title')}
 				</span>
 			</a>
 
-			<!-- regression-watch: Desktop primary nav links removed per design rule (hamburger-only).
-				 Regression history: dd52e98 removed, 1de8da8 re-introduced. Do NOT restore. -->
+			<!--
+				#134: Desktop primary nav — horizontal links directly in the header
+				at md+ breakpoints. Mobile/PWA uses AppMenuPopover (hamburger).
+				The regression-watch comment ("do not restore desktop nav") is
+				superseded by issues #134 and #144.
+			-->
+			<nav class="hidden md:flex flex-1 items-center gap-1 px-6" aria-label={t('navigation.primary')}>
+				{#each visiblePrimaryNavItems as item (item.href)}
+					{@const active = isNavItemActive($page.url.pathname, item)}
+					{@const iconPath = navIconPaths[item.href]}
+					<a
+						href={item.href}
+						aria-current={active ? 'page' : undefined}
+						class="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150"
+						class:bg-primary-50={active}
+						class:text-primary-700={active}
+						class:dark:bg-primary-900={active}
+						class:dark:text-primary-200={active}
+						class:text-neutral-600={!active}
+						class:hover:bg-neutral-100={!active}
+						class:hover:text-neutral-900={!active}
+						class:dark:text-neutral-400={!active}
+						class:dark:hover:bg-neutral-800={!active}
+						class:dark:hover:text-neutral-100={!active}
+					>
+						{#if iconPath}
+							<svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={iconPath} />
+							</svg>
+						{/if}
+						{t(item.labelKey)}
+					</a>
+				{/each}
+			</nav>
 
-			<!-- Right cluster: user menu + hamburger grouped together -->
-			<div class="flex items-center gap-2">
-			<!-- Desktop user menu (display name + role + dropdown) -->
+			<!-- Right cluster: config menu + user menu + mobile hamburger -->
+			<div class="ml-auto flex flex-shrink-0 items-center gap-2">
+
+			<!-- Desktop Configuration popover (Admin-only, md+) — #134 -->
+			<AppDesktopConfigMenu pathname={$page.url.pathname} {currentUser} />
+
+			<!-- Desktop user menu — account-scoped only: Settings + Sign Out (#134) -->
 			<div class="relative hidden md:block">
 				{#if currentUser}
 					<button
@@ -229,58 +265,15 @@
 
 					{#if userMenuOpen}
 						<div
-							class="absolute right-0 mt-2 w-56 origin-top-right rounded-2xl border border-neutral-200/70 bg-white/95 p-2 shadow-xl backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-950/95"
+							class="absolute right-0 mt-2 w-44 origin-top-right rounded-2xl border border-neutral-200/70 bg-white/95 p-2 shadow-xl backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-950/95"
 							role="menu"
 							aria-label={t('header.userMenu')}
 						>
-							<!-- Primary nav items (desktop sole nav entry point) -->
-							{#each visiblePrimaryNavItems as item (item.href)}
-								{@const active = isNavItemActive($page.url.pathname, item)}
-								<a
-									href={item.href}
-									role="menuitem"
-									class="flex min-h-11 items-center rounded-xl px-3 py-2.5 text-base font-medium transition-colors duration-150"
-									class:bg-primary-50={active}
-									class:text-primary-700={active}
-									class:dark:bg-primary-900={active}
-									class:dark:text-primary-200={active}
-									class:text-neutral-700={!active}
-									class:hover:bg-neutral-100={!active}
-									class:dark:text-neutral-300={!active}
-									class:dark:hover:bg-neutral-800={!active}
-								>
-									{t(item.labelKey)}
-								</a>
-							{/each}
-							{#if visibleAdminNavItems.length > 0}
-								<hr class="my-2 border-t border-neutral-200 dark:border-neutral-800" />
-								<div class="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-									{t('navigation.configuration')}
-								</div>
-								{#each visibleAdminNavItems as item (item.href)}
-									{@const active = isNavItemActive($page.url.pathname, item)}
-									<a
-										href={item.href}
-										role="menuitem"
-										class="flex min-h-11 items-center rounded-xl px-3 py-2.5 text-base font-medium transition-colors duration-150"
-										class:bg-primary-50={active}
-										class:text-primary-700={active}
-										class:dark:bg-primary-900={active}
-										class:dark:text-primary-200={active}
-										class:text-neutral-700={!active}
-										class:hover:bg-neutral-100={!active}
-										class:dark:text-neutral-300={!active}
-										class:dark:hover:bg-neutral-800={!active}
-									>
-										{t(item.labelKey)}
-									</a>
-								{/each}
-							{/if}
-							<hr class="my-2 border-t border-neutral-200 dark:border-neutral-800" />
 							<a
 								href="/settings"
 								role="menuitem"
-								class="flex min-h-11 items-center rounded-xl px-3 py-2.5 text-base font-medium transition-colors duration-150"
+								onclick={() => (userMenuOpen = false)}
+								class="flex min-h-[2.75rem] items-center rounded-xl px-3 py-1.5 text-sm font-medium transition-colors duration-150"
 								class:bg-primary-50={settingsActive}
 								class:text-primary-700={settingsActive}
 								class:dark:bg-primary-900={settingsActive}
@@ -296,7 +289,7 @@
 								type="button"
 								role="menuitem"
 								onclick={handleSignOut}
-								class="flex min-h-11 w-full items-center rounded-xl px-3 py-2.5 text-left text-base font-medium text-neutral-700 transition-colors duration-150 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+								class="flex min-h-[2.75rem] w-full items-center rounded-xl px-3 py-1.5 text-left text-sm font-medium text-neutral-700 transition-colors duration-150 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
 							>
 								{t('auth.signOut.button')}
 							</button>
@@ -305,8 +298,7 @@
 				{/if}
 			</div>
 
-			<!-- F045 §5.3/§5.7: compact anchored popover replaces the former full-screen
-				 drawer — desktop still uses the user menu above as its sole nav entry. -->
+			<!-- F045 §5.3/§5.7: compact anchored popover — mobile only (md:hidden). -->
 			<AppMenuPopover
 				pathname={$page.url.pathname}
 				{currentUser}
@@ -315,9 +307,6 @@
 			/>
 			</div>
 		</div>
-
-		<!-- secondary admin nav removed — admin links live in hamburger + user menu
-			 (D-160-style rule extension). -->
 	</header>
 
 	<!-- Main Content Area -->

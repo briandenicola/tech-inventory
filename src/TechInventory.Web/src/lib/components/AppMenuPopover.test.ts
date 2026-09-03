@@ -198,8 +198,9 @@ describe('AppMenuPopover', () => {
 		// level above the role="menu" region itself (see AppMenuPopover.svelte:
 		// the menu boundary excludes ThemeToggle, so it can't also own the
 		// panel's positioning/scroll styles).
+		// max-h raised from 70vh → 85vh (#144: more room for compact admin menu).
 		const panel = document.getElementById('app-menu-popover');
-		expect(panel?.className).toContain('max-h-[70vh]');
+		expect(panel?.className).toContain('max-h-[85vh]');
 		expect(panel?.className).toContain('overflow-y-auto');
 	});
 

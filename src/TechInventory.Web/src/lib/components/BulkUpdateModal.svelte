@@ -6,6 +6,7 @@
 	The caller wires that into devices.bulkUpdate(...).
 -->
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { t } from '$lib/i18n';
 
 	type BulkField = 'category' | 'owner' | 'brand' | 'location' | 'status';
@@ -19,13 +20,25 @@
 		field: BulkField;
 		count: number;
 		options: Option[];
+		/**
+		 * Pre-selects the field's current value instead of the "Select…"
+		 * placeholder — used by single-device callers (#127 "Change Status" row
+		 * action) so the dialog reflects the device's applied status. The N-device
+		 * bulk toolbar omits this (devices may disagree on the current value), so
+		 * it keeps defaulting to the placeholder.
+		 */
+		initialValue?: string;
 		onConfirm: (value: string) => Promise<void>;
 		onCancel: () => void;
 	}
 
-	let { field, count, options, onConfirm, onCancel }: Props = $props();
+	let { field, count, options, initialValue = '', onConfirm, onCancel }: Props = $props();
 
-	let selectedValue = $state('');
+	// `initialValue` intentionally seeds the select's starting value once per
+	// modal instance (the caller preselects the device's current status);
+	// `untrack` makes that one-time read explicit instead of implying this
+	// should track later prop changes.
+	let selectedValue = $state(untrack(() => initialValue));
 	let isSubmitting = $state(false);
 	let modalElement: HTMLDivElement | undefined;
 

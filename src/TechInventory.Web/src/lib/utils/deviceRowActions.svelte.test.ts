@@ -12,10 +12,28 @@
  * fix: a prior revision of this file asserted the opposite as "intentional
  * behaviour" — that was the defect, not a documented exception).
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createDeviceRowActions } from './deviceRowActions.svelte';
 import { createDeviceResponse, resetFactories } from '$lib/test-utils/factories';
 import type { CurrentUser } from '$lib/stores/auth';
+
+const mocks = vi.hoisted(() => ({
+	bulkUpdate: vi.fn(),
+	invalidateDevicesCache: vi.fn(),
+	showToast: vi.fn()
+}));
+
+vi.mock('$lib/api/client', () => ({
+	devices: { bulkUpdate: mocks.bulkUpdate }
+}));
+
+vi.mock('$lib/queries/devices.svelte', () => ({
+	invalidateDevicesCache: mocks.invalidateDevicesCache
+}));
+
+vi.mock('$lib/stores/toast', () => ({
+	showToast: mocks.showToast
+}));
 
 function makeUser(role: CurrentUser['role'], id = 'user-1'): CurrentUser {
 	return { id, entraObjectId: null, displayName: 'Test User', role };
@@ -93,5 +111,90 @@ describe('createDeviceRowActions (C-12 role gating)', () => {
 
 		expect(viewerOwnerActions.canClaim).toBe(false);
 		expect(viewerOwnerActions.canRelease).toBe(false);
+	});
+});
+
+describe('createDeviceRowActions — canChangeStatus (#127)', () => {
+	beforeEach(() => {
+		resetFactories();
+	});
+
+	it('grants Admin the change-status affordance on any non-Disposed device', () => {
+		const device = createDeviceResponse({ status: 'Retired', ownerId: 'someone-else' });
+		const admin = createDeviceRowActions(() => device, () => makeUser('Admin', 'me'));
+		expect(admin.canChangeStatus).toBe(true);
+	});
+
+	it('grants an owning Member the change-status affordance but not a non-owning Member', () => {
+		const owned = createDeviceResponse({ ownerId: 'me' });
+		const unowned = createDeviceResponse({ ownerId: 'someone-else' });
+
+		expect(createDeviceRowActions(() => owned, () => makeUser('Member', 'me')).canChangeStatus).toBe(
+			true
+		);
+		expect(createDeviceRowActions(() => unowned, () => makeUser('Member', 'me')).canChangeStatus).toBe(
+			false
+		);
+	});
+
+	it('denies a Viewer regardless of ownership', () => {
+		const owned = createDeviceResponse({ ownerId: 'me' });
+		expect(createDeviceRowActions(() => owned, () => makeUser('Viewer', 'me')).canChangeStatus).toBe(
+			false
+		);
+	});
+
+	it('denies changing status on an already-Disposed device even for Admin', () => {
+		const disposed = createDeviceResponse({ status: 'Disposed' });
+		expect(createDeviceRowActions(() => disposed, () => makeUser('Admin', 'me')).canChangeStatus).toBe(
+			false
+		);
+	});
+});
+
+describe('createDeviceRowActions — handleChangeStatus (#127)', () => {
+	beforeEach(() => {
+		resetFactories();
+		mocks.bulkUpdate.mockReset();
+		mocks.invalidateDevicesCache.mockReset();
+		mocks.showToast.mockReset();
+	});
+
+	it('reuses devices.bulkUpdate scoped to this device id, invalidates the cache, toasts success, and clears the open modal', async () => {
+		mocks.bulkUpdate.mockResolvedValueOnce({ correlationId: 'corr-1', affectedCount: 1 });
+		const device = createDeviceResponse({ id: 'device-42', name: 'Aqua Flosser', status: 'Active' });
+		const onChanged = vi.fn();
+		const actions = createDeviceRowActions(() => device, () => makeUser('Admin', 'me'), { onChanged });
+		actions.openModal = 'changeStatus';
+
+		await actions.handleChangeStatus('Retired');
+
+		expect(mocks.bulkUpdate).toHaveBeenCalledWith({
+			deviceIds: ['device-42'],
+			changes: { status: 'Retired' }
+		});
+		expect(mocks.invalidateDevicesCache).toHaveBeenCalledOnce();
+		expect(mocks.showToast).toHaveBeenCalledWith({
+			type: 'success',
+			message: expect.stringContaining('Aqua Flosser')
+		});
+		expect(onChanged).toHaveBeenCalledOnce();
+		expect(actions.openModal).toBeNull();
+	});
+
+	it('shows an error toast and still clears the open modal when the API call fails', async () => {
+		mocks.bulkUpdate.mockRejectedValueOnce(new Error('boom'));
+		const device = createDeviceResponse({ status: 'Active' });
+		const onChanged = vi.fn();
+		const actions = createDeviceRowActions(() => device, () => makeUser('Admin', 'me'), { onChanged });
+		actions.openModal = 'changeStatus';
+
+		await actions.handleChangeStatus('Retired');
+
+		expect(mocks.showToast).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'error' })
+		);
+		expect(onChanged).not.toHaveBeenCalled();
+		expect(actions.openModal).toBeNull();
 	});
 });

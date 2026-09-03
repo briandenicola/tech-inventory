@@ -130,7 +130,7 @@ describe('/devices/[id] (B3 role-gated claim/release actions)', () => {
 		await screen.findByRole('heading', { name: 'Living Room TV' });
 
 		// Viewer is read-only per constitution §5.2 — with Edit/Delete/History/
-		// Claim/Release/Retire/Unretire all denied, `DeviceActionsMenu` has zero
+		// Claim/Release/Change Status all denied, `DeviceActionsMenu` has zero
 		// actions to offer, so its "More actions" trigger doesn't render at all,
 		// even though this Viewer owns the device fixture (ownerId set above).
 		expect(screen.queryByRole('button', { name: /more actions/i })).not.toBeInTheDocument();
@@ -180,5 +180,29 @@ describe('/devices/[id] (B3 role-gated claim/release actions)', () => {
 		await user.click(menuButton);
 
 		expect(screen.getByRole('menuitem', { name: 'Claim Ownership' })).toBeInTheDocument();
+	});
+
+	it('offers Change Status to an Admin regardless of device ownership (#127)', async () => {
+		const user = userEvent.setup();
+		const admin = makeUser('Admin');
+		getMock
+			.mockReset()
+			.mockResolvedValue(
+				createDeviceResponse({ id: 'device-1', name: 'Living Room TV', ownerId: 'someone-else' })
+			);
+		authStore.set({
+			currentUser: admin,
+			isAuthenticated: true,
+			isLoading: false,
+			error: null,
+			authMethod: 'entra',
+			mustChangePassword: false
+		});
+
+		render(Page);
+		const menuButton = await screen.findByRole('button', { name: /more actions/i });
+		await user.click(menuButton);
+
+		expect(screen.getByRole('menuitem', { name: 'Change Status' })).toBeInTheDocument();
 	});
 });

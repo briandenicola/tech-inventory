@@ -802,3 +802,17 @@ PR from `fix/ios-pwa-silent-sso-redirect` → review → merge.
 **Commits:** `5d991eb` (#128), `af802f7` (#132) on `squad/128-132-filter-categories`.
 
 **Next Steps:** Open Wave 1 PR (both fixes reviewable together as one PR — independent files, no overlap); do not merge; await review.
+
+---
+
+## #127 — Change Status (replaces Retire/Unretire)
+
+- Replaced the narrow Active-only "Retire Device" / Retired-only "Unretire Device" row/detail actions with one "Change Status" action that opens the **existing** `BulkUpdateModal.svelte` (the N-device bulk-toolbar dialog) scoped to `deviceIds: [device.id]`, instead of a second single-device transition UI.
+- **Key reuse insight**: `BulkUpdateDevicesCommand` (`POST /devices/bulk/update`) already implements every domain-valid status transition, including Retired→Active via `Device.Reactivate()`, and 409s on an already-Disposed device — strictly simpler to call than `UpdateDeviceCommand` (`devices.update`), which requires resending the whole device payload and has stricter retired-field-equality checks. One status-transition implementation on the client now, not two.
+- Added `BulkUpdateModal`'s `initialValue` prop (defaults to `''`, only used by single-device callers) so the dialog preselects the device's current status instead of the bulk-toolbar's "Select…" placeholder.
+- New `canChangeDeviceStatus()` replaces `canRetireDevice`/`canUnretireDevice`: same Admin-any / Member-if-owner rule, broadened to any non-Disposed status (an affordance gate only — the API has no per-device ownership check, per the #130/#133 decision doc).
+- Deleted `RetireDeviceModal.svelte`/`.test.ts` and the old `buildRetireDeviceRequest`/`buildUnretireDeviceRequest` payload builders — fully dead after consolidation.
+
+**Validation:** targeted suites 66/66 (`deviceRetirement`, `deviceRowActions.svelte`, new `BulkUpdateModal.test.ts`, `DeviceActionsMenu`, `DevicePwaRow`, `DeviceDetailModal`, `devices/[id]/page`); full frontend 84/84 files, 702 tests; `pnpm run check`/`lint`/`build` clean; `task verify` (verify:full) green.
+**Tamper-test:** (1) reverted the Change Status button label back to `devices.retire.button` → `DeviceActionsMenu.test.ts` failed as expected; (2) reverted `handleChangeStatus` to call `devices.update(...)` instead of the shared `devices.bulkUpdate(...)` → `deviceRowActions.svelte.test.ts` + `DevicePwaRow.test.ts` failed as expected (7 tests total). Restored both, reran green.
+

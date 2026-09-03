@@ -8,23 +8,24 @@
  * are out of scope for this gap.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
+import { render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'vitest-axe';
 import type { CurrentUser } from '$lib/stores/auth';
 import type { ReferenceDataState } from '$lib/stores/referenceData';
 import { createDeviceResponse, resetFactories } from '$lib/test-utils/factories';
 
-const { getMock, listTagsMock } = vi.hoisted(() => ({
+const { getMock, listTagsMock, bulkUpdateMock } = vi.hoisted(() => ({
 	getMock: vi.fn(),
-	listTagsMock: vi.fn()
+	listTagsMock: vi.fn(),
+	bulkUpdateMock: vi.fn()
 }));
 
 vi.mock('$lib/api/client', async () => {
 	const actual = await vi.importActual<typeof import('$lib/api/client')>('$lib/api/client');
 	return {
 		...actual,
-		devices: { ...actual.devices, get: getMock, listTags: listTagsMock }
+		devices: { ...actual.devices, get: getMock, listTags: listTagsMock, bulkUpdate: bulkUpdateMock }
 	};
 });
 
@@ -60,6 +61,7 @@ describe('DeviceDetailModal (C-12 role-gated detail actions)', () => {
 		resetFactories();
 		getMock.mockReset();
 		listTagsMock.mockReset().mockResolvedValue([]);
+		bulkUpdateMock.mockReset();
 	});
 
 	it('hides the entire actions menu for a Viewer, even when they own the device', async () => {
@@ -79,7 +81,7 @@ describe('DeviceDetailModal (C-12 role-gated detail actions)', () => {
 
 		// The Viewer owns the device fixture (see makeUser's id vs. the
 		// factory default ownerId), but Viewer is read-only per constitution
-		// §5.2 — with Edit/Delete/History/Claim/Release/Retire/Unretire all
+		// §5.2 — with Edit/Delete/History/Claim/Release/Change Status all
 		// denied, `DeviceActionsMenu` has zero actions to offer, so its
 		// "More actions" trigger doesn't render at all (B1/B3 review fix; a
 		// prior revision only checked the individual menu items and asserted
@@ -130,5 +132,77 @@ describe('DeviceDetailModal (C-12 role-gated detail actions)', () => {
 		await screen.findByRole('button', { name: /more actions/i });
 
 		expect(await axe(container)).toHaveNoViolations();
+	});
+});
+
+describe('DeviceDetailModal — Change Status (#127, shared BulkUpdateModal reuse)', () => {
+	beforeEach(() => {
+		resetFactories();
+		getMock.mockReset();
+		listTagsMock.mockReset().mockResolvedValue([]);
+		bulkUpdateMock.mockReset();
+	});
+
+	it('opens the shared change-status dialog preselected to the device\'s current status and applies a transition via devices.bulkUpdate', async () => {
+		const user = userEvent.setup();
+		const device = createDeviceResponse({ status: 'Active', name: 'Aqua Flosser' });
+		getMock.mockResolvedValue(device);
+		bulkUpdateMock.mockResolvedValue({ correlationId: 'corr-1', affectedCount: 1 });
+		authStore.set({
+			currentUser: makeUser('Admin'),
+			isAuthenticated: true,
+			isLoading: false,
+			error: null,
+			authMethod: 'entra',
+			mustChangePassword: false
+		});
+
+		render(DeviceDetailModal, { props: { deviceId: device.id, onClose: vi.fn() } });
+
+		const menuButton = await screen.findByRole('button', { name: /more actions/i });
+		await user.click(menuButton);
+		await user.click(screen.getByRole('menuitem', { name: 'Change Status' }));
+
+		const select = (await screen.findByLabelText(/change status/i)) as HTMLSelectElement;
+		expect(select.value).toBe('Active');
+
+		await user.selectOptions(select, 'Retired');
+		await user.click(screen.getByRole('button', { name: /apply changes/i }));
+
+		await waitFor(() => {
+			expect(bulkUpdateMock).toHaveBeenCalledWith({
+				deviceIds: [device.id],
+				changes: { status: 'Retired' }
+			});
+		});
+		await waitFor(() => {
+			expect(screen.queryByLabelText(/change status/i)).not.toBeInTheDocument();
+		});
+	});
+
+	it('closes the dialog without calling devices.bulkUpdate when cancelled', async () => {
+		const user = userEvent.setup();
+		const device = createDeviceResponse({ status: 'Active' });
+		getMock.mockResolvedValue(device);
+		authStore.set({
+			currentUser: makeUser('Admin'),
+			isAuthenticated: true,
+			isLoading: false,
+			error: null,
+			authMethod: 'entra',
+			mustChangePassword: false
+		});
+
+		render(DeviceDetailModal, { props: { deviceId: device.id, onClose: vi.fn() } });
+
+		const menuButton = await screen.findByRole('button', { name: /more actions/i });
+		await user.click(menuButton);
+		await user.click(screen.getByRole('menuitem', { name: 'Change Status' }));
+
+		await screen.findByLabelText(/change status/i);
+		await user.click(screen.getByRole('button', { name: /^cancel$/i }));
+
+		expect(screen.queryByLabelText(/change status/i)).not.toBeInTheDocument();
+		expect(bulkUpdateMock).not.toHaveBeenCalled();
 	});
 });

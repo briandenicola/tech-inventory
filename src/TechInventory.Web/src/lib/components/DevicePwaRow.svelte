@@ -13,12 +13,13 @@
 	import { referenceDataStore } from '$lib/stores/referenceData';
 	import { lookupName, statusBadgeClass } from '$lib/utils/deviceDisplay';
 	import { createDeviceRowActions } from '$lib/utils/deviceRowActions.svelte';
+	import { deviceStatusOptions } from '$lib/utils/deviceRetirement';
 	import type { DeviceResponse } from '$lib/queries/devices.svelte';
 	import type { CurrentUser } from '$lib/stores/auth';
 	import DeviceActionsMenu from '$lib/components/DeviceActionsMenu.svelte';
 	import ClaimOwnershipModal from '$lib/components/ClaimOwnershipModal.svelte';
 	import ReleaseOwnershipModal from '$lib/components/ReleaseOwnershipModal.svelte';
-	import RetireDeviceModal from '$lib/components/RetireDeviceModal.svelte';
+	import BulkUpdateModal from '$lib/components/BulkUpdateModal.svelte';
 	import DeleteDeviceModal from '$lib/components/DeleteDeviceModal.svelte';
 	import AuditLogModal from '$lib/components/AuditLogModal.svelte';
 
@@ -60,6 +61,7 @@
 		() => currentUser,
 		{ onChanged: () => onChanged?.() }
 	);
+	const statusOptions = $derived(deviceStatusOptions(t));
 
 	function handleSelectToggle(event: Event) {
 		event.stopPropagation();
@@ -124,8 +126,7 @@
 			editHref={rowActions.canEdit ? `/devices/${device.id}/edit` : undefined}
 			onClaim={rowActions.canClaim ? () => (rowActions.openModal = 'claim') : undefined}
 			onRelease={rowActions.canRelease ? () => (rowActions.openModal = 'release') : undefined}
-			onRetire={rowActions.canRetire ? () => (rowActions.openModal = 'retire') : undefined}
-			onUnretire={rowActions.canUnretire ? () => void rowActions.handleUnretire() : undefined}
+			onChangeStatus={rowActions.canChangeStatus ? () => (rowActions.openModal = 'changeStatus') : undefined}
 			onViewHistory={rowActions.canViewHistory ? () => (rowActions.openModal = 'history') : undefined}
 			onDelete={rowActions.canDelete ? () => (rowActions.openModal = 'delete') : undefined}
 		/>
@@ -145,10 +146,13 @@
 		onConfirm={rowActions.handleRelease}
 		onCancel={() => (rowActions.openModal = null)}
 	/>
-{:else if rowActions.openModal === 'retire'}
-	<RetireDeviceModal
-		deviceName={device.name ?? 'Device'}
-		onConfirm={rowActions.handleRetire}
+{:else if rowActions.openModal === 'changeStatus'}
+	<BulkUpdateModal
+		field="status"
+		count={1}
+		options={statusOptions}
+		initialValue={device.status ?? ''}
+		onConfirm={(value) => rowActions.handleChangeStatus(value)}
 		onCancel={() => (rowActions.openModal = null)}
 	/>
 {:else if rowActions.openModal === 'delete'}

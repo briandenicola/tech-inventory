@@ -60,18 +60,31 @@ as an explicit exception under `plan.md` §2.10, not silently dropped.
 | M-13 | Export CSV: the download completes and opens cleanly in a spreadsheet | | |
 | M-14 | WebKit/Safari spot check: `/devices`, a device detail page, and the filter sheet render correctly (safe-area insets, sticky headers) | | |
 | M-15 | Firefox spot check: `/devices` + filter sheet; keyboard-only pass reaches the nav, opens the menu, and Escape restores focus | | |
+| M-16 | Admin reference pages (`/admin/brands`, `/admin/categories`, `/admin/owners`, `/admin/locations`, `/admin/networks`, `/admin/tags`): keyboard navigation, labels, focus visibility, contrast, and responsive layout spot check | | |
 
-**15 checks, all owner `briandenicola`.** None duplicates a Vitest or HTTP
+**16 checks, all owner `briandenicola`.** M-16 compensates for the route-level
+composition gap identified by the post-major-work QC audit; the remaining
+checks exist only because their risks require a real browser environment. None
+duplicates an existing Vitest or HTTP
 integration/contract assertion — each exists only because the risk is
 `display-mode`, service-worker, first-paint, a real download, or engine-specific
 rendering (`coverage-migration.md` §7). No item here claims an offline mutation
 queue: the product has no queued-write feature — mutations are `NetworkOnly`
 and simply fail visibly offline (M-08).
 
+## Performance review
+
+| # | Check | Pass/Fail | Evidence |
+| --- | --- | --- | --- |
+| P-01 | On the release candidate, profile `/devices`, a device detail route, and one admin route under a simulated 4G profile. Record FCP, LCP, TTI, TBT, CLS, initial and per-route gzipped JS, and the largest image against constitution §6.5.9. File an issue for every exceeded budget. | | |
+
+P-01 is `REVIEWED` per release under ADR 0002 and `plan.md` §6.4. It is not a
+CI result and must never be inferred from a green `task verify` run.
+
 ## Full disposition reference
 
 The complete coverage matrix, per-spec rationale, and the accepted-gaps
-register (`G-01`–`G-08`) that this checklist compensates for live in
+register (`G-01`–`G-10`) that this checklist compensates for live in
 [`../../specs/004-agentic-development-foundation/coverage-migration.md`](../../specs/004-agentic-development-foundation/coverage-migration.md)
 §6–§8. This file is intentionally the short, durable operational checklist —
 it does not repeat that matrix.

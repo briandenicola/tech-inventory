@@ -68,7 +68,7 @@ reliable layers.
      **owned manual validation checklist** with a named owner and a release
      cadence: [`docs/testing/manual-pwa-validation.md`](../testing/manual-pwa-validation.md).
 3. **Residual browser-only behaviour is a declared gap, never silent coverage.**
-   Nine accepted gaps (`coverage-migration.md` §6, G-01…G-09) are recorded with
+   Ten accepted gaps (`coverage-migration.md` §8, G-01…G-10) are recorded with
    owners. A manual check is reported as `REVIEWED`, never as a green automated
    claim.
 4. **The thirteen PRD §7.5.4 critical journeys survive as intents.** They are
@@ -82,6 +82,12 @@ reliable layers.
    strength.** WCAG 2.2 AA, zero axe violations, OWASP ASVS L2, default-deny
    authorization and the coverage floor all stand exactly as before; only the
    *layer* at which browser-specific evidence is produced has moved.
+7. **Browser-based performance automation is also outside the repository.**
+   Post-major-work QC found the constitution and PRD still mandated Lighthouse
+   CI even though no harness existed, contradicting this ADR's no-browser-
+   automation decision. `briandenicola` approved alignment on 2026-09-03:
+   route performance budgets remain requirements, reviewed manually per
+   release as check P-01, and are never reported as an automated CI result.
 
 **Approved by `briandenicola` on 2026-09-02** (`brief.md` §2.1). Recorded here
 by Ripley under T105 of `specs/004-agentic-development-foundation/`.
@@ -96,16 +102,19 @@ by Ripley under T105 of `specs/004-agentic-development-foundation/`.
   Docker** (`task verify`), so local and CI results mean the same thing.
 + Coverage claims became truthful: 0 executing browser tests became 278 backend
   unit, 296 backend integration and 649 frontend unit/component tests with
-  fail-closed collected-test floors, plus 15 owned manual checks.
+  fail-closed collected-test floors, plus 16 owned browser/PWA checks and the
+  P-01 manual performance review.
 + Merge-relevant guards (stale-reference, OpenAPI/client drift, EF migration
   drift, test floors) are cheap, deterministic and tamper-testable.
 
 **Negative / accepted**
 
 - Automated coverage of real browser engines drops to zero. It was already zero
-  in practice; the honest version is an owned checklist (`M-01`…`M-15`).
+  in practice; the honest version is an owned checklist (`M-01`…`M-16`) plus
+  manual performance review P-01.
 - Composed-page axe scanning in a real engine is lost (**G-05**); `/devices`
-  additionally has no route-level axe harness (**G-09**).
+  has no route-level axe harness (**G-09**), and six reference-admin route
+  compositions omitted during migration are recorded as **G-10**.
 - Manual checks decay unless someone runs them. Mitigated by naming an owner and
   a release cadence, and by recording the checklist as an explicit visible
   exception (`plan.md` §6.3 — the register entry for §2.10's principle)

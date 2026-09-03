@@ -354,7 +354,7 @@ are re-homed, not silently dropped:
 
 ## 7. Accessibility Requirements (merge gates)
 
-1. Zero axe-core violations in unit and E2E for every touched view.
+1. Zero axe-core violations in component tests for every touched view.
 2. Bottom nav is a `<nav>` with an accessible name; items are links (or a
    button for Add); active item carries `aria-current="page"`.
 3. Every nav item **inside the bottom-nav pill** (Home, Add, Reports) has a
@@ -424,7 +424,7 @@ are re-homed, not silently dropped:
 - [ ] `DeviceTable.svelte` split into selector + three renderers; no file added
       or left over 400 lines
 - [ ] All new strings in `en.json`
-- [ ] Zero axe violations (unit + E2E, both themes)
+- [ ] Zero axe violations in component tests (both themes)
 - [ ] `pnpm run check`, `pnpm run lint`, `pnpm run test` clean (the browser
       E2E harness is retired repo-wide — `brief.md` §2.1 — so there is no
       browser suite to gate on; the desktop/mobile-web Vitest component

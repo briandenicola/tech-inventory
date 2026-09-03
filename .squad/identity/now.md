@@ -8,7 +8,7 @@ active_issues: T105 DONE; foundation ready for QC; backlog #127–#148 triaged
 
 **T105 Agentic development foundation is COMPLETE and APPROVED** (commit `b94cb6a`, 2026-09-02).
 
-The six-cycle agentic development gate package (T001–T105, addressing PR #140 incident chain) has been completed and pushed; awaiting QC/PR/merge. All acceptance criteria met; 10 critical non-browser controls verified fail-closed locally; ADR 0002 and the constitution/PRD Playwright amendments completed.
+The six-cycle agentic development gate package (T001–T105, addressing PR #140 incident chain) has been completed and pushed; awaiting QC/PR/merge. All acceptance criteria met; 10 critical non-browser controls verified fail-closed locally; ADR 0002 and the constitution/PRD browser-harness amendments completed.
 
 **Immediate next action:** Post-major-work QC audit (skill:post-major-work-qc-audit)
 - Comprehensive engineering review: best practices, security, docs, architecture, test coverage, supply chain, UX, ops readiness
@@ -18,8 +18,8 @@ The six-cycle agentic development gate package (T001–T105, addressing PR #140 
 - Merge readiness finalized only after QC audit + CI observation
 
 **Foundation state:**
-- Playwright retired safely (T101): 0 stale references across 901 tracked files; stale-reference guard enforced and tamper-tested
-- Valuable E2E coverage migrated (T102): 649 Vitest + 296 integration tests enforced at test-floor gates; 26 AdminOrMember-gated mutations have explicit 403 OpenAPI contract coverage; manual PWA checklist with owner `briandenicola` (G-01–G-09 accepted gaps recorded: C-18 partial on 5 of 6 routes, C-20 gap)
+- Browser E2E harness retired safely (T101): 0 stale references across 940 tracked + untracked non-ignored files at the final T105 gate; stale-reference guard enforced and tamper-tested
+- Valuable E2E coverage migrated (T102): 649 Vitest + 296 integration tests enforced at test-floor gates; 26 AdminOrMember-gated mutations have explicit 403 OpenAPI contract coverage; manual PWA checklist with owner `briandenicola` (G-01–G-10 accepted gaps recorded, including the route-composition coverage gap corrected by the post-major-work QC audit)
 - Single authoritative verification surface (T104): `task verify` alias runs same entrypoints locally and in CI; observed exit 0 end-to-end (5m32s)
 - Required checks aligned and tamper-tested (T105): 10 critical non-browser controls fail-closed and independently verified by reviewer run
 

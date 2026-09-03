@@ -335,7 +335,8 @@ executable code** — §3.11; the stale-reference guard must exempt history path
       behaviour that cannot be automated without Playwright — **named owner,
       release cadence, recorded as an explicit gap**, never a green automated
       claim · *evidence:* [`docs/testing/manual-pwa-validation.md`](../../docs/testing/manual-pwa-validation.md)
-      (15 checks, owner `briandenicola`, `REVIEWED`, not merge-blocking) —
+      (16 browser/PWA checks plus P-01 performance review, owner
+      `briandenicola`, `REVIEWED`, not merge-blocking) —
       `coverage-migration.md` §12.3
 - [x] Replace the E2E seed-fixture drift risk with **typed HTTP
       integration/request builders or generated-contract checks**, so drift is a
@@ -686,33 +687,35 @@ second revision note and `t102-hicks-final-revision.md` (session artefact).
 > `Sync Squad Labels`. T105's first job is to enumerate and require the check
 > names that exist after T104.
 
-- [ ] Enumerate the check names that exist after T104 and produce a **written
+- [x] Enumerate the check names that exist after T104 and produce a **written
       branch-protection recommendation** for `briandenicola` to apply, with
       exact check names, making the current posture observable in-repo (U-01/U-02)
-- [ ] **Tamper-test every critical non-browser guard** — stale-Playwright-
+- [x] **Tamper-test every critical non-browser guard** — stale-Playwright-
       reference guard, contract-drift gates, migration gate, collected-test
       floors, verification entrypoint — each with a recorded deliberate break
-      in which the guard fails · *evidence:* one run URL per guard
-- [ ] Strengthen `.github/pull_request_template.md` to require recorded
+      in which the guard fails · *evidence:* recorded command output in
+      `validation.md` §16; GitHub run URLs remain merge-readiness evidence,
+      not a prerequisite for a local tamper test
+- [x] Strengthen `.github/pull_request_template.md` to require recorded
       acceptance evidence per criterion, replacing "All CI checks green" with
       the named required checks · *evidence:* diff + first PR using it
-- [ ] Fix or remove `.github/CODEOWNERS` (`@your-github-handle`, non-existent
+- [x] Fix or remove `.github/CODEOWNERS` (`@your-github-handle`, non-existent
       `deploy/` path) and resolve `.github/T47-CI-SETUP-CHECKLIST.md`
       (284 lines, unexecuted) — execute or archive · *evidence:* diffs + record
-- [ ] Record the T102 manual PWA checklist — and branch protection if declined
+- [x] Record the T102 manual PWA checklist — and branch protection if declined
       — as **explicit visible exceptions** under `plan.md` §2.10 with owners
 
 ---
 
 ## Cross-Cutting Checks Before Any Phase-2 Task Is Marked Done
 
-- [ ] The authoritative verification command (or its T104 successor) run and
+- [x] The authoritative verification command (or its T104 successor) run and
       recorded, with acceptance evidence in `validation.md` per criterion — not
       merely "checks green" (`plan.md` §2.8)
-- [ ] Human `APPROVED` transition recorded for the specific scope; no agent
+- [x] Human `APPROVED` transition recorded for the specific scope; no agent
       self-approval and no agent marking its own work `DONE` (`plan.md` §2.3)
-- [ ] Any deviation recorded as an explicit exception (`plan.md` §2.10)
-- [ ] T3 tasks (T105) additionally: ADR written, risk owner named, rollback
+- [x] Any deviation recorded as an explicit exception (`plan.md` §2.10)
+- [x] T3 tasks (T105) additionally: ADR written, risk owner named, rollback
       stated
-- [ ] No task output reintroduces an automated Playwright role in any form —
+- [x] No task output reintroduces an automated Playwright role in any form —
       merge gate, scheduled run, release run, or optional suite (`brief.md` §2.1)

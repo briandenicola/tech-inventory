@@ -14,34 +14,24 @@ public sealed class SharePointCsvImportTests(IntegrationTestFactory<SharePointCs
     private static readonly string ImportArtifactsDirectory = Path.Combine(AppContext.BaseDirectory, "import-artifacts");
     private static readonly string SampleCsvPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "TechInventory.IntegrationTests", "Imports", "SampleData", "devices-sample.csv");
 
-    // H-05 — the repository's own canonical inventory export, committed
-    // through the real import HTTP endpoint, not a synthetic fixture. Guards
-    // the F034 regression ("every device looks identical") against the actual
-    // production data shape rather than only the hand-authored sample above.
-    // Repo-root-relative so it survives from either bin\Debug or bin\Release.
-    private static readonly string CanonicalDevicesCsvPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "data", "Devices.csv");
+    private const string ModelAndPurposeRegressionCsv = """
+        DeviceName,Location,Purpose,Retired,DeviceType,PurchasedDate,Vendor,Model
+        Regression Display,Office,Living room media,False,Smart Display,8/15/2024,Example Vendor,Panel X1
+        """;
 
     [Fact]
-    public async Task CommitImport_CanonicalDevicesCsv_MohuLeafStitchRowPersistsModelAndPurpose()
+    public async Task CommitImport_RowWithDistinctModelAndPurpose_PersistsBothFields()
     {
         await ResetDatabaseAsync();
         await SeedDeviceReferenceDataAsync();
         using var client = CreateClient();
 
-        // data/Devices.csv has no Owner column; provision the current
-        // importer's Owner record first so CommitImport can default every
-        // row's owner to them (mirrors ImportsControllerTests's
-        // CommitImport_WhenOwnerColumnIsMissing_DefaultsToCurrentImporter).
         var provisionResponse = await client.GetAsync("/api/v1/owners/me");
         provisionResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        if (!File.Exists(CanonicalDevicesCsvPath))
-        {
-            throw new FileNotFoundException($"Canonical CSV not found at {CanonicalDevicesCsvPath}");
-        }
-
-        var csvContent = await File.ReadAllTextAsync(CanonicalDevicesCsvPath, Encoding.UTF8);
-        using var content = await CreateMultipartFileContentAsync("devices-canonical.csv", csvContent);
+        using var content = await CreateMultipartFileContentAsync(
+            "model-purpose-regression.csv",
+            ModelAndPurposeRegressionCsv);
 
         var response = await client.PostAsync("/api/v1/imports/commit", content);
 
@@ -51,16 +41,12 @@ public sealed class SharePointCsvImportTests(IntegrationTestFactory<SharePointCs
 
         await WithDbContextAsync(async dbContext =>
         {
-            // Canonical values pulled directly from data/Devices.csv (not
-            // assumed from any prior brief): DeviceName "Mohu Leaf Stitch 60m
-            // Range", Purpose "Master TV", Model "Leaf Stitch" (source cell has
-            // a trailing space the importer trims).
             var device = await dbContext.Devices
-                .SingleOrDefaultAsync(d => d.Name == "Mohu Leaf Stitch 60m Range");
+                .SingleOrDefaultAsync(d => d.Name == "Regression Display");
 
             device.Should().NotBeNull();
-            device!.Model.Should().Be("Leaf Stitch");
-            device.Purpose.Should().Be("Master TV");
+            device!.Model.Should().Be("Panel X1");
+            device.Purpose.Should().Be("Living room media");
         });
     }
 

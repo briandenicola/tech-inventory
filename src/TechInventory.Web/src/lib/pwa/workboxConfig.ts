@@ -9,7 +9,7 @@
  *   API is unreachable.
  * - `navigateFallbackDenylist` excludes API/health/openapi paths — those
  *   must fail normally rather than being served the offline shell.
- * - `POST`/`PUT`/`DELETE` against `/api/v1/*` are `NetworkOnly` — mutations
+ * - `POST`/`PUT`/`PATCH`/`DELETE` against `/api/v1/*` are `NetworkOnly` — mutations
  *   are refused offline, never silently queued (C-16).
  * - `GET` against `/api/v1/*` is `StaleWhileRevalidate` so cached device
  *   data remains viewable offline.
@@ -30,6 +30,11 @@ export const workboxConfig: Partial<VitePWAOptions['workbox']> = {
 			urlPattern: ({ url }: { url: URL }) => url.pathname.startsWith('/api/v1/'),
 			handler: 'NetworkOnly',
 			method: 'PUT'
+		},
+		{
+			urlPattern: ({ url }: { url: URL }) => url.pathname.startsWith('/api/v1/'),
+			handler: 'NetworkOnly',
+			method: 'PATCH'
 		},
 		{
 			urlPattern: ({ url }: { url: URL }) => url.pathname.startsWith('/api/v1/'),

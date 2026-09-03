@@ -566,7 +566,7 @@ the single most likely false positive in T101's guard.
 | **C-21** | `app.html` pre-hydration theme contract (`theme-preference` key) |
 | **C-22** | Resolve the 8 orphaned "deferred to E2E" comments (§5.2) — each becomes a test or a named gap |
 
-### 6.3 Manual (`M-nn`) — 15 checks, §7 · Accepted gaps (`G-nn`) — 9, §8
+### 6.3 Manual (`M-nn`) — 16 checks, §7 · Accepted gaps (`G-nn`) — 10, §8
 
 ### 6.4 Summary
 
@@ -615,8 +615,9 @@ explicit exception under `plan.md` §2.10 (T105).
 | **M-13** | Export CSV: the download completes and opens cleanly in a spreadsheet | **G-03** |
 | **M-14** | WebKit/Safari spot check: `/devices`, a device detail page, and the filter sheet render correctly (safe-area insets, sticky headers) | **G-05** |
 | **M-15** | Firefox spot check: `/devices` + filter sheet; keyboard-only pass reaches the nav, opens the menu, and Escape restores focus | **G-05** |
+| **M-16** | Admin reference pages: keyboard navigation, labels, focus visibility, contrast, and responsive-layout spot check across Brands, Categories, Owners, Locations, Networks, and Tags | **G-10** |
 
-**15 checks.** No check duplicates something a Vitest or HTTP test already
+**16 checks.** No check duplicates something a Vitest or HTTP test already
 asserts; each exists because the risk is `display-mode`, service-worker,
 first-paint, real-download, or engine-specific — the exact categories
 `plan.md` §2.6 assigns to a manual checklist.
@@ -638,6 +639,7 @@ Every gap is owned by `briandenicola` and reviewed at the cadence in §7.
 | **G-07** | Absence of a real first-paint theme flash | Requires a real paint | **C-21** + **M-10** |
 | **G-08** | Real Entra redirect flow end to end | External IdP + real browser redirect | `msal.test.ts`, ESLint, pre-commit, gitleaks + **M-11** |
 | **G-09** | Route-level axe composition test for `/devices` (the one route of **C-18**'s six not authored) | `devices/+page.svelte` is 1,000+ lines and composes ~15 stores/queries (`useDevices`, `userPrefs`, `viewState`, `pullToRefresh`, `deviceCreate`, `displayMode`, `appNav`, …) plus ~10 child components; a deterministic jsdom composition harness was judged disproportionate to author and maintain versus the risk it retires (same reasoning as **C-20**/§12.2) | The other 5 of 6 **C-18** route harnesses (`/devices/{id}`, `/admin/import`, `/admin/export`, `/admin/audit`, `/offline`) plus 37 component-level axe-checked Vitest files (including every child component `/devices` composes: `DeviceTable`, `DeviceFilters`, `PaginationControls`, `AddDeviceModal`, `DeviceDetailModal`, `BulkActionBar`, `BulkUpdateModal`, `BulkDeleteModal`) + **M-14**, **M-15** (WebKit/Firefox spot checks of `/devices` itself) |
+| **G-10** | Route-level axe composition tests for the six reference-admin pages named by the retired accessibility smoke journey | T103 narrowed C-18 to six replacement routes without recording the disposition of `/admin/brands`, `/admin/categories`, `/admin/owners`, `/admin/locations`, `/admin/networks`, and `/admin/tags`; the post-major-work QC audit identified the omission after the package review gates. Their shared components have axe coverage, but complete route composition is not automated. | Shared admin list/component axe tests, schema import guards where present, and **M-16** across all six pages. Owner: `briandenicola`; reviewed at the manual checklist cadence. |
 
 Each gap is **declared**, not silent. None is presented as automated coverage.
 
@@ -662,7 +664,7 @@ removed here** — each is re-homed. The table is the ADR candidate's evidence.
 | 10 Reference data admin | reference controller tests, `schema.test.ts` ×4, **C-11** | yes |
 | 11 Role enforcement | `ViewerRoleAuthorizationTests`, 4 Member authorization suites, **H-04**, **C-12**, **C-13** | yes |
 | 12 Offline app shell | **C-14**–**C-17** + **M-06**–**M-09** | partly (declared **G-04**) |
-| 13 Accessibility smoke | 37 axe-checked Vitest files + **C-18** (5 of 6 route harnesses; `/devices` deferred, **G-09**) + **M-14**, **M-15** | partly (declared **G-09**) |
+| 13 Accessibility smoke | 37 axe-checked Vitest files + **C-18** (5 of 6 planned route harnesses; `/devices` deferred, **G-09**) + shared reference-admin component coverage; omitted reference-admin route composition is declared as **G-10** and covered by **M-16** | partly (declared **G-09**, **G-10**) |
 
 **10 of 13 journeys end up more covered than they are today** (today: zero
 executed). Three (1, 12, and 13) retain a declared manual/accepted-gap
@@ -951,9 +953,16 @@ Its constituent parts are already independently unit-tested
 route to exercise one boolean was judged disproportionate. This gap follows
 the same shape and owner as G-01–G-09 (§8) and is folded under that register.
 
+**Post-major-work QC correction — reference-admin route composition.** The
+retired accessibility smoke journey also named six reference-admin routes that
+T103 omitted when it defined C-18's six-route replacement set. Their shared
+components remain axe-tested, but the complete route compositions are not.
+This is now explicit accepted gap **G-10**, compensated by manual check
+**M-16**, rather than silently counted as migrated coverage.
+
 ### 12.3 Manual checklist — complete
 
-The 15-check manual validation checklist from §7 is published as the durable,
+The 16-check manual validation checklist from §7 is published as the durable,
 owned operational document at
 [`../../docs/testing/manual-pwa-validation.md`](../../docs/testing/manual-pwa-validation.md)
 (owner `briandenicola`, `REVIEWED`, not merge-blocking). §7 above remains the
@@ -966,8 +975,8 @@ linked file is the one to actually run and fill in.
 | --- | --- | --- |
 | `H-` backend | 5 | 5 Done |
 | `C-` frontend | 22 | 20 Done, 2 accepted-gap items (**C-18** partial — `/devices` route harness, **G-09**; **C-20**) |
-| `M-` manual checklist | 15 | 15 published, complete as a checklist (not automated) |
-| `G-` accepted gaps | 9 (+ C-20 folded in) | all owned by `briandenicola`, compensating controls named in §8 |
+| `M-` manual checklist | 16 | 16 published, complete as a checklist (not automated) |
+| `G-` accepted gaps | 10 (+ C-20 folded in) | all owned by `briandenicola`, compensating controls named in §8 |
 | OpenAPI `403` contract (B4) | 26 `AdminOrMember`-gated operations | 26 of 26 documented, verified structurally drift-free, pinned by `OpenApiDriftTests.AdminOrMemberGatedOperation_DeclaresForbiddenResponse` |
 
 **T102 status: `DONE`, reviewer-verified and APPROVED (Ripley, 2026-09-02 —
@@ -975,7 +984,7 @@ linked file is the one to actually run and fill in.
 maps to passing
 replacement coverage (H-/C-), an explicitly accepted gap with a named owner
 (G-01–G-09, and C-20 by the same reasoning), or the published manual checklist
-(M-01–M-15). No row is unresolved, and no row overstates what exists: **C-18**
+(M-01–M-16). No row is unresolved, and no row overstates what exists: **C-18**
 is recorded as 5 of 6 with the sixth an owned, compensated gap, not as fully
 Done. **C-04** and **C-12** are recorded as genuinely Done only as of the
 second revision note in §12 above — see there for the specific defect the

@@ -38,8 +38,8 @@ describe('workboxConfig (C-15)', () => {
 		expect(denylist.some((pattern) => pattern.test('/devices'))).toBe(false);
 	});
 
-	it('refuses POST/PUT/DELETE against /api/v1/* offline (NetworkOnly, never queued)', () => {
-		for (const method of ['POST', 'PUT', 'DELETE']) {
+	it('refuses every API mutation method offline (NetworkOnly, never queued)', () => {
+		for (const method of ['POST', 'PUT', 'PATCH', 'DELETE']) {
 			const entry = findEntry(method, 'NetworkOnly');
 			const matches = typeof entry.urlPattern === 'function' && entry.urlPattern({ url: new URL('https://x/api/v1/devices') } as never);
 			expect(matches).toBe(true);

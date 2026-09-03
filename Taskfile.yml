@@ -89,7 +89,7 @@ tasks:
       - dotnet format --verify-no-changes
 
   check:frontend:
-    desc: Type-check and Svelte-check the frontend (regenerates the OpenAPI client first)
+    desc: Type-check and Svelte-check the frontend without mutating generated artifacts
     deps: [restore]
     cmds:
       - pnpm --dir src/TechInventory.Web run check

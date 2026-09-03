@@ -227,7 +227,7 @@ this project's testing strategy.
 | **End-to-End (UI)** | **Retired — no browser framework** | — | ❌ **Not required** (ADR 0002) |
 | Accessibility | axe-core (in Vitest unit + component tests) | All UI components and route harnesses | ✅ Mandatory |
 | Manual PWA validation | `docs/testing/manual-pwa-validation.md` | Install, offline/service worker, engine spot checks | ✅ Mandatory per release (manual, `REVIEWED`) |
-| Performance | Lighthouse CI | Key routes (see §6.5.9) | ✅ Mandatory |
+| Performance | Manual release profiling (`P-01`) | Key routes and budgets (see constitution §6.5.9) | ✅ Mandatory per release (`REVIEWED`; ADR 0002) |
 | Visual regression | — | — | ❌ Not adopted (would require an ADR; must not reintroduce a browser suite) |
 | Load | k6 or NBomber | Throughput baselines | ⚠️ Optional (v2) |
 
@@ -248,10 +248,10 @@ this project's testing strategy.
   2. **Component tests** — Vitest + Testing Library + `axe-core`
      (`src/TechInventory.Web/src/**/*.test.ts`).
   3. **Owned manual checklist** — [`docs/testing/manual-pwa-validation.md`](./testing/manual-pwa-validation.md),
-     checks `M-01`…`M-15`, with a named owner and a release cadence.
+     checks `M-01`…`M-16`, with a named owner and a release cadence.
 - Anything a browser could assert but the layers above cannot is an **accepted
   gap with an owner** (`specs/004-agentic-development-foundation/coverage-migration.md`
-  §6, `G-01`…`G-09`). A manual check is `REVIEWED`; it is never reported as
+  §6, `G-01`…`G-10`). A manual check is `REVIEWED`; it is never reported as
   automated coverage.
 - A stale-reference guard (`task check:stale-refs`) fails the build if the
   retired harness returns to an active manifest, script, workflow, config, doc,
@@ -278,7 +278,7 @@ Row-level evidence is in `specs/004-agentic-development-foundation/coverage-migr
 | 10 | **Reference data admin** | HTTP: reference controller tests (Locations, Brands, Categories, Networks, Owners, Tags). Component: reference-cache invalidation refreshes `DeviceForm` (**C-11**) |
 | 11 | **Role enforcement** | HTTP: `ViewerRoleAuthorizationTests` — 403 for Viewer on device create/update/delete, import commit, reference mutation (**H-04**). Component: hidden affordances (**C-12**), edit-route guard (**C-13**) |
 | 12 | **Offline app shell** | Component: `/offline` route (**C-14**), Workbox config contract — `navigateFallback`, denylist, `NetworkOnly` mutations, `StaleWhileRevalidate` GETs (**C-15**), visible mutation failure (**C-16**), update prompt (**C-17**). Manual: **M-05**–**M-09** (gap **G-04**) |
-| 13 | **Accessibility smoke** (zero axe violations) | Component: 37 axe-asserting test files + route-level axe harnesses for `/devices/{id}`, `/admin/import`, `/admin/export`, `/admin/audit`, `/offline` (**C-18**; `/devices` is accepted gap **G-09**). Manual: WebKit/Firefox spot checks **M-14**, **M-15** (gap **G-05**) |
+| 13 | **Accessibility smoke** (zero axe violations) | Component: 37 axe-asserting test files + route-level axe harnesses for `/devices/{id}`, `/admin/import`, `/admin/export`, `/admin/audit`, `/offline` (**C-18**; `/devices` is accepted gap **G-09**). The six reference-admin route compositions omitted from C-18 are accepted gap **G-10**, compensated by **M-16**. Manual: WebKit/Firefox spot checks **M-14**, **M-15** (gap **G-05**) |
 
 Additional journeys are added to this list as features ship. Removing a
 journey from this list requires an ADR. Moving a journey to a **lower** layer is

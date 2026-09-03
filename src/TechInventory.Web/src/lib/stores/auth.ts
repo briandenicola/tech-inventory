@@ -117,9 +117,8 @@ export async function fetchCurrentUser(): Promise<void> {
 		console.error('[auth] Failed to fetch current user:', error);
 
 		// C-03: surface a real denial message instead of a silent/generic one.
-		// Duck-typed (not `instanceof ApiError`) to avoid importing client.ts's
-		// class here — this file is imported dynamically by client.ts itself to
-		// avoid a circular dependency, so a static import back would reintroduce it.
+		// Keep this boundary duck-typed so transport errors from either generated
+		// or local clients can be classified without coupling the auth store to one client.
 		const status =
 			typeof error === 'object' && error !== null && 'status' in error
 				? (error as { status: unknown }).status
@@ -131,10 +130,9 @@ export async function fetchCurrentUser(): Promise<void> {
 		} else if (status === 403) {
 			errorMessage = t('auth.accessDenied');
 		} else if (error instanceof Error && error.message.includes('404')) {
-			// If 404 (Bishop's T11 not landed), set error but don't crash
-			errorMessage = 'User endpoint not available yet (T11 pending)';
+			errorMessage = t('auth.profileUnavailable');
 		} else {
-			errorMessage = 'Failed to load user profile';
+			errorMessage = t('auth.profileLoadFailed');
 		}
 
 		authStore.set({

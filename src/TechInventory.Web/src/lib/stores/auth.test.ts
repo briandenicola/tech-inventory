@@ -40,16 +40,16 @@ describe('fetchCurrentUser denial UI (C-03)', () => {
 		await fetchCurrentUser();
 
 		const state = get(authStore);
-		expect(state.error).toBe('Failed to load user profile');
+		expect(state.error).toBe('Failed to load your household profile.');
 	});
 
-	it('keeps the 404-pending message for a not-yet-deployed endpoint', async () => {
+	it('uses a user-facing message when the profile endpoint is unavailable', async () => {
 		ownersMe.mockRejectedValue(new Error('404 Not Found'));
 
 		await fetchCurrentUser();
 
 		const state = get(authStore);
-		expect(state.error).toBe('User endpoint not available yet (T11 pending)');
+		expect(state.error).toBe('Your household profile is not available yet.');
 	});
 });
 

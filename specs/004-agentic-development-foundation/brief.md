@@ -69,8 +69,8 @@ drift detection, and realistic test boundaries.
 | --- | --- |
 | **Decision** | **Retire Playwright from Tech Inventory.** It is not kept as a merge gate, a scheduled suite, a release suite, or an optional/manual automated suite. There is **no future automated Playwright role.** Aurearia demonstrates that reliable agentic development does not require browser E2E when contracts and CI are strong (`evidence.md` §2, §4.2); a harness that has never collected is not coverage. |
 | **Approved by** | `briandenicola`, 2026-09-02 |
-| **Class today** | **`REVIEWED`** — a human has decided and signed; the code, manifests, and workflows still reference Playwright. |
-| **Becomes `ENFORCED` when** | `package.json`, `pnpm-lock.yaml`, `Taskfile.yml`, `scripts/**`, and `.github/workflows/**` contain **zero** Playwright references, and CI passes from a **clean checkout** with no browser download step. |
+| **Class today** | **`ENFORCED` locally** — the stale-reference guard is part of `task verify`; GitHub merge enforcement remains `REVIEWED` until branch protection is applied. |
+| **Enforcement evidence** | `package.json`, `pnpm-lock.yaml`, `Taskfile.yml`, `scripts/**`, and `.github/workflows/**` contain zero active framework references; the complete T105 change set passed the guard across 940 tracked + untracked non-ignored files. |
 | **Disposition of assertions** | Useful assertions move to contract tests, real HTTP integration tests, component tests, or an **explicit human validation checklist** — never to a green automated claim that nothing executes. |
 | **Declared gap** | What cannot be automated without a browser (`display-mode: standalone`, service-worker offline shell, install prompt, engine-specific rendering) becomes a **named, owned manual checklist with a release cadence** (T102) — an honest declared gap, not silent coverage. |
 
@@ -144,8 +144,6 @@ AC-005 … AC-009 map one-to-one to T101 … T105; status is in
 
 ## 6. Scope Boundary for This Phase
 
-Executed: **T001–T004** — research, inventory, incident reconstruction, and
-principle recording. Documents only. Authorized but **not started**:
-**T101–T105**, including T103 — a partially executed run of it was stopped and
-does not count as started. Scope is fixed in [`plan.md`](./plan.md) §3; order is
-**T103 → T101/T102 → T104 → T105**.
+Executed and reviewer-approved: **T001–T105**. The implementation followed the
+fixed order **T103 → T101/T102 → T104 → T105**. Post-major-work QC and merge
+readiness are tracked separately from those task acceptance gates.

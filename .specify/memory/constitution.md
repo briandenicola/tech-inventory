@@ -10,9 +10,9 @@
 > Violations require an explicit, documented waiver (ADR).
 
 **Project**: Tech Inventory (self-hosted family device catalog)
-**Version**: 1.1.1
+**Version**: 1.2.0
 **Ratified**: 2026-05-17
-**Last amended**: 2026-09-02 (T105 revision — §2.10 exception register entries, see §15)
+**Last amended**: 2026-09-03 (post-major-work QC — performance enforcement aligned with ADR 0002, see §15)
 **Amendment process**: PR with ADR; affected sections re-versioned
 
 ---
@@ -305,23 +305,24 @@ If a lower document conflicts with a higher one, **stop and raise it**.
   - **Mutations require online** — fail gracefully with retry queue (v2)
   - Update prompt on new SW available
 - **Offline page** for navigation when uncached
-- Lighthouse PWA audit must pass
+- Installability and offline behavior are reviewed through
+  `docs/testing/manual-pwa-validation.md`
 
 ### 6.5.9 Performance Budgets (Per Route)
 | Metric | Budget | Enforcement |
 |---|---|---|
-| First Contentful Paint | ≤ 1.5s on 4G | Lighthouse CI |
-| Largest Contentful Paint | ≤ 2.5s | Lighthouse CI |
-| Time to Interactive | ≤ 3.0s | Lighthouse CI |
-| Total Blocking Time | ≤ 200ms | Lighthouse CI |
-| Cumulative Layout Shift | ≤ 0.1 | Lighthouse CI |
-| Initial JS bundle (gzipped) | ≤ 150KB | `size-limit` |
-| Per-route JS chunk (gzipped) | ≤ 50KB | `size-limit` |
-| Image LCP element | < 100KB, AVIF/WebP | manual review |
-| Lighthouse Performance score | ≥ 90 | CI fails < 90 |
-| Lighthouse Accessibility | = 100 | CI fails < 100 |
-| Lighthouse Best Practices | ≥ 95 | CI fails < 95 |
-| Lighthouse SEO | ≥ 90 | CI fails < 90 |
+| First Contentful Paint | ≤ 1.5s on 4G | Manual release check P-01 |
+| Largest Contentful Paint | ≤ 2.5s | Manual release check P-01 |
+| Time to Interactive | ≤ 3.0s | Manual release check P-01 |
+| Total Blocking Time | ≤ 200ms | Manual release check P-01 |
+| Cumulative Layout Shift | ≤ 0.1 | Manual release check P-01 |
+| Initial JS bundle (gzipped) | ≤ 150KB | Manual release check P-01 |
+| Per-route JS chunk (gzipped) | ≤ 50KB | Manual release check P-01 |
+| Image LCP element | < 100KB, AVIF/WebP | Manual release check P-01 |
+
+Performance budgets remain requirements, but they are `REVIEWED` per release,
+not an automated browser gate. The explicit exception and closure trigger are
+recorded in `specs/004-agentic-development-foundation/plan.md` §6.4.
 
 ### 6.5.10 Security (Client-Side)
 - **MSAL.js** for Entra ID; PKCE; tokens in memory or sessionStorage (**never** localStorage)
@@ -477,7 +478,6 @@ Every PR must pass:
 - [ ] OpenAPI contract validation
 - [ ] Web client: `tsc --noEmit`, ESLint, Vitest unit + component tests (incl. `axe-core`)
 - [ ] Retired-browser-harness stale-reference guard clean (ADR 0002)
-- [ ] Lighthouse CI ≥ 90 across the board
 - [ ] Accessibility (axe-core) zero violations
 - [ ] SBOM generated and stored as artifact
 
@@ -598,6 +598,7 @@ A task is **done** when:
 | 1.0.0 | 2026-05-17 | [You] | Initial ratification |
 | 1.1.0 | 2026-09-02 | Ripley (recorded for `briandenicola`) | **ADR 0002 — browser E2E layer retired.** Amended §6.5.6 (axe-core scope), §6.5.14 (web testing layers), §7.2 (test pyramid), §7.4 (local-first testing; `task verify` named as the authoritative entrypoint), §9 (quality-gate checklist), §13 (definition of done). Amended §8.3 to name the actual required check names and to record the observed unprotected posture as `REVIEWED`, not `ENFORCED`. No accessibility, security, coverage, or acceptance requirement was weakened. |
 | 1.1.1 | 2026-09-02 | Hudson (T105 revision — Bishop reviewer-gate blocker B-3, `validation.md` §13.2) | §8.3's posture note pointed at `plan.md` §2.10 as if a live exception register entry existed there; none did (§2.10 is the principle statement, not a register). Corrected the pointer to `plan.md` §6.2, the new register entry that closes this gap (companion entry `plan.md` §6.3 covers the manual PWA checklist referenced by `docs/adr/0002-…` L111). No requirement, check, or posture was weakened — this is a citation correction, not a rule change. |
+| 1.2.0 | 2026-09-03 | GitHub Copilot CLI (approved by `briandenicola`) | Post-major-work QC found that mandatory Lighthouse CI contradicted ADR 0002 and had no implementation. Removed the nonexistent browser-automation gate while preserving route performance budgets as manual release check P-01 (`REVIEWED`), recorded under `plan.md` §6.4. |
 
 ---
 

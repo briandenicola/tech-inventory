@@ -90,11 +90,8 @@ describe('/admin/export (C-10)', () => {
 		clearToasts();
 
 		// jsdom does not implement Blob URL creation/revocation.
-		vi.stubGlobal('URL', {
-			...URL,
-			createObjectURL: vi.fn(() => 'blob:mock-url'),
-			revokeObjectURL: vi.fn()
-		});
+		vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock-url');
+		vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
 	});
 
 	it('redirects a non-Admin owner away from the export hub', () => {

@@ -4,15 +4,10 @@
 > and constitution §7 *Testing*. When this guide and those documents conflict,
 > the PRD and constitution win — and this guide should be updated to match.
 >
-> **Exception, recorded explicitly (not a silent override):** `briandenicola`
-> approved retiring the browser-automation E2E harness entirely
-> (`specs/004-agentic-development-foundation/brief.md` §2.1, 2026-09-02). PRD
-> §7.5.2–§7.5.4 and constitution §6.5.7/§7 still describe that harness as
-> mandatory by name; amending those clauses requires a separate ADR and is
-> deliberately **surfaced, not performed**, by this retirement
-> (`specs/004-agentic-development-foundation/coverage-migration.md` §5.4).
-> This guide is updated now because it is operational, not normative — the
-> normative documents are the pending ADR's job.
+> **Browser automation:** retired by accepted ADR 0002. The constitution
+> §6.5.14/§7 and PRD §7.5.2–§7.5.5 were amended with that decision. Browser-only
+> PWA behavior is recorded through the owned manual checklist, never reported
+> as automated coverage.
 
 This is the developer-facing guide to writing and running tests in this
 project. If you've just cloned the repo, start with [Quick Start](#-quick-start).
@@ -26,18 +21,17 @@ If you're about to write a test, start with [Choosing the Right Test Type](#-cho
 - [Quick Start](#-quick-start)
 - [Choosing the Right Test Type](#-choosing-the-right-test-type)
 - [Backend Unit Tests (xUnit)](#-backend-unit-tests-xunit)
-- [Backend Integration Tests (Testcontainers)](#-backend-integration-tests-testcontainers)
+- [Backend Integration Tests (SQLite)](#-backend-integration-tests-sqlite)
 - [Frontend Unit Tests (Vitest)](#-frontend-unit-tests-vitest)
-- [Manual PWA Validation Checklist](#-manual-pwa-validation-checklist)
 - [Contract Tests](#-contract-tests)
 - [Test Data & Fixtures](#-test-data--fixtures)
 - [Authentication in Tests](#-authentication-in-tests)
-- [The `task test` Contract](#-the-task-test-contract)
+- [The `task verify` Contract](#-the-task-verify-contract)
 - [Debugging Failing Tests](#-debugging-failing-tests)
 - [Flaky Test Policy](#-flaky-test-policy)
 - [Writing a New Critical Journey](#-writing-a-new-critical-journey)
 - [Accessibility Tests](#-accessibility-tests)
-- [Performance Tests (Lighthouse CI)](#-performance-tests-lighthouse-ci)
+- [Performance Review](#-performance-review)
 - [CI Behavior](#-ci-behavior)
 - [For AI Agents (Copilot)](#-for-ai-agents-copilot)
 - [Common Pitfalls](#-common-pitfalls)
@@ -62,7 +56,7 @@ We do **not** test for:
 
 - ✅ Every change has tests at the appropriate level
 - ✅ No automated browser E2E — that harness is retired (`specs/004-agentic-development-foundation/brief.md` §2.1); HTTP integration, Vitest component tests, and the manual PWA checklist are the destination layers (`specs/004-agentic-development-foundation/coverage-migration.md` §6)
-- ✅ Tests run locally with one command (`task test`)
+- ✅ Required verification runs locally with one command (`task verify`)
 - ✅ CI runs the exact same commands a developer runs
 - ✅ Flaky tests are bugs — fix or delete within a working day
 - ✅ Tests own their data — no shared fixtures across files
@@ -79,18 +73,14 @@ We do **not** test for:
 # Prereqs: .NET 10 SDK, Node 22+, GNU task (Docker only if you're using `task up`)
 git clone <repo> && cd <repo>
 
-# Install JS deps
-cd src/TechInventory.Web && npm ci
-cd -
-
-# Restore .NET deps
-dotnet restore
+# Restore pinned tools and all project dependencies
+task restore
 ```
 
 ### Run the whole suite (the way CI does)
 
 ```bash
-task test           # backend unit + integration + frontend unit
+task verify         # the same complete pipeline CI invokes
 ```
 
 Or scope it:
@@ -114,12 +104,12 @@ Decide by **what would break first if this code were wrong**:
 | ---------------------------------------------------------------- | ------------------------------------ | ----------------------------------------------- |
 | A pure function returns the wrong value                          | Backend xUnit unit                   | `tests/TechInventory.UnitTests`                 |
 | A Svelte component renders wrong markup or fires the wrong event | Frontend Vitest unit                 | `src/TechInventory.Web` (`*.test.ts` adjacent)  |
-| An HTTP endpoint returns the wrong status / shape / authz result | Backend integration (Testcontainers) | `tests/TechInventory.IntegrationTests`          |
+| An HTTP endpoint returns the wrong status / shape / authz result | Backend integration (SQLite) | `tests/TechInventory.IntegrationTests`          |
 | OpenAPI spec drifts from the running API                         | Contract                             | `tests/TechInventory.IntegrationTests/Contract` |
 | A user-facing journey is broken end-to-end                       | HTTP integration + Vitest component tests (browser E2E retired) | `tests/TechInventory.IntegrationTests`, `src/TechInventory.Web` — see `specs/004-agentic-development-foundation/coverage-migration.md` §6, §9 |
 | A page violates WCAG 2.1 AA                                      | Accessibility (`vitest-axe` in component tests)    | `src/TechInventory.Web` (route-level axe harnesses) |
 | Only a real installed app / service worker / second rendering engine can prove it | Manual PWA validation checklist | `docs/testing/manual-pwa-validation.md` |
-| A page's perf budget regresses                                   | Lighthouse CI                        | `tests/lighthouse`                              |
+| A page's performance budget regresses | Manual release profiling (P-01) | `docs/testing/manual-pwa-validation.md` |
 
 **Rule of thumb**: pick the cheapest test that would have caught the bug.
 A unit test that exercises a regex is worth ten integration tests that
@@ -142,16 +132,16 @@ Run: `dotnet test tests/TechInventory.UnitTests`
 
 ---
 
-## 🧪 Backend Integration Tests (Testcontainers)
+## 🧪 Backend Integration Tests (SQLite)
 
-Live in `tests/TechInventory.IntegrationTests`. These spin up a real
-Postgres via Testcontainers and exercise the API through `WebApplicationFactory`.
-**No mocked DB. Ever.**
+Live in `tests/TechInventory.IntegrationTests`. These exercise the API through
+`WebApplicationFactory` against a real, per-test SQLite database. **No mocked
+DB and no Docker.**
 
-- `IntegrationTestFactory` boots the API with a per-test Postgres container.
+- `IntegrationTestFactory` boots the API with a unique SQLite database file.
 - `ControllerTestBase` provides an authenticated `HttpClient` via
   `TestJwtBuilder` (HS256 token matching the local-issuer JwtBearer scheme).
-- Migrations run on container start — schema drift is caught immediately.
+- Migrations run at factory startup — schema drift is caught immediately.
 - Audit-stamp assertions go through `AuditEventAssertionHelper`.
 
 **Security-critical tests** worth knowing by name:
@@ -166,7 +156,6 @@ Postgres via Testcontainers and exercise the API through `WebApplicationFactory`
 | `Controllers/ProblemDetailsTests.cs`                    | API error shape conforms to RFC 7807 across all controllers.                                                  |
 
 Run: `dotnet test tests/TechInventory.IntegrationTests`
-(First run downloads the Postgres image — give it a minute.)
 
 ---
 
@@ -206,7 +195,7 @@ was retired along with the rest of that harness
 (`specs/004-agentic-development-foundation/coverage-migration.md` §6, C-18).
 Failure threshold: **zero serious or critical violations** in any covered
 route's component test. Any route not yet covered at the component level is
-tracked as an explicit gap (see `coverage-migration.md` §6/C-20) and is
+tracked as an explicit gap (see `coverage-migration.md` §8, G-09/G-10) and is
 exercised instead by the manual PWA validation checklist
 (`docs/testing/manual-pwa-validation.md`).
 
@@ -215,16 +204,12 @@ as part of the normal Vitest suite, not a separate command).
 
 ---
 
-## ⚡ Performance Tests (Lighthouse CI)
+## ⚡ Performance Review
 
-Lighthouse runs against the built `web` container. Budgets live in
-`tests/lighthouse/budget.json`. CI gates on:
-
-- Performance ≥ 90 (mobile)
-- Accessibility ≥ 95
-- Best Practices ≥ 95
-
-Run: `task test:perf` (requires `task dev:up` first).
+ADR 0002 excludes browser-based performance automation. The budgets in
+constitution §6.5.9 remain required and are reviewed before each release using
+P-01 in `docs/testing/manual-pwa-validation.md`. Record the measurements and
+file an issue for each exceeded budget. Never infer P-01 from a green CI run.
 
 ---
 
@@ -246,9 +231,8 @@ will fail loudly otherwise.
   not bare object initializers — builders centralize required-field changes.
 - Seed data through the repository, not raw EF — that exercises the real
   audit-stamp pipeline.
-- `WithCleanDatabase()` extension on the test factory truncates between
-  tests when needed; default is per-test Postgres container so isolation
-  is free.
+- Each integration-test class owns a unique SQLite database file; reset helpers
+  clear state between cases when needed.
 
 ---
 
@@ -269,14 +253,16 @@ tests above plus the manual PWA validation checklist's sign-in steps
 
 ---
 
-## 🤝 The `task test` Contract
+## 🤝 The `task verify` Contract
 
-`task test` is the single command CI runs, and it is the single command a
-developer runs before pushing. If `task test` is green locally, it should
-be green in CI — modulo Docker version and machine speed.
+`task verify` is the single command CI runs, and it is the single command a
+developer runs before opening a PR. It covers format, build, type-check, lint,
+unit/component tests, real-HTTP integration tests, contract and migration drift,
+test-collection floors, dependency vulnerabilities, and security scanning.
+It requires neither Docker nor a browser download.
 
 If you find yourself thinking "I'll just push and let CI catch it" — fix
-the thing that's making `task test` slow or noisy. That's a bug in the
+the thing that's making `task verify` slow or noisy. That's a bug in the
 test harness, not a process problem.
 
 ---
@@ -331,10 +317,9 @@ harness is retired. To add coverage for a new user-facing journey:
 
 ## 🔧 CI Behavior
 
-- `quality-gate.yml` runs `task test` on every push and PR.
-- `security-scan.yml` runs the dependency / secret / SBOM checks.
-- Both workflows are owned by Bishop; do not edit them as part of a
-  feature PR — open a separate PR if a workflow change is genuinely needed.
+- `quality-gate.yml` runs `task verify` on every push and PR, plus CodeQL,
+  gitleaks, Trivy configuration scanning, and main-only SBOM generation.
+- `ci.yml` is manual-dispatch diagnostics and also invokes `task verify`.
 - A failed test fails the gate. There is no "rerun and hope" — fix or
   revert.
 

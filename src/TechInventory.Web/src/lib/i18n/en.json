@@ -107,6 +107,8 @@
 		"sessionExpired": "Your session has expired. Please sign in again.",
 		"accessDenied": "Access denied. You do not have permission to view this page.",
 		"unauthorized": "You must be signed in to access this page.",
+		"profileUnavailable": "Your household profile is not available yet.",
+		"profileLoadFailed": "Failed to load your household profile.",
 		"local": {
 			"useLocalAccount": "Use a local account instead",
 			"backToSso": "Back to single sign-on",

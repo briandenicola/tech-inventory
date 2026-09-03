@@ -1,13 +1,12 @@
 /**
- * AppBottomNav component tests — F045 §5.6 / Drake D-A..D-D.
+ * AppBottomNav component tests — F045 §5.6 / #143 opaque full-width bar.
  *
- * Covers: role gates (Add hidden for Viewer), active-state markers, safe-area
- * fixed positioning, and axe cleanliness. Visual/CSS-token details are
- * covered by manual spec review (drake-pwa-visual-rules.md), not asserted
- * here since jsdom doesn't compute backdrop-filter/color-mix.
+ * Covers: role gates (Add hidden for Viewer), active-state markers,
+ * opaque/full-width/safe-area bar structure, Settings merged into bar,
+ * and axe cleanliness.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/svelte';
+import { render, screen } from '@testing-library/svelte';
 import { axe } from 'vitest-axe';
 import userEvent from '@testing-library/user-event';
 import AppBottomNav from './AppBottomNav.svelte';
@@ -24,7 +23,7 @@ describe('AppBottomNav', () => {
 		onAdd: vi.fn()
 	};
 
-	it('renders Home, Add, and Reports inside one pill, and Settings as a separate bubble', () => {
+	it('renders Home, Add, Reports, and Settings as direct children of the nav bar', () => {
 		render(AppBottomNav, { props: defaultProps });
 
 		const nav = screen.getByRole('navigation', { name: 'Primary navigation' });
@@ -33,56 +32,55 @@ describe('AppBottomNav', () => {
 		expect(screen.getByRole('link', { name: /home/i })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: 'Add' })).toBeInTheDocument();
 		expect(screen.getByRole('link', { name: /reports/i })).toBeInTheDocument();
-
-		const settingsLink = screen.getByRole('link', { name: 'Settings' });
-		expect(settingsLink).toBeInTheDocument();
-		expect(settingsLink).toHaveAttribute('title', 'Settings');
+		expect(screen.getByRole('link', { name: 'Settings' })).toBeInTheDocument();
 	});
 
-	it('exposes the pill as a role="group" containing exactly Home, Add, and Reports — Settings is outside it', () => {
+	it('renders Settings as an app-bottom-nav__item inside the nav (not a separate bubble)', () => {
 		const { container } = render(AppBottomNav, { props: defaultProps });
 
-		const pill = screen.getByRole('group');
-		expect(pill).toHaveClass('app-nav__pill');
+		const nav = container.querySelector('.app-bottom-nav');
+		expect(nav).not.toBeNull();
 
-		const pillItems = within(pill).getAllByRole('link').concat(within(pill).getAllByRole('button'));
-		expect(pillItems).toHaveLength(3);
-		expect(within(pill).getByRole('link', { name: /home/i })).toBeInTheDocument();
-		expect(within(pill).getByRole('button', { name: 'Add' })).toBeInTheDocument();
-		expect(within(pill).getByRole('link', { name: /reports/i })).toBeInTheDocument();
-
-		// Settings is a sibling of the pill, not a descendant of it.
-		expect(within(pill).queryByRole('link', { name: 'Settings' })).not.toBeInTheDocument();
 		const settingsLink = screen.getByRole('link', { name: 'Settings' });
-		expect(pill.contains(settingsLink)).toBe(false);
-		expect(container.querySelector('.app-nav')?.contains(settingsLink)).toBe(true);
+		expect(settingsLink).toHaveClass('app-bottom-nav__item');
+		// Settings is a direct child of the nav bar, not wrapped in a pill or bubble.
+		expect(nav!.contains(settingsLink)).toBe(true);
+		// There should be no separate bubble element.
+		expect(container.querySelector('.app-nav__bubble')).toBeNull();
 	});
 
-	it('gives every pill item and the Settings bubble a ≥44px tappable hit area (constitution §6.5.6)', () => {
+	it('applies the opaque full-width bar class (no translucent pill wrapper)', () => {
+		const { container } = render(AppBottomNav, { props: defaultProps });
+
+		// #143: The new bar uses app-bottom-nav — no floating pill or bubble.
+		expect(container.querySelector('.app-bottom-nav')).not.toBeNull();
+		expect(container.querySelector('.app-nav__pill')).toBeNull();
+		expect(container.querySelector('.app-nav__bubble')).toBeNull();
+	});
+
+	it('gives every nav item a ≥44px tappable hit area via app-bottom-nav__item (constitution §6.5.6)', () => {
 		render(AppBottomNav, { props: defaultProps });
 
 		for (const el of [
 			screen.getByRole('link', { name: /home/i }),
 			screen.getByRole('button', { name: 'Add' }),
-			screen.getByRole('link', { name: /reports/i })
+			screen.getByRole('link', { name: /reports/i }),
+			screen.getByRole('link', { name: 'Settings' })
 		]) {
-			expect(el).toHaveClass('app-nav__item');
+			// app-bottom-nav__item declares min-height: 3rem (51px @ 17px root),
+			// clearing the 44px floor.
+			expect(el).toHaveClass('app-bottom-nav__item');
 		}
-		// app-nav__item declares min-height: 3rem (48px) and app-nav__bubble
-		// declares a fixed 3.5rem × 3.5rem (56px) box — both clear the 44px
-		// floor (jsdom does not resolve rem/CSS custom properties, so the
-		// class hook is the reliable proxy, matching this file's existing
-		// convention for CSS-token assertions).
-		expect(screen.getByRole('link', { name: 'Settings' })).toHaveClass('app-nav__bubble');
 	});
 
 	it('hides the Add action for Viewer role (no create permission)', () => {
 		render(AppBottomNav, { props: { ...defaultProps, currentUser: makeUser('Viewer') } });
 
 		expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument();
-		// The rest of the pill is unaffected by role.
+		// Remaining three items are unaffected by role.
 		expect(screen.getByRole('link', { name: /home/i })).toBeInTheDocument();
 		expect(screen.getByRole('link', { name: /reports/i })).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Settings' })).toBeInTheDocument();
 	});
 
 	it('shows the Add action for Admin and Member roles', () => {
@@ -108,7 +106,7 @@ describe('AppBottomNav', () => {
 		expect(screen.getByRole('link', { name: /home/i })).not.toHaveAttribute('aria-current');
 	});
 
-	it('marks the Settings bubble active via aria-current when pathname matches', () => {
+	it('marks Settings active via aria-current when pathname matches', () => {
 		render(AppBottomNav, { props: { ...defaultProps, pathname: '/settings' } });
 
 		expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'page');
@@ -123,16 +121,18 @@ describe('AppBottomNav', () => {
 		expect(onAdd).toHaveBeenCalledTimes(1);
 	});
 
-	it('renders the pill and the Settings bubble as the only two direct children of <nav>', () => {
+	it('has all items directly inside <nav> with no intermediate pill wrapper', () => {
 		const { container } = render(AppBottomNav, { props: defaultProps });
-		const nav = container.querySelector('.app-nav');
+		const nav = container.querySelector('.app-bottom-nav');
 		expect(nav).not.toBeNull();
-		// Structural contract the fixed-position CSS relies on: exactly the
-		// pill (role="group") and the bubble, in that order, as direct
-		// children — not nested inside one another.
-		expect(nav!.children).toHaveLength(2);
-		expect(nav!.children[0]).toHaveClass('app-nav__pill');
-		expect(nav!.children[1]).toHaveClass('app-nav__bubble');
+
+		// All four items are direct children of the nav bar. No role="group" pill.
+		const directChildren = Array.from(nav!.children);
+		// With canAdd=true (Member role), we expect 4 items.
+		expect(directChildren).toHaveLength(4);
+		for (const child of directChildren) {
+			expect(child).toHaveClass('app-bottom-nav__item');
+		}
 	});
 
 	it('has no accessibility violations', async () => {

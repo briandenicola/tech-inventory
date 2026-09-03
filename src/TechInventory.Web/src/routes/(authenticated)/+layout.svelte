@@ -310,7 +310,21 @@
 	</header>
 
 	<!-- Main Content Area -->
-	<main class="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8" id="main-content">
+	<!--
+		F045 §5.2 / #143: When in PWA mode, the fixed bottom nav bar is
+		3.5rem tall + env(safe-area-inset-bottom). We add matching padding
+		here so the last device row scrolls fully above the bar.
+		pt-8 / pb-8 are preserved for non-PWA; only bottom padding is
+		overridden in PWA mode via the inline style.
+	-->
+	<main
+		class="mx-auto w-full max-w-7xl flex-1 px-4 pt-8 sm:px-6 lg:px-8"
+		class:pb-8={!displayMode.isPwa}
+		style={displayMode.isPwa
+			? 'padding-bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px) + 2rem)'
+			: ''}
+		id="main-content"
+	>
 		<PullToRefresh onRefresh={pageRefreshHandler}>
 			{@render children()}
 		</PullToRefresh>

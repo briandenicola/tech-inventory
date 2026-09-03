@@ -47,8 +47,8 @@ as an explicit exception under `plan.md` §2.10, not silently dropped.
 | --- | --- | --- | --- |
 | M-01 | Install the app on iOS Safari (Add to Home Screen); it launches standalone with the correct name/icon | | |
 | M-02 | Install on desktop Chromium; it launches standalone | | |
-| M-03 | In the **installed** app on a phone: the bottom nav pill + Settings bubble render, every nav target is comfortably tappable, and the last list row is not hidden behind the nav | | |
-| M-04 | In a **mobile browser tab** (not installed): no bottom nav, Add FAB present | | |
+| M-03 | In the **installed** app on a phone: the opaque full-width bottom bar (Home / Add / Reports / Settings) renders edge-to-edge, every item is comfortably tappable, the bar is fully opaque (no content visible through it), and the last list row scrolls fully above the bar without being hidden | | |
+| M-04 | In a **mobile browser tab** (not installed): no bottom bar is present | | |
 | M-05 | After deploying a new build, the update prompt appears and reloads to the new version | | |
 | M-06 | Go offline, navigate to an uncached route: the `/offline` shell is served, not a browser error page | | |
 | M-07 | Offline: a previously viewed device list still renders from cache | | |
@@ -63,13 +63,23 @@ as an explicit exception under `plan.md` §2.10, not silently dropped.
 | M-16 | Admin reference pages (`/admin/brands`, `/admin/categories`, `/admin/owners`, `/admin/locations`, `/admin/networks`, `/admin/tags`): keyboard navigation, labels, focus visibility, contrast, and responsive layout spot check | | |
 | M-17 | On a standard phone viewport (≤ 390 px wide, e.g. iPhone 14 / Pixel 7): open the mobile nav popover (`AppMenuPopover`) — every nav item row is at least 44 px tall and the full label is readable without truncation in both light and dark themes | | |
 | M-18 | On a desktop browser (≥ 768 px): open the header user-menu dropdown and the Configuration dropdown (`AppDesktopConfigMenu`) — each row is at least 44 px tall and renders correctly in both light and dark themes | | |
+| M-19 | On an installed PWA at 375 px wide (e.g. iPhone SE): navigate to the Admin → Audit Log page, perform a horizontal touch-swipe on the audit table — all columns scroll into view while the page header, Filters toggle, and pagination controls remain stationary (not part of the scroll region) | | |
+| M-20 | On iOS Safari (real device or Simulator) at 320–375 px: open the Add Device form and tap the Purchase Date field — the native date picker appears and the input does not overflow the form column at any picker stage; confirm the same on the Edit Device form | | |
+| M-21 | On an installed PWA at 375 px wide: open the hamburger menu and observe the Appearance row — the Light/Dark/System selector shows **icon-only** buttons (sun, moon, grid) with no visible text labels and no truncation; each icon's selected state is visually clear; confirm the desktop Settings page still shows full "Light / Dark / System" text labels | | |
 
-**18 checks, all owner `briandenicola`.** M-16 compensates for the route-level
+**21 checks, all owner `briandenicola`.** M-16 compensates for the route-level
 composition gap identified by the post-major-work QC audit; M-17 and M-18 cover
 the mobile-popover and desktop-nav tap-target density introduced by issues #134
-and #144 (branch `squad/134-144-desktop-nav-density`) — these are rendered
-viewport observations that cannot be asserted by jsdom or in-process HTTP
-clients. The remaining
+and #144 (branch `squad/134-144-desktop-nav-density`); M-19 covers the real
+touch-scroll gesture on the audit table (#146) — the component test proves the
+DOM structure (scroll region, class, table containment) but cannot exercise
+actual touch scrolling in jsdom; M-20 covers the iOS WebKit native date-picker
+rendering at narrow viewports (#148) — the component test proves the
+containment classes (`date-input-contain`, `min-w-0`, `w-full`) but cannot
+exercise WebKit's intrinsic sizing or the native picker UI; M-21 covers the
+icon-only theme toggle in the compact PWA menu (#147) — the component test
+proves the iconOnly prop suppresses the span labels and retains aria-label, but
+cannot observe real-device icon rendering or confirm no visual truncation. The remaining
 checks exist only because their risks require a real browser environment. None
 duplicates an existing Vitest or HTTP
 integration/contract assertion — each exists only because the risk is

@@ -475,13 +475,20 @@
 		>
 			{t('devices.columns.purchaseDate')}
 		</label>
+		<!--
+			#148: min-w-0 prevents iOS/WebKit from asserting an intrinsic
+			minimum width on native date controls that would push the input
+			wider than its form column and cause the modal to overflow.
+			The date-input-contain class adds a max-width safety net via
+			the scoped <style> block below.
+		-->
 		<input
 			id="purchaseDate"
 			type="date"
 			bind:value={formData.purchaseDate}
 			onblur={() => handleBlur('purchaseDate')}
 			disabled={isDisabled('purchaseDate')}
-			class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors hover:border-neutral-400 focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:hover:border-neutral-600 dark:focus-visible:border-primary-500 dark:disabled:bg-neutral-900"
+			class="date-input-contain mt-1 block w-full min-w-0 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors hover:border-neutral-400 focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:hover:border-neutral-600 dark:focus-visible:border-primary-500 dark:disabled:bg-neutral-900"
 		/>
 		{#if touched.purchaseDate && errors.purchaseDate}
 			<p class="mt-1 text-sm text-danger-600 dark:text-danger-400">{errors.purchaseDate}</p>
@@ -754,3 +761,23 @@
 				onCancel={handleQuickCancelled}
 	/>
 {/if}
+
+<style>
+	/*
+	 * #148: Constrain native date inputs on iOS/WebKit.
+	 *
+	 * iOS WebKit can assign a minimum intrinsic width to input[type=date]
+	 * that overrides `width: 100%`, causing the native control to expand
+	 * beyond its form column and force the modal wider than the viewport.
+	 *
+	 * `max-width: 100%` caps the control at its parent's width regardless
+	 * of the browser's intrinsic sizing. Combined with the `min-w-0`
+	 * Tailwind class (min-width: 0) on the element, this removes the
+	 * minimum-content-size floor that triggers the overflow.
+	 *
+	 * Scoped to DeviceForm so other forms are not affected.
+	 */
+	.date-input-contain {
+		max-width: 100%;
+	}
+</style>

@@ -385,9 +385,15 @@
 			</p>
 		</div>
 	{:else}
+		<!--
+			#146: Wrap the table in overflow-x-auto so narrow PWA viewports can
+			horizontally scroll to every column. The outer div retains its
+			border/rounded treatment; only the inner scroll region moves.
+		-->
 		<div
 			class="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow dark:border-neutral-800 dark:bg-neutral-950"
 		>
+			<div class="overflow-x-auto" data-audit-scroll-region>
 			<table class="min-w-full divide-y divide-neutral-200 dark:divide-neutral-800">
 				<thead class="bg-neutral-50 dark:bg-neutral-900">
 					<tr>
@@ -460,6 +466,7 @@
 					{/each}
 				</tbody>
 			</table>
+			</div><!-- /overflow-x-auto scroll region -->
 
 			<PaginationControls
 				currentPage={urlFilters.page}

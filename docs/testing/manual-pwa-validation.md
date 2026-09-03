@@ -65,8 +65,9 @@ as an explicit exception under `plan.md` §2.10, not silently dropped.
 | M-18 | On a desktop browser (≥ 768 px): open the header user-menu dropdown and the Configuration dropdown (`AppDesktopConfigMenu`) — each row is at least 44 px tall and renders correctly in both light and dark themes | | |
 | M-19 | On an installed PWA at 375 px wide (e.g. iPhone SE): navigate to the Admin → Audit Log page, perform a horizontal touch-swipe on the audit table — all columns scroll into view while the page header, Filters toggle, and pagination controls remain stationary (not part of the scroll region) | | |
 | M-20 | On iOS Safari (real device or Simulator) at 320–375 px: open the Add Device form and tap the Purchase Date field — the native date picker appears and the input does not overflow the form column at any picker stage; confirm the same on the Edit Device form | | |
+| M-21 | On an installed PWA at 375 px wide: open the hamburger menu and observe the Appearance row — the Light/Dark/System selector shows **icon-only** buttons (sun, moon, grid) with no visible text labels and no truncation; each icon's selected state is visually clear; confirm the desktop Settings page still shows full "Light / Dark / System" text labels | | |
 
-**20 checks, all owner `briandenicola`.** M-16 compensates for the route-level
+**21 checks, all owner `briandenicola`.** M-16 compensates for the route-level
 composition gap identified by the post-major-work QC audit; M-17 and M-18 cover
 the mobile-popover and desktop-nav tap-target density introduced by issues #134
 and #144 (branch `squad/134-144-desktop-nav-density`); M-19 covers the real
@@ -75,7 +76,10 @@ DOM structure (scroll region, class, table containment) but cannot exercise
 actual touch scrolling in jsdom; M-20 covers the iOS WebKit native date-picker
 rendering at narrow viewports (#148) — the component test proves the
 containment classes (`date-input-contain`, `min-w-0`, `w-full`) but cannot
-exercise WebKit's intrinsic sizing or the native picker UI. The remaining
+exercise WebKit's intrinsic sizing or the native picker UI; M-21 covers the
+icon-only theme toggle in the compact PWA menu (#147) — the component test
+proves the iconOnly prop suppresses the span labels and retains aria-label, but
+cannot observe real-device icon rendering or confirm no visual truncation. The remaining
 checks exist only because their risks require a real browser environment. None
 duplicates an existing Vitest or HTTP
 integration/contract assertion — each exists only because the risk is

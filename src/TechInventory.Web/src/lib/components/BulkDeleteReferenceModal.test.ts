@@ -63,7 +63,7 @@ describe('BulkDeleteReferenceModal', () => {
 		const onDeleted = vi.fn().mockResolvedValue(undefined);
 		const onCancel = vi.fn();
 		mocks.fetchReferenceDeviceCount.mockResolvedValue(0);
-		mocks.bulkDelete.mockResolvedValue({ deletedCount: 2 });
+		mocks.bulkDelete.mockResolvedValue({ affectedCount: 2 });
 
 		render(BulkDeleteReferenceModal, {
 			props: {
@@ -84,7 +84,7 @@ describe('BulkDeleteReferenceModal', () => {
 		await user.click(screen.getByRole('button', { name: /delete selected/i }));
 
 		await waitFor(() =>
-			expect(mocks.bulkDelete).toHaveBeenCalledWith({ ids: ['network-1', 'network-2'] })
+			expect(mocks.bulkDelete).toHaveBeenCalledWith({ networkIds: ['network-1', 'network-2'] })
 		);
 		expect(onCancel).toHaveBeenCalledOnce();
 		expect(onDeleted).toHaveBeenCalledOnce();
@@ -92,6 +92,112 @@ describe('BulkDeleteReferenceModal', () => {
 			expect.objectContaining({
 				type: 'success'
 			})
+		);
+	});
+
+	it('calls the brand bulk-delete endpoint with entity-specific ids (route/body regression, #130)', async () => {
+		const user = userEvent.setup();
+		mocks.fetchReferenceDeviceCount.mockResolvedValue(0);
+		mocks.bulkDelete.mockResolvedValue({ affectedCount: 1 });
+
+		render(BulkDeleteReferenceModal, {
+			props: {
+				entityType: 'brand',
+				items: [{ id: 'brand-1', name: 'Apple' }],
+				isOpen: true,
+				onDeleted: vi.fn(),
+				onCancel: vi.fn()
+			}
+		});
+
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: /delete selected/i })).toBeEnabled()
+		);
+		await user.click(screen.getByRole('button', { name: /delete selected/i }));
+
+		await waitFor(() =>
+			expect(mocks.bulkDelete).toHaveBeenCalledWith({ brandIds: ['brand-1'] })
+		);
+	});
+
+	it('calls the category bulk-delete endpoint with entity-specific ids (route/body regression, #130)', async () => {
+		const user = userEvent.setup();
+		mocks.fetchReferenceDeviceCount.mockResolvedValue(0);
+		mocks.bulkDelete.mockResolvedValue({ affectedCount: 1 });
+
+		render(BulkDeleteReferenceModal, {
+			props: {
+				entityType: 'category',
+				items: [{ id: 'category-1', name: 'Laptop' }],
+				isOpen: true,
+				onDeleted: vi.fn(),
+				onCancel: vi.fn()
+			}
+		});
+
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: /delete selected/i })).toBeEnabled()
+		);
+		await user.click(screen.getByRole('button', { name: /delete selected/i }));
+
+		await waitFor(() =>
+			expect(mocks.bulkDelete).toHaveBeenCalledWith({ categoryIds: ['category-1'] })
+		);
+	});
+
+	it('calls the location bulk-delete endpoint with entity-specific ids (route/body regression, #130)', async () => {
+		const user = userEvent.setup();
+		mocks.fetchReferenceDeviceCount.mockResolvedValue(0);
+		mocks.bulkDelete.mockResolvedValue({ affectedCount: 1 });
+
+		render(BulkDeleteReferenceModal, {
+			props: {
+				entityType: 'location',
+				items: [{ id: 'location-1', name: 'Office' }],
+				isOpen: true,
+				onDeleted: vi.fn(),
+				onCancel: vi.fn()
+			}
+		});
+
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: /delete selected/i })).toBeEnabled()
+		);
+		await user.click(screen.getByRole('button', { name: /delete selected/i }));
+
+		await waitFor(() =>
+			expect(mocks.bulkDelete).toHaveBeenCalledWith({ locationIds: ['location-1'] })
+		);
+	});
+
+	it('renders a specific ProblemDetails-derived error inline and shows exactly one error toast (no duplicate toasts)', async () => {
+		const user = userEvent.setup();
+		mocks.fetchReferenceDeviceCount.mockResolvedValue(0);
+		mocks.bulkDelete.mockRejectedValue(
+			new Error("Brand 'brand-1' cannot be deleted while referenced by active devices.")
+		);
+
+		render(BulkDeleteReferenceModal, {
+			props: {
+				entityType: 'brand',
+				items: [{ id: 'brand-1', name: 'Apple' }],
+				isOpen: true,
+				onDeleted: vi.fn(),
+				onCancel: vi.fn()
+			}
+		});
+
+		await waitFor(() =>
+			expect(screen.getByRole('button', { name: /delete selected/i })).toBeEnabled()
+		);
+		await user.click(screen.getByRole('button', { name: /delete selected/i }));
+
+		expect(
+			await screen.findByText(/cannot be deleted while referenced by active devices/i)
+		).toBeInTheDocument();
+		expect(mocks.addToast).toHaveBeenCalledTimes(1);
+		expect(mocks.addToast).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'error' })
 		);
 	});
 

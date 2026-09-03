@@ -6,15 +6,17 @@
  * matrix).
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
+import { render, screen, waitFor } from '@testing-library/svelte';
+import userEvent from '@testing-library/user-event';
 import type { ReferenceDataState } from '$lib/stores/referenceData';
 import type { CurrentUser } from '$lib/stores/auth';
 import { createDeviceResponse, resetFactories } from '$lib/test-utils/factories';
 
-const { goto, getMock, listTagsMock } = vi.hoisted(() => ({
+const { goto, getMock, listTagsMock, updateMock } = vi.hoisted(() => ({
 	goto: vi.fn(),
 	getMock: vi.fn(),
-	listTagsMock: vi.fn()
+	listTagsMock: vi.fn(),
+	updateMock: vi.fn()
 }));
 
 vi.mock('$app/navigation', () => ({ goto, beforeNavigate: vi.fn() }));
@@ -38,7 +40,7 @@ vi.mock('$lib/api/client', async () => {
 	const actual = await vi.importActual<typeof import('$lib/api/client')>('$lib/api/client');
 	return {
 		...actual,
-		devices: { ...actual.devices, get: getMock, listTags: listTagsMock }
+		devices: { ...actual.devices, get: getMock, listTags: listTagsMock, update: updateMock }
 	};
 });
 
@@ -75,6 +77,7 @@ describe('/devices/[id]/edit (C-13 Viewer route guard)', () => {
 		goto.mockReset();
 		getMock.mockReset().mockResolvedValue(createDeviceResponse({ id: 'device-1' }));
 		listTagsMock.mockReset().mockResolvedValue([]);
+		updateMock.mockReset().mockResolvedValue(createDeviceResponse({ id: 'device-1' }));
 	});
 
 	it('redirects a Viewer session away from the edit form to the device detail page', async () => {
@@ -122,5 +125,130 @@ describe('/devices/[id]/edit (C-13 Viewer route guard)', () => {
 
 		await screen.findByLabelText(/^Name/);
 		expect(goto).not.toHaveBeenCalled();
+	});
+});
+
+describe('/devices/[id]/edit — status preservation on submit (#133)', () => {
+	// Valid RFC4122-shaped UUIDs so the zod deviceFormSchema (which validates
+	// categoryId/ownerId/locationId as `.uuid()`) accepts the pre-populated
+	// values and the form can actually reach onSubmit.
+	const categoryId = '00000000-0000-4000-8000-000000000201';
+	const ownerId = '00000000-0000-4000-8000-000000000401';
+	const locationId = '00000000-0000-4000-8000-000000000501';
+
+	beforeEach(() => {
+		resetFactories();
+		goto.mockReset();
+		listTagsMock.mockReset().mockResolvedValue([]);
+		updateMock.mockReset().mockResolvedValue(createDeviceResponse({ id: 'device-1' }));
+
+		authStore.set({
+			currentUser: makeUser('Admin'),
+			isAuthenticated: true,
+			isLoading: false,
+			error: null,
+			authMethod: 'entra',
+			mustChangePassword: false
+		});
+	});
+
+	it.each(['InRepair', 'Lent'] as const)(
+		'forwards the current status (%s) on an ordinary edit instead of letting it silently reset to Active',
+		async (status) => {
+			const user = userEvent.setup();
+			getMock.mockReset().mockResolvedValue(
+				createDeviceResponse({
+					id: 'device-1',
+					categoryId,
+					ownerId,
+					locationId,
+					brandId: null,
+					networkId: null,
+					status
+				})
+			);
+
+			render(Page);
+
+			const nameInput = await screen.findByLabelText(/^Name/);
+			await user.clear(nameInput);
+			await user.type(nameInput, 'Renamed Device');
+
+			const saveButton = screen.getByRole('button', { name: /save/i });
+			await waitFor(() => expect(saveButton).toBeEnabled());
+			await user.click(saveButton);
+
+			await waitFor(() => expect(updateMock).toHaveBeenCalled());
+			const [, payload] = updateMock.mock.calls[0];
+			expect(payload.status).toBe(status);
+		}
+	);
+
+	it('preserves retiredDate/disposalMethod on a Retired device so a notes-only edit does not throw the "read-only" conflict', async () => {
+		// Regression: the API's "retired devices are read-only" guard does a
+		// strict equality check on retiredDate/disposalMethod against the
+		// stored values for a device that stays Retired. Omitting them (as the
+		// form did before #133) makes even an unrelated edit fail once status
+		// is correctly forwarded instead of resetting to Active.
+		const user = userEvent.setup();
+		getMock.mockReset().mockResolvedValue(
+			createDeviceResponse({
+				id: 'device-1',
+				categoryId,
+				ownerId,
+				locationId,
+				brandId: null,
+				networkId: null,
+				status: 'Retired',
+				retiredDate: '2026-01-15',
+				disposalMethod: 'Donated',
+				notes: 'Old note'
+			})
+		);
+
+		render(Page);
+
+		const notesInput = await screen.findByLabelText(/notes/i);
+		await user.type(notesInput, ' updated');
+
+		const saveButton = screen.getByRole('button', { name: /save/i });
+		await waitFor(() => expect(saveButton).toBeEnabled());
+		await user.click(saveButton);
+
+		await waitFor(() => expect(updateMock).toHaveBeenCalled());
+		const [, payload] = updateMock.mock.calls[0];
+		expect(payload.status).toBe('Retired');
+		expect(payload.retiredDate).toBe('2026-01-15');
+		expect(payload.disposalMethod).toBe('Donated');
+	});
+
+	it('allows changing status away from Retired via the Status control and submits the newly selected status', async () => {
+		const user = userEvent.setup();
+		getMock.mockReset().mockResolvedValue(
+			createDeviceResponse({
+				id: 'device-1',
+				categoryId,
+				ownerId,
+				locationId,
+				brandId: null,
+				networkId: null,
+				status: 'Retired',
+				retiredDate: '2026-01-15',
+				disposalMethod: null
+			})
+		);
+
+		render(Page);
+
+		const statusSelect = await screen.findByLabelText(/^Status/);
+		await user.selectOptions(statusSelect, 'Active');
+
+		const saveButton = screen.getByRole('button', { name: /save/i });
+		await waitFor(() => expect(saveButton).toBeEnabled());
+		await user.click(saveButton);
+
+		await waitFor(() => expect(updateMock).toHaveBeenCalled());
+		const [, payload] = updateMock.mock.calls[0];
+		expect(payload.status).toBe('Active');
 	});
 });

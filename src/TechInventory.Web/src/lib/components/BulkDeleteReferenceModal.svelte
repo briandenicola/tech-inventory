@@ -140,16 +140,16 @@
 			const response = await (async () => {
 				switch (entityType) {
 					case 'brand':
-						return api.brands.bulkDelete({ ids });
+						return api.brands.bulkDelete({ brandIds: ids });
 					case 'category':
-						return api.categories.bulkDelete({ ids });
+						return api.categories.bulkDelete({ categoryIds: ids });
 					case 'location':
-						return api.locations.bulkDelete({ ids });
+						return api.locations.bulkDelete({ locationIds: ids });
 					case 'network':
-						return api.networks.bulkDelete({ ids });
+						return api.networks.bulkDelete({ networkIds: ids });
 				}
 			})();
-			const affectedCount = response.deletedCount ?? response.affectedCount ?? ids.length;
+			const affectedCount = response.affectedCount ?? ids.length;
 			addToast({
 				type: 'success',
 				message: t('admin.bulk.deleteSuccess', { count: affectedCount })

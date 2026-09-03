@@ -737,6 +737,26 @@ iOS standalone PWA now auto-initiates Entra `loginRedirect` after boot-level aut
 
 PR from `fix/ios-pwa-silent-sso-redirect` → review → merge.
 
+---
+
+## Wave 1: #130 reference bulk-delete route/body + #133 device edit status preservation (2026-09-03)
+
+**Branch:** `squad/130-133-client-status` — PR #153 (draft, not merged)
+
+**#130 — Reference bulk-delete 405:**
+- Root cause was purely in the hand-written `client.ts` wrapper, not the generated OpenAPI types — the generated types already had the correct `/api/v1/{entity}/bulk/delete` route and entity-specific body shapes (`brandIds`/`categoryIds`/`locationIds`/`networkIds`). The hand-written layer had drifted (`bulk-delete` hyphenated + generic `{ ids }` body) and nobody had noticed because `devices.bulkDelete` (the one entity that *was* correct) was the template everyone should have copied but didn't.
+- **Lesson:** when a generated-client wrapper exists for one entity and hand-rolled wrappers exist for "similar" entities, diff them against each other first — divergence from the generated contract is often isolated to the hand-rolled code, not the schema.
+- `BulkOperationResponse` only has `affectedCount`, no `deletedCount` — the old hand-rolled response type had a nonexistent fallback field that was silently always `undefined`. A type that "compiles" against a hand-rolled interface can still be wrong if the interface itself doesn't match the real API response.
+
+**#133 — Device edit status omission:**
+- The reported defect ("InRepair/Lent reset to Active") was **narrower than the actual bug** — tracing the backend's `UpdateDeviceCommandHandler`/`Device.Reactivate()` showed Retired devices were affected too (any Retired-device edit, even notes-only, silently reactivated it). Always trace the *actual* domain logic path, not just the symptom described in the issue — the blast radius is often bigger.
+- Fixing the omission exposes a second, non-obvious regression: once status is correctly forwarded, `EnsureRetiredDeviceMutationIsSafe`'s strict-equality check on `retiredDate`/`disposalMethod` (vs. the general path's fallback-to-current-value behavior) means an edit route that "just" adds `status` to the payload can newly break Retired-device edits with a 409 unless those two fields are also explicitly preserved. **Lesson:** when a payload has previously been silently taking a "safe by accident" branch (Active/Reactivate ignores those fields), fixing the primary bug can activate a stricter code path that was never actually exercised before — read the full domain method, not just the branch matching the current bug.
+- `DeviceFormInput = z.infer<typeof deviceFormSchema>` resolves `.default()` fields to *required* (not optional) in the output type — every literal `DeviceFormInput` object built in test factories needed an explicit `status` value even though Zod would apply the default at parse-time. This is a Zod v3/v4 gotcha worth remembering for any future required-with-default field additions.
+- Decided NOT to add ownership-based gating to the new Status control, even though it surfaces a pre-existing inconsistency (backend `UpdateDevice` has no per-device ownership check, unlike the frontend's `canRetireDevice`/`canUnretireDevice` quick-action gating) — documented as a decisions-inbox drop (`vasquez-130-133-client-status.md`) rather than inventing new authorization semantics silently.
+
+**Tamper-test discipline confirmed useful:** the #130 body-shape regression test only exercises `BulkDeleteReferenceModal.svelte`'s call into the (mocked) client — it does NOT catch a route-string regression inside `client.ts` itself (there's no dedicated `client.test.ts` asserting raw fetch URLs in this codebase). Tampering the *route* found nothing; tampering the *body shape* (the actual bug class) failed as expected. Worth remembering: choose the tamper target that matches what the test actually asserts, not just "the bug that was fixed" in the abstract.
+
+**Validation:** 83 test files / 668 tests passing; `pnpm run check`/`lint`/`build` clean; `task verify` (full pipeline: backend integration tests, OpenAPI/contract drift, frontend build, vulnerability scan, gitleaks) passed. `task verify`'s `check:security` (gitleaks --repo) step is slow (~10+ min on this repo's history) — budget accordingly and don't assume a long silent gap means it's hung; confirm via `Get-Process` CPU growth before killing it.
 ## 2026-09-03 — Wave 1: #128 explicit Apply model + #132 category tree/search (branch `squad/128-132-filter-categories`)
 
 **Scope:** Two independent design-review defects fixed in the same worktree:

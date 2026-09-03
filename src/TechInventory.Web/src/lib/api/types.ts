@@ -42,15 +42,6 @@ export interface MergeEntityResponse {
 	targetId: string;
 }
 
-export interface ReferenceEntityBulkDeleteRequest {
-	ids: string[];
-}
-
-export interface ReferenceEntityBulkDeleteResponse {
-	affectedCount?: number;
-	deletedCount?: number;
-}
-
 export interface ReportBreakdownResponseItem {
 	label?: string | null;
 	name?: string | null;

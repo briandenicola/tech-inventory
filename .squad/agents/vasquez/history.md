@@ -736,3 +736,49 @@ iOS standalone PWA now auto-initiates Entra `loginRedirect` after boot-level aut
 **Next Steps:**
 
 PR from `fix/ios-pwa-silent-sso-redirect` → review → merge.
+
+## 2026-09-03 — Wave 1: #128 explicit Apply model + #132 category tree/search (branch `squad/128-132-filter-categories`)
+
+**Scope:** Two independent design-review defects fixed in the same worktree:
+- **#128** — `DeviceFilters` applied every control change immediately (URL + refetch on each click). Approved fix: explicit pending/apply model.
+- **#132** — Admin Categories page called the paginated/root-oriented `GET /api/v1/categories` list; children and inactive categories never rendered, search only scanned the root-level page it had fetched.
+
+**#128 fix — `DeviceFilters.svelte` + `devices.svelte.ts`:**
+- Local `pending = $state<DeviceFilters>(untrack(() => ({...filters})))` captured once from the applied `filters` prop; every control mutates `pending` only.
+- `hasPendingChanges` derived; `applyFilters()` emits the full pending payload via `onFiltersChange` — this is the ONLY path that changes URL/query/rows/applied-count badge.
+- `clearAll()` resets `pending` but does not commit until Apply (consistent with every other pending edit).
+- Save Default disabled + hint shown while `hasPendingChanges` is true, so a saved default can never silently diverge from what's actually applied.
+- Search intentionally stayed live/outside the pending model — it was never routed through the applied-filter badge/URL gate in the pre-existing design, and the issue's approved behavior only scoped the *filter panel* controls to Apply-gating.
+- Added a `latestRequestId` out-of-order-response guard in `useDevices()` — without it, a slow first Apply's response could resolve after a second (newer) Apply's response and clobber the newer rows.
+
+**#132 fix — `admin/categories/+page.svelte` + `client.ts`:**
+- Switched from `categories.list()` (paginated, root-oriented) to a new thin `categories.tree()` client method wrapping the already-existing `GET /api/v1/categories/tree` endpoint (no backend change needed — the endpoint already returned the full hierarchy with `includeInactive` support; it was simply never wired up on the frontend).
+- Added `flattenCategoryTree()`: recursively visits `node.children` and flattens into a depth-ordered display list, preserving hierarchy/ancestor context.
+- Inactive categories now render with an "Inactive" badge instead of being hidden; "Show Inactive" checkbox wired to `includeInactive` query param.
+- Search rewritten to traverse the full flattened tree (case-insensitive partial match), so a match on a grandchild surfaces with its ancestor chain intact.
+- Inline 409 duplicate-conflict messaging under the Name field, reusing the existing `ApiError`/inline-field-error pattern already used elsewhere in the form (no new error-handling infrastructure).
+- **Deferred/narrowed AC**: the "Show Inactive" gap and paginated-vs-tree mismatch likely exist on other reference-data admin pages (device types, locations) too — only Categories was in charter scope for #132; flagged as a related, deferred gap rather than silently expanding scope.
+
+**Real bugs found and fixed along the way (not scope creep — both were tightly coupled to the #132 work):**
+1. `en.json` has a stale top-level `"categories"` object (~line 629) that looks like the real i18n path but is dead weight — actual admin page reads from `"admin"."categories"` (~line 853). The new duplicate-conflict keys had been added to the wrong (legacy) object; `t()`'s fallback behavior is to `console.warn` and return the raw key string rather than throw, so this would have silently shipped literal key-path text in the UI instead of the real message. Moved the keys to the correct path.
+2. Zod UUID validation (`z.string().uuid()`) requires the RFC4122 variant nibble (`8/9/a/b`) in the third hex group — naive placeholder test UUIDs like `'11111111-1111-1111-1111-...'` fail validation silently inside the component's own `safeParse`, so a test asserting on a mocked API call can look like it "hung" when really the component just never got past its own form-validation gate. Use valid-variant UUIDs (e.g. `...-4111-8111-...`) in test fixtures.
+
+**Testing/tooling gotchas worth remembering:**
+- SvelteKit reserves the `+` filename prefix under `src/routes/**` for real route modules; a test file named `+page.test.ts` breaks `svelte-kit sync` (and therefore `pnpm run check`) with "Files prefixed with + are reserved" even though Vitest itself runs it fine. Existing repo convention: name route-colocated tests `page.test.ts` (no `+`) — see `admin/export/page.test.ts`, `admin/audit/page.test.ts`.
+- Svelte 5 runes (`$effect.root()`, `$state`, etc.) only compile in `.svelte`/`.svelte.js`/`.svelte.ts` files. To unit-test a `.svelte.ts` hook directly with runes, the test file itself must also be named `*.svelte.test.ts` (renamed `devices.test.ts` → `devices.svelte.test.ts`) or it throws `rune_outside_svelte`.
+- Reassigning a plain closure variable (`let filters = {...}`) does not retrigger a `$derived` reading it via a getter — the getter must close over a genuine `$state` variable for Svelte's dependency tracking to fire. Declare test fixtures with `$state(...)` when they need to trigger reactive re-derivation mid-test.
+- `untrack(() => ({...filters}))` is the idiomatic way to silence Svelte 5's `state_referenced_locally` warning for an intentional one-time initial-value capture from a reactive source into local `$state` — makes the "snapshot, not subscription" intent explicit in code, not just in a comment.
+
+**Validation:**
+✅ Targeted: `DeviceFilters.test.ts` 17/17, `devices.svelte.test.ts` 14/14, `admin/categories/page.test.ts` 7/7
+✅ Full: `pnpm exec vitest run` — 84 files / 664 tests passing
+✅ `pnpm run check` — 0 errors, 0 warnings
+✅ `pnpm run lint` — clean
+✅ `pnpm run build` — succeeds
+✅ `task verify` (verify:full — backend build/tests, frontend build/tests, client-drift, migration-drift, integration tests, vulnerability scan, repo-wide secret scan) — all green (unit 278, frontend 664/84, integration 292/4-skipped, security scan 941 files)
+✅ Tamper-test #132: disabled the recursive `children.forEach(visit)` line in `flattenCategoryTree()` → 3/7 tests failed as expected (full-depth rendering, inactive badge, recursive search); restored, green again.
+✅ Tamper-test #128: made `handleFilterChange` call `onFiltersChange` immediately (bypassing Apply) → 2/17 tests failed as expected (unapplied-filter-stability, full-payload-only-on-Apply); restored, green again.
+
+**Commits:** `5d991eb` (#128), `af802f7` (#132) on `squad/128-132-filter-categories`.
+
+**Next Steps:** Open Wave 1 PR (both fixes reviewable together as one PR — independent files, no overlap); do not merge; await review.

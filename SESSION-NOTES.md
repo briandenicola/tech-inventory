@@ -4,6 +4,57 @@ Append-only log. Newest entries at the top.
 
 ---
 
+## 2026-09-02 — T105 Agentic development foundation completed and pushed + final QC review gate
+
+**Agentic development foundation (specs/004-agentic-development-foundation) — COMPLETE and APPROVED**
+
+This session formalized the agentic development gates, enforced critical controls, and closed the last six revision cycles of T101–T105 (the multi-session work package addressing the PR #140 incident chain). The full foundation now lives at `chore/agentic-development-foundation` and is completed and pushed; awaiting QC audit and PR.
+
+**T105 Final Approval (Bishop gate, 2026-09-02):**
+- Completed at commit `b94cb6a` (chore: enforce agentic development gates) after three prior rejections and six revision cycles: Hicks (B-1/B-2), Hudson (B-3/B-4), Scribe (B-5), Vasquez (B-6)
+- All blockers verified closed: `check:security --repo` exits 0 across **940 tracked + untracked non-ignored files**, **0 pattern matches** on the complete changeset (literal backtick boundary split, non-matching, meaning preserved); index reset with all **30 files byte-identical**; paired tamper probes confirm scanner still blocks the real call and no exemption was added; full `task verify` **exit 0** end-to-end
+- **AC-009 met**: tamper-tested guards for stale Playwright refs, OpenAPI/client/migration drift, test floors, vulnerable packages (direct + transitive), security scan, subtask failure propagation
+
+**T104 / T102 / T101 / T103 Status:**
+- **T104**: Single authoritative verification command `task verify` (local alias, Taskfile, CI workflows); observed end-to-end exit 0 at `b3c092f` by Apone (5m32s, 278 unit + 649 frontend + 296 integration tests, client-drift, stale-refs 0/940+, vulnerable check, security scan); **AC-008 met**
+- **T102**: Valuable coverage migrated to lower layers — 5 `H-` HTTP items, 20 completed `C-` component items plus C-18 partial and C-20 accepted gap, 649 Vitest tests, 15 `M-` manual PWA checks owned by `briandenicola`, and 9 accepted gaps (G-01–G-09); Viewer authorization defects fixed, and 26 AdminOrMember-gated mutations have explicit 403 OpenAPI contract coverage; **AC-006 met**
+- **T101**: Playwright harness retired — `tests/e2e/**` deleted, stale-reference guard enforced (0 references across 901 tracked files), guard tests 18/18, clean install 0 Playwright, three tamper tests fail closed; Issue #89 closed with evidence; **AC-005 met**
+- **T103**: Coverage migration matrix complete — 28 tracked files, 17 specs, deletion authority recorded (5 `H-` + 22 `C-` + 15 `M-` + 9 `G-`); every removed test names replacement or explicit owner; **AC-007 met**
+
+**Foundation Approval & Governance:**
+- Approved by `briandenicola` 2026-09-02, base_sha `d303cd6` (main @ PR #140 merge instant), commits `b3c092f` / `764282e` / `b94cb6a`
+- Four acceptance criteria met: AC-001–AC-004 (documents + research), AC-005–AC-009 (implementation + enforced guards + tamper-tested)
+- First principles recorded: seven non-skippable work states, T0–T3 ceremony, `ENFORCED`/`REVIEWED`/`ADVISORY` with no fourth state, tests at lowest reliable layer, local/CI parity (`plan.md` §2.1–§2.10)
+- ADR 0002 (`docs/adr/0002-retire-browser-e2e-framework.md`) and the constitution/PRD Playwright amendments were completed in T105
+- Branch-protection recommendation recorded in `validation.md` §16.6; main currently `404 Branch not protected`; user to apply via GitHub UI if desired
+
+**Staged changeset (30 files, 4,074 insertions, 442 deletions):**
+- Tests: 28 E2E files deleted; 649 Vitest + 296 integration enforced at test-floor gates; manual checklist published
+- Controls: 10 critical non-browser mechanism classes fail-closed (gitleaks installer, stale-ref scanner, client-drift, vulnerable-package, security-scan, test-floor collection, migration-drift, OpenAPI-drift, subtask-failure propagation); all tamper-tested
+- Governance: ADR 0002 completed, CODEOWNERS placeholder fix, PR template DoD alignment, check inventory in workflows/README
+
+**What remains before merge (next session action):**
+1. **Post-major-work QC audit** (skill:post-major-work-qc-audit): comprehensive engineering review (best practices, security, docs, architecture, test coverage, supply chain, UX, ops readiness)
+2. **Resolve blockers** if any emerge from QC audit
+3. **Commit and push QC corrections** to the feature branch
+4. **Open PR** and coordinate with operations for GitHub Actions identity
+5. **Observe real GitHub Actions**: run Quality Gate / ci.yml, confirm check context names match `.github/workflows/` job ids, watch `task verify` exit 0
+6. **Branch protection decision**: apply GitHub UI recommendation or explicitly decline with reason
+7. **Merge** to main once QC audit + CI observation complete and merge readiness confirmed
+
+**Highest-value follow-ups** (post-merge backlog):
+- **F-17** (highest value): align `check-security.mjs --repo` to tracked + untracked non-ignored enumeration
+- **Migration drift**: make the check clean/rebuild-safe so stale incremental build output cannot cause false results
+- **Backlog triage** (#127–#148): 21 issues ready; recommended first work:
+  - #130: Admin bulk-delete returns wrong URL/body/response/copy (frontend client-contract mismatch, not backend routing regression)
+  - #129 + #138: Admin bulk-deactivate returns 404 Not Found (one frontend client root cause across six reference types: Brands, Categories, Locations, Networks, Owners, Tags)
+  - #133: Priority data-integrity bug—ordinary device edit can silently reset non-Active status to Active
+  - Established seven-wave order: #130; #129+#138; #133→#127; #132→#128; #135→#139; #142→#145→#141→#143→#146→#147→#148 as PWA wave additions; #131→#136; #134→#144→#137
+
+**Validation:** ✅ all gates passed locally, CI execution pending, merge readiness separate and still open (§16.8 in `validation.md`).
+
+---
+
 ## 2026-06-23 — Device retire action + list view-state continuity
 
 - Added a detail-screen **Retire Device** action for active devices in `DeviceActionsMenu.svelte`, backed by `RetireDeviceModal.svelte` and shared `deviceRetirement.ts` helpers; Admins can retire any active device and Members only active devices they own.

@@ -1,34 +1,37 @@
 ---
-updated_at: 2026-05-19T20:50:00Z
-focus_area: P4 — Continuous Iteration (post-MVP, backlog-driven). PWA field-test (2026-05-19) produced F026–F033; F026 is the recommended next pull.
-active_issues: []
+updated_at: 2026-09-02T23:30:00Z
+focus_area: Post-foundation QC audit and PR preparation before merge to main
+active_issues: T105 DONE; foundation ready for QC; backlog #127–#148 triaged
 ---
 
 # What We're Focused On
 
-The product is **production-validated** at `https://inventory.denicolafamily.com`
-as of 2026-05-19. P0 (Foundation), P1 (Core API), P2 (Frontend MVP + Auth),
-and P3 (Production Launch) all shipped. The phase model was rewritten on
-2026-05-19 to match what actually happened — see `docs/prd.md` §13.
+**T105 Agentic development foundation is COMPLETE and APPROVED** (commit `b94cb6a`, 2026-09-02).
 
-We are now in **P4 — Continuous Iteration**: work pulls from
-`specs/_backlog/` (F-numbered entries). No further linear phases planned.
+The six-cycle agentic development gate package (T001–T105, addressing PR #140 incident chain) has been completed and pushed; awaiting QC/PR/merge. All acceptance criteria met; 10 critical non-browser controls verified fail-closed locally; ADR 0002 and the constitution/PRD Playwright amendments completed.
 
-**Latest input — Brian's 2026-05-19 PWA field-test** produced eight new
-backlog entries (F026–F033). Recommended sequencing (per session plan in
-`~/.copilot/session-state/`):
+**Immediate next action:** Post-major-work QC audit (skill:post-major-work-qc-audit)
+- Comprehensive engineering review: best practices, security, docs, architecture, test coverage, supply chain, UX, ops readiness
+- GitHub Actions execution still unobserved; coordinate with operations to run Quality Gate / ci.yml and confirm check context names match workflow job ids
+- Open PR after QC completion
+- Branch protection recommendation recorded; user to apply via GitHub UI (separate from this PR)
+- Merge readiness finalized only after QC audit + CI observation
 
-1. **F026** — PWA quick-win UX pack (transparent-overlay bug, `+` FAB,
-   Active-default filter, 2-up cards, audit modal, pinch-zoom off)
-2. **F030** — Device tagging bug repro + fix
-3. **F029** — Dark-mode toggle + audit-log contrast repair
-4. **F028** — Infinite scroll + pull-to-refresh
-5. **F027** — Global hamburger nav + responsive admin pages
-6. **F031** — Merge duplicate reference data (Brands/Categories/Locations)
-7. **F032** — Insurance-ready PDF report (first concrete Phase-4 reporting
-   entry)
-8. **F033** — Device images + room capture (umbrella, pairs with F018)
+**Foundation state:**
+- Playwright retired safely (T101): 0 stale references across 901 tracked files; stale-reference guard enforced and tamper-tested
+- Valuable E2E coverage migrated (T102): 649 Vitest + 296 integration tests enforced at test-floor gates; 26 AdminOrMember-gated mutations have explicit 403 OpenAPI contract coverage; manual PWA checklist with owner `briandenicola` (G-01–G-09 accepted gaps recorded: C-18 partial on 5 of 6 routes, C-20 gap)
+- Single authoritative verification surface (T104): `task verify` alias runs same entrypoints locally and in CI; observed exit 0 end-to-end (5m32s)
+- Required checks aligned and tamper-tested (T105): 10 critical non-browser controls fail-closed and independently verified by reviewer run
 
-Background pulls (no new urgency): F018, F019, F020b, F021b, F024b, F025b.
+**Known high-value follow-ups** (post-merge backlog):
+- **F-17**: align `check-security.mjs --repo` to tracked + untracked non-ignored file enumeration
+- **Migration drift**: make the check clean/rebuild-safe so stale incremental build output cannot cause false results
+- **Backlog triage** (#127–#148): 21 issues ready; recommended first work:
+  - #130: Admin bulk-delete returns wrong URL/body/response/copy (frontend client-contract mismatch, not backend routing regression)
+  - #129 + #138: Admin bulk-deactivate returns 404 Not Found (one frontend client root cause across six reference types: Brands, Categories, Locations, Networks, Owners, Tags)
+  - #133: Priority data-integrity bug—ordinary device edit can silently reset non-Active status to Active
+  - Established seven-wave order: #130; #129+#138; #133→#127; #132→#128; #135→#139; #142→#145→#141→#143→#146→#147→#148 as PWA wave additions; #131→#136; #134→#144→#137
 
-Updated by coordinator at session start.
+**Phase**: Post-foundation stabilization and QC. No product code changes pending; focus is on verification, merge, and backlog triage.
+
+Updated by Scribe at session end: T105 approved; next session to execute post-major-work QC audit.

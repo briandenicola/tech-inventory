@@ -7,13 +7,12 @@
  * sentinel: it fails precisely when the guarded class is removed or
  * misspelled, without snapshotting the entire class string.
  *
- * PRE-FIX STATUS (sticky right-0 guards):
- *   The actions <th>/<td> do NOT yet carry sticky right-0 — these
- *   assertions are pre-fix sentinels for Vasquez's #145 branch.  They
- *   will report failure on the current HEAD and pass once the fix lands.
+ * TAMPER-TESTED guards (sticky right-0 on actions column — fixed by #145):
+ *   Removing sticky/right-0 from the actions <th>/<td> makes those tests
+ *   fail; restoring them makes them pass again.
  *
- * PRE-FIX STATUS (truncate on content cells):
- *   Non-name content cells do not yet carry truncate. Pre-fix sentinel.
+ * TAMPER-TESTED guards (truncate on content cells — fixed by #145):
+ *   Removing truncate from a non-name content <td> makes that test fail.
  *
  * TAMPER-TESTED guards (sticky left-0 on name column — already fixed):
  *   Removing sticky/left-0 from the name <th> / <td> makes those tests
@@ -54,12 +53,12 @@ describe('DeviceTableDesktop — #145 action-column pin contract', () => {
 		resetFactories();
 	});
 
-	// ── PRE-FIX sentinel ──────────────────────────────────────────────────────
+	// ── TAMPER-TESTED sentinel ───────────────────────────────────────────────
 	// The actions <th> must carry "sticky" and "right-0" so it remains
 	// anchored during horizontal scroll of the table container. Without
 	// sticky the column drifts off-screen; without right-0 it anchors to
 	// the wrong edge.
-	it('actions <th> carries sticky and right-0 (pre-fix: will fail until Vasquez lands #145)', () => {
+	it('actions <th> carries sticky and right-0', () => {
 		const devices = createDeviceList(1);
 		const { container } = render(DeviceTableDesktop, {
 			props: { devices, onSort: noop }
@@ -73,10 +72,10 @@ describe('DeviceTableDesktop — #145 action-column pin contract', () => {
 		expect(actionsTh!.className, 'actions <th> must pin to the right edge').toMatch(/\bright-0\b/);
 	});
 
-	// ── PRE-FIX sentinel ──────────────────────────────────────────────────────
+	// ── TAMPER-TESTED sentinel ───────────────────────────────────────────────
 	// The actions data <td> must also be sticky right-0 so each row's
 	// action cell tracks the viewport edge during horizontal scroll.
-	it('actions data <td> carries sticky and right-0 (pre-fix: will fail until Vasquez lands #145)', () => {
+	it('actions data <td> carries sticky and right-0', () => {
 		const devices = createDeviceList(1);
 		const { container } = render(DeviceTableDesktop, {
 			props: { devices, onSort: noop }
@@ -127,11 +126,11 @@ describe('DeviceTableDesktop — #145 action-column pin contract', () => {
 		expect(nameTd?.className, 'name <td> must pin to left-0').toMatch(/\bleft-0\b/);
 	});
 
-	// ── PRE-FIX sentinel ──────────────────────────────────────────────────────
+	// ── TAMPER-TESTED sentinel ───────────────────────────────────────────────
 	// Content cells for non-name columns must carry "truncate" (overflow:hidden
 	// + text-overflow:ellipsis) so long values do not push the table wider
 	// than the scroll container or occlude adjacent cells.
-	it('non-name content <td> carries truncate for overflow control (pre-fix: will fail until #145 lands)', () => {
+	it('non-name content <td> carries truncate for overflow control', () => {
 		// Render with all columns visible so we get multiple content cells.
 		const devices = createDeviceList(1);
 		const { container } = render(DeviceTableDesktop, {

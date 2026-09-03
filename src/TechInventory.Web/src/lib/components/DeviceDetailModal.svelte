@@ -378,6 +378,7 @@
 					{#if device && !isLoading}
 						<DeviceActionsMenu
 							editHref={canEdit ? `/devices/${device.id}/edit` : undefined}
+							cloneHref={canEdit ? `/devices/new?cloneFrom=${device.id}` : undefined}
 							onClaim={canClaim ? () => (showClaimModal = true) : undefined}
 							onRelease={canRelease ? () => (showReleaseModal = true) : undefined}
 							onRetire={canRetire ? () => (showRetireModal = true) : undefined}

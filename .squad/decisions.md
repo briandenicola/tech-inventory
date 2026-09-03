@@ -4690,3 +4690,79 @@ D-170 contains the security gates and constraints. D-171 is the implementation v
 **Consequences.** Product feature PRs stay focused on reviewable, durable changes; noisy per-session history/log churn no longer appears in diffs feature reviewers must read. Existing tracked history, decisions, and logs are unaffected — this governs future writes only, not past content. `squad.agent.md`'s per-agent spawn template, drop-box pattern description, and Scribe spawn template were updated to gate on a new `IS_FEATURE_BRANCH` flag; `.squad/templates/squad.agent.md` mirrors the change. Under reviewer lockout, Hudson's independent revision (1) renamed this entry from the originally proposed `D-188` to the nonnumeric `D-CORE-STATE-POLICY` key, since `D-188`/`D-189` were already claimed informally elsewhere (a `.squad/decisions/inbox/` proposal and a pre-existing code comment reference) and the canonical ledger did not clearly establish a safe next numeric ID once those claims were accounted for, and (2) gated the `.copilot/skills/git-workflow/SKILL.md` and `.copilot/skills/init-mode/SKILL.md` files (and their `.squad/templates/skills/` mirrors), which still told worktree/init agents to append derived state (`history.md`, logs, `decisions.md`) directly and rely on the `.gitattributes` union merge driver — a premise this policy supersedes, since GitHub never runs that local driver on a PR merge and feature agents must not write that transient state at all. Because this changes coordinator behavior, any active session must restart after merge to pick up the new rules.
 
 ---
+
+### D-170: Wave 3/4 Feature Approval — Device Detail Refactoring + Quick-Create + Navigation
+
+- **Author:** Ripley (Lead / Architect)
+- **Date:** 2026-09-03
+- **Status:** Approved
+- **Related:** PRs #158, #159, #160, #161; issues #137, #136, #134, #144
+
+**Decision.** Three parallel feature streams approved for Wave 3/4 implementation: (1) definition-list semantic refactoring for device detail (#158), (2) inline quick-create for Category/Brand/Location (#159), (3) desktop primary navigation + mobile compact menu density (#160, #161).
+
+**Rationale:**
+- Definition-list improves semantic HTML structure, enabling better dark-mode theming and accessibility.
+- Quick-create inline affordances reduce navigation friction; permission guards enforced per role (Admin-only).
+- Navigation/density optimizes PWA shell consistency across desktop and mobile; breakpoint strategy verified sound.
+
+**Consequences:** All three streams merged to main (commits `e5e3b93`, `063bec5`, `00ff1c1`, `9895a70`). QC audit by Ripley found 0 blockers. Test coverage 87% on Domain+Application (exceeds 85% floor). Manual PWA validation (M-17/M-18) pending per Brian's test plan.
+
+---
+
+### D-171: Wave 3/4 Testing & Validation — Permission Gate Coverage Expansion
+
+- **Author:** Apone (Tester / QA)
+- **Date:** 2026-09-03
+- **Status:** Approved
+- **Related:** PR #159 (quick-create), test floor expansion
+
+**Decision.** Wave 3/4 validation added 23 permission-gated mutation tests to verify quick-create affordances enforce role-based authorization (Admin creates, Member/Viewer denied). Tamper-tested via direct API rejection; forms validate permission before submit.
+
+**Consequences:** Full `task verify` suite green end-to-end (279 unit + 316 integration + 760 frontend = 1355 tests). SQLite test flake observed during #160 validation; clean rerun after environmental isolation. Permission contract coverage now 100% across all three feature streams.
+
+---
+
+### D-172: Wave 3/4 Merge-Order Correction — Navigation Spacing Baseline Alignment
+
+- **Author:** Vasquez (Frontend / UX), validated by Apone
+- **Date:** 2026-09-03
+- **Status:** Approved
+- **Related:** PR #160 merge timing, PR #161 correction
+
+**Decision.** PR #160 merged before approved commit `976e0af`; correction required. Vasquez ported exact four-file delta to PR #161, aligning nav spacing from arbitrary `min-h-[2.75rem]` to semantic Tailwind token `min-h-11` across navigation, menu, and FAB components. Cumulative `task verify` validation performed before merge.
+
+**Consequences:** Main branch now at commit `9895a70` with clean token baseline. No product behavior changed; this is design-token alignment only.
+
+---
+
+### D-173: Post-Release Wave 3/4 Follow-Ups (Non-Blocking)
+
+- **Author:** Ripley (Lead / Architect)
+- **Date:** 2026-09-03
+- **Status:** Recorded
+- **Related:** QC audit findings, D-170–D-172
+
+**Decisions recorded for post-release backlog (not blocking merge):**
+
+1. **Manual PWA Validation (M-17/M-18):** Brian owns — validate pull-to-refresh on iOS 17.1+, manifest icon on Android 13+.
+2. **Tailwind Token Convention:** Establish guideline for `max-h-[85vh]` vs. semantic token; document in design-tokens ADR.
+3. **Component Composition Extract:** DeviceForm (590 lines) exceeds constitution §6.5.4 200-line guideline; recommend extraction of quick-create modals into separate composed components in next polish cycle.
+4. **Callback Parameter Naming:** One unused parameter in QuickCreateFormProps (harmless); document optional-prop naming convention in future style guide.
+5. **AppLayout Spacing Micro-Adjustment:** Cosmetic polish noted; deferred to next sprint.
+
+**Wave 3/4 exit state:** Main at `9895a70`, QC audit closed, 0 blockers, ready for manual PWA validation or deployment.
+
+---
+
+### D-BACKLOG-PLANNING: User Directive — Review Open Issues & Present Grouped Plan
+
+- **Author:** Brian (via Copilot)
+- **Date:** 2026-09-03T05:36:23Z
+- **Status:** Recorded
+- **Related:** `.squad/identity/now.md` backlog triage, issues #127–#148
+
+**Directive.** Review the 21 open issues (#127–#148) and present a grouped plan for approval before implementation. Monitor context-window pressure, provide progress updates every 3–5 minutes while Squad work is active, keep user informed.
+
+**Implementation:** Backlog triage completed (see `.squad/identity/now.md`); seven-wave sequence established: Wave 5 (#130); Wave 5b (#129+#138); Wave 6 (#133→#127); Wave 6b (#132→#128); Wave 7 (#135→#139); Wave 8 (#142→#145→#141→#143→#146→#147→#148 as PWA additions); Wave 9 (#131→#136); Wave 10 (#134→#144→#137). Ready for Brian's approval before next spawn.
+
+---

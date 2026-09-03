@@ -822,3 +822,30 @@ PR from `fix/ios-pwa-silent-sso-redirect` → review → merge.
 **Validation:** targeted suites green; full `pnpm exec vitest run` 85 files/688 tests; `pnpm run check`/`lint`/`build` clean; `task verify` (verify:full, including the ~10+min repo-wide gitleaks scan) green — 943 files scanned.
 
 **Commits:** `2d60ba3` (#135), `a677212` (#139) on `squad/135-139-quick-cleanup` → PR #154 (draft-equivalent, not merged).
+
+## 2026-09-03 — Wave 3/4 Feature Implementation & Merge-Order Correction (PRs #158, #159, #160, #161)
+
+**Scope:** Three parallel feature streams (definition-list device detail, inline quick-create, desktop nav/mobile density) + merge-order correction.
+
+**#158 (Definition-List Device Detail):** Refactored device detail layout from table-based to semantic `<dl>` structure. Responsive grid (1 column mobile, 2 column tablet+). Maintains read-only affordance. Added 4 Vitest tests (happy path, empty state, long field values, responsive breakpoints). 0 axe-core violations.
+
+**#159 (Inline Quick-Create):** Implemented Category/Brand/Location quick-create from device form dropdowns. Permission guards enforced (Admin-only). Form state preserved during modal lifecycle. Auto-select newly created entity after creation. Generated client regenerated to match backend contract. Added 5 Vitest tests + 23 permission-gated mutation tests (Admin create, Member/Viewer denied, direct API rejection, form validation). 0 axe-core violations. i18n catalogs updated.
+
+**#160 (Desktop Navigation & Mobile Density):** Added persistent primary nav sidebar for desktop (Dashboard, Devices, Timeline, Reports with admin sections gated per role). Mobile compact menu density (height 24px → 20px, items fit without scroll, 48px touch targets maintained). Added 4 Vitest tests (nav state, role-based visibility, breadcrumbs, keyboard nav). 0 axe-core violations.
+
+**#161 (Merge-Order Correction):** PR #160 merged before approved commit `976e0af`. Ported exact four-file delta to align nav spacing from arbitrary `min-h-[2.75rem]` to semantic Tailwind token `min-h-11` across nav, menu, FAB. No product behavior changed; design-token hygiene only.
+
+**Cumulative Validation:** Full `task verify` green end-to-end (279 unit + 316 integration + 760 frontend = 1355 tests). 87% line coverage on Domain+Application (exceeds 85% floor). SQLite test flake during #160 validation; clean rerun after environmental isolation.
+
+**Key Learnings:**
+- **Merge-order discipline matters.** Cumulative validation post-merge catches ordering issues that per-PR tests cannot. Always re-run full suite after merge to confirm.
+- **Generated client regeneration is part of scope.** When backend contract changes (even for quick-create endpoints), frontend client generation must run before merge. Flag in commit message.
+- **Permission testing is table-stakes.** Every quick-create, mutation, or admin feature needs both happy-path and denied-path test cases. 23 permission tests added to #159 alone.
+- **Design-token alignment is invisible to users but load-bearing.** The min-h correction looks like no-op work but prevents future magic-number cruft. Document it clearly in decisions (D-172).
+- **Semantic HTML is theme-ready.** Definition-list refactoring (PR #158) enabled dark-mode theming without UI rework. Invest in semantics early.
+- **Mobile density requires careful measurement.** Reduced menu heights but kept 48px touch targets via padding. Measure before and after on real devices (iOS PWA, Android PWA, desktop).
+
+**Commits:** `e5e3b93` (#158), `063bec5` (#159), `00ff1c1` (#160), `9895a70` (#161) on `main`.
+
+**Merge Status:** ✓ All merged to main. QC audit by Ripley: 0 blockers. Ready for manual PWA validation (M-17/M-18) or deployment.
+

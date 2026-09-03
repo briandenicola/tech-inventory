@@ -233,4 +233,100 @@ describe('AppMenuPopover', () => {
 
 		expect(await axe(container)).toHaveNoViolations();
 	});
+
+	describe('menu row geometry parity (#144 correction)', () => {
+		// Reopened #144: field validation found the active-item highlight
+		// visually inflating row height/whitespace relative to inactive rows.
+		// This locks the fix in place with a class-contract comparison —
+		// jsdom cannot compute real layout, so we assert on the Tailwind
+		// utility classes that *would* produce that geometry instead.
+
+		// Any class matching one of these prefixes is a colour-only affordance
+		// (background/text/ring tint) that active vs inactive rows are allowed
+		// to differ on. Everything else must be identical between the two, or
+		// one state is carrying its own box geometry.
+		const COLOR_ONLY_PREFIXES = [
+			'bg-',
+			'text-',
+			'dark:bg-',
+			'dark:text-',
+			'hover:bg-',
+			'dark:hover:bg-'
+		];
+
+		function rowClassList(el: Element): string[] {
+			return (el.getAttribute('class') ?? '').split(/\s+/).filter(Boolean);
+		}
+
+		function getRow(name: string) {
+			return screen.getByRole('menuitem', { name });
+		}
+
+		async function openMenu() {
+			const user = userEvent.setup();
+			render(AppMenuPopover, { props: defaultProps });
+			await user.click(screen.getByRole('button', { name: 'Menu' }));
+		}
+
+		it('gives the active row (Devices) and an inactive row (Reports) the exact same non-colour class set', async () => {
+			await openMenu();
+
+			const activeClasses = rowClassList(getRow('Devices'));
+			const inactiveClasses = rowClassList(getRow('Reports'));
+
+			const isColorOnly = (cls: string) => COLOR_ONLY_PREFIXES.some((prefix) => cls.startsWith(prefix));
+
+			const activeOnly = activeClasses.filter((c) => !inactiveClasses.includes(c));
+			const inactiveOnly = inactiveClasses.filter((c) => !activeClasses.includes(c));
+
+			// Every class that differs between the two rows must be a
+			// colour-only utility. Anything else (padding, margin, min-height/
+			// height, gap, radius, border-width, scale/transform, width, etc.)
+			// means the active state is carrying its own box geometry again.
+			for (const cls of [...activeOnly, ...inactiveOnly]) {
+				expect(isColorOnly(cls), `unexpected non-colour class diff: "${cls}"`).toBe(true);
+			}
+
+			const activeGeometry = activeClasses.filter((c) => !isColorOnly(c)).sort();
+			const inactiveGeometry = inactiveClasses.filter((c) => !isColorOnly(c)).sort();
+			expect(activeGeometry).toEqual(inactiveGeometry);
+		});
+
+		it('gives every row the same shared compact geometry: >=44px min-height, standard gap, standard radius', async () => {
+			await openMenu();
+
+			for (const name of ['Devices', 'Reports', 'Settings']) {
+				const classes = rowClassList(getRow(name));
+				expect(classes).toContain('min-h-11'); // >= 44px touch target (WCAG 2.5.8)
+				expect(classes).toContain('gap-2'); // icon/label gap
+				expect(classes).toContain('rounded-lg'); // standard compact radius, not an oversized pill
+				expect(classes).not.toContain('rounded-xl');
+				expect(classes).not.toContain('rounded-full');
+			}
+		});
+
+		it('places a single consistent token-scale gap on the role="menu" container instead of per-row/state spacing', async () => {
+			await openMenu();
+
+			const menu = screen.getByRole('menu');
+			const menuClasses = rowClassList(menu);
+			expect(menuClasses).toContain('flex-col');
+			expect(menuClasses.some((c) => /^gap-\d/.test(c))).toBe(true);
+		});
+
+		it('distinguishes active from inactive state visually (Devices carries active tint, Reports does not)', async () => {
+			await openMenu();
+
+			expect(getRow('Devices').className).toContain('bg-primary-50');
+			expect(getRow('Reports').className).not.toContain('bg-primary-50');
+		});
+
+		it('has no accessibility violations with the panel open (row geometry regression scope)', async () => {
+			const user = userEvent.setup();
+			const { container } = render(AppMenuPopover, { props: defaultProps });
+			await user.click(screen.getByRole('button', { name: 'Menu' }));
+
+			expect(await axe(container)).toHaveNoViolations();
+		});
+	});
 });

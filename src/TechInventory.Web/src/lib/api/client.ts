@@ -438,6 +438,19 @@ export const categories = {
 		params?: paths['/api/v1/categories']['get']['parameters']['query']
 	) => apiFetch<GetResponse<paths['/api/v1/categories']>>(`/api/v1/categories${buildQueryString(params)}`),
 
+	// #132: the admin Categories page must render the whole hierarchy (and
+	// let search reach every descendant), not just a page of root-level
+	// categories. `/api/v1/categories/tree` already returns every category —
+	// root through leaf, respecting `includeInactive` — nested under each
+	// root's `children`; `list()` above stays paginated/root-oriented for
+	// any other paginated-table consumer.
+	tree: async (
+		params?: paths['/api/v1/categories/tree']['get']['parameters']['query']
+	) =>
+		apiFetch<GetResponse<paths['/api/v1/categories/tree']>>(
+			`/api/v1/categories/tree${buildQueryString(params)}`
+		),
+
 	get: async (id: string) =>
 		apiFetch<GetResponse<paths['/api/v1/categories/{id}']>>(`/api/v1/categories/${encodeURIComponent(id)}`),
 

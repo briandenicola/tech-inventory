@@ -66,8 +66,12 @@ as an explicit exception under `plan.md` §2.10, not silently dropped.
 | M-19 | On an installed PWA at 375 px wide (e.g. iPhone SE): navigate to the Admin → Audit Log page, perform a horizontal touch-swipe on the audit table — all columns scroll into view while the page header, Filters toggle, and pagination controls remain stationary (not part of the scroll region) | | |
 | M-20 | On iOS Safari (real device or Simulator) at 320–375 px: open the Add Device form and tap the Purchase Date field — the native date picker appears and the input does not overflow the form column at any picker stage; confirm the same on the Edit Device form | | |
 | M-21 | On an installed PWA at 375 px wide: open the hamburger menu and observe the Appearance row — the Light/Dark/System selector shows **icon-only** buttons (sun, moon, grid) with no visible text labels and no truncation; each icon's selected state is visually clear; confirm the desktop Settings page still shows full "Light / Dark / System" text labels | | |
+| M-22 | **#145 — Action column pinning (installed PWA, portrait, 320/375/390/430 CSS px):** On each viewport, open `/devices` in the installed PWA, switch to Table view, and scroll the table horizontally — the Actions column header and each row's action cell remain pinned to the right edge of the scroll container and never drift off-screen; device name column remains pinned to the left; all cell text is truncated (ellipsis) rather than pushing the column wider. `REVIEWED/manual — not jsdom-proven.` | | |
+| M-23 | **#164 — Settings Table Columns Reset button (installed PWA, portrait, 320/375/390/430 CSS px):** Navigate to Settings → Table Columns on each viewport. The Reset button label reads exactly **"Reset"** (single word, the localized value from `settings.tableColumns.resetToDefault`) — no longer copy such as "Reset to Default". The label fits on a single line at all four widths with no wrapping. Tap the button and confirm the column list reverts to defaults and a success toast appears. `REVIEWED/manual — not jsdom-proven.` | | |
+| M-24 | **#165 — Per-device action menu layering (installed PWA, portrait, 320/375/390/430 CSS px):** On the device list in PWA Cards view, tap the ⋮ kebab/ellipsis button on the **first** row, a **middle** row, and the **last** row in a group. Each time the action menu (Edit / Clone / Claim / Release / Change Status / View change history / Delete) must appear **fully visible above** all other content — it must not be clipped by the row container, the group boundary, or any sibling element; the full menu height is visible without scrolling; tapping outside dismisses it. `REVIEWED/manual — not jsdom-proven.` | | |
+| M-25 | **#148 — Add/Edit Device form containment at narrow viewports (installed PWA, portrait, 320/375/390/430 CSS px):** On each viewport, open the Add Device form (and separately the Edit Device form from a device detail row). Verify: (a) the Purchase Date field label and native date input stay within the form column width — no horizontal overflow; (b) tapping the date input opens the native iOS date picker and the form does not scroll wider than the viewport at any picker stage; (c) the Purchase Price number input stays within its grid column (no overflow); (d) the Notes textarea fills its column without overflow; (e) the form as a whole does not cause the modal to scroll horizontally. `REVIEWED/manual — not jsdom-proven.` | | |
 
-**21 checks, all owner `briandenicola`.** M-16 compensates for the route-level
+**25 checks, all owner `briandenicola`.** M-16 compensates for the route-level
 composition gap identified by the post-major-work QC audit; M-17 and M-18 cover
 the mobile-popover and desktop-nav tap-target density introduced by issues #134
 and #144 (branch `squad/134-144-desktop-nav-density`); M-19 covers the real
@@ -79,7 +83,21 @@ containment classes (`date-input-contain`, `min-w-0`, `w-full`) but cannot
 exercise WebKit's intrinsic sizing or the native picker UI; M-21 covers the
 icon-only theme toggle in the compact PWA menu (#147) — the component test
 proves the iconOnly prop suppresses the span labels and retains aria-label, but
-cannot observe real-device icon rendering or confirm no visual truncation. The remaining
+cannot observe real-device icon rendering or confirm no visual truncation;
+M-22 covers the desktop-table action-column sticky-pin at real scroll width
+(#145) — component tests prove the `sticky right-0` and `truncate` classes but
+cannot exercise browser sticky positioning or text-overflow clipping in jsdom;
+M-23 covers the Settings Reset button single-line label at narrow viewports
+(#164) — component tests prove the `whitespace-nowrap` class and i18n routing
+but cannot observe actual line-wrapping in a real browser;
+M-24 covers the per-device action menu layering above group stacking contexts
+(#165) — component tests prove `z-index: var(--z-dropdown)` and the absence of
+`overflow-hidden` on the row container but cannot verify real overflow clipping
+or CSS stacking resolution in jsdom;
+M-25 covers the full Add/Edit Device form containment at narrow viewports
+(#148) — component tests prove `date-input-contain`, `min-w-0`, `w-full`, and
+modal `overflow-hidden` but cannot exercise iOS WebKit's intrinsic sizing,
+native picker layout, or real overflow clipping. The remaining
 checks exist only because their risks require a real browser environment. None
 duplicates an existing Vitest or HTTP
 integration/contract assertion — each exists only because the risk is

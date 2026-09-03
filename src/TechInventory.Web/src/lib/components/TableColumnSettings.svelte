@@ -121,7 +121,7 @@
 		<button
 			type="button"
 			onclick={resetToDefault}
-			class="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+			class="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
 		>
 			{t('settings.tableColumns.resetToDefault')}
 		</button>

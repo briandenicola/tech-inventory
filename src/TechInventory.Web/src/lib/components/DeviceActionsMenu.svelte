@@ -11,6 +11,14 @@
 		onChangeStatus?: () => void;
 		onViewHistory?: () => void;
 		onDelete?: () => void;
+		/**
+		 * compact=true — renders the trigger as a ghost icon button (no border,
+		 * no background circle). Use in inline row/list contexts where a bordered
+		 * circle would be visually obtrusive. Default false preserves the
+		 * detail-view styled circle used in DeviceDetailModal and the
+		 * device detail page.
+		 */
+		compact?: boolean;
 	}
 
 	let {
@@ -20,7 +28,8 @@
 		onRelease,
 		onChangeStatus,
 		onViewHistory,
-		onDelete
+		onDelete,
+		compact = false
 	}: Props = $props();
 
 	let isOpen = $state(false);
@@ -107,7 +116,9 @@
 			id="device-actions-trigger"
 			type="button"
 			onclick={() => void toggleMenu()}
-			class="inline-flex h-11 w-11 items-center justify-center rounded-full border border-neutral-300 bg-white text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+			class={compact
+				? 'inline-flex h-11 w-11 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200'
+				: 'inline-flex h-11 w-11 items-center justify-center rounded-full border border-neutral-300 bg-white text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-neutral-100'}
 			aria-expanded={isOpen}
 			aria-haspopup="menu"
 			aria-label={t('devices.detail.moreActions')}

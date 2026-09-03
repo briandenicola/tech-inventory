@@ -120,6 +120,7 @@
 
 	<div class="self-center">
 		<DeviceActionsMenu
+			compact
 			editHref={rowActions.canEdit ? `/devices/${device.id}/edit` : undefined}
 			cloneHref={rowActions.canEdit ? `/devices/new?cloneFrom=${device.id}` : undefined}
 			onClaim={rowActions.canClaim ? () => (rowActions.openModal = 'claim') : undefined}
@@ -183,6 +184,23 @@
 		column-gap: var(--space-3);
 		min-height: 4rem; /* 68px */
 		padding: var(--space-3) var(--space-4);
+	}
+
+	/*
+		Round the first and last rows to match the parent card's border-radius.
+		The container uses rounded-2xl without overflow-hidden (overflow-hidden
+		was removed so the actions dropdown can escape the card boundaries).
+		These selectors recreate the clipping that overflow-hidden provided.
+		rounded-2xl = 1rem = var(--radius-lg) in this project's token scale.
+	*/
+	:global(.pwa-row:first-child) {
+		border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+	}
+	:global(.pwa-row:last-child) {
+		border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+	}
+	:global(.pwa-row:only-child) {
+		border-radius: var(--radius-lg);
 	}
 
 	/*

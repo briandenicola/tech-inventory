@@ -55,7 +55,7 @@
 
 {#snippet rowList(items: DeviceResponse[])}
 	<div
-		class="overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950"
+		class="rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950"
 	>
 		{#each items as device (device.id)}
 			<DevicePwaRow

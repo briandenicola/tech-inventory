@@ -221,7 +221,7 @@
 	];
 </script>
 
-<form onsubmit={handleSubmit} class="space-y-6">
+<form onsubmit={handleSubmit} class="min-w-0 space-y-6">
 	<!-- Name -->
 	<div>
 		<label for="name" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
@@ -471,7 +471,7 @@
 	<div>
 		<label
 			for="purchaseDate"
-			class="block text-sm font-medium text-neutral-900 dark:text-neutral-100"
+			class="block max-w-full text-sm font-medium text-neutral-900 dark:text-neutral-100"
 		>
 			{t('devices.columns.purchaseDate')}
 		</label>
@@ -496,7 +496,7 @@
 	</div>
 
 	<!-- Purchase Price + Currency (two-column on desktop) -->
-	<div class="grid gap-4 sm:grid-cols-2">
+	<div class="grid gap-4 sm:grid-cols-2 [&>div]:min-w-0">
 		<div>
 			<label
 				for="purchasePrice"
@@ -512,7 +512,7 @@
 				bind:value={formData.purchasePrice}
 				onblur={() => handleBlur('purchasePrice')}
 				disabled={isDisabled('purchasePrice')}
-				class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus-visible:border-primary-500 dark:disabled:bg-neutral-900"
+				class="mt-1 block w-full min-w-0 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:hover:border-neutral-600 dark:focus-visible:border-primary-500 dark:disabled:bg-neutral-900"
 				placeholder="999.99"
 			/>
 			{#if touched.purchasePrice && errors.purchasePrice}
@@ -764,16 +764,24 @@
 
 <style>
 	/*
-	 * #148: Constrain native date inputs on iOS/WebKit.
+	 * #148: Constrain native date and number inputs on iOS/WebKit.
 	 *
 	 * iOS WebKit can assign a minimum intrinsic width to input[type=date]
-	 * that overrides `width: 100%`, causing the native control to expand
-	 * beyond its form column and force the modal wider than the viewport.
+	 * and input[type=number] that overrides `width: 100%`, causing the
+	 * native control to expand beyond its form column and force the modal
+	 * wider than the viewport.
 	 *
-	 * `max-width: 100%` caps the control at its parent's width regardless
-	 * of the browser's intrinsic sizing. Combined with the `min-w-0`
-	 * Tailwind class (min-width: 0) on the element, this removes the
-	 * minimum-content-size floor that triggers the overflow.
+	 * Full fix (applied in layers):
+	 *  1. `<form class="min-w-0 ...">` — removes the implicit min-width: auto
+	 *     on the form element when it is a flex/grid item.
+	 *  2. `<div class="... [&>div]:min-w-0">` on the price/currency grid —
+	 *     extends the same constraint to the two grid-column divs.
+	 *  3. `min-w-0` on individual number/date inputs — overrides WebKit's
+	 *     intrinsic minimum on the control itself.
+	 *  4. `max-width: 100%` (.date-input-contain) — caps the date input at
+	 *     its parent column width regardless of the browser's intrinsic sizing.
+	 *  5. `overflow-x-hidden` on the modal scroll body (AddDeviceModal.svelte)
+	 *     — top-level guard; prevents any overflow from escaping the modal.
 	 *
 	 * Scoped to DeviceForm so other forms are not affected.
 	 */

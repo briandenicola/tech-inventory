@@ -1038,7 +1038,7 @@
 			"heading": "Table Columns",
 			"subheading": "Choose which columns to display in the devices table and their order. Drag to reorder.",
 			"desktopOnly": "This affects table views only — the desktop browser table and the installed app's Table view. The installed app's default Cards view uses its own compact layout.",
-			"resetToDefault": "Reset to Default",
+			"resetToDefault": "Reset",
 			"moveUp": "Move up",
 			"moveDown": "Move down",
 			"toast": {

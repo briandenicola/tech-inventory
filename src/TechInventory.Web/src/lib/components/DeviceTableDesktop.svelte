@@ -203,7 +203,7 @@
 			<!-- Actions (non-sortable) -->
 			<th
 				scope="col"
-				class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
+				class="sticky right-0 z-10 border-l border-neutral-200 bg-neutral-50 px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-neutral-700 shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.1)] dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300"
 			>
 				{t('common.labels.actions')}
 			</th>
@@ -234,11 +234,11 @@
 				{/if}
 				{#each visibleColumns as col, colIdx (col)}
 					{@const isFirst = colIdx === 0}
-					<td class="{isFirst ? `sticky left-0 z-10 border-r border-neutral-200 dark:border-neutral-800 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] ${selected ? 'bg-primary-500/10' : 'bg-white dark:bg-neutral-950'} group-hover/row:bg-neutral-50 dark:group-hover/row:bg-neutral-900` : ''} px-4 py-4 text-sm {isFirst ? 'font-medium text-neutral-900 dark:text-neutral-50' : 'text-neutral-700 dark:text-neutral-300'}">
+					<td class="{isFirst ? `sticky left-0 z-10 border-r border-neutral-200 dark:border-neutral-800 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] ${selected ? 'bg-primary-500/10' : 'bg-white dark:bg-neutral-950'} group-hover/row:bg-neutral-50 dark:group-hover/row:bg-neutral-900` : 'truncate'} px-4 py-4 text-sm {isFirst ? 'font-medium text-neutral-900 dark:text-neutral-50' : 'text-neutral-700 dark:text-neutral-300'}">
 						{getCellValue(device, col)}
 					</td>
 				{/each}
-				<td class="px-4 py-4 text-right">
+				<td class="sticky right-0 z-10 border-l border-neutral-200 px-4 py-4 text-right shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.1)] dark:border-neutral-800 {selected ? 'bg-primary-500/10' : 'bg-white dark:bg-neutral-950'} group-hover/row:bg-neutral-50 dark:group-hover/row:bg-neutral-900">
 					<button
 						type="button"
 						onclick={(e) => {

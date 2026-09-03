@@ -4677,3 +4677,16 @@ D-170 contains the security gates and constraints. D-171 is the implementation v
 **Consequences.** Final approval granted. Validation: full Vitest suite green (560 passing, one pre-existing skip), type check, lint and build clean, backend unit and integration suites passing; Playwright execution deferred to CI, which owns the browser matrix.
 
 ---
+
+### D-188: Core-Only State Policy — durable core in feature PRs, derived state via Scribe post-merge
+
+- **Author:** Ripley (Lead / Architect)
+- **Date:** 2026-09-03
+- **Status:** Approved
+- **Related:** Source of Truth Hierarchy, Feature-Branch State Policy (`.github/agents/squad.agent.md`)
+
+**Decision.** `.squad` state splits into two tiers. **Durable core** — `team.md`, `routing.md`, `ceremonies.md`, `config.json`, `casting/*`, `agents/{name}/charter.md`, the canonical *content* of `decisions.md`, `skills/*/SKILL.md`, `templates/**`, and `identity/wisdom.md` — is tracked and reviewable in any PR, including feature PRs. **Transient / derived state** — `agents/{name}/history.md`, `identity/now.md`, `.squad/log/**`, `.squad/orchestration-log/**`, and the *consolidation act* of merging `.squad/decisions/inbox/` into `decisions.md` — is high-churn and must never be written by feature agents on a feature branch or land in a product feature PR. Feature agents instead report reusable learnings in their final response or a `.squad/decisions/inbox/{name}-{brief-slug}.md` artifact (itself durable-safe, since it is a report, not consolidated state). Scribe performs the full consolidation pass only after a feature PR merges to `main`, or through one dedicated state-only PR (`squad/state-sync-{date}`) — never mid-feature.
+
+**Consequences.** Product feature PRs stay focused on reviewable, durable changes; noisy per-session history/log churn no longer appears in diffs feature reviewers must read. Existing tracked history, decisions, and logs are unaffected — this governs future writes only, not past content. `squad.agent.md`'s per-agent spawn template, drop-box pattern description, and Scribe spawn template were updated to gate on a new `IS_FEATURE_BRANCH` flag; `.squad/templates/squad.agent.md` mirrors the change. Because this changes coordinator behavior, any active session must restart after merge to pick up the new rules.
+
+---

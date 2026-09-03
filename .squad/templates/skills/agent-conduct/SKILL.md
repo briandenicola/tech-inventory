@@ -16,7 +16,7 @@ Every squad agent must follow these two hard rules. They were previously duplica
 Tests, CI workflows, and product code must NEVER depend on specific agent names from any particular squad. "Our squad" must not impact "the squad." No hardcoded references to agent names (Flight, EECOM, FIDO, etc.) in test assertions, CI configs, or product logic. Use generic/parameterized values. If a test needs agent names, use obviously-fake test fixtures (e.g., "test-agent-1", "TestBot").
 
 ### Peer Quality Check (hard rule)
-Before finishing work, verify your changes don't break existing tests. Run the test suite for files you touched. If CI has been failing, check your changes aren't contributing to the problem. When you learn from mistakes, update your history.md.
+Before finishing work, verify your changes don't break existing tests. Run the test suite for files you touched. If CI has been failing, check your changes aren't contributing to the problem. When you learn from mistakes, record it: append to `history.md` on `main`/state-only branches; on a feature branch, report it in your final response instead so Scribe can consolidate it post-merge (see squad.agent.md → Feature-Branch State Policy).
 
 ## Anti-Patterns
 - Don't hardcode dev team agent names in product code or tests

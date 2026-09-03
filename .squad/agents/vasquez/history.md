@@ -802,3 +802,23 @@ PR from `fix/ios-pwa-silent-sso-redirect` → review → merge.
 **Commits:** `5d991eb` (#128), `af802f7` (#132) on `squad/128-132-filter-categories`.
 
 **Next Steps:** Open Wave 1 PR (both fixes reviewable together as one PR — independent files, no overlap); do not merge; await review.
+
+## 2026-09-03 — Wave 2 quick cleanup: #135 Coming-soon/F020b placeholder removal + #139 ADMIN→Configuration nav label rename (branch `squad/135-139-quick-cleanup`, PR #154)
+
+**Scope:** Two tiny, independent "quick win" fixes in one worktree.
+
+**#135:** Removed the dashed-border `settings.deferred` section from the Settings page (`+page.svelte`) and its two i18n keys. This route (`(authenticated)/settings`) had **zero prior test coverage** — added `settings/page.test.ts` from scratch, following the existing `admin/export/page.test.ts` mock pattern (`vi.mock('$lib/api/client')` wrapping `default.owners`).
+
+**#139:** Renamed `navigation.admin` → `navigation.configuration` (i18n key + value) across three real usages sharing the exact same key: `(authenticated)/+layout.svelte` (desktop user-menu dropdown), `AppMenuPopover.svelte` (mobile hamburger), and `AppNavMenuHarness.svelte` (a lightweight, already-tested render harness at `src/lib/navigation/AppNavMenuHarness.svelte` + `appNav.render.test.ts` — genuinely useful for any future nav-copy/order change, since it renders the real `appNav.ts` data with zero store/MSAL dependencies).
+
+**Key learnings:**
+- All three surfaces apply `class="... uppercase tracking-wider ..."` in the template — the i18n *value* only needs to be "Configuration" in mixed case; the CSS transform still renders it as `CONFIGURATION`/`ADMIN` visually. Don't hardcode casing in the string to match a rendered appearance driven by CSS.
+- `(authenticated)/+layout.svelte` (the real desktop sidebar/user-menu) has **no existing component render test** at all — only its sibling `+layout.ts` guard has `layout.test.ts`. Building one from scratch would require mocking `$app/stores`, `$lib/auth/msal` (a module-singleton `PublicClientApplication` instantiated at import time — needs full mocking, not partial), `$lib/stores/referenceData` (to stop a real `fetchReferenceData()` API call fired from an `$effect`), and `window.matchMedia` set up *before* the module graph loads (since `displayMode.svelte.ts`'s `export const displayMode = createDisplayMode()` singleton runs `window.matchMedia` at import time, not at render time). That's a disproportionate new-test-infra lift for a scoped label rename — deferred; relied instead on the identical-key coverage in `AppMenuPopover.test.ts` + the harness, and verified the desktop surface by direct code inspection (same `t('navigation.admin')` key, same conditional block, confirmed via grep before editing).
+- When a `dl` element's pre-existing markup violates axe's `definition-list` rule (`dl > div > p` instead of `dl > dt/dd` pairs) and that markup is unrelated to the change being made, don't add a new axe assertion that exposes it — it's a pre-existing, unrelated defect (scoped-fixes discipline: fix only what's asked). Wrote the two behavioral assertions without the axe check rather than either fixing unrelated markup or leaving a newly-added failing/skipped test.
+- Splitting one `en.json` diff across two commits (#135's key removal + #139's key rename, non-overlapping lines in the same file) works cleanly with revert→stage→commit→reapply→stage→commit rather than trying to `git add -p` hunks — simpler and less error-prone for two isolated single-line-ish changes.
+
+**Tamper-test evidence:** #135 — restored the placeholder card → new absence assertion failed with the exact expected DOM diff; reverted, green. #139 — reverted the i18n value to `"Admin"` → both new heading assertions (`AppMenuPopover.test.ts`, `appNav.render.test.ts`) failed; reverted, green.
+
+**Validation:** targeted suites green; full `pnpm exec vitest run` 85 files/688 tests; `pnpm run check`/`lint`/`build` clean; `task verify` (verify:full, including the ~10+min repo-wide gitleaks scan) green — 943 files scanned.
+
+**Commits:** `2d60ba3` (#135), `a677212` (#139) on `squad/135-139-quick-cleanup` → PR #154 (draft-equivalent, not merged).

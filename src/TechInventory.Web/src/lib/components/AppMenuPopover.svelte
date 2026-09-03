@@ -300,7 +300,13 @@
 				>
 					{t('settings.theme.heading')}
 				</p>
-				<ThemeToggle />
+				<!--
+				#147: iconOnly=true hides visible text labels in the compact popover,
+				showing only Sun/Moon/System icons. Accessible names (aria-label) are
+				preserved on each button. Desktop Settings page renders ThemeToggle
+				without this prop so labels remain visible there.
+			-->
+			<ThemeToggle iconOnly />
 			</div>
 		</div>
 	{/if}

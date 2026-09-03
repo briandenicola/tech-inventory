@@ -8,6 +8,18 @@
 		type ThemePreference
 	} from '$lib/stores/theme.svelte';
 
+	interface Props {
+		/**
+		 * When true, hides visible text labels and shows icons only.
+		 * Accessible names are preserved via aria-label on each button.
+		 * Use inside the compact AppMenuPopover where label truncation
+		 * would otherwise occur (#147).
+		 */
+		iconOnly?: boolean;
+	}
+
+	let { iconOnly = false }: Props = $props();
+
 	const currentPreference = $derived(themeStore.preference);
 
 	onMount(() => {
@@ -36,7 +48,9 @@
 		<svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
 			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 3v2.25M12 18.75V21M4.97 4.97l1.59 1.59M17.44 17.44l1.59 1.59M3 12h2.25M18.75 12H21M4.97 19.03l1.59-1.59M17.44 6.56l1.59-1.59M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
 		</svg>
-		<span class="truncate">{t('settings.theme.light')}</span>
+		{#if !iconOnly}
+			<span class="truncate">{t('settings.theme.light')}</span>
+		{/if}
 	</button>
 	<button
 		type="button"
@@ -50,7 +64,9 @@
 		<svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
 			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z" />
 		</svg>
-		<span class="truncate">{t('settings.theme.dark')}</span>
+		{#if !iconOnly}
+			<span class="truncate">{t('settings.theme.dark')}</span>
+		{/if}
 	</button>
 	<button
 		type="button"
@@ -64,6 +80,8 @@
 		<svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
 			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4.5 7.5h15m-15 9h15M7.5 4.5v15m9-15v15" />
 		</svg>
-		<span class="truncate">{t('settings.theme.system')}</span>
+		{#if !iconOnly}
+			<span class="truncate">{t('settings.theme.system')}</span>
+		{/if}
 	</button>
 </div>

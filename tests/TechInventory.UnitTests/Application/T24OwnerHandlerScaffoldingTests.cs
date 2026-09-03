@@ -3,7 +3,6 @@ using NSubstitute;
 using TechInventory.Application.Abstractions.Persistence;
 using TechInventory.Application.Abstractions.Repositories;
 using TechInventory.Application.Auditing;
-using TechInventory.Application.Common.Paging;
 using TechInventory.Application.Common.Results;
 using TechInventory.Application.Owners;
 using TechInventory.Application.Owners.Commands;
@@ -137,11 +136,9 @@ public sealed class T24OwnerHandlerScaffoldingTests
         var deps = CreateDependencies();
         var owner = new Owner(Guid.NewGuid(), "Ripley");
         deps.OwnerRepository.GetByIdAsync(owner.Id, Arg.Any<CancellationToken>()).Returns(Result<Owner>.Success(owner));
-        deps.DeviceRepository.ListAsync(Arg.Any<DeviceListCriteria>(), Arg.Any<CancellationToken>())
-            .Returns(new PagedResult<Device>(Array.Empty<Device>(), totalCount: 0, page: 1, pageSize: 1));
         deps.OwnerRepository.UpdateAsync(owner, Arg.Any<CancellationToken>()).Returns(Result<Owner>.Success(owner));
         deps.UnitOfWork.SaveChangesAsync(Arg.Any<CancellationToken>()).Returns(1);
-        var handler = new DeleteOwnerCommandHandler(deps.OwnerRepository, deps.DeviceRepository, deps.UnitOfWork, deps.AuditContext);
+        var handler = new DeleteOwnerCommandHandler(deps.OwnerRepository, deps.UnitOfWork, deps.AuditContext);
 
         var result = await handler.Handle(new DeleteOwnerCommand(owner.Id), CancellationToken.None);
 
@@ -153,6 +150,50 @@ public sealed class T24OwnerHandlerScaffoldingTests
             entry.BeforePayload != null &&
             entry.BeforePayload.ToString()!.Contains("Ripley", StringComparison.Ordinal)));
         await deps.UnitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    // #138 (superseding D-120, 2026-09-03 product decision): deactivating an
+    // Owner must now succeed even while devices — active or historical —
+    // still reference it. The device keeps its OwnerId untouched (no
+    // reassignment, no cascading change) as the historical reference.
+    [Fact]
+    public async Task DeleteOwnerCommandHandler_WhenOwnerHasAssignedDevices_StillDeactivatesAndPreservesDeviceOwnerId()
+    {
+        var deps = CreateDependencies();
+        var owner = new Owner(Guid.NewGuid(), "Ripley");
+        var device = DeviceHandlerTestSupport.CreateDevice(ownerId: owner.Id);
+        deps.OwnerRepository.GetByIdAsync(owner.Id, Arg.Any<CancellationToken>()).Returns(Result<Owner>.Success(owner));
+        deps.OwnerRepository.UpdateAsync(owner, Arg.Any<CancellationToken>()).Returns(Result<Owner>.Success(owner));
+        deps.UnitOfWork.SaveChangesAsync(Arg.Any<CancellationToken>()).Returns(1);
+        var handler = new DeleteOwnerCommandHandler(deps.OwnerRepository, deps.UnitOfWork, deps.AuditContext);
+
+        var result = await handler.Handle(new DeleteOwnerCommand(owner.Id), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        owner.IsActive.Should().BeFalse();
+        device.OwnerId.Should().Be(owner.Id);
+        deps.AuditContext.Received(1).Set(Arg.Is<AuditContextEntry>(entry =>
+            entry.EntityType == nameof(Owner) &&
+            entry.Action == AuditAction.Deleted));
+        await deps.OwnerRepository.Received(1).UpdateAsync(owner, Arg.Any<CancellationToken>());
+        await deps.DeviceRepository.DidNotReceiveWithAnyArgs().ListAsync(default!, default);
+        await deps.UnitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DeleteOwnerCommandHandler_WhenAlreadyInactive_ReturnsConflictFailure()
+    {
+        var deps = CreateDependencies();
+        var owner = new Owner(Guid.NewGuid(), "Ripley");
+        owner.Deactivate();
+        deps.OwnerRepository.GetByIdAsync(owner.Id, Arg.Any<CancellationToken>()).Returns(Result<Owner>.Success(owner));
+        var handler = new DeleteOwnerCommandHandler(deps.OwnerRepository, deps.UnitOfWork, deps.AuditContext);
+
+        var result = await handler.Handle(new DeleteOwnerCommand(owner.Id), CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be("Conflict");
+        await deps.OwnerRepository.DidNotReceive().UpdateAsync(Arg.Any<Owner>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -171,30 +212,12 @@ public sealed class T24OwnerHandlerScaffoldingTests
         var id = Guid.NewGuid();
         deps.OwnerRepository.GetByIdAsync(id, Arg.Any<CancellationToken>())
             .Returns(Result<Owner>.Failure(Error.NotFound("missing")));
-        var handler = new DeleteOwnerCommandHandler(deps.OwnerRepository, deps.DeviceRepository, deps.UnitOfWork, deps.AuditContext);
+        var handler = new DeleteOwnerCommandHandler(deps.OwnerRepository, deps.UnitOfWork, deps.AuditContext);
 
         var result = await handler.Handle(new DeleteOwnerCommand(id), CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         result.Error!.Code.Should().Be("NotFound");
-    }
-
-    [Fact]
-    public async Task DeleteOwnerCommandHandler_WhenOwnerHasAssignedDevices_ReturnsConflictFailure()
-    {
-        var deps = CreateDependencies();
-        var owner = new Owner(Guid.NewGuid(), "Ripley");
-        var device = DeviceHandlerTestSupport.CreateDevice(ownerId: owner.Id);
-        deps.OwnerRepository.GetByIdAsync(owner.Id, Arg.Any<CancellationToken>()).Returns(Result<Owner>.Success(owner));
-        deps.DeviceRepository.ListAsync(Arg.Any<DeviceListCriteria>(), Arg.Any<CancellationToken>())
-            .Returns(new PagedResult<Device>(new[] { device }, totalCount: 1, page: 1, pageSize: 1));
-        var handler = new DeleteOwnerCommandHandler(deps.OwnerRepository, deps.DeviceRepository, deps.UnitOfWork, deps.AuditContext);
-
-        var result = await handler.Handle(new DeleteOwnerCommand(owner.Id), CancellationToken.None);
-
-        result.IsFailure.Should().BeTrue();
-        result.Error!.Code.Should().Be("Conflict");
-        await deps.OwnerRepository.DidNotReceive().UpdateAsync(Arg.Any<Owner>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

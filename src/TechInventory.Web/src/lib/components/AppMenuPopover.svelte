@@ -5,22 +5,24 @@
 	drawer. Mobile-only (`md:hidden`); desktop primary nav lives in the header
 	as horizontal links and the Configuration group is in AppDesktopConfigMenu.
 
-	Density (#144): rows use py-1.5 (vs the former py-2.5) with a 44px min-h
-	tap target preserved via min-h-11. Leading icons are rendered from
-	navIcons.ts so the role="menu" composite stays accessible (icons are
-	aria-hidden; labels carry the name).
+	Density (#144 R2 correction — supersedes rejected #166 result):
+	Every menu row uses an exact shared block size: `h-11` (44px fixed height,
+	no vertical padding). Active and inactive items occupy exactly the same
+	44px box; active state may only differ in background/text colour. No
+	`py-*` padding means the entire 44px box is defined by `h-11` alone — no
+	internal blank bands above/below content. Leading icons are rendered from
+	navIcons.ts; role="menu" container carries `gap-0.5` (2px — smallest
+	token gap, tighter than #166's gap-1). Section dividers use `my-1` (4px
+	each side). `rounded-lg` radius on all rows. Focus-visible ring is inset
+	so it is not clipped by the panel's overflow-y-auto.
 
-	Reopened #144: field validation found the active-item highlight visually
-	inflating row height/whitespace. Root cause was structural, not a single
-	inflated value — every row repeated its own literal geometry string, so
-	nothing enforced that active and inactive rows shared one box, and the
-	`rounded-xl` (24px) corner radius on a 44px-tall pill read as an oversized
-	"bubble" against its neighbours, plus the role="menu" list had no
-	container-level gap so per-row rhythm depended on incidental divider
-	margins. Fix: one shared `menuRowClass` geometry string (imported by every
-	row; state branches only ever add `class:` colour), a standard `rounded-lg`
-	radius, and a `gap-1` token-scale gap on the role="menu" container so
-	spacing is consistent instead of state/row-specific.
+	#166 used `min-h-11 py-1.5` (44px minimum + 12px internal padding). The
+	`py-1.5` created 6px blank zones above and below content within the
+	coloured active row, making it visually inflate relative to inactive rows
+	whose transparent background hid the blank zones. Switching to `h-11`
+	locks the element to exactly 44px with no internal padding, so both states
+	share the same visible geometry. The `gap-1` → `gap-0.5` reduction and
+	`my-1.5` → `my-1` dividers further compress overall list height.
 -->
 <script lang="ts">
 	import { tick, untrack } from 'svelte';
@@ -49,14 +51,17 @@
 	let rootElement = $state<HTMLDivElement | null>(null);
 	let triggerElement = $state<HTMLButtonElement | null>(null);
 
-	// Single source of truth for row geometry (#144 correction). Every
-	// menuitem row — primary, admin, Settings, Sign Out — applies this exact
-	// string. Active/inactive state may only ever add colour via `class:`
+	// Single source of truth for row geometry (#144 R2 correction).
+	// EXACT 44px block via `h-11` — no `min-h-11`, no `py-*`.
+	// Every menuitem row — primary, admin, Settings, Sign Out — applies this
+	// exact string. Active/inactive state may only ever add colour via `class:`
 	// bindings alongside it; it must never gain its own padding, margin,
-	// min-height, gap, radius, border, or transform, or active rows will
-	// visually inflate relative to inactive ones again.
+	// height, min-height, gap, radius, border, or transform. Using `h-11`
+	// (fixed) instead of `min-h-11 py-1.5` eliminates internal vertical
+	// padding that created blank visual bands within the 44px box and could
+	// inflate active rows relative to inactive ones (#166 regression).
 	const menuRowClass =
-		'flex min-h-11 items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset';
+		'flex h-11 items-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset';
 
 	const currentRole = $derived(currentUser?.role ?? null);
 	const visiblePrimaryNavItems = $derived(getVisibleNavItems(primaryNavItems, currentRole));
@@ -185,7 +190,7 @@
 				tabindex="-1"
 				aria-label={t('navigation.primary')}
 				onkeydown={handleMenuKeydown}
-				class="flex flex-col gap-1"
+				class="flex flex-col gap-0.5"
 			>
 			{#each visiblePrimaryNavItems as item (item.href)}
 				{@const active = isNavItemActive(pathname, item)}
@@ -216,7 +221,7 @@
 			{/each}
 
 			{#if visibleAdminNavItems.length > 0}
-				<hr class="my-1.5 border-t border-neutral-200 dark:border-neutral-800" />
+				<hr class="my-1 border-t border-neutral-200 dark:border-neutral-800" />
 				<div class="px-3 py-1 text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
 					{t('navigation.configuration')}
 				</div>
@@ -249,7 +254,7 @@
 				{/each}
 			{/if}
 
-			<hr class="my-1.5 border-t border-neutral-200 dark:border-neutral-800" />
+			<hr class="my-1 border-t border-neutral-200 dark:border-neutral-800" />
 			<a
 				data-menu-item
 				href="/settings"
@@ -273,7 +278,7 @@
 			</a>
 
 			{#if currentUser}
-				<hr class="my-1.5 border-t border-neutral-200 dark:border-neutral-800" />
+				<hr class="my-1 border-t border-neutral-200 dark:border-neutral-800" />
 				<div class="flex items-center gap-2 rounded-full bg-neutral-100 px-3 py-1.5 dark:bg-neutral-800">
 					<span class="text-sm font-medium text-neutral-900 dark:text-neutral-100">
 						{currentUser.displayName}

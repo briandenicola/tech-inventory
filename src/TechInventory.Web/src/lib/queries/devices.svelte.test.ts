@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { flushSync } from 'svelte';
 import { devices as devicesApi } from '$lib/api/client';
 import {
 	DEFAULT_DEVICE_PAGE_SIZE,
@@ -8,7 +9,9 @@ import {
 	clampDevicePageSize,
 	fetchDevicesPage,
 	fetchAllDevicesForGrouping,
-	serializeDeviceFilters
+	serializeDeviceFilters,
+	useDevices,
+	type DeviceFilters
 } from './devices.svelte';
 
 vi.mock('$lib/api/client', () => ({
@@ -333,6 +336,58 @@ describe('devices query helpers', () => {
 				expect(result.totalCount).toBe(650); // real match count, uncapped
 				expect(result.items?.length).toBe(500); // rendered items, capped
 			});
+		});
+	});
+
+	describe('useDevices out-of-order response guard (#128)', () => {
+		// #128 AC: rapid successive filter changes must never leave stale
+		// results rendered. A later-issued request can resolve *before* an
+		// earlier one (e.g. the earlier one hits a slower path). Only the
+		// response matching the most-recently-issued request may commit to
+		// `data`; every earlier one must be silently discarded.
+		it('discards an earlier request that resolves after a newer one has already committed', async () => {
+			let resolveFirst!: (value: typeof sampleResponse) => void;
+			let resolveSecond!: (value: typeof sampleResponse) => void;
+			const firstResponse = { ...sampleResponse, totalCount: 1 };
+			const secondResponse = { ...sampleResponse, totalCount: 2 };
+
+			mockedList
+				.mockImplementationOnce(
+					() => new Promise((resolve) => (resolveFirst = resolve))
+				)
+				.mockImplementationOnce(
+					() => new Promise((resolve) => (resolveSecond = resolve))
+				);
+
+			let filters = $state<DeviceFilters>({ page: 1, pageSize: 25, search: 'a' });
+			const getFilters = () => filters;
+			let query!: ReturnType<typeof useDevices>;
+
+			const cleanup = $effect.root(() => {
+				query = useDevices(getFilters);
+			});
+			flushSync();
+
+			// Change filters synchronously (still within the same root/tick)
+			// to issue a second, newer request before the first resolves —
+			// mirroring two rapid keystrokes in the live search box.
+			filters = { page: 1, pageSize: 25, search: 'ab' };
+			flushSync();
+
+			// Resolve the NEWER request first, then the STALE one — the
+			// out-of-order case this guard exists for.
+			resolveSecond(secondResponse);
+			await Promise.resolve();
+			await Promise.resolve();
+
+			resolveFirst(firstResponse);
+			await Promise.resolve();
+			await Promise.resolve();
+
+			expect(query.data?.totalCount).toBe(2);
+			expect(mockedList).toHaveBeenCalledTimes(2);
+
+			cleanup();
 		});
 	});
 });

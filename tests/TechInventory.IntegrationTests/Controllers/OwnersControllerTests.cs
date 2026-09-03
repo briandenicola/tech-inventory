@@ -137,8 +137,15 @@ public sealed class OwnersControllerTests(IntegrationTestFactory<OwnersControlle
         problem.Errors.Keys.Should().Contain(key => string.Equals(key, "DisplayName", StringComparison.OrdinalIgnoreCase));
     }
 
+    // #138 (superseding D-120, 2026-09-03 product decision — Brian/
+    // briandenicola, recorded in
+    // .squad/decisions/inbox/vasquez-owner-deactivation-supersedes-d120.md):
+    // deactivating an Owner with assigned devices is now allowed. The Owner
+    // becomes inactive; the referencing device keeps its OwnerId untouched
+    // as a historical reference (no reassignment, no FK cascade — Owner has
+    // no DB-level FK constraint enforcing "must be active").
     [Fact]
-    public async Task DeleteOwner_WhenReferencedByDevice_Returns409ConflictProblemDetails()
+    public async Task DeleteOwner_WhenReferencedByDevice_Returns204AndDeviceRetainsHistoricalOwnerReference()
     {
         await ResetDatabaseAsync();
         var references = await SeedDeviceReferenceDataAsync();
@@ -147,6 +154,39 @@ public sealed class OwnersControllerTests(IntegrationTestFactory<OwnersControlle
         using var client = CreateClient();
 
         var response = await client.DeleteAsync($"/api/v1/owners/{references.Owner.Id}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var ownerReload = await client.GetAsync($"/api/v1/owners/{references.Owner.Id}");
+        ownerReload.StatusCode.Should().Be(HttpStatusCode.OK);
+        var ownerPayload = await ReadJsonAsync<OwnerResponse>(ownerReload);
+        ownerPayload.IsActive.Should().BeFalse();
+        ownerPayload.DisplayName.Should().Be(references.Owner.DisplayName);
+
+        var reloadedDevice = await WithDbContextAsync(dbContext =>
+            dbContext.Devices.AsNoTracking().SingleAsync(entity => entity.Id == device.Id));
+        reloadedDevice.OwnerId.Should().Be(references.Owner.Id);
+
+        await WithDbContextAsync(async dbContext =>
+        {
+            var auditEvents = await dbContext.AuditEvents
+                .Where(ae => ae.EntityType == "Owner" && ae.EntityId == references.Owner.Id.ToString())
+                .ToListAsync();
+
+            auditEvents.Should().Contain(ae => ae.Action == AuditAction.Deleted);
+        });
+    }
+
+    [Fact]
+    public async Task DeleteOwner_WhenAlreadyInactive_Returns409ConflictProblemDetails()
+    {
+        await ResetDatabaseAsync();
+        var owner = new Owner(Guid.NewGuid(), $"Owner-{Guid.NewGuid():N}", OwnerRole.Member);
+        owner.Deactivate();
+        await SeedAsync(entities: [owner]);
+        using var client = CreateClient();
+
+        var response = await client.DeleteAsync($"/api/v1/owners/{owner.Id}");
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
         var problem = await ReadProblemDetailsAsync(response);
@@ -164,6 +204,115 @@ public sealed class OwnersControllerTests(IntegrationTestFactory<OwnersControlle
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
         var problem = await ReadProblemDetailsAsync(response);
         problem.Status.Should().Be((int)HttpStatusCode.NotFound);
+    }
+
+    // #129/#138 — PATCH .../deactivate previously had no route (404 for every
+    // reference type, including Owners per #138). Mirrors the DELETE
+    // assertions above. The "referenced by device" case now succeeds
+    // (superseding D-120's reassign-first guard, per the 2026-09-03 product
+    // decision) rather than 409ing — see
+    // DeleteOwner_WhenReferencedByDevice_Returns204AndDeviceRetainsHistoricalOwnerReference
+    // above for the equivalent DELETE-route coverage of that behavior.
+    [Fact]
+    public async Task DeactivateOwner_WhenFound_Returns204AndMarksInactive()
+    {
+        await ResetDatabaseAsync();
+        var owner = new Owner(Guid.NewGuid(), $"Owner-{Guid.NewGuid():N}", OwnerRole.Member);
+        await SeedAsync(entities: [owner]);
+        using var client = CreateClient();
+
+        var response = await client.PatchAsync($"/api/v1/owners/{owner.Id}/deactivate", new StringContent(string.Empty));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var reload = await client.GetAsync($"/api/v1/owners/{owner.Id}");
+        reload.StatusCode.Should().Be(HttpStatusCode.OK);
+        var payload = await ReadJsonAsync<OwnerResponse>(reload);
+        payload.IsActive.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task DeactivateOwner_WhenMissing_Returns404ProblemDetails()
+    {
+        await ResetDatabaseAsync();
+        using var client = CreateClient();
+
+        var response = await client.PatchAsync($"/api/v1/owners/{Guid.NewGuid()}/deactivate", new StringContent(string.Empty));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var problem = await ReadProblemDetailsAsync(response);
+        problem.Status.Should().Be((int)HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task DeactivateOwner_WhenReferencedByDevice_Returns204AndDeviceRetainsHistoricalOwnerReference()
+    {
+        await ResetDatabaseAsync();
+        var references = await SeedDeviceReferenceDataAsync();
+        var device = CreateDevice(references, $"Device-{Guid.NewGuid():N}");
+        await SeedAsync(entities: [device]);
+        using var client = CreateClient();
+
+        var response = await client.PatchAsync($"/api/v1/owners/{references.Owner.Id}/deactivate", new StringContent(string.Empty));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var ownerReload = await client.GetAsync($"/api/v1/owners/{references.Owner.Id}");
+        ownerReload.StatusCode.Should().Be(HttpStatusCode.OK);
+        var ownerPayload = await ReadJsonAsync<OwnerResponse>(ownerReload);
+        ownerPayload.IsActive.Should().BeFalse();
+
+        var reloadedDevice = await WithDbContextAsync(dbContext =>
+            dbContext.Devices.AsNoTracking().SingleAsync(entity => entity.Id == device.Id));
+        reloadedDevice.OwnerId.Should().Be(references.Owner.Id);
+    }
+
+    [Fact]
+    public async Task DeactivateOwner_WhenAlreadyInactive_Returns409ConflictProblemDetails()
+    {
+        await ResetDatabaseAsync();
+        var owner = new Owner(Guid.NewGuid(), $"Owner-{Guid.NewGuid():N}", OwnerRole.Member);
+        owner.Deactivate();
+        await SeedAsync(entities: [owner]);
+        using var client = CreateClient();
+
+        var response = await client.PatchAsync($"/api/v1/owners/{owner.Id}/deactivate", new StringContent(string.Empty));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var problem = await ReadProblemDetailsAsync(response);
+        problem.Status.Should().Be((int)HttpStatusCode.Conflict);
+    }
+
+    // #138 acceptance criterion: "A deactivated owner no longer appears as a
+    // selectable option when adding/editing a device, while existing devices
+    // retain their historical owner reference." The admin device-form
+    // dropdown (src/lib/stores/referenceData.ts) already calls
+    // GET /api/v1/owners?includeInactive=false (the default), which is
+    // backed by IOwnerRepository.ListAsync(includeInactive: false) — an
+    // IsActive-filtered query. No frontend change is required: this proves
+    // the backend contract the dropdown already depends on.
+    [Fact]
+    public async Task GetOwners_AfterDeactivation_ExcludesInactiveOwnerFromDefaultActiveOnlyList()
+    {
+        await ResetDatabaseAsync();
+        var references = await SeedDeviceReferenceDataAsync();
+        var device = CreateDevice(references, $"Device-{Guid.NewGuid():N}");
+        await SeedAsync(entities: [device]);
+        var stillActiveOwner = new Owner(Guid.NewGuid(), $"Owner-{Guid.NewGuid():N}", OwnerRole.Member);
+        await SeedAsync(entities: [stillActiveOwner]);
+        using var client = CreateClient();
+
+        var deactivateResponse = await client.PatchAsync($"/api/v1/owners/{references.Owner.Id}/deactivate", new StringContent(string.Empty));
+        deactivateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var defaultListResponse = await client.GetAsync("/api/v1/owners?pageSize=200");
+        defaultListResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var defaultList = await ReadJsonAsync<PagedResponse<OwnerResponse>>(defaultListResponse);
+        defaultList.Items.Select(item => item.Id).Should().NotContain(references.Owner.Id);
+        defaultList.Items.Select(item => item.Id).Should().Contain(stillActiveOwner.Id);
+
+        var includeInactiveResponse = await client.GetAsync("/api/v1/owners?pageSize=200&includeInactive=true");
+        var includeInactiveList = await ReadJsonAsync<PagedResponse<OwnerResponse>>(includeInactiveResponse);
+        includeInactiveList.Items.Select(item => item.Id).Should().Contain(references.Owner.Id);
     }
 
     [Fact]

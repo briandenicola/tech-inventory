@@ -2,7 +2,6 @@ using MediatR;
 using TechInventory.Application.Abstractions.Persistence;
 using TechInventory.Application.Abstractions.Repositories;
 using TechInventory.Application.Auditing;
-using TechInventory.Application.Common.Paging;
 using TechInventory.Application.Common.Results;
 using TechInventory.Domain.Entities;
 using TechInventory.Domain.Enums;
@@ -11,9 +10,19 @@ namespace TechInventory.Application.Owners.Commands;
 
 public sealed record DeleteOwnerCommand(Guid Id) : IRequest<Result>, IAuditable;
 
+// #138 follow-up (superseding D-120, 2026-09-03 product decision — see
+// .squad/decisions/inbox/vasquez-owner-deactivation-supersedes-d120.md):
+// deactivating an Owner is now allowed while devices still reference it.
+// The Owner becomes inactive; existing devices retain their OwnerId as a
+// historical reference (FK is unconstrained — see OwnerConfiguration/
+// DeviceConfiguration, no cascading delete). Inactive owners are excluded
+// from future assignment via the existing IOwnerRepository.ListAsync(
+// includeInactive: false) default used by ListOwnersQuery, which the
+// admin dropdown already calls. The only remaining guards are not-found
+// and already-inactive (still a genuine conflict — you cannot deactivate
+// what is already deactivated).
 public sealed class DeleteOwnerCommandHandler(
     IOwnerRepository ownerRepository,
-    IDeviceRepository deviceRepository,
     IUnitOfWork unitOfWork,
     IAuditContext auditContext) : IRequestHandler<DeleteOwnerCommand, Result>
 {
@@ -31,11 +40,6 @@ public sealed class DeleteOwnerCommandHandler(
             return Result.Failure(Error.Conflict($"Owner '{request.Id}' is already inactive."));
         }
 
-        if (await HasAssignedDevicesAsync(request.Id, cancellationToken).ConfigureAwait(false))
-        {
-            return Result.Failure(Error.Conflict($"Owner '{request.Id}' cannot be deleted while devices still reference it."));
-        }
-
         var beforeSnapshot = OwnerResponse.FromEntity(owner);
         owner.Deactivate();
 
@@ -48,22 +52,5 @@ public sealed class DeleteOwnerCommandHandler(
         auditContext.Set(new AuditContextEntry(nameof(Owner), owner.Id.ToString(), AuditAction.Deleted, beforePayload: beforeSnapshot));
         await unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return Result.Success();
-    }
-
-    private async Task<bool> HasAssignedDevicesAsync(Guid ownerId, CancellationToken cancellationToken)
-    {
-        foreach (var status in Enum.GetValues<DeviceStatus>())
-        {
-            var page = await deviceRepository.ListAsync(
-                new DeviceListCriteria(new PageRequest(1, 1), ownerId: ownerId, status: status),
-                cancellationToken).ConfigureAwait(false);
-
-            if (page.TotalCount > 0)
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

@@ -166,6 +166,63 @@ public sealed class BrandsControllerTests(IntegrationTestFactory<BrandsControlle
         problem.Status.Should().Be((int)HttpStatusCode.NotFound);
     }
 
+    // #129/#138 — the admin UI calls PATCH /api/v1/brands/{id}/deactivate, which
+    // previously had no matching route and returned 404 for every reference
+    // entity type. This proves the route now exists, soft-deactivates (no hard
+    // delete), returns 204 to match the frontend's `apiFetch<void>` contract,
+    // and records an audit event exactly like the existing DELETE endpoint.
+    [Fact]
+    public async Task DeactivateBrand_WhenFound_Returns204MarksInactiveAndWritesAuditEvent()
+    {
+        await ResetDatabaseAsync();
+        var brand = new Brand(Guid.NewGuid(), $"Brand-{Guid.NewGuid():N}");
+        await SeedAsync(entities: [brand]);
+        using var client = CreateClient();
+
+        var response = await client.PatchAsync($"/api/v1/brands/{brand.Id}/deactivate", new StringContent(string.Empty));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var reload = await client.GetAsync($"/api/v1/brands/{brand.Id}");
+        reload.StatusCode.Should().Be(HttpStatusCode.OK);
+        var payload = await ReadJsonAsync<BrandResponse>(reload);
+        payload.IsActive.Should().BeFalse();
+
+        var auditEvents = await WithDbContextAsync(dbContext => dbContext.AuditEvents
+            .AsNoTracking()
+            .Where(entity => entity.EntityType == nameof(Brand) && entity.EntityId == brand.Id.ToString())
+            .ToListAsync());
+        auditEvents.Should().ContainSingle(entity => entity.Action == Domain.Enums.AuditAction.Deleted);
+    }
+
+    [Fact]
+    public async Task DeactivateBrand_WhenMissing_Returns404ProblemDetails()
+    {
+        await ResetDatabaseAsync();
+        using var client = CreateClient();
+
+        var response = await client.PatchAsync($"/api/v1/brands/{Guid.NewGuid()}/deactivate", new StringContent(string.Empty));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var problem = await ReadProblemDetailsAsync(response);
+        problem.Status.Should().Be((int)HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task DeactivateBrand_WhenAlreadyInactive_Returns409ConflictProblemDetails()
+    {
+        await ResetDatabaseAsync();
+        var brand = new Brand(Guid.NewGuid(), $"Brand-{Guid.NewGuid():N}");
+        brand.Deactivate();
+        await SeedAsync(entities: [brand]);
+        using var client = CreateClient();
+
+        var response = await client.PatchAsync($"/api/v1/brands/{brand.Id}/deactivate", new StringContent(string.Empty));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var problem = await ReadProblemDetailsAsync(response);
+        problem.Detail.Should().Contain(brand.Id.ToString());
+    }
+
     [Fact]
     public async Task MergeBrand_WhenValid_ReassignsDevicesDeactivatesSourceAndWritesAuditEvents()
     {

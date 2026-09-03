@@ -65,6 +65,15 @@ public sealed class LocationsController(ISender sender) : ControllerBase
     public async Task<IActionResult> DeleteLocation(Guid id, CancellationToken cancellationToken)
         => this.NoContentResult(await sender.Send(new DeleteLocationCommand(id), cancellationToken));
 
+    [HttpPatch("{id:guid}/deactivate")]
+    [Authorize(Policy = AuthorizationPolicies.AdminOrMember)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> DeactivateLocation(Guid id, CancellationToken cancellationToken)
+        => this.NoContentResult(await sender.Send(new DeleteLocationCommand(id), cancellationToken));
+
     [HttpPost("merge")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(MergeReferenceEntityResponse), StatusCodes.Status200OK)]

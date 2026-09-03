@@ -162,6 +162,38 @@ public sealed class NetworksControllerTests(IntegrationTestFactory<NetworksContr
         problem.Status.Should().Be((int)HttpStatusCode.NotFound);
     }
 
+    // #129/#138 — PATCH .../deactivate previously had no route (404 for every
+    // reference type). Mirrors the DELETE assertions above.
+    [Fact]
+    public async Task DeactivateNetwork_WhenFound_Returns204AndMarksInactive()
+    {
+        await ResetDatabaseAsync();
+        var network = new Network(Guid.NewGuid(), $"Network-{Guid.NewGuid():N}", "Primary");
+        await SeedAsync(entities: [network]);
+        using var client = CreateClient();
+
+        var response = await client.PatchAsync($"/api/v1/networks/{network.Id}/deactivate", new StringContent(string.Empty));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var reload = await client.GetAsync($"/api/v1/networks/{network.Id}");
+        reload.StatusCode.Should().Be(HttpStatusCode.OK);
+        var payload = await ReadJsonAsync<NetworkResponse>(reload);
+        payload.IsActive.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task DeactivateNetwork_WhenMissing_Returns404ProblemDetails()
+    {
+        await ResetDatabaseAsync();
+        using var client = CreateClient();
+
+        var response = await client.PatchAsync($"/api/v1/networks/{Guid.NewGuid()}/deactivate", new StringContent(string.Empty));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var problem = await ReadProblemDetailsAsync(response);
+        problem.Status.Should().Be((int)HttpStatusCode.NotFound);
+    }
+
     [Fact]
     public async Task MergeNetwork_WhenValid_ReassignsDevicesDeactivatesSourceAndWritesAuditEvents()
     {

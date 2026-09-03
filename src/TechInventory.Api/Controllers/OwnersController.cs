@@ -114,6 +114,15 @@ public sealed class OwnersController(ISender sender, ICurrentUserService current
     public async Task<IActionResult> DeleteOwner(Guid id, CancellationToken cancellationToken)
         => this.NoContentResult(await sender.Send(new DeleteOwnerCommand(id), cancellationToken));
 
+    [HttpPatch("{id:guid}/deactivate")]
+    [Authorize(Policy = AuthorizationPolicies.AdminOrMember)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> DeactivateOwner(Guid id, CancellationToken cancellationToken)
+        => this.NoContentResult(await sender.Send(new DeleteOwnerCommand(id), cancellationToken));
+
     public sealed record CreateOwnerRequest(string DisplayName, OwnerRole Role = OwnerRole.Member, Guid? EntraObjectId = null)
     {
         public CreateOwnerCommand ToCommand() => new(DisplayName, Role, EntraObjectId);

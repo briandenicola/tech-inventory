@@ -12,18 +12,14 @@
 	import DeleteDeviceModal from '$lib/components/DeleteDeviceModal.svelte';
 	import ClaimOwnershipModal from '$lib/components/ClaimOwnershipModal.svelte';
 	import ReleaseOwnershipModal from '$lib/components/ReleaseOwnershipModal.svelte';
-	import RetireDeviceModal from '$lib/components/RetireDeviceModal.svelte';
+	import BulkUpdateModal from '$lib/components/BulkUpdateModal.svelte';
 	import AuditLogModal from '$lib/components/AuditLogModal.svelte';
 	import DeviceActionsMenu from '$lib/components/DeviceActionsMenu.svelte';
 	import DeviceDetailFields from '$lib/components/DeviceDetailFields.svelte';
-	import {
-		buildRetireDeviceRequest,
-		buildUnretireDeviceRequest,
-		canRetireDevice,
-		canUnretireDevice
-	} from '$lib/utils/deviceRetirement';
+	import { canChangeDeviceStatus, deviceStatusOptions } from '$lib/utils/deviceRetirement';
 	import type { DeviceResponse } from '$lib/queries/devices.svelte';
 	import type { components } from '$lib/api/generated/types';
+	import type { DeviceStatus } from '$lib/api/types';
 	import { getApiErrorMessage } from '$lib/utils/apiErrors';
 
 	type TagResponse = components['schemas']['TagResponse'];
@@ -48,7 +44,7 @@
 	let showDeleteModal = $state(false);
 	let showClaimModal = $state(false);
 	let showReleaseModal = $state(false);
-	let showRetireModal = $state(false);
+	let showChangeStatusModal = $state(false);
 	let showHistoryDrawer = $state(false);
 
 	let dialogElement = $state<HTMLDivElement | null>(null);
@@ -63,8 +59,8 @@
 	// / .ReleaseDeviceOwnership_* for the API-side 403 proof).
 	const canClaim = $derived(canEdit && device && currentUser && device.ownerId !== currentUser.id);
 	const canRelease = $derived(canEdit && device && currentUser && device.ownerId === currentUser.id);
-	const canRetire = $derived(canRetireDevice(device, currentUser));
-	const canUnretire = $derived(canUnretireDevice(device, currentUser));
+	const canChangeStatus = $derived(canChangeDeviceStatus(device, currentUser));
+	const statusOptions = $derived(deviceStatusOptions(t));
 
 	async function fetchDevice() {
 		isLoading = true;
@@ -228,43 +224,24 @@
 		}
 	}
 
-	async function handleRetire() {
+	async function handleChangeStatus(status: string) {
 		if (!device) return;
 
 		try {
-			await devices.update(device.id, buildRetireDeviceRequest(device, new Date()));
+			await devices.bulkUpdate({ deviceIds: [device.id], changes: { status: status as DeviceStatus } });
 			invalidateDevicesCache();
 			await fetchDevice();
 			showToast({
 				type: 'success',
-				message: t('devices.retire.toast.success').replace('{name}', device.name ?? 'Device')
+				message: t('devices.changeStatus.toast.success', { name: device.name ?? 'Device' })
 			});
 			onChanged?.();
 		} catch (err) {
-			console.error('[DeviceDetailModal] Retire failed:', err);
-			const errorMsg = getApiErrorMessage(err, 'Failed to retire device');
+			console.error('[DeviceDetailModal] Change status failed:', err);
+			const errorMsg = getApiErrorMessage(err, 'Failed to change status');
 			showToast({ type: 'error', message: errorMsg });
 		} finally {
-			showRetireModal = false;
-		}
-	}
-
-	async function handleUnretire() {
-		if (!device) return;
-
-		try {
-			await devices.update(device.id, buildUnretireDeviceRequest(device));
-			invalidateDevicesCache();
-			await fetchDevice();
-			showToast({
-				type: 'success',
-				message: t('devices.unretire.toast.success').replace('{name}', device.name ?? 'Device')
-			});
-			onChanged?.();
-		} catch (err) {
-			console.error('[DeviceDetailModal] Unretire failed:', err);
-			const errorMsg = getApiErrorMessage(err, 'Failed to unretire device');
-			showToast({ type: 'error', message: errorMsg });
+			showChangeStatusModal = false;
 		}
 	}
 
@@ -307,7 +284,7 @@
 			!showDeleteModal &&
 			!showClaimModal &&
 			!showReleaseModal &&
-			!showRetireModal &&
+			!showChangeStatusModal &&
 			!showHistoryDrawer
 		) {
 			onClose();
@@ -381,8 +358,7 @@
 							cloneHref={canEdit ? `/devices/new?cloneFrom=${device.id}` : undefined}
 							onClaim={canClaim ? () => (showClaimModal = true) : undefined}
 							onRelease={canRelease ? () => (showReleaseModal = true) : undefined}
-							onRetire={canRetire ? () => (showRetireModal = true) : undefined}
-							onUnretire={canUnretire ? handleUnretire : undefined}
+							onChangeStatus={canChangeStatus ? () => (showChangeStatusModal = true) : undefined}
 							onViewHistory={canViewHistory ? handleViewHistory : undefined}
 							onDelete={canDelete ? () => (showDeleteModal = true) : undefined}
 						/>
@@ -472,11 +448,14 @@
 	/>
 {/if}
 
-{#if showRetireModal && device}
-	<RetireDeviceModal
-		deviceName={device.name ?? 'Device'}
-		onConfirm={handleRetire}
-		onCancel={() => (showRetireModal = false)}
+{#if showChangeStatusModal && device}
+	<BulkUpdateModal
+		field="status"
+		count={1}
+		options={statusOptions}
+		initialValue={device.status ?? ''}
+		onConfirm={handleChangeStatus}
+		onCancel={() => (showChangeStatusModal = false)}
 	/>
 {/if}
 

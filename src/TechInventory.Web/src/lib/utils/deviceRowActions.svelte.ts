@@ -3,7 +3,7 @@
  * `DeviceActionsMenu`.
  *
  * Mirrors the permission derivations and API handlers already wired in
- * `DeviceDetailModal.svelte` (edit / claim / release / retire / unretire /
+ * `DeviceDetailModal.svelte` (edit / claim / release / change status /
  * view history / delete) so `DevicePwaRow` reuses the same rules instead of
  * forking them. `DeviceDetailModal` keeps its own inline copy because it also
  * owns the fetch/refresh lifecycle for a single open device — this composable
@@ -17,22 +17,26 @@
  * (`ViewerRoleAuthorizationTests.ClaimDeviceOwnership_WhenCallerIsViewer_ReturnsForbidden` /
  * `.ReleaseDeviceOwnership_WhenCallerIsViewer_ReturnsForbidden`); this is the
  * matching client-side affordance gate, not the security boundary.
+ *
+ * `handleChangeStatus` (#127) intentionally calls the same
+ * `devices.bulkUpdate` the N-device bulk toolbar uses, scoped to this one
+ * device id, instead of re-deriving a full `devices.update` payload the way
+ * the old per-status Retire/Unretire handlers did — the bulk endpoint's
+ * handler already implements every domain-valid transition (including
+ * Retired → Active via `Device.Reactivate()`) so there is exactly one status
+ * transition implementation on the client, not two.
  */
 import { devices } from '$lib/api/client';
 import { invalidateDevicesCache } from '$lib/queries/devices.svelte';
 import type { DeviceResponse } from '$lib/queries/devices.svelte';
 import { showToast } from '$lib/stores/toast';
 import type { CurrentUser } from '$lib/stores/auth';
+import type { DeviceStatus } from '$lib/api/types';
 import { t } from '$lib/i18n';
 import { getApiErrorMessage } from '$lib/utils/apiErrors';
-import {
-	buildRetireDeviceRequest,
-	buildUnretireDeviceRequest,
-	canRetireDevice,
-	canUnretireDevice
-} from '$lib/utils/deviceRetirement';
+import { canChangeDeviceStatus } from '$lib/utils/deviceRetirement';
 
-export type DeviceRowModal = 'claim' | 'release' | 'retire' | 'delete' | 'history' | null;
+export type DeviceRowModal = 'claim' | 'release' | 'changeStatus' | 'delete' | 'history' | null;
 
 export interface DeviceRowActionsOptions {
 	onChanged?: () => void;
@@ -45,12 +49,10 @@ export interface DeviceRowActionsController {
 	readonly canViewHistory: boolean;
 	readonly canClaim: boolean;
 	readonly canRelease: boolean;
-	readonly canRetire: boolean;
-	readonly canUnretire: boolean;
+	readonly canChangeStatus: boolean;
 	handleClaim(): Promise<void>;
 	handleRelease(): Promise<void>;
-	handleRetire(): Promise<void>;
-	handleUnretire(): Promise<void>;
+	handleChangeStatus(status: string): Promise<void>;
 	handleDelete(reason: string): Promise<void>;
 }
 
@@ -81,8 +83,7 @@ export function createDeviceRowActions(
 		if (role !== 'Admin' && role !== 'Member') return false;
 		return Boolean(device && user && device.ownerId === user.id);
 	});
-	const canRetire = $derived(canRetireDevice(getDevice(), getCurrentUser()));
-	const canUnretire = $derived(canUnretireDevice(getDevice(), getCurrentUser()));
+	const canChangeStatus = $derived(canChangeDeviceStatus(getDevice(), getCurrentUser()));
 
 	async function handleClaim(): Promise<void> {
 		const device = getDevice();
@@ -125,41 +126,23 @@ export function createDeviceRowActions(
 		}
 	}
 
-	async function handleRetire(): Promise<void> {
+	async function handleChangeStatus(status: string): Promise<void> {
 		const device = getDevice();
 		if (!device) return;
 
 		try {
-			await devices.update(device.id, buildRetireDeviceRequest(device, new Date()));
+			await devices.bulkUpdate({ deviceIds: [device.id], changes: { status: status as DeviceStatus } });
 			invalidateDevicesCache();
 			showToast({
 				type: 'success',
-				message: t('devices.retire.toast.success').replace('{name}', device.name ?? 'Device')
+				message: t('devices.changeStatus.toast.success', { name: device.name ?? 'Device' })
 			});
 			options.onChanged?.();
 		} catch (err) {
-			console.error('[DevicePwaRow] Retire failed:', err);
-			showToast({ type: 'error', message: getApiErrorMessage(err, 'Failed to retire device') });
+			console.error('[DevicePwaRow] Change status failed:', err);
+			showToast({ type: 'error', message: getApiErrorMessage(err, 'Failed to change status') });
 		} finally {
 			openModal = null;
-		}
-	}
-
-	async function handleUnretire(): Promise<void> {
-		const device = getDevice();
-		if (!device) return;
-
-		try {
-			await devices.update(device.id, buildUnretireDeviceRequest(device));
-			invalidateDevicesCache();
-			showToast({
-				type: 'success',
-				message: t('devices.unretire.toast.success').replace('{name}', device.name ?? 'Device')
-			});
-			options.onChanged?.();
-		} catch (err) {
-			console.error('[DevicePwaRow] Unretire failed:', err);
-			showToast({ type: 'error', message: getApiErrorMessage(err, 'Failed to unretire device') });
 		}
 	}
 
@@ -202,16 +185,12 @@ export function createDeviceRowActions(
 		get canRelease() {
 			return canRelease;
 		},
-		get canRetire() {
-			return canRetire;
-		},
-		get canUnretire() {
-			return canUnretire;
+		get canChangeStatus() {
+			return canChangeStatus;
 		},
 		handleClaim,
 		handleRelease,
-		handleRetire,
-		handleUnretire,
+		handleChangeStatus,
 		handleDelete
 	};
 }

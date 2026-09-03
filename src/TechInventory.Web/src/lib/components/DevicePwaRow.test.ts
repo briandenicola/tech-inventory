@@ -8,12 +8,25 @@
  * axe cleanliness.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
+import { render, screen, waitFor } from '@testing-library/svelte';
 import { axe } from 'vitest-axe';
 import userEvent from '@testing-library/user-event';
 import DevicePwaRow from './DevicePwaRow.svelte';
 import { createDeviceResponse, resetFactories } from '$lib/test-utils/factories';
 import type { CurrentUser } from '$lib/stores/auth';
+
+const mocks = vi.hoisted(() => ({
+	bulkUpdate: vi.fn(),
+	showToast: vi.fn()
+}));
+
+vi.mock('$lib/api/client', () => ({
+	devices: { bulkUpdate: mocks.bulkUpdate }
+}));
+
+vi.mock('$lib/stores/toast', () => ({
+	showToast: mocks.showToast
+}));
 
 function makeUser(role: CurrentUser['role']): CurrentUser {
 	return { id: 'user-1', entraObjectId: null, displayName: 'Test User', role };
@@ -22,6 +35,8 @@ function makeUser(role: CurrentUser['role']): CurrentUser {
 describe('DevicePwaRow', () => {
 	beforeEach(() => {
 		resetFactories();
+		mocks.bulkUpdate.mockReset();
+		mocks.showToast.mockReset();
 	});
 
 	it('renders the device name on line one and brand/model + status on line two, in that order', () => {
@@ -142,6 +157,107 @@ describe('DevicePwaRow', () => {
 	it('has no accessibility violations', async () => {
 		const device = createDeviceResponse();
 		const { container } = render(DevicePwaRow, { props: { device, currentUser: makeUser('Admin') } });
+
+		expect(await axe(container)).toHaveNoViolations();
+	});
+});
+
+describe('DevicePwaRow — Change Status (#127, shared BulkUpdateModal reuse)', () => {
+	beforeEach(() => {
+		resetFactories();
+		mocks.bulkUpdate.mockReset();
+		mocks.showToast.mockReset();
+	});
+
+	it('shows the Change Status action for an Admin and hides it for a Viewer', async () => {
+		const user = userEvent.setup();
+		const device = createDeviceResponse({ status: 'Active' });
+
+		const { unmount } = render(DevicePwaRow, { props: { device, currentUser: makeUser('Admin') } });
+		await user.click(screen.getByRole('button', { name: /more actions/i }));
+		expect(screen.getByRole('menuitem', { name: 'Change Status' })).toBeInTheDocument();
+		unmount();
+
+		render(DevicePwaRow, { props: { device, currentUser: makeUser('Viewer') } });
+		expect(screen.queryByRole('button', { name: /more actions/i })).not.toBeInTheDocument();
+	});
+
+	it('opens the shared change-status dialog preselected to the current status and applies a transition via devices.bulkUpdate', async () => {
+		const user = userEvent.setup();
+		mocks.bulkUpdate.mockResolvedValue({ correlationId: 'corr-1', affectedCount: 1 });
+		const device = createDeviceResponse({ status: 'Active', name: 'Aqua Flosser' });
+		const onChanged = vi.fn();
+
+		render(DevicePwaRow, { props: { device, currentUser: makeUser('Admin'), onChanged } });
+
+		await user.click(screen.getByRole('button', { name: /more actions/i }));
+		await user.click(screen.getByRole('menuitem', { name: 'Change Status' }));
+
+		const select = screen.getByLabelText(/change status/i) as HTMLSelectElement;
+		expect(select.value).toBe('Active');
+
+		await user.selectOptions(select, 'Retired');
+		await user.click(screen.getByRole('button', { name: /apply changes/i }));
+
+		await waitFor(() => {
+			expect(mocks.bulkUpdate).toHaveBeenCalledWith({
+				deviceIds: [device.id],
+				changes: { status: 'Retired' }
+			});
+		});
+		await waitFor(() => {
+			expect(screen.queryByLabelText(/change status/i)).not.toBeInTheDocument();
+		});
+		expect(onChanged).toHaveBeenCalledOnce();
+	});
+
+	it('closes the dialog without mutating the device when cancelled', async () => {
+		const user = userEvent.setup();
+		const device = createDeviceResponse({ status: 'Active' });
+
+		render(DevicePwaRow, { props: { device, currentUser: makeUser('Admin') } });
+
+		await user.click(screen.getByRole('button', { name: /more actions/i }));
+		await user.click(screen.getByRole('menuitem', { name: 'Change Status' }));
+		await screen.findByLabelText(/change status/i);
+
+		await user.click(screen.getByRole('button', { name: /^cancel$/i }));
+
+		expect(screen.queryByLabelText(/change status/i)).not.toBeInTheDocument();
+		expect(mocks.bulkUpdate).not.toHaveBeenCalled();
+	});
+
+	it('shows an error toast and keeps the row unchanged when the bulk-update call fails', async () => {
+		const user = userEvent.setup();
+		mocks.bulkUpdate.mockRejectedValue(new Error('boom'));
+		const device = createDeviceResponse({ status: 'Active' });
+		const onChanged = vi.fn();
+
+		render(DevicePwaRow, { props: { device, currentUser: makeUser('Admin'), onChanged } });
+
+		await user.click(screen.getByRole('button', { name: /more actions/i }));
+		await user.click(screen.getByRole('menuitem', { name: 'Change Status' }));
+		const select = screen.getByLabelText(/change status/i) as HTMLSelectElement;
+		await user.selectOptions(select, 'Retired');
+		await user.click(screen.getByRole('button', { name: /apply changes/i }));
+
+		await waitFor(() => {
+			expect(mocks.showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+		});
+		expect(onChanged).not.toHaveBeenCalled();
+		await waitFor(() => {
+			expect(screen.queryByLabelText(/change status/i)).not.toBeInTheDocument();
+		});
+	});
+
+	it('has no axe violations with the change-status dialog open', async () => {
+		const user = userEvent.setup();
+		const device = createDeviceResponse({ status: 'Active' });
+
+		const { container } = render(DevicePwaRow, { props: { device, currentUser: makeUser('Admin') } });
+		await user.click(screen.getByRole('button', { name: /more actions/i }));
+		await user.click(screen.getByRole('menuitem', { name: 'Change Status' }));
+		await screen.findByLabelText(/change status/i);
 
 		expect(await axe(container)).toHaveNoViolations();
 	});

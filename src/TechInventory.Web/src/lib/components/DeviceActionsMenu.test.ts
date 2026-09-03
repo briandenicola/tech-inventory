@@ -95,40 +95,22 @@ describe('DeviceActionsMenu', () => {
 		expect(onDelete).toHaveBeenCalledOnce();
 	});
 
-	it('shows retire action when provided', async () => {
+	it('shows the Change Status action when provided (#127 — replaces the old Active-only Retire / Retired-only Unretire pair)', async () => {
 		const user = userEvent.setup();
-		const onRetire = vi.fn();
+		const onChangeStatus = vi.fn();
 
 		render(DeviceActionsMenu, {
 			props: {
-				onRetire
-			}
-		});
-
-		await user.click(screen.getByRole('button', { name: /more actions/i }));
-		
-		expect(screen.getByText('Retire Device')).toBeInTheDocument();
-
-		await user.click(screen.getByRole('menuitem', { name: 'Retire Device' }));
-		expect(onRetire).toHaveBeenCalledOnce();
-	});
-
-	it('shows unretire action when provided', async () => {
-		const user = userEvent.setup();
-		const onUnretire = vi.fn();
-
-		render(DeviceActionsMenu, {
-			props: {
-				onUnretire
+				onChangeStatus
 			}
 		});
 
 		await user.click(screen.getByRole('button', { name: /more actions/i }));
 
-		expect(screen.getByText('Unretire Device')).toBeInTheDocument();
+		expect(screen.getByText('Change Status')).toBeInTheDocument();
 
-		await user.click(screen.getByRole('menuitem', { name: 'Unretire Device' }));
-		expect(onUnretire).toHaveBeenCalledOnce();
+		await user.click(screen.getByRole('menuitem', { name: 'Change Status' }));
+		expect(onChangeStatus).toHaveBeenCalledOnce();
 	});
 
 	it('closes on escape', async () => {
@@ -155,8 +137,7 @@ describe('DeviceActionsMenu', () => {
 				editHref: '/devices/device-1/edit',
 				cloneHref: '/devices/new?cloneFrom=device-1',
 				onRelease: vi.fn(),
-				onRetire: vi.fn(),
-				onUnretire: vi.fn(),
+				onChangeStatus: vi.fn(),
 				onDelete: vi.fn()
 			}
 		});

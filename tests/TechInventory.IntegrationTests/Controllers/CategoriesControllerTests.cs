@@ -165,6 +165,59 @@ public sealed class CategoriesControllerTests(IntegrationTestFactory<CategoriesC
         problem.Status.Should().Be((int)HttpStatusCode.NotFound);
     }
 
+    // #129/#138 — PATCH .../deactivate previously had no route (404 for every
+    // reference type). Mirrors the DELETE assertions above and preserves the
+    // existing cascade-to-active-descendants invariant proven below.
+    [Fact]
+    public async Task DeactivateCategory_WhenFound_Returns204AndMarksInactive()
+    {
+        await ResetDatabaseAsync();
+        var category = new Category(Guid.NewGuid(), $"Category-{Guid.NewGuid():N}");
+        await SeedAsync(entities: [category]);
+        using var client = CreateClient();
+
+        var response = await client.PatchAsync($"/api/v1/categories/{category.Id}/deactivate", new StringContent(string.Empty));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var reload = await client.GetAsync($"/api/v1/categories/{category.Id}");
+        reload.StatusCode.Should().Be(HttpStatusCode.OK);
+        var payload = await ReadJsonAsync<CategoryResponse>(reload);
+        payload.IsActive.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task DeactivateCategory_WhenMissing_Returns404ProblemDetails()
+    {
+        await ResetDatabaseAsync();
+        using var client = CreateClient();
+
+        var response = await client.PatchAsync($"/api/v1/categories/{Guid.NewGuid()}/deactivate", new StringContent(string.Empty));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var problem = await ReadProblemDetailsAsync(response);
+        problem.Status.Should().Be((int)HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task DeactivateCategory_WhenArchivingParent_CascadesArchiveToChildren()
+    {
+        await ResetDatabaseAsync();
+        var root = new Category(Guid.NewGuid(), $"Root-{Guid.NewGuid():N}");
+        var child = new Category(Guid.NewGuid(), $"Child-{Guid.NewGuid():N}", root.Id, 2, "laptop");
+        await SeedAsync(entities: [root, child]);
+        using var client = CreateClient();
+
+        var response = await client.PatchAsync($"/api/v1/categories/{root.Id}/deactivate", new StringContent(string.Empty));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var rootResponse = await client.GetAsync($"/api/v1/categories/{root.Id}");
+        var childResponse = await client.GetAsync($"/api/v1/categories/{child.Id}");
+        var archivedRoot = await ReadJsonAsync<CategoryResponse>(rootResponse);
+        var archivedChild = await ReadJsonAsync<CategoryResponse>(childResponse);
+        archivedRoot.IsActive.Should().BeFalse();
+        archivedChild.IsActive.Should().BeFalse();
+    }
+
     [Fact]
     public async Task GetCategoryTree_WhenHierarchyExists_ReturnsNestedChildren()
     {

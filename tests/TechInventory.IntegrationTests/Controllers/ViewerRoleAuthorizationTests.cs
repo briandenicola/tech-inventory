@@ -295,6 +295,29 @@ public sealed class ViewerRoleAuthorizationTests(ViewerRoleIntegrationTestFactor
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
+    /// <summary>
+    /// #129/#138 — the new PATCH .../deactivate route carries the same
+    /// <see cref="TechInventory.Api.Authentication.AuthorizationPolicies.AdminOrMember"/>
+    /// gate as the existing DELETE route it delegates to. Viewer must be
+    /// rejected here too, not just on DELETE.
+    /// </summary>
+    [Theory]
+    [InlineData("/api/v1/brands")]
+    [InlineData("/api/v1/categories")]
+    [InlineData("/api/v1/locations")]
+    [InlineData("/api/v1/networks")]
+    [InlineData("/api/v1/tags")]
+    [InlineData("/api/v1/owners")]
+    public async Task DeactivateReferenceEntity_WhenCallerIsViewer_ReturnsForbidden(string route)
+    {
+        using var client = Factory.CreateClient();
+
+        using var request = new HttpRequestMessage(HttpMethod.Patch, $"{route}/{Guid.NewGuid()}/deactivate");
+        var response = await client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
     // Positive control (Hicks, T102 B4 review): every test above proves Viewer
     // is denied a mutation. Without a passing-read counterpart, a regression
     // that made these endpoints reject Viewer entirely (rather than just

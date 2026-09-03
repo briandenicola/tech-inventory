@@ -62,6 +62,15 @@ public sealed class TagsController(ISender sender) : ControllerBase
     public async Task<IActionResult> DeleteTag(Guid id, CancellationToken cancellationToken)
         => this.NoContentResult(await sender.Send(new DeleteTagCommand(id), cancellationToken));
 
+    [HttpPatch("{id:guid}/deactivate")]
+    [Authorize(Policy = AuthorizationPolicies.AdminOrMember)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> DeactivateTag(Guid id, CancellationToken cancellationToken)
+        => this.NoContentResult(await sender.Send(new DeleteTagCommand(id), cancellationToken));
+
     public sealed record CreateTagRequest(string Name, string? Color = null)
     {
         public CreateTagCommand ToCommand() => new(Name, Color);

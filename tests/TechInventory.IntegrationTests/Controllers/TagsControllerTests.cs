@@ -158,4 +158,36 @@ public sealed class TagsControllerTests(IntegrationTestFactory<TagsControllerTes
         var problem = await ReadProblemDetailsAsync(response);
         problem.Status.Should().Be((int)HttpStatusCode.NotFound);
     }
+
+    // #129/#138 — PATCH .../deactivate previously had no route (404 for every
+    // reference type). Mirrors the DELETE assertions above.
+    [Fact]
+    public async Task DeactivateTag_WhenFound_Returns204AndMarksInactive()
+    {
+        await ResetDatabaseAsync();
+        var tag = new Tag(Guid.NewGuid(), $"Tag-{Guid.NewGuid():N}", "#112233");
+        await SeedAsync(entities: [tag]);
+        using var client = CreateClient();
+
+        var response = await client.PatchAsync($"/api/v1/tags/{tag.Id}/deactivate", new StringContent(string.Empty));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var reload = await client.GetAsync($"/api/v1/tags/{tag.Id}");
+        reload.StatusCode.Should().Be(HttpStatusCode.OK);
+        var payload = await ReadJsonAsync<TagResponse>(reload);
+        payload.IsActive.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task DeactivateTag_WhenMissing_Returns404ProblemDetails()
+    {
+        await ResetDatabaseAsync();
+        using var client = CreateClient();
+
+        var response = await client.PatchAsync($"/api/v1/tags/{Guid.NewGuid()}/deactivate", new StringContent(string.Empty));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var problem = await ReadProblemDetailsAsync(response);
+        problem.Status.Should().Be((int)HttpStatusCode.NotFound);
+    }
 }

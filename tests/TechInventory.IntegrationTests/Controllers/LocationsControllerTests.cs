@@ -162,6 +162,38 @@ public sealed class LocationsControllerTests(IntegrationTestFactory<LocationsCon
         problem.Status.Should().Be((int)HttpStatusCode.NotFound);
     }
 
+    // #129/#138 — PATCH .../deactivate previously had no route (404 for every
+    // reference type). Mirrors the DELETE assertions above.
+    [Fact]
+    public async Task DeactivateLocation_WhenFound_Returns204AndMarksInactive()
+    {
+        await ResetDatabaseAsync();
+        var location = new Location(Guid.NewGuid(), $"Location-{Guid.NewGuid():N}", LocationType.Home);
+        await SeedAsync(entities: [location]);
+        using var client = CreateClient();
+
+        var response = await client.PatchAsync($"/api/v1/locations/{location.Id}/deactivate", new StringContent(string.Empty));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var reload = await client.GetAsync($"/api/v1/locations/{location.Id}");
+        reload.StatusCode.Should().Be(HttpStatusCode.OK);
+        var payload = await ReadJsonAsync<LocationResponse>(reload);
+        payload.IsActive.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task DeactivateLocation_WhenMissing_Returns404ProblemDetails()
+    {
+        await ResetDatabaseAsync();
+        using var client = CreateClient();
+
+        var response = await client.PatchAsync($"/api/v1/locations/{Guid.NewGuid()}/deactivate", new StringContent(string.Empty));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var problem = await ReadProblemDetailsAsync(response);
+        problem.Status.Should().Be((int)HttpStatusCode.NotFound);
+    }
+
     [Fact]
     public async Task MergeLocation_WhenSourceHasNoDevices_ReturnsZeroMergedCountAndDeactivatesSource()
     {

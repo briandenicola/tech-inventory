@@ -166,6 +166,58 @@ public sealed class OwnersControllerTests(IntegrationTestFactory<OwnersControlle
         problem.Status.Should().Be((int)HttpStatusCode.NotFound);
     }
 
+    // #129/#138 — PATCH .../deactivate previously had no route (404 for every
+    // reference type, including Owners per #138). Mirrors the DELETE
+    // assertions above, including the pre-existing "referenced by device"
+    // conflict guard, which is preserved unchanged (not part of this fix's
+    // scope) — an owner still assigned to a device must be reassigned before
+    // it can be deactivated.
+    [Fact]
+    public async Task DeactivateOwner_WhenFound_Returns204AndMarksInactive()
+    {
+        await ResetDatabaseAsync();
+        var owner = new Owner(Guid.NewGuid(), $"Owner-{Guid.NewGuid():N}", OwnerRole.Member);
+        await SeedAsync(entities: [owner]);
+        using var client = CreateClient();
+
+        var response = await client.PatchAsync($"/api/v1/owners/{owner.Id}/deactivate", new StringContent(string.Empty));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var reload = await client.GetAsync($"/api/v1/owners/{owner.Id}");
+        reload.StatusCode.Should().Be(HttpStatusCode.OK);
+        var payload = await ReadJsonAsync<OwnerResponse>(reload);
+        payload.IsActive.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task DeactivateOwner_WhenMissing_Returns404ProblemDetails()
+    {
+        await ResetDatabaseAsync();
+        using var client = CreateClient();
+
+        var response = await client.PatchAsync($"/api/v1/owners/{Guid.NewGuid()}/deactivate", new StringContent(string.Empty));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var problem = await ReadProblemDetailsAsync(response);
+        problem.Status.Should().Be((int)HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task DeactivateOwner_WhenReferencedByDevice_Returns409ConflictProblemDetails()
+    {
+        await ResetDatabaseAsync();
+        var references = await SeedDeviceReferenceDataAsync();
+        var device = CreateDevice(references, $"Device-{Guid.NewGuid():N}");
+        await SeedAsync(entities: [device]);
+        using var client = CreateClient();
+
+        var response = await client.PatchAsync($"/api/v1/owners/{references.Owner.Id}/deactivate", new StringContent(string.Empty));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var problem = await ReadProblemDetailsAsync(response);
+        problem.Status.Should().Be((int)HttpStatusCode.Conflict);
+    }
+
     [Fact]
     public async Task GetCurrentOwner_AutoProvisionsOnFirstCall_AndReturnsSameOwnerOnSecondCall()
     {

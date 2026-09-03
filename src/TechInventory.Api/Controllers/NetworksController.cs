@@ -64,6 +64,15 @@ public sealed class NetworksController(ISender sender) : ControllerBase
     public async Task<IActionResult> DeleteNetwork(Guid id, CancellationToken cancellationToken)
         => this.NoContentResult(await sender.Send(new DeleteNetworkCommand(id), cancellationToken));
 
+    [HttpPatch("{id:guid}/deactivate")]
+    [Authorize(Policy = AuthorizationPolicies.AdminOrMember)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> DeactivateNetwork(Guid id, CancellationToken cancellationToken)
+        => this.NoContentResult(await sender.Send(new DeleteNetworkCommand(id), cancellationToken));
+
     [HttpPost("merge")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(MergeReferenceEntityResponse), StatusCodes.Status200OK)]

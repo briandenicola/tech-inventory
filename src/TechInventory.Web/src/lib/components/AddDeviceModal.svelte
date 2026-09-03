@@ -182,7 +182,7 @@
 				</div>
 
 				<!-- Form body (scrollable) -->
-				<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-6">
+					<div class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-6 py-6">
 					<DeviceForm
 						mode="create"
 						onSubmit={handleSubmit}

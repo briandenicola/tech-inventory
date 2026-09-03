@@ -129,7 +129,7 @@ describe('DeviceTable', () => {
 			expect(groupHeaderCell).toHaveAttribute('colspan', '8');
 		});
 
-		it('keeps only the Name column sticky for horizontal scrolling', () => {
+		it('keeps Name (left) and Actions (right) columns sticky; middle content columns are not sticky', () => {
 			const devices = createDeviceList(2);
 
 			render(DeviceTable, { props: { ...defaultProps, devices } });
@@ -145,7 +145,7 @@ describe('DeviceTable', () => {
 			expect(nameCell).toHaveClass('left-0');
 			expect(nameCell).toHaveClass('z-10');
 
-			const nonNameCells = Array.from(firstDataRow.querySelectorAll('td')).slice(1);
+			const nonNameCells = Array.from(firstDataRow.querySelectorAll('td')).slice(1, -1);
 			for (const cell of nonNameCells) {
 				expect(cell).not.toHaveClass('sticky');
 			}

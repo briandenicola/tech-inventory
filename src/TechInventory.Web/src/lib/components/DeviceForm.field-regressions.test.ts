@@ -10,21 +10,19 @@
  * compute intrinsic sizing or iOS WebKit layout):
  *
  *   DeviceForm:
- *     • purchaseDate input:    date-input-contain, min-w-0, w-full (currently present — tamper-tested)
- *     • purchasePrice input:   min-w-0, w-full (min-w-0 is a PRE-FIX guard for #148)
- *     • notes textarea:        w-full (currently present — tamper-tested)
- *     • purchaseDate label:    max-w-full (PRE-FIX guard — label text must not force overflow)
+ *     • purchaseDate input:    date-input-contain, min-w-0, w-full (tamper-tested)
+ *     • purchasePrice input:   min-w-0, w-full (tamper-tested — both classes now present)
+ *     • notes textarea:        w-full (tamper-tested)
+ *     • purchaseDate label:    max-w-full (tamper-tested — class now present)
  *
  *   DeviceDetailModal ancestor chain:
  *     • modal surface div:     overflow-hidden (currently present — tamper-tested)
  *     • scroll region div:     overflow-y-auto (currently present — tamper-tested)
  *
- * PRE-FIX STATUS:
- *   purchasePrice `min-w-0` guard will fail until Vasquez adds it (#148).
- *   purchaseDate label `max-w-full` guard will fail until Vasquez adds it (#148).
- *
- * TAMPER-TESTED guards: date-input-contain, min-w-0, w-full on date input;
- *   notes w-full; modal surface overflow-hidden; scroll region overflow-y-auto.
+ * TAMPER-TESTED guards: all four containment contracts are present.
+ *   date-input-contain, min-w-0, w-full on date input; notes w-full;
+ *   purchasePrice min-w-0 + w-full; purchaseDate label max-w-full;
+ *   modal surface overflow-hidden; scroll region overflow-y-auto.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
@@ -125,11 +123,10 @@ describe('DeviceForm — #148 price/number input containment contract', () => {
 		expect(priceInput.className, 'price input must carry w-full').toMatch(/\bw-full\b/);
 	});
 
-	// ── PRE-FIX sentinel ──────────────────────────────────────────────────────
+	// ── TAMPER-TESTED sentinel ───────────────────────────────────────────────
 	// min-w-0 prevents number inputs from asserting a wider intrinsic minimum
-	// than their grid column. Currently absent — this test WILL FAIL until
-	// Vasquez adds it as part of #148.
-	it('purchasePrice input carries min-w-0 (pre-fix: will fail until Vasquez lands #148)', () => {
+	// than their grid column. Added as part of #148.
+	it('purchasePrice input carries min-w-0', () => {
 		render(DeviceForm, { props: baseProps });
 		const priceInput = screen.getByLabelText(/devices.columns.purchasePrice/i);
 		expect(
@@ -159,12 +156,11 @@ describe('DeviceForm — #148 purchaseDate label containment contract', () => {
 		vi.clearAllMocks();
 	});
 
-	// ── PRE-FIX sentinel ──────────────────────────────────────────────────────
+	// ── TAMPER-TESTED sentinel ───────────────────────────────────────────────
 	// The label text for purchaseDate must not force the row wider than the
-	// modal.  max-w-full caps the label at its parent's width. Currently absent
-	// — this test WILL FAIL until Vasquez adds max-w-full to the label as part
+	// modal. max-w-full caps the label at its parent's width. Added as part
 	// of #148.
-	it('purchaseDate label carries max-w-full to prevent label text from forcing overflow (pre-fix: will fail until #148 lands)', () => {
+	it('purchaseDate label carries max-w-full to prevent label text from forcing overflow', () => {
 		render(DeviceForm, { props: baseProps });
 		const dateInput = screen.getByLabelText(/devices.columns.purchaseDate/i);
 		const label = dateInput.closest('div')?.querySelector('label[for="purchaseDate"]');

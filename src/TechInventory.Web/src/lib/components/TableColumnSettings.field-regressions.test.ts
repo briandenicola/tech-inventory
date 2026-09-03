@@ -9,15 +9,11 @@
  *      across two lines at the narrow widths found in 320–390 px installed-
  *      PWA viewports.
  *
- * PRE-FIX STATUS (whitespace-nowrap guard):
- *   The Reset button does NOT yet carry `whitespace-nowrap`.  This assertion
- *   is a pre-fix sentinel for Vasquez's #164 branch — it will fail on the
- *   current HEAD and pass once the class is added.
- *
- * TAMPER-TESTED (i18n token guard):
- *   Replacing `{t('settings.tableColumns.resetToDefault')}` in the source
- *   with a hard-coded literal makes the i18n test fail; restoring it makes
- *   it pass.
+ * TAMPER-TESTED: Both guards are currently met by the implementation.
+ *   (1) Replacing `{t('settings.tableColumns.resetToDefault')}` with a
+ *   hard-coded literal makes the i18n test fail.
+ *   (2) Removing `whitespace-nowrap` from the button class makes the
+ *   no-wrap test fail.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
@@ -91,11 +87,10 @@ describe('TableColumnSettings — #164 Reset button i18n + no-wrap contract', ()
 		expect(literal, 'hard-coded "Reset to Default" must not appear — use t() instead').toBeNull();
 	});
 
-	// ── PRE-FIX sentinel ──────────────────────────────────────────────────────
+	// ── TAMPER-TESTED sentinel ───────────────────────────────────────────────
 	// The Reset button must carry whitespace-nowrap so that at narrow installed-
 	// PWA viewports (320–390 px) the label stays on a single line.
-	// This test WILL FAIL until Vasquez adds the class in #164.
-	it('Reset button carries whitespace-nowrap to prevent label wrapping at narrow viewports (pre-fix: will fail until #164 lands)', () => {
+	it('Reset button carries whitespace-nowrap to prevent label wrapping at narrow viewports', () => {
 		render(TableColumnSettings);
 		const btn = screen.getByRole('button', {
 			name: 'settings.tableColumns.resetToDefault'

@@ -9,6 +9,18 @@
 	tap target preserved via min-h-11. Leading icons are rendered from
 	navIcons.ts so the role="menu" composite stays accessible (icons are
 	aria-hidden; labels carry the name).
+
+	Reopened #144: field validation found the active-item highlight visually
+	inflating row height/whitespace. Root cause was structural, not a single
+	inflated value — every row repeated its own literal geometry string, so
+	nothing enforced that active and inactive rows shared one box, and the
+	`rounded-xl` (24px) corner radius on a 44px-tall pill read as an oversized
+	"bubble" against its neighbours, plus the role="menu" list had no
+	container-level gap so per-row rhythm depended on incidental divider
+	margins. Fix: one shared `menuRowClass` geometry string (imported by every
+	row; state branches only ever add `class:` colour), a standard `rounded-lg`
+	radius, and a `gap-1` token-scale gap on the role="menu" container so
+	spacing is consistent instead of state/row-specific.
 -->
 <script lang="ts">
 	import { tick, untrack } from 'svelte';
@@ -36,6 +48,15 @@
 	let isOpen = $state(false);
 	let rootElement = $state<HTMLDivElement | null>(null);
 	let triggerElement = $state<HTMLButtonElement | null>(null);
+
+	// Single source of truth for row geometry (#144 correction). Every
+	// menuitem row — primary, admin, Settings, Sign Out — applies this exact
+	// string. Active/inactive state may only ever add colour via `class:`
+	// bindings alongside it; it must never gain its own padding, margin,
+	// min-height, gap, radius, border, or transform, or active rows will
+	// visually inflate relative to inactive ones again.
+	const menuRowClass =
+		'flex min-h-11 items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset';
 
 	const currentRole = $derived(currentUser?.role ?? null);
 	const visiblePrimaryNavItems = $derived(getVisibleNavItems(primaryNavItems, currentRole));
@@ -159,7 +180,13 @@
 				aria-required-children, so it lives outside this boundary, below,
 				as a trailing sibling within the same popover panel.
 			-->
-			<div role="menu" tabindex="-1" aria-label={t('navigation.primary')} onkeydown={handleMenuKeydown}>
+			<div
+				role="menu"
+				tabindex="-1"
+				aria-label={t('navigation.primary')}
+				onkeydown={handleMenuKeydown}
+				class="flex flex-col gap-1"
+			>
 			{#each visiblePrimaryNavItems as item (item.href)}
 				{@const active = isNavItemActive(pathname, item)}
 				{@const iconPath = navIconPaths[item.href]}
@@ -169,7 +196,7 @@
 					role="menuitem"
 					tabindex="-1"
 					onclick={closeMenu}
-					class="flex min-h-11 items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-medium transition-colors"
+					class={menuRowClass}
 					class:bg-primary-50={active}
 					class:text-primary-700={active}
 					class:dark:bg-primary-900={active}
@@ -202,7 +229,7 @@
 						role="menuitem"
 						tabindex="-1"
 						onclick={closeMenu}
-						class="flex min-h-11 items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-medium transition-colors"
+						class={menuRowClass}
 						class:bg-primary-50={active}
 						class:text-primary-700={active}
 						class:dark:bg-primary-900={active}
@@ -229,7 +256,7 @@
 				role="menuitem"
 				tabindex="-1"
 				onclick={closeMenu}
-				class="flex min-h-11 items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-medium transition-colors"
+				class={menuRowClass}
 				class:bg-primary-50={settingsActive}
 				class:text-primary-700={settingsActive}
 				class:dark:bg-primary-900={settingsActive}
@@ -278,7 +305,7 @@
 						closeMenu();
 						onSignOut();
 					}}
-					class="flex min-h-11 w-full items-center gap-2 rounded-xl px-3 py-1.5 text-left text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+					class="{menuRowClass} w-full text-left text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
 				>
 					<svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={signOutIconPath} />

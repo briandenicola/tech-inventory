@@ -248,6 +248,11 @@
 				"success": "{name} returned to active devices"
 			}
 		},
+		"clone": {
+			"button": "Clone Device",
+			"banner": "Cloned from {name}. Name and serial number are left blank — give this device its own identity before saving.",
+			"loadError": "Failed to load the source device for cloning"
+		},
 		"create": {
 			"title": "Add Device",
 			"subtitle": "Enter device information"

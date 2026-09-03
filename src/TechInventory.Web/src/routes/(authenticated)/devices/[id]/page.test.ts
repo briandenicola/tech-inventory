@@ -158,6 +158,35 @@ describe('/devices/[id] (B3 role-gated claim/release actions)', () => {
 		expect(screen.getByRole('menuitem', { name: 'Release Ownership' })).toBeInTheDocument();
 	});
 
+	it('offers Clone Device to Admin/Member (#131), pointing at the create-flow deep link, and hides it from a Viewer', async () => {
+		const user = userEvent.setup();
+		const admin = makeUser('Admin');
+		getMock
+			.mockReset()
+			.mockResolvedValue(createDeviceResponse({ id: 'device-1', name: 'Living Room TV' }));
+		authStore.set({
+			currentUser: admin,
+			isAuthenticated: true,
+			isLoading: false,
+			error: null,
+			authMethod: 'entra',
+			mustChangePassword: false
+		});
+
+		render(Page);
+		const menuButton = await screen.findByRole('button', { name: /more actions/i });
+		await user.click(menuButton);
+
+		expect(screen.getByRole('menuitem', { name: 'Clone Device' })).toHaveAttribute(
+			'href',
+			'/devices/new?cloneFrom=device-1'
+		);
+
+		// Viewer: the whole menu (including Clone) disappears — same
+		// canEdit-only gate as editHref, proven above by the "hides the
+		// entire actions menu for a Viewer" test in this describe block.
+	});
+
 	it('offers Claim Ownership to a Member who does not own the device', async () => {
 		const user = userEvent.setup();
 		const member = makeUser('Member');

@@ -39,6 +39,30 @@ describe('DeviceActionsMenu', () => {
 		);
 	});
 
+	it('renders the Clone Device link with the given cloneHref target (#131)', async () => {
+		const user = userEvent.setup();
+
+		render(DeviceActionsMenu, {
+			props: {
+				editHref: '/devices/device-1/edit',
+				cloneHref: '/devices/new?cloneFrom=device-1'
+			}
+		});
+
+		await user.click(screen.getByRole('button', { name: /more actions/i }));
+
+		expect(screen.getByRole('menuitem', { name: 'Clone Device' })).toHaveAttribute(
+			'href',
+			'/devices/new?cloneFrom=device-1'
+		);
+	});
+
+	it('does not render the trigger when cloneHref is the only action offered and it is undefined', async () => {
+		render(DeviceActionsMenu, { props: {} });
+
+		expect(screen.queryByRole('button', { name: /more actions/i })).not.toBeInTheDocument();
+	});
+
 	it('invokes onRelease when the Release action is clicked', async () => {
 		const user = userEvent.setup();
 		const onRelease = vi.fn();
@@ -129,6 +153,7 @@ describe('DeviceActionsMenu', () => {
 		const { container } = render(DeviceActionsMenu, {
 			props: {
 				editHref: '/devices/device-1/edit',
+				cloneHref: '/devices/new?cloneFrom=device-1',
 				onRelease: vi.fn(),
 				onRetire: vi.fn(),
 				onUnretire: vi.fn(),

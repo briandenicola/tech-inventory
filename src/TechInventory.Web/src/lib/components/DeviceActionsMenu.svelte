@@ -4,6 +4,8 @@
 
 	interface Props {
 		editHref?: string;
+		/** #131: navigates to the create-device flow pre-filled from this device (see /devices/new?cloneFrom=<id>). Href-driven like editHref — cloning is a navigation, not a mutation. */
+		cloneHref?: string;
 		onClaim?: () => void;
 		onRelease?: () => void;
 		onRetire?: () => void;
@@ -12,13 +14,24 @@
 		onDelete?: () => void;
 	}
 
-	let { editHref, onClaim, onRelease, onRetire, onUnretire, onViewHistory, onDelete }: Props = $props();
+	let {
+		editHref,
+		cloneHref,
+		onClaim,
+		onRelease,
+		onRetire,
+		onUnretire,
+		onViewHistory,
+		onDelete
+	}: Props = $props();
 
 	let isOpen = $state(false);
 	let rootElement = $state<HTMLDivElement | null>(null);
 
 	const hasActions = $derived(
-		Boolean(editHref || onClaim || onRelease || onRetire || onUnretire || onViewHistory || onDelete)
+		Boolean(
+			editHref || cloneHref || onClaim || onRelease || onRetire || onUnretire || onViewHistory || onDelete
+		)
 	);
 
 	async function openMenu() {
@@ -132,6 +145,18 @@
 						>
 							{t('common.actions.edit')}
 						</a>
+					{/if}
+					{#if cloneHref}
+							<a
+								data-device-action
+								role="menuitem"
+								tabindex="-1"
+								href={cloneHref}
+								onclick={closeMenu}
+								class="flex min-h-11 items-center rounded-xl px-3 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-neutral-200 dark:hover:bg-neutral-800 dark:hover:text-neutral-50"
+							>
+								{t('devices.clone.button')}
+							</a>
 					{/if}
 					{#if onClaim}
 						<button

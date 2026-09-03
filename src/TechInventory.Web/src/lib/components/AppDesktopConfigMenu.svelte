@@ -146,7 +146,7 @@
 							tabindex="-1"
 							aria-current={active ? 'page' : undefined}
 							onclick={closeMenu}
-							class="flex min-h-[2.75rem] items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-medium transition-colors"
+							class="flex min-h-11 items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-medium transition-colors"
 							class:bg-primary-50={active}
 							class:text-primary-700={active}
 							class:dark:bg-primary-900={active}

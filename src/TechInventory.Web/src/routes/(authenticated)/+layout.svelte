@@ -273,7 +273,7 @@
 								href="/settings"
 								role="menuitem"
 								onclick={() => (userMenuOpen = false)}
-								class="flex min-h-[2.75rem] items-center rounded-xl px-3 py-1.5 text-sm font-medium transition-colors duration-150"
+								class="flex min-h-11 items-center rounded-xl px-3 py-1.5 text-sm font-medium transition-colors duration-150"
 								class:bg-primary-50={settingsActive}
 								class:text-primary-700={settingsActive}
 								class:dark:bg-primary-900={settingsActive}
@@ -289,7 +289,7 @@
 								type="button"
 								role="menuitem"
 								onclick={handleSignOut}
-								class="flex min-h-[2.75rem] w-full items-center rounded-xl px-3 py-1.5 text-left text-sm font-medium text-neutral-700 transition-colors duration-150 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+								class="flex min-h-11 w-full items-center rounded-xl px-3 py-1.5 text-left text-sm font-medium text-neutral-700 transition-colors duration-150 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
 							>
 								{t('auth.signOut.button')}
 							</button>

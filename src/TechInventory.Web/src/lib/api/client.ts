@@ -10,8 +10,6 @@ import type {
 	EraReportResponse,
 	MergeEntityRequest,
 	MergeEntityResponse,
-	ReferenceEntityBulkDeleteRequest,
-	ReferenceEntityBulkDeleteResponse,
 	SummaryReportResponse,
 	TimelineReportParams,
 	TimelineReportResponse,
@@ -425,8 +423,8 @@ export const brands = {
 			body: JSON.stringify(body)
 		}),
 
-	bulkDelete: async (body: ReferenceEntityBulkDeleteRequest) =>
-		apiFetch<ReferenceEntityBulkDeleteResponse>(`/api/v1/brands/bulk-delete`, {
+	bulkDelete: async (body: PostRequestBody<paths['/api/v1/brands/bulk/delete']>) =>
+		apiFetch<PostResponse<paths['/api/v1/brands/bulk/delete']>>(`/api/v1/brands/bulk/delete`, {
 			method: 'POST',
 			body: JSON.stringify(body)
 		})
@@ -467,8 +465,8 @@ export const categories = {
 			body: JSON.stringify(body)
 		}),
 
-	bulkDelete: async (body: ReferenceEntityBulkDeleteRequest) =>
-		apiFetch<ReferenceEntityBulkDeleteResponse>(`/api/v1/categories/bulk-delete`, {
+	bulkDelete: async (body: PostRequestBody<paths['/api/v1/categories/bulk/delete']>) =>
+		apiFetch<PostResponse<paths['/api/v1/categories/bulk/delete']>>(`/api/v1/categories/bulk/delete`, {
 			method: 'POST',
 			body: JSON.stringify(body)
 		})
@@ -552,8 +550,8 @@ export const locations = {
 			body: JSON.stringify(body)
 		}),
 
-	bulkDelete: async (body: ReferenceEntityBulkDeleteRequest) =>
-		apiFetch<ReferenceEntityBulkDeleteResponse>(`/api/v1/locations/bulk-delete`, {
+	bulkDelete: async (body: PostRequestBody<paths['/api/v1/locations/bulk/delete']>) =>
+		apiFetch<PostResponse<paths['/api/v1/locations/bulk/delete']>>(`/api/v1/locations/bulk/delete`, {
 			method: 'POST',
 			body: JSON.stringify(body)
 		})
@@ -594,8 +592,8 @@ export const networks = {
 			body: JSON.stringify(body)
 		}),
 
-	bulkDelete: async (body: ReferenceEntityBulkDeleteRequest) =>
-		apiFetch<ReferenceEntityBulkDeleteResponse>(`/api/v1/networks/bulk-delete`, {
+	bulkDelete: async (body: PostRequestBody<paths['/api/v1/networks/bulk/delete']>) =>
+		apiFetch<PostResponse<paths['/api/v1/networks/bulk/delete']>>(`/api/v1/networks/bulk/delete`, {
 			method: 'POST',
 			body: JSON.stringify(body)
 		})

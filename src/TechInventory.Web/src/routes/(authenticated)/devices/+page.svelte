@@ -221,11 +221,24 @@
 	// Search debounce timeout
 	let searchTimeout: ReturnType<typeof setTimeout> | null = $state(null);
 
-	// Mobile view mode (cards or table)
+	// Mobile view mode (cards or table) — desktop/mobile-web only. Ignored in PWA (#142).
 	let mobileViewMode = $state<DevicesViewMode>('cards');
 
 	// Table column visibility/order preference
 	let tableColumns = $state<TableColumnId[]>([...DEFAULT_TABLE_COLUMNS]);
+
+	// #145: PWA selection mode — row checkboxes are hidden by default in the
+	// installed PWA. The user opts in via the filter panel's "Enable Selection Mode"
+	// command. Exiting clears the current selection.
+	let pwaSelectionMode = $state(false);
+
+	function enablePwaSelection() {
+		pwaSelectionMode = true;
+	}
+	function disablePwaSelection() {
+		pwaSelectionMode = false;
+		clearSelection();
+	}
 
 	// Add Device modal state (D-137 — Apple-elegant modal replaces /devices/new flow)
 	let createModalOpen = $state(false);
@@ -741,6 +754,10 @@
 	{hasStoredDefault}
 	{canSaveDefault}
 	{implicitGroupingActive}
+	isPwa={displayMode.isPwa}
+	{pwaSelectionMode}
+	onEnablePwaSelection={enablePwaSelection}
+	onDisablePwaSelection={disablePwaSelection}
 />
 
 <!-- Main content -->
@@ -758,70 +775,69 @@
 
 				<!-- Right-side actions -->
 				<div class="flex items-center gap-2">
-					<!-- Cards/Table view-mode toggle — F045 B3: the spec's acceptance
-						 checklist requires "Devices + view control + Filter" in the
-						 app-mode title bar too, so this must render (and be honored by
-						 DeviceTable, see mobileViewMode/presentation wiring below) at
-						 every width in app mode, not just below the md breakpoint. -->
-					<div
-						class="{displayMode.isPwa ? '' : 'md:hidden'} inline-flex items-center rounded-full bg-neutral-100 p-1 dark:bg-neutral-800"
-						role="group"
-						aria-label={t('devices.viewMode.toggleLabel')}
-					>
-						<button
-							type="button"
-							onclick={() => setViewMode('cards')}
-							aria-pressed={mobileViewMode === 'cards'}
-							class="min-h-11 px-3 rounded-full transition-colors {mobileViewMode === 'cards'
-								? 'bg-white shadow-sm text-neutral-900 dark:bg-neutral-700 dark:text-neutral-50'
-								: 'text-neutral-600 dark:text-neutral-400'}"
+					<!-- Cards/Table view-mode toggle — shown only on mobile-web; hidden in
+							 installed PWA (#142: PWA has a single list presentation). -->
+						{#if !displayMode.isPwa}
+						<div
+							class="md:hidden inline-flex items-center rounded-full bg-neutral-100 p-1 dark:bg-neutral-800"
+							role="group"
+							aria-label={t('devices.viewMode.toggleLabel')}
 						>
-							<svg
-								class="h-5 w-5"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-								aria-hidden="true"
+							<button
+								type="button"
+								onclick={() => setViewMode('cards')}
+								aria-pressed={mobileViewMode === 'cards'}
+								class="min-h-11 px-3 rounded-full transition-colors {mobileViewMode === 'cards'
+									? 'bg-white shadow-sm text-neutral-900 dark:bg-neutral-700 dark:text-neutral-50'
+									: 'text-neutral-600 dark:text-neutral-400'}"
 							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M4 6h6v6H4zM14 6h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"
-								/>
-							</svg>
-							<span class="sr-only">{t('devices.viewMode.cards')}</span>
-						</button>
-						<button
-							type="button"
-							onclick={() => setViewMode('table')}
-							aria-pressed={mobileViewMode === 'table'}
-							class="min-h-11 px-3 rounded-full transition-colors {mobileViewMode === 'table'
-								? 'bg-white shadow-sm text-neutral-900 dark:bg-neutral-700 dark:text-neutral-50'
-								: 'text-neutral-600 dark:text-neutral-400'}"
-						>
-							<svg
-								class="h-5 w-5"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-								aria-hidden="true"
+								<svg
+									class="h-5 w-5"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+									aria-hidden="true"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M4 6h6v6H4zM14 6h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"
+									/>
+								</svg>
+								<span class="sr-only">{t('devices.viewMode.cards')}</span>
+							</button>
+							<button
+								type="button"
+								onclick={() => setViewMode('table')}
+								aria-pressed={mobileViewMode === 'table'}
+								class="min-h-11 px-3 rounded-full transition-colors {mobileViewMode === 'table'
+									? 'bg-white shadow-sm text-neutral-900 dark:bg-neutral-700 dark:text-neutral-50'
+									: 'text-neutral-600 dark:text-neutral-400'}"
 							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M3 5h18M3 12h18M3 19h18"
-								/>
-							</svg>
-							<span class="sr-only">{t('devices.viewMode.table')}</span>
-						</button>
-					</div>
+								<svg
+									class="h-5 w-5"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+									aria-hidden="true"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M3 5h18M3 12h18M3 19h18"
+									/>
+								</svg>
+								<span class="sr-only">{t('devices.viewMode.table')}</span>
+							</button>
+						</div>
+						{/if}
 
-					<!-- Filter button with active count badge -->
-					<button
-						type="button"
-						onclick={() => (filtersOpen = !filtersOpen)}
+						<!-- Filter button with active count badge -->
+						<button
+							type="button"
+							onclick={() => (filtersOpen = !filtersOpen)}
 						class="relative inline-flex items-center gap-2 rounded-lg bg-neutral-100 px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
 						aria-expanded={filtersOpen}
 					>
@@ -932,7 +948,7 @@
 			currentSort={urlFilters.sort}
 			sortDir={urlFilters.sortDir}
 			onSort={handleSort}
-			selectable={true}
+			selectable={displayMode.isPwa ? pwaSelectionMode : true}
 			{selectedIds}
 			onToggleSelect={toggleSelect}
 			onToggleSelectAll={toggleSelectAllVisible}

@@ -1,11 +1,11 @@
 /**
  * DevicePwaRow component tests — F045 §5.4 / Drake D-F.
  *
- * Covers: line-1/line-2 content and order, brand/model/status degradation
- * when data is missing, the reused DeviceActionsMenu ellipsis (present only
- * when the current user has at least one permitted action), row selection
- * checkbox, the open-device callback vs. default navigation fallback, and
- * axe cleanliness.
+ * Covers: line-1/line-2 content and order, brand/model degradation when data
+ * is missing, NO status badge in any row variant (#141), the reused
+ * DeviceActionsMenu ellipsis (present only when the current user has at least
+ * one permitted action), row selection checkbox, the open-device callback vs.
+ * default navigation fallback, and axe cleanliness.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/svelte';
@@ -39,16 +39,37 @@ describe('DevicePwaRow', () => {
 		mocks.showToast.mockReset();
 	});
 
-	it('renders the device name on line one and brand/model + status on line two, in that order', () => {
+	it('renders the device name on line one and brand/model on line two, in that order', () => {
 		const device = createDeviceResponse({ name: 'Living Room TV', model: 'OLED77', status: 'Active' });
 		render(DevicePwaRow, { props: { device, currentUser: null } });
 
 		const title = screen.getByText('Living Room TV');
 		const lineTwo = screen.getByText(/OLED77/);
-		const status = screen.getByText('Active');
 
 		expect(title.compareDocumentPosition(lineTwo) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-		expect(lineTwo.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+	});
+
+	// #141: status badge/pill must NOT appear in any row variant
+	it('does not render a status badge for Active status', () => {
+		const device = createDeviceResponse({ name: 'Active Device', status: 'Active' });
+		const { container } = render(DevicePwaRow, { props: { device, currentUser: null } });
+
+		// No inline-flex rounded-full pill (the badge class fingerprint)
+		expect(container.querySelector('.rounded-full.text-xs.font-medium')).toBeNull();
+		// The status text itself must not appear as content
+		expect(screen.queryByText('Active')).not.toBeInTheDocument();
+	});
+
+	it('does not render a status badge for Retired, Disposed, InRepair, or Lent status', () => {
+		const statuses = ['Retired', 'Disposed', 'InRepair', 'Lent'] as const;
+		for (const status of statuses) {
+			const device = createDeviceResponse({ name: `Device-${status}`, status });
+			const { container, unmount } = render(DevicePwaRow, { props: { device, currentUser: null } });
+
+			expect(container.querySelector('.rounded-full.text-xs.font-medium')).toBeNull();
+			expect(screen.queryByText(status)).not.toBeInTheDocument();
+			unmount();
+		}
 	});
 
 	it('falls back to an em dash for the title when the device has no name', () => {
@@ -141,6 +162,13 @@ describe('DevicePwaRow', () => {
 
 		expect(onToggleSelect).toHaveBeenCalledWith(device.id);
 		expect(onOpenDevice).not.toHaveBeenCalled();
+	});
+
+	it('hides the selection checkbox when selectable is false (default)', () => {
+		const device = createDeviceResponse({ name: 'Non-Selectable Device' });
+		render(DevicePwaRow, { props: { device, currentUser: null, selectable: false } });
+
+		expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
 	});
 
 	it('calls onOpenDevice with the device id when the row is clicked', async () => {

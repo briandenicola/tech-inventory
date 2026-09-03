@@ -69,38 +69,21 @@
 
 <!-- F045 D-175: presentation='pwa' is gated by standalone-display-mode, not
 	 viewport — it must render at every width, never fall back to the
-	 viewport-based desktop/mobile split below. -->
+	 viewport-based desktop/mobile split below.
+	 #142: installed PWA has one list presentation (DevicePwaList); the
+	 mobileViewMode='table' path is removed from the PWA branch so the
+	 view-mode toggle has no effect in app mode. -->
 {#if presentation === 'pwa'}
-	{#if mobileViewMode === 'table'}
-		<div class="overflow-x-auto">
-			<DeviceTableDesktop
-				{devices}
-				{groups}
-				{currentSort}
-				{sortDir}
-				{onSort}
-				{selectable}
-				{selectedIds}
-				{onToggleSelect}
-				{onToggleSelectAll}
-				{allVisibleSelected}
-				{someVisibleSelected}
-				{onOpenDevice}
-				{visibleColumns}
-			/>
-		</div>
-	{:else}
-		<DevicePwaList
-			{devices}
-			{groups}
-			{selectable}
-			{selectedIds}
-			{onToggleSelect}
-			{onOpenDevice}
-			{currentUser}
-			{onChanged}
-		/>
-	{/if}
+	<DevicePwaList
+		{devices}
+		{groups}
+		{selectable}
+		{selectedIds}
+		{onToggleSelect}
+		{onOpenDevice}
+		{currentUser}
+		{onChanged}
+	/>
 {:else}
 	<!-- Desktop table (hidden on mobile) -->
 	<div class="hidden md:block overflow-x-auto">

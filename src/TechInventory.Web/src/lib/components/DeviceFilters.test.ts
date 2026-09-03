@@ -391,4 +391,117 @@ describe('DeviceFilters', () => {
 			});
 		});
 	});
+
+	describe('#145 — PWA selection mode', () => {
+		it('does not show the SELECTION section when isPwa is false (desktop behavior)', () => {
+			render(DeviceFilters, {
+				props: {
+					filters: defaultFilters,
+					onFiltersChange: vi.fn(),
+					isOpen: true,
+					onClose: vi.fn(),
+					isPwa: false
+				}
+			});
+
+			expect(screen.queryByRole('region', { name: 'SELECTION' })).not.toBeInTheDocument();
+			expect(screen.queryByRole('button', { name: 'Enable Selection Mode' })).not.toBeInTheDocument();
+		});
+
+		it('shows the SELECTION section with "Enable Selection Mode" button when isPwa=true and selection is off', () => {
+			render(DeviceFilters, {
+				props: {
+					filters: defaultFilters,
+					onFiltersChange: vi.fn(),
+					isOpen: true,
+					onClose: vi.fn(),
+					isPwa: true,
+					pwaSelectionMode: false
+				}
+			});
+
+			// Section label is present
+			expect(screen.getByText('SELECTION')).toBeInTheDocument();
+			// Enable button is shown; Exit button is absent
+			expect(screen.getByRole('button', { name: 'Enable Selection Mode' })).toBeInTheDocument();
+			expect(screen.queryByRole('button', { name: 'Exit Selection Mode' })).not.toBeInTheDocument();
+		});
+
+		it('shows "Exit Selection Mode" when pwaSelectionMode is active', () => {
+			render(DeviceFilters, {
+				props: {
+					filters: defaultFilters,
+					onFiltersChange: vi.fn(),
+					isOpen: true,
+					onClose: vi.fn(),
+					isPwa: true,
+					pwaSelectionMode: true
+				}
+			});
+
+			expect(screen.getByRole('button', { name: 'Exit Selection Mode' })).toBeInTheDocument();
+			expect(screen.queryByRole('button', { name: 'Enable Selection Mode' })).not.toBeInTheDocument();
+		});
+
+		it('calls onEnablePwaSelection and onClose when "Enable Selection Mode" is tapped', async () => {
+			const user = userEvent.setup();
+			const onEnablePwaSelection = vi.fn();
+			const onClose = vi.fn();
+
+			render(DeviceFilters, {
+				props: {
+					filters: defaultFilters,
+					onFiltersChange: vi.fn(),
+					isOpen: true,
+					onClose,
+					isPwa: true,
+					pwaSelectionMode: false,
+					onEnablePwaSelection
+				}
+			});
+
+			await user.click(screen.getByRole('button', { name: 'Enable Selection Mode' }));
+
+			expect(onEnablePwaSelection).toHaveBeenCalledOnce();
+			expect(onClose).toHaveBeenCalledOnce();
+		});
+
+		it('calls onDisablePwaSelection and onClose when "Exit Selection Mode" is tapped', async () => {
+			const user = userEvent.setup();
+			const onDisablePwaSelection = vi.fn();
+			const onClose = vi.fn();
+
+			render(DeviceFilters, {
+				props: {
+					filters: defaultFilters,
+					onFiltersChange: vi.fn(),
+					isOpen: true,
+					onClose,
+					isPwa: true,
+					pwaSelectionMode: true,
+					onDisablePwaSelection
+				}
+			});
+
+			await user.click(screen.getByRole('button', { name: 'Exit Selection Mode' }));
+
+			expect(onDisablePwaSelection).toHaveBeenCalledOnce();
+			expect(onClose).toHaveBeenCalledOnce();
+		});
+
+		it('has no accessibility violations with PWA selection section visible', async () => {
+			const { container } = render(DeviceFilters, {
+				props: {
+					filters: defaultFilters,
+					onFiltersChange: vi.fn(),
+					isOpen: true,
+					onClose: vi.fn(),
+					isPwa: true,
+					pwaSelectionMode: false
+				}
+			});
+
+			expect(await axe(container)).toHaveNoViolations();
+		});
+	});
 });

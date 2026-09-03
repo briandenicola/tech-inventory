@@ -7,9 +7,9 @@
 
 	F026: 2-up grid at mobile widths to roughly double the device density per
 	screen. Cards drop secondary metadata (owner, purchase date) and show only
-	name + status badge + brand + category so two cards fit comfortably at the
-	360 px breakpoint we target. The full record is still one tap away in the
-	detail modal.
+	name + brand + category so two cards fit comfortably at the 360 px
+	breakpoint we target. The full record is still one tap away in the detail
+	modal. Status badge removed per #141 — status remains in the detail surface.
 
 	`visibleColumns` never reaches this renderer — it is a desktop-table-only
 	preference (D-178).
@@ -17,7 +17,7 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
 	import { referenceDataStore } from '$lib/stores/referenceData';
-	import { lookupName, statusBadgeClass } from '$lib/utils/deviceDisplay';
+	import { lookupName } from '$lib/utils/deviceDisplay';
 	import type { DeviceResponse } from '$lib/queries/devices.svelte';
 	import type { DeviceGroup } from '$lib/utils/groupDevices';
 
@@ -101,13 +101,6 @@
 							{device.model}
 						</p>
 					{/if}
-					<span
-						class="mt-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {statusBadgeClass(
-							device.status
-						)}"
-					>
-						{device.status || '—'}
-					</span>
 					<dl class="mt-2 space-y-0.5 text-xs text-neutral-700 dark:text-neutral-300">
 						<div class="flex gap-1 truncate">
 							<dt class="font-medium text-neutral-500 dark:text-neutral-400">
@@ -133,13 +126,6 @@
 							{device.model}
 						</p>
 					{/if}
-					<span
-						class="mt-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {statusBadgeClass(
-							device.status
-						)}"
-					>
-						{device.status || '—'}
-					</span>
 					<dl class="mt-2 space-y-0.5 text-xs text-neutral-700 dark:text-neutral-300">
 						<div class="flex gap-1 truncate">
 							<dt class="font-medium text-neutral-500 dark:text-neutral-400">

@@ -362,7 +362,10 @@
 			"groupByNone": "None",
 			"groupByCategory": "Category",
 			"groupByOwner": "Owner",
-			"groupByYear": "Purchase year"
+			"groupByYear": "Purchase year",
+			"selectionSection": "SELECTION",
+			"enableSelectionMode": "Enable Selection Mode",
+			"exitSelectionMode": "Exit Selection Mode"
 		},
 		"groups": {
 			"unknown": "Unknown",

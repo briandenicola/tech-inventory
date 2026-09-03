@@ -3,15 +3,17 @@
 
 	One device per full-width row inside the installed-PWA device list
 	(inset-grouped list, not the 2-up card grid). Line 1 is the device name;
-	line 2 is `brand · model` plus the status pill. The trailing ellipsis
-	reuses `DeviceActionsMenu` verbatim — same props `DeviceDetailModal` passes
-	it — via the shared `createDeviceRowActions` controller so permission
-	rules and API calls aren't forked between the modal and the row.
+	line 2 is `brand · model`. Status is intentionally absent from the row
+	(#141) — it remains discoverable in the device detail surface and filters.
+	The trailing ellipsis reuses `DeviceActionsMenu` verbatim — same props
+	`DeviceDetailModal` passes it — via the shared `createDeviceRowActions`
+	controller so permission rules and API calls aren't forked between the
+	modal and the row.
 -->
 <script lang="ts">
 	import { t } from '$lib/i18n';
 	import { referenceDataStore } from '$lib/stores/referenceData';
-	import { lookupName, statusBadgeClass } from '$lib/utils/deviceDisplay';
+	import { lookupName } from '$lib/utils/deviceDisplay';
 	import { createDeviceRowActions } from '$lib/utils/deviceRowActions.svelte';
 	import { deviceStatusOptions } from '$lib/utils/deviceRetirement';
 	import type { DeviceResponse } from '$lib/queries/devices.svelte';
@@ -92,15 +94,10 @@
 		>
 			{device.name || '—'}
 		</span>
-		<span class="flex w-full min-w-0 items-center gap-2 text-sm leading-snug">
+		<span
+			class="flex w-full min-w-0 items-center gap-2 text-sm leading-snug"
+		>
 			<span class="min-w-0 truncate text-neutral-600 dark:text-neutral-400">{lineTwoText}</span>
-			<span
-				class="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium {statusBadgeClass(
-					device.status
-				)}"
-			>
-				{device.status || '—'}
-			</span>
 		</span>
 	{/snippet}
 

@@ -295,7 +295,7 @@ describe('DeviceTable', () => {
 			}
 		});
 
-		it('shows device title first, then brand/model, then status, and keeps the actions ellipsis reachable', () => {
+		it('shows device title first, then brand/model — no status badge in the row (#141)', () => {
 			const devices = createDeviceList(1);
 			devices[0].name = 'Living Room TV';
 			devices[0].model = 'OLED77';
@@ -314,7 +314,8 @@ describe('DeviceTable', () => {
 			const title = screen.getByText('Living Room TV');
 			const lineTwo = screen.getByText(/OLED77/);
 			expect(title.compareDocumentPosition(lineTwo) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-			expect(screen.getByText('Active')).toBeInTheDocument();
+			// Status must NOT appear as a row badge (#141)
+			expect(screen.queryByText('Active')).not.toBeInTheDocument();
 
 			// DeviceActionsMenu's ellipsis trigger — reuses the same component as
 			// the desktop table and DeviceDetailModal, not a bespoke menu.
@@ -345,16 +346,20 @@ describe('DeviceTable', () => {
 			expect(container.querySelector('.grid-cols-2')).not.toBeInTheDocument();
 		});
 
-		it('honors mobileViewMode="table" by rendering the scrollable desktop table instead of the row list (F045 B3)', () => {
+		it('never renders the scrollable desktop table in PWA mode, even when mobileViewMode="table" (#142)', () => {
 			const devices = createDeviceList(2);
 			render(DeviceTable, {
 				props: { ...defaultProps, devices, presentation: 'pwa', mobileViewMode: 'table' }
 			});
 
-			// The app-mode "Table" view control must actually change what
-			// renders — previously presentation='pwa' ignored mobileViewMode
-			// entirely and always forced the row list.
-			expect(screen.getByRole('table')).toBeInTheDocument();
+			// #142: installed PWA has one list presentation — the table path is
+			// removed from the pwa branch so the view-mode toggle has no effect.
+			expect(screen.queryByRole('table')).not.toBeInTheDocument();
+
+			// PWA rows must still render
+			for (const device of devices) {
+				expect(screen.getByText(device.name!)).toBeInTheDocument();
+			}
 		});
 
 		it('defaults to the installed-PWA row list when mobileViewMode is "cards" (the PWA default)', () => {

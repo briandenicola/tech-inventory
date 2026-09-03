@@ -29,6 +29,15 @@
 		 *  Presentation-only — never written to the URL or counted toward an
 		 *  active-filter badge. */
 		implicitGroupingActive?: boolean;
+		/** #145: true when running as an installed PWA — reveals the SELECTION
+		 *  section so the user can opt in to row checkboxes. */
+		isPwa?: boolean;
+		/** #145: current PWA selection-mode state. */
+		pwaSelectionMode?: boolean;
+		/** #145: called when the user taps "Enable Selection Mode". */
+		onEnablePwaSelection?: () => void;
+		/** #145: called when the user taps "Exit Selection Mode" (clears selection). */
+		onDisablePwaSelection?: () => void;
 	}
 
 	let {
@@ -40,7 +49,11 @@
 		onClearDefault,
 		hasStoredDefault = false,
 		canSaveDefault = true,
-		implicitGroupingActive = false
+		implicitGroupingActive = false,
+		isPwa = false,
+		pwaSelectionMode = false,
+		onEnablePwaSelection,
+		onDisablePwaSelection
 	}: Props = $props();
 
 	const refData = $derived($referenceDataStore);
@@ -296,8 +309,38 @@
 				{t('devices.filters.pendingChanges')}
 			</div>
 		{/if}
-		<!-- Search -->
-	<div class="mb-6">
+
+		<!-- #145: SELECTION section — visible only in installed-PWA mode.
+			 Lets the user opt in to per-row checkboxes without the checkboxes
+			 always consuming horizontal space. Grouped under a clear section
+			 heading per the reference pattern in issue #145. -->
+		{#if isPwa}
+			<section aria-label={t('devices.filters.selectionSection')} class="mb-6">
+				<p class="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+					{t('devices.filters.selectionSection')}
+				</p>
+				{#if pwaSelectionMode}
+					<button
+						type="button"
+						onclick={() => { onDisablePwaSelection?.(); onClose?.(); }}
+						class="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-neutral-300 px-5 py-2.5 text-base font-medium text-neutral-700 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+					>
+						{t('devices.filters.exitSelectionMode')}
+					</button>
+				{:else}
+					<button
+						type="button"
+						onclick={() => { onEnablePwaSelection?.(); onClose?.(); }}
+						class="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-primary-600 px-5 py-2.5 text-base font-medium text-white transition-colors hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:bg-primary-500 dark:hover:bg-primary-600"
+					>
+						{t('devices.filters.enableSelectionMode')}
+					</button>
+				{/if}
+			</section>
+		{/if}
+
+		<!-- Group By -->
+		<div class="mb-6">
 		<label for="groupBy" class="mb-2 block text-base font-medium text-neutral-800 dark:text-neutral-200">
 			{t('devices.filters.groupByLabel')}
 		</label>

@@ -236,12 +236,17 @@ describe('AppMenuPopover', () => {
 
 	describe('menu row geometry parity + density (R3)', () => {
 		// History: #144 R2 fixed the active row visually inflating relative to
-		// inactive rows by locking every row to an exact `h-11` (44px) block
+		// inactive rows by locking every row to an exact `h-11` (46.75px) block
 		// with no `py-*` (the rejected #166 attempt used `min-h-11 py-1.5`,
 		// whose 12px internal padding created blank zones inside the coloured
 		// active box). R3 keeps that contract and shrinks the shared block to
-		// `h-9` (36px) with a `gap-0` container, because 44px rows around a
-		// 14px label still read as mostly empty space on a phone.
+		// `h-9` (38.25px) with a `gap-0` container, because 46.75px rows around
+		// a 14.88px label still read as mostly empty space on a phone.
+		//
+		// px figures here are RENDERED px: tokens.css sets html to 17px, so a
+		// rem utility is 6.25% larger than its 16px-root Tailwind name (h-11 =
+		// 2.75rem = 46.75px, h-9 = 2.25rem = 38.25px). Class names are the
+		// contract these tests assert; the px are annotation only.
 		//
 		// This suite MUST fail if any of the following appear:
 		//   · active-only vertical geometry (padding, margin, height, min-height)
@@ -304,16 +309,16 @@ describe('AppMenuPopover', () => {
 			expect(activeGeometry).toEqual(inactiveGeometry);
 		});
 
-		it('gives every row the same shared compact geometry: exact 36px block height, standard gap, standard radius, no growth-inducing padding', async () => {
+		it('gives every row the same shared compact geometry: exact 38.25px block height, standard gap, standard radius, no growth-inducing padding', async () => {
 			await openMenu();
 
 			for (const name of ['Devices', 'Reports', 'Settings']) {
 				const classes = rowClassList(getRow(name));
-				// R3: exact h-9 (36px). Comfortably above WCAG 2.5.8 (AA, 24x24)
-				// given the full-panel-width hit area; the 44px of 2.5.5 (AAA) is
-				// deliberately traded for density here only.
+				// R3: exact h-9 (38.25px rendered). Comfortably above WCAG 2.5.8
+				// (AA, 24x24) given the 257.25px-wide hit area; the AAA target of
+				// 2.5.5 is deliberately traded for density here only.
 				expect(classes).toContain('h-9');
-				expect(classes).not.toContain('h-11'); // must not regress to the R2 44px block
+				expect(classes).not.toContain('h-11'); // must not regress to the R2 46.75px block
 				expect(classes).not.toContain('min-h-9'); // exact height, not a floor that padding can grow
 				expect(classes).not.toContain('min-h-11'); // must not regress to #166's min-h approach
 				expect(classes).not.toContain('py-1.5'); // must not carry internal vertical padding that inflates the box

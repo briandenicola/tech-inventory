@@ -147,7 +147,8 @@
 		Compact PWA presentation.
 
 		The roomy variant below stacks every label above its value with a
-		20px row gap inside a padded card, which on a phone turns a dozen
+		21.25px row gap (gap-y-5 at the 17px root) inside a padded card, which
+		on a phone turns a dozen
 		short values into a very long, mostly-blank scroll. This variant is
 		the platform convention instead: one flush inset list per section,
 		label left / value right on a single line, hairline dividers doing

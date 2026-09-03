@@ -148,7 +148,7 @@ describe('DeviceDetailFields', () => {
 
 	describe('compact PWA variant', () => {
 		// The default (roomy) variant stacks label above value inside a padded
-		// card with a 20px row gap — right for a desktop page, but on a phone
+		// card with a 21.25px row gap — right for a desktop page, but on a phone
 		// it turns a dozen short values into a long, mostly-blank scroll. The
 		// installed-PWA shell passes `compact` to switch to a flush inset list:
 		// label left / value right on one line, hairline dividers, no grid.
@@ -203,7 +203,8 @@ describe('DeviceDetailFields', () => {
 				expect(dl.className).toContain('divide-y');
 			}
 
-			// Row padding stays tight — py-2 (8px), not the roomy card's p-4/p-6.
+			// Row padding stays tight — py-2 (8.5px rendered at the 17px root),
+			// not the roomy card's p-4/p-6.
 			const brandRow = rowFor(container, 'Brand');
 			expect(brandRow?.className).toContain('py-2');
 			expect(brandRow?.className).not.toContain('py-4');

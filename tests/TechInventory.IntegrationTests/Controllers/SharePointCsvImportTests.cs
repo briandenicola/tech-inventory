@@ -14,6 +14,42 @@ public sealed class SharePointCsvImportTests(IntegrationTestFactory<SharePointCs
     private static readonly string ImportArtifactsDirectory = Path.Combine(AppContext.BaseDirectory, "import-artifacts");
     private static readonly string SampleCsvPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "TechInventory.IntegrationTests", "Imports", "SampleData", "devices-sample.csv");
 
+    private const string ModelAndPurposeRegressionCsv = """
+        DeviceName,Location,Purpose,Retired,DeviceType,PurchasedDate,Vendor,Model
+        Regression Display,Office,Living room media,False,Smart Display,8/15/2024,Example Vendor,Panel X1
+        """;
+
+    [Fact]
+    public async Task CommitImport_RowWithDistinctModelAndPurpose_PersistsBothFields()
+    {
+        await ResetDatabaseAsync();
+        await SeedDeviceReferenceDataAsync();
+        using var client = CreateClient();
+
+        var provisionResponse = await client.GetAsync("/api/v1/owners/me");
+        provisionResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var content = await CreateMultipartFileContentAsync(
+            "model-purpose-regression.csv",
+            ModelAndPurposeRegressionCsv);
+
+        var response = await client.PostAsync("/api/v1/imports/commit", content);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var payload = await ReadJsonAsync<TechInventory.Application.Imports.CommitImportResult>(response);
+        payload.ImportedRows.Should().BeGreaterThan(0);
+
+        await WithDbContextAsync(async dbContext =>
+        {
+            var device = await dbContext.Devices
+                .SingleOrDefaultAsync(d => d.Name == "Regression Display");
+
+            device.Should().NotBeNull();
+            device!.Model.Should().Be("Panel X1");
+            device.Purpose.Should().Be("Living room media");
+        });
+    }
+
     [Fact]
     public async Task CommitImport_SharePointCsv_ProcessesAllStatusMappingsAndExtendedFields()
     {

@@ -2,7 +2,7 @@
  * Four-gate auth token storage enforcement:
  * 1. ESLint blocks token-like localStorage access in the web app.
  * 2. Pre-commit scanning catches localStorage + token patterns before push.
- * 3. Playwright asserts real auth flows never persist tokens to localStorage.
+ * 3. `src/lib/auth/msal.test.ts` asserts real MSAL config never persists tokens to localStorage.
  * 4. Security review checklist keeps the policy visible during code review.
  */
 import js from '@eslint/js';

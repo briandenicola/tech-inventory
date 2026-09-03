@@ -11,16 +11,28 @@ useDefault = true
 [allowlist]
 description = "Documentation references to non-secret config knobs."
 regexTarget = "match"
-paths = [
-  # .env.e2e contains stub Entra GUIDs + a base64 placeholder signing
-  # key used ONLY by CI to satisfy compose `${VAR:?}` interpolation
-  # guards. ASPNETCORE_ENVIRONMENT=Development short-circuits to
-  # DevBypass auth so the stubs are never consulted at request time.
-  # Documented inline in .env.e2e.
-  '''\.env\.e2e$''',
-]
 regexes = [
   '''Auth:DevBypass\s*=\s*true''',
   '''Auth__Local__SeedEnabled\s*=\s*true''',
   '''Auth__Local__SeedAllowInProd\s*=\s*true''',
+  # `check-security.mjs` (scripts/check-security.mjs) always feeds file
+  # content to gitleaks via `stdin`, which carries no file-path context, so
+  # a `paths`-based allowlist entry can never match its findings — only a
+  # `match`/`regexTarget` regex can. Found by the first repo-wide
+  # `check-security.mjs --repo` run (specs/004-agentic-development-foundation,
+  # T105) — CI only ever ran this scan on a diff/staged range before, so
+  # these two pre-existing false positives were never exercised end-to-end.
+  # 1) `.copilot/skills/secret-handling/SKILL.md` and its template copy
+  #    document the `private-key` rule's own pattern as literal example
+  #    text (a regex quoted in a markdown table), not a real PEM key — the
+  #    literal bracket-regex syntax `[A-Z ]+PRIVATE KEY` never appears
+  #    inside an actual private key.
+  '''\[A-Z \]\+PRIVATE KEY''',
+  # 2) `.squad/decisions/merged/vasquez-phase2-round3-devices-list.md`
+  #    references the Tailwind design token `bg-neutral-200`, which the
+  #    generic-api-key heuristic misreads as an assignment expression.
+  #    `regexTarget = "match"` compares against gitleaks' `Match` field
+  #    (surrounding context), not the narrower `Secret` field — so this
+  #    allowlist regex must match the context text, not just the token.
+  '''tokens: `bg-neutral-\d+`''',
 ]

@@ -111,27 +111,18 @@ public sealed class AuthIntegrationTests(IntegrationTestFactory<AuthIntegrationT
         });
     }
 
-    [Fact(Skip = "T08 happy-path deferred — test factory cannot swap production JWKS for in-memory RSA key. Tracked in docs/known-issues.md#auth-jwt-happy-path-tests.")]
-    public async Task ViewerRoleOnAdminEndpoint_Returns403Forbidden()
-    {
-        await ResetDatabaseAsync();
-        await using var jwtFactory = new JwtAuthFactory();
-        using var client = jwtFactory.CreateClient();
-
-        var token = new TestJwtBuilder(jwtFactory.SigningKey, jwtFactory.Issuer, jwtFactory.Audience)
-            .WithOid("44444444-4444-4444-4444-444444444444")
-            .WithSubject("viewer@example.com")
-            .WithName("Viewer User")
-            .WithEmail("viewer@example.com")
-            .WithRoles("Viewer")
-            .Build();
-
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-        var deleteResponse = await client.DeleteAsync($"/api/v1/brands/{Guid.NewGuid()}");
-
-        deleteResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
-    }
+    // ViewerRoleOnAdminEndpoint_Returns403Forbidden was removed here (B1 review
+    // fix). It was permanently [Fact(Skip = ...)]'d — the test factory cannot
+    // swap production JWKS discovery for an in-memory RSA key on this
+    // real-JWT-pipeline path — so it never ran and never provided the
+    // coverage some documentation had cited it for (see
+    // `coverage-migration.md` §3.11's "partial" replacement list, corrected
+    // in this revision). The real, executing proof that Viewer is rejected on
+    // Admin/Member-gated mutations — including `DELETE /api/v1/brands/{id}` —
+    // now lives in `Controllers/ViewerRoleAuthorizationTests.cs`, which
+    // exercises the same ASP.NET Core role-authorization pipeline through
+    // `ViewerRoleIntegrationTestFactory`'s `TestAuthHandler` instead of a real
+    // Entra JWT, and actually runs on every test pass.
 
     [Fact]
     public async Task TokenWithNoRoles_Returns401Unauthorized()

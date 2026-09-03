@@ -171,7 +171,7 @@
 
 			<div>
 				<label for="export-search" class="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
-					{t('common.search')}
+					{t('common.actions.search')}
 				</label>
 				<input
 					id="export-search"
@@ -329,7 +329,7 @@
 						<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
 						<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
 					</svg>
-					{t('common.loading')}
+					{t('common.states.loading')}
 				{:else}
 					<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />

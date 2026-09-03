@@ -4,10 +4,13 @@ Living tracker for accepted technical debt and deferred work. Convert each entry
 
 ---
 
-## t23-deferred-form-tests
+## t23-deferred-form-tests — RESOLVED
 
-**Status:** Deferred to E2E (Round 9)
-**Severity:** Low — component logic is correct; jsdom select binding reactivity limitation only.
+**Status:** Resolved (`specs/004-agentic-development-foundation` T102, **C-22**). Both
+previously-skipped tests are now live and green in
+`src/TechInventory.Web/src/lib/components/DeviceForm.test.ts`.
+**Severity (historical):** Low — component logic was always correct; the skip
+was a stale fixture, not a real jsdom limitation.
 **Owner:** Apone (tests)
 
 ### Summary
@@ -17,45 +20,26 @@ Living tracker for accepted technical debt and deferred work. Convert each entry
 1. `calls onSubmit with parsed data on valid submission`
 2. `disables submit button while submitting`
 
-### Root cause
+### Root cause (corrected)
 
-Svelte 5 `bind:value` on `<select>` elements does not trigger reactive updates to `$state` variables in jsdom test environment. Tests call `user.selectOptions()` to change select values, but the bound `formData.brandId` and `formData.categoryId` remain empty strings. Form submission then fails Zod validation with "Brand is required" / "Category is required" errors, preventing `onSubmit` handler invocation.
+The original write-up blamed jsdom's `bind:value` reactivity on `<select>`
+elements. **That diagnosis was wrong.** T102 found the real cause: the test
+fixture omitted required `owner`/`location` fields, so client-side Zod
+validation blocked submission and `isSubmitting` never flipped `true` — that
+looked like a jsdom binding bug but was an incomplete fixture. Filling every
+required field lets the real component code run as written; no jsdom
+workaround, polyfill, or `happy-dom` migration was needed.
 
-Attempted fixes:
-- Added 50ms delay after `selectOptions()` to allow runes reactivity to settle → no effect
-- Verified reference data store populates select options correctly (options ARE rendered)
-- Verified factory-generated UUIDs match option values exactly
+### Resolution
 
-Root cause is likely jsdom's limited DOM implementation not fully supporting Svelte 5 reactive bindings on form controls.
-
-### What IS covered (20/22 DeviceForm tests green)
-
-- Form rendering with all fields
-- Validation error display (inline, per-field)
-- Disabled fields logic (edit mode, retired devices)
-- Cancel button behavior
-- All non-submit user interactions
-
-The skipped tests verify:
-1. Submit handler receives parsed Zod-validated data
-2. Submit button disables during async submission
-
-### Coverage compensation
-
-**Playwright E2E tests (T46, scheduled Round 9)** will cover:
-- Full device create/edit flows with real form submissions
-- Form validation in actual browsers with native Svelte reactivity
-- Loading states during submission
-- Success/error toast notifications after submit
-
-E2E tests exercise the same code paths with real DOM, full Svelte compiler output, and browser event handling — higher fidelity than jsdom unit tests.
-
-### Recommended fix (optional future work)
-
-Migrate from jsdom to **happy-dom** (Vitest's alternate DOM implementation with better Svelte 5 support) or add custom jsdom event dispatch polyfills for select change events. Estimated effort: 1-2 hours research + migration. Low priority given E2E coverage.
+Both tests were un-skipped and rewritten with a complete fixture in the same
+file. No coverage was deferred to browser E2E — the harness that this entry
+originally deferred to is retired
+(`specs/004-agentic-development-foundation/brief.md` §2.1) and never ran
+these assertions.
 
 ### Tracking
 
 - Created: T23 cleanup (commit `6898dc7` + follow-up)
-- Decision: Skip + document, defer to E2E per coordinator triage 2026-05-19
-- Convert to GitHub issue when `gh` CLI is wired up
+- Resolved: T102 (Hicks final revision), re-verified 649/649 Vitest tests green
+- Convert to GitHub issue when `gh` CLI is wired up (moot — already resolved)

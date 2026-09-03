@@ -668,3 +668,177 @@ the situation where re-deriving root cause from primary sources (spec, code,
 — the summary is frequently right about *what* changed but can be subtly
 wrong about *why* it was rejected (read-path vs. write-path in B2 here), and
 trusting it would have produced a second rejected revision.
+
+### 2026-09-02 — T104 revision (B-1/B-2/B-3) ✅ CLOSED, pending Apone re-review
+
+Assigned as independent revision owner after Apone rejected Hudson's T104
+(`specs/004-agentic-development-foundation/validation.md` §10) on three
+blockers. Hudson locked out for this cycle; Ripley's root-cause-from-
+primary-sources discipline above applied again — read Apone's
+`.squad/decisions/inbox/apone-t104-review.md` directly for exact
+reproduction evidence rather than any secondhand summary.
+
+**B-1** (`check:client-drift` compared regeneration-from-working-tree
+against index/HEAD, so it failed with provably zero drift): new
+`scripts/check-client-drift.mjs` snapshots the working-tree generated
+client, regenerates in place, compares against its own snapshot
+(CRLF/LF-normalized against `core.autocrlf` noise), and **always** restores
+original bytes in a `finally` — clean pass, detected drift, or
+generate-command failure. Never depends on git, never depends on committing.
+9/9 new unit tests (`check-client-drift.test.mjs`).
+
+**B-2** (`check:vulnerable` ran unparsed `dotnet list package --vulnerable`,
+which exits 0 regardless of findings, while `.github/workflows/README.md`
+called it "Enforced"): new `scripts/check-vulnerable.mjs` parses
+`--format json` (confirmed supported by the installed SDK via direct probe,
+not assumed) and fails closed on any Moderate+ advisory — the exact
+threshold `.specify/memory/constitution.md` §5.8 already specifies, so no
+new policy was invented. Also fails closed on tool-launch failure, nonzero
+exit, and malformed JSON. 13/13 new unit tests
+(`check-vulnerable.test.mjs`).
+
+**B-3** (`ci.yml` depended on PyYAML for `check:openapi-drift` without
+installing it, unlike `quality-gate.yml`): confirmed via search that only
+these two workflows invoke `task verify`; added the identical
+`pip install pyyaml` step to `ci.yml`.
+
+**Live tamper evidence, not just unit tests:** deliberately corrupted
+`types.ts` to simulate a stale client — the new check caught it (exit 1)
+and restored it; ran the new vulnerability check against a real throwaway
+project pinned to `Newtonsoft.Json 12.0.1` (the same package/version Apone
+used to prove the original fail-open defect) — now returns exit 1, where
+the old check returned exit 0.
+
+**Full pipeline, this machine, Windows:** `task verify:fast`,
+`task verify:contracts`, `task verify:full`, and `task verify` (the
+authoritative alias) all ran to completion and **exited 0** — the first
+time in this work package the authoritative entrypoint has been observed to
+finish end to end. No stage required Docker or a browser.
+
+Updated `validation.md` (§11, new), `tasks.md`, `plan.md`, and
+`coverage-migration.md` (§14.4, new) as revision evidence. Did not touch any
+T101/T102 file, did not address Apone's non-blocking F-5–F-9 (none was a
+blocker prerequisite), did not start T105, did not self-approve T104 — that
+transition and T105's authorization both belong to Apone. No commit, no
+push, per instructions. GitHub Actions execution remains unobserved until a
+push — disclosed, not claimed.
+
+**Mistake and recovery, worth repeating:** mid-tamper-test I used
+`git checkout -- types.ts` to "restore" the file after corrupting it. On
+this branch, `types.ts` already carried a real uncommitted change from
+T102, so `git checkout --` reverted to the *index/HEAD* copy, silently
+discarding that legitimate uncommitted work instead of undoing my tamper.
+Recovered by regenerating fresh from the untouched `openapi.yaml`
+(`types.ts` hash confirmed identical to its pre-incident value via
+`git hash-object`, `git status --short` count confirmed back to the
+pre-incident 149). **Learning: on a dirty working tree, tamper-test
+restoration must use a real byte snapshot or a verified re-derivation —
+never `git checkout --`, which restores relative to git's index, not to the
+moment before the tamper.**
+
+### 2026-09-02 — T105 revision (B-1/B-2 only) ✅ CLOSED, pending Bishop re-review
+
+Assigned as independent revision owner after Bishop rejected the integrated
+T105 change set (`.squad/decisions/inbox/bishop-t105-review.md`) on four
+blockers; Ripley and Apone locked out for this cycle. Scope was narrow and
+explicit: B-1 and B-2 only, both against
+`specs/004-agentic-development-foundation/t105-tamper-evidence.md`. Hudson
+owned B-3/B-4 (AC-009's exception register, `check:security` dependency
+wiring) in parallel on the same branch — confirmed by watching
+`Taskfile.yml` fail to parse mid-session (Hudson's in-flight edit), then
+parse cleanly a few minutes later, without me touching it.
+
+**Root cause, re-derived from primary sources, not the rejected authors'
+own summary:** `scripts/check-stale-playwright-references.mjs`'s `main()`
+enumerated `git ls-files -z` — tracked files only. Bishop's B-2 finding was
+a direct, provable consequence: the tamper-evidence document claimed a real
+accepted ADR was "included in that 933 [tracked files] and no longer
+flagged," but the ADR was untracked at that moment, so the tool physically
+could not have scanned it. A prose fix alone (correct the sentence, move on)
+would have left the structural gap in place for the *next* untracked active
+file — which is exactly B-1's shape too: the tamper-evidence document itself
+was untracked and would break the guard the moment someone staged it,
+because nothing in the guard's design could see it coming.
+
+**Decision — widen the scan surface, don't just patch the allowlist:**
+changed the git enumeration to
+`git ls-files -z --cached --others --exclude-standard` (tracked **plus**
+untracked-but-not-git-ignored). Verified compatible with existing repository
+behavior first (no `.gitignore` rule excludes `specs/` or `docs/adr/`; no
+test/script/workflow depended on the guard being blind to untracked files)
+before committing to this as the "smallest fail-closed treatment," rather
+than assuming it and discovering a conflict later. Paired with one new
+exact-path exemption (`t105-tamper-evidence.md`, not a directory prefix) and
+a negative regression test proving an unlisted sibling file with an active
+future promise still fails — same shape as the ADR exemption already in the
+file, deliberately not widened into a `specs/004-agentic-development-
+foundation/**` blanket.
+
+**Best evidence-discipline moment:** live-proved the *before* state first
+(`node scripts/check-stale-playwright-references.mjs` → exit 0, 933 tracked
+files, while three untracked active files sat right next to it unscanned)
+before writing a single line of the fix — reproducing Bishop's exact finding
+myself, on the current branch, rather than trusting the rejection report's
+description of it. Then re-proved the *after* state the same way (936, then
+937 as Hudson's own concurrent untracked file appeared mid-session — kept
+that denominator drift visible in the record rather than picking a single
+number and pretending it was stable).
+
+**Two tamper tests, not one, for the negative case:** proved a brand-new
+untracked foundation-spec file with a forward-looking promise fails **with
+zero staging** (the exact case a tracked-only guard cannot catch before
+someone runs `git add`), and separately reproduced the original §2.3
+negative case (a new, unlisted ADR with a live promise) the same way, since
+that was the one Bishop's own review had specifically exercised (staged).
+Both restored by plain `Remove-Item` (never tracked, so deletion is full
+restoration) — no `git checkout --` anywhere in this revision.
+
+**Correcting the record without erasing it:** in `t105-tamper-evidence.md`,
+struck through the false "included in the 933" sentence and the stale ADR
+hash in place, with a `> CORRECTION` block explaining exactly why each was
+wrong and what the true, reproducible state is — rather than silently
+rewriting Apone's prose to look like it had always been correct. **Learning:
+a correction to a rejected evidence document should stay visible as a
+correction** (strikethrough + explanation), not a quiet edit, because the
+next reviewer needs to see what the actual defect looked like, not just the
+fixed result.
+
+**Self-referential hash trap, avoided:** the natural instinct was to record
+"this file's own SHA1 is X" inside the file itself — impossible, since
+writing that sentence changes the hash. Moved the definitive before/after
+hash proof for `t105-tamper-evidence.md` into the separate
+`t105-evidence-revision.md`, computed only once all content edits were
+finalized. **Learning: never embed a file's own hash as a claim inside
+itself — compute and record it from a sibling document after the edits are
+truly done, or the claim is stale the moment it's written.**
+
+**Writing an un-exempted evidence file about a word-matching guard:** since
+`t105-evidence-revision.md` was not added to the exemption list (it doesn't
+need to quote the retired framework's name), every sentence describing the
+retired-framework-related test scenarios had to avoid the literal word
+entirely — except the guard's own script filename, which the guard strips
+before testing (`GUARD_SELF_NAME_LINE`) precisely so a document can name the
+tool without naming the thing it blocks. Verified 0 violations via a direct
+run against the finished document before calling it done, rather than
+assuming the phrasing was safe.
+
+**Validation:** `node --test scripts/check-stale-playwright-references.test.mjs`
+22/22 (20 pre-existing + 2 new); live guard direct invocation and
+`task check:stale-refs` both exit 0 at the then-current file count (933 →
+936 → 937 → 938 as the branch's untracked set changed); `task
+verify:contracts` reached `check:client-drift` clean (9/9) before failing at
+`check:migration-drift` on a pending-EF-model-changes condition unrelated to
+B-1/B-2, disclosed rather than fixed (not my file, not my scope). Did not
+touch `Taskfile.yml`, `plan.md`, `tasks.md`, `validation.md`, `.gitleaks.toml`,
+or any file in Hudson's B-3/B-4 scope. No commit, no push.
+
+**Learning, general:** when a guard's own evidence-of-testing-the-guard
+becomes the thing the guard must classify, the honest fix is almost never
+"exempt the whole category" — it's "prove the guard can already tell the
+difference between a historical quote and a live promise, and give it one
+more named, narrow fact to remember." The temptation in B-1/B-2 was to widen
+`specs/004-agentic-development-foundation/**` (already an explicitly
+rejected pattern from T101's own B2 finding, `validation.md` §7) or to
+rewrite the evidence file in euphemism style to dodge the allowlist
+question entirely; both would have made a future real regression harder to
+catch, not easier.

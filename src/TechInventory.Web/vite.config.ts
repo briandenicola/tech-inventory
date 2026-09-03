@@ -2,6 +2,7 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { SvelteKitPWA } from '@vite-pwa/sveltekit';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig, type Plugin } from 'vitest/config';
+import { workboxConfig } from './src/lib/pwa/workboxConfig';
 
 // vite-plugin-pwa declares a peer on vite@5; the repo runs vite@6. The Plugin
 // type instances are structurally compatible but nominally distinct across
@@ -14,38 +15,7 @@ const pwa = SvelteKitPWA({
 	scope: '/',
 	base: '/',
 	manifest: false,
-	workbox: {
-		globPatterns: ['client/**/*.{js,css,ico,png,svg,webp,woff,woff2}'],
-		navigateFallback: '/offline',
-		navigateFallbackDenylist: [/^\/api\//, /^\/health/, /^\/openapi/],
-		runtimeCaching: [
-			{
-				urlPattern: ({ url }: { url: URL }) => url.pathname.startsWith('/api/v1/'),
-				handler: 'NetworkOnly',
-				method: 'POST'
-			},
-			{
-				urlPattern: ({ url }: { url: URL }) => url.pathname.startsWith('/api/v1/'),
-				handler: 'NetworkOnly',
-				method: 'PUT'
-			},
-			{
-				urlPattern: ({ url }: { url: URL }) => url.pathname.startsWith('/api/v1/'),
-				handler: 'NetworkOnly',
-				method: 'DELETE'
-			},
-			{
-				urlPattern: ({ url }: { url: URL }) => url.pathname.startsWith('/api/v1/'),
-				handler: 'StaleWhileRevalidate',
-				method: 'GET',
-				options: {
-					cacheName: 'tech-inventory-api',
-					expiration: { maxEntries: 100, maxAgeSeconds: 5 * 60 },
-					cacheableResponse: { statuses: [0, 200] }
-				}
-			}
-		]
-	},
+	workbox: workboxConfig,
 	devOptions: {
 		enabled: false,
 		type: 'module',

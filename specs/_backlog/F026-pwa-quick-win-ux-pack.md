@@ -39,7 +39,9 @@ Ship a single PR that addresses all six items with no new dependencies.
 
 - **Stray overlay**: bisect z-index in the device list route; suspect candidates
   are `LoadingOverlay`, the filter drawer backdrop, or the toast container.
-  Add a Playwright regression: tap a device card and assert detail modal opens.
+  Add a Vitest component regression: click a device card and assert the
+  detail-modal-open handler fires (no browser E2E layer exists
+  post-retirement — `specs/004-agentic-development-foundation/brief.md` §2.1).
 - **Add `+` FAB**: replace "Add Devices" button with a 56×56 FAB pinned bottom-
   right (Drake supplies the `+` glyph in design tokens). i18n key
   `devices.add.fab.label` for the accessible name.
@@ -69,7 +71,10 @@ Ship a single PR that addresses all six items with no new dependencies.
 
 ## Acceptance Criteria
 - [ ] Tapping any device card opens the detail modal — covered by a new
-      Playwright assertion in the existing device-list spec
+      Vitest component assertion in the existing device-list test file (the
+      browser E2E harness is retired repo-wide, so there is no such suite to
+      add a browser assertion to —
+      `specs/004-agentic-development-foundation/brief.md` §2.1)
 - [ ] `+` FAB present on `/devices`, accessible-name asserted (axe + Testing
       Library), keyboard-reachable, focus ring visible
 - [ ] `/devices` defaults to `status=Active`; "show all" link toggles to

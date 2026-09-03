@@ -338,6 +338,176 @@ Shipped a single-PR rewrite of the prod deployment surface, mirroring Brian's co
 
 **Refs:** D-135, D-139, D-140.
 
+## 2026-09-02 — T101: retire the broken Playwright harness safely
+
+**Branch:** `chore/agentic-development-foundation` (uncommitted — final commit
+coordination happens after the full foundation package lands) · **Requested
+by:** briandenicola · **Spec:** `specs/004-agentic-development-foundation/`
+
+T102 had final independent APPROVED verdict from Ripley; T101 was explicitly
+authorized. Deleted `tests/e2e/**` (28 tracked files, cross-checked
+row-by-row against `coverage-migration.md` §4 waves D1–D5 before deletion —
+nothing removed lacked a matrix row), `scripts/run-e2e.ps1`/`.sh`, and
+`.squad/skills/playwright-e2e-scaffolding/`. Removed every Playwright
+invocation from `Taskfile.yml`, `scripts/verify.ps1`/`.sh`,
+`.github/workflows/ci.yml`. Neither root nor `src/TechInventory.Web`
+`package.json` ever depended on Playwright; confirmed with a full clean
+reinstall (`rm -rf node_modules && pnpm install --frozen-lockfile`) — 617
+packages, 0 downloaded, no Playwright package, browser-cache directory
+untouched.
+
+**The guard-design lesson worth remembering:** a naive "fail if the word
+Playwright appears anywhere active" guard is self-defeating the moment you
+write your *own* retirement-notice prose in those same active files — every
+sentence explaining "Playwright is retired" trips the guard you just built.
+First pass produced 32 false-positive violations, all my own newly-authored
+text. Two ways to fix this: (a) make the guard smarter about distinguishing
+promises from historical notices (fragile, NLP-flavored, hard to audit), or
+(b) just don't use the trigger word in prose you write in active files —
+say "the retired browser-E2E harness" and point readers to the one
+authoritative citation in `specs/` (already exempt) for the proper noun.
+Went with (b): reworded ~15 files' worth of my own retirement-notice
+sentences, added one narrow, well-justified exemption for the guard's own
+script filename (self-invocation isn't a stale mention), and ended at a
+genuinely dead-simple keyword-ban + path-exemption guard — 0 heuristics, 0
+NLP, fully auditable by reading the exemption list. `docs/testing/manual-pwa-validation.md`
+is the one deliberate exception where the word *must* stay, because the
+checklist's own rationale depends on naming what it's compensating for.
+
+Built `scripts/check-stale-playwright-references.mjs` (keyword scan + two
+structural hard-fails: any `tests/e2e/` path, any `playwright.config.*`
+anywhere) with `scripts/check-stale-playwright-references.test.mjs` (15
+`node:test` cases, zero new framework, matches the existing
+`scripts/check-security.mjs` pattern). Wired into `Taskfile.yml`
+(`check:stale-refs`) and both `verify` scripts at the step Playwright used to
+occupy. Live run: 0 active references across 901 tracked files.
+
+**Two judgment calls flagged for independent review, not decided silently:**
+1. `.squad/log/**` / `.squad/orchestration-log/**` — dated historical
+   session logs not individually named in the T103 matrix's §5.5 RETAIN
+   list, exempted on the same principle already applied to
+   `.squad/session-log.md`/`agents/*/history.md` (gitignored for future
+   writes, narrative past tense, dated filenames).
+2. `.specify/memory/constitution.md` / `docs/prd.md` still mandate Playwright
+   by name — §5.4 says amending them needs a separate ADR, which this task
+   surfaces rather than performs. AC-005's "zero references" therefore has
+   two explicit, matrix-authorized exceptions, recorded in `validation.md`,
+   not silently swept under.
+
+Issue #89 was already closed by briandenicola before this session (state
+reason `NOT_PLANNED`) with no evidence comment — added a durable
+retirement+migration evidence comment rather than reopening/reclosing.
+Updated `tasks.md`, `validation.md`, `plan.md`, `coverage-migration.md` §13
+with the full evidence trail. Did not touch T104 (verification-interface
+consolidation) or T105 (tamper-testing) beyond the minimum guard wiring
+T101 needed. Full validation: guard 0/901 + 15/15 tests, clean install 0
+downloads, `dotnet build`/`dotnet test` (278 unit + 292 integration, all
+passing), `pnpm run lint` clean, 83 Vitest files / 649 tests passing
+including the previously-stale `DeviceForm.test.ts` (27/27, genuinely
+un-skipped by T102, not just re-labeled).
+
+**Refs:** T101, AC-005, `coverage-migration.md` §13, `validation.md` AC-005.
+
+## 2026-09-02 — T104: one authoritative verification interface, Playwright-free
+
+**Branch:** `chore/agentic-development-foundation` (uncommitted) · **Requested
+by:** briandenicola · **Spec:** `specs/004-agentic-development-foundation/`
+
+T101 and T102 were both `DONE` and reviewer-approved; T104 was released by
+Ripley's T101 re-review with two conditions attached (`validation.md`
+§7.8.5/§7.8.6): don't deepen the constitution/PRD Playwright contradiction,
+and close F-4 (wire the stale-reference guard into `quality-gate.yml`;
+resolve `.env.e2e`/`docker-compose.e2e.yml`). Made `Taskfile.yml` the single
+verification entrypoint: `verify:fast` (format, backend build, frontend
+type/Svelte check, lint, unit + frontend tests), `verify:contracts`
+(stale-reference guard, OpenAPI/generated-client drift, EF migration drift,
+real-HTTP integration tests), `verify:full` (fast + contracts + frontend
+production build + vulnerability scan), `verify` (alias to full). Rewrote
+`scripts/verify.ps1`/`.sh` as thin wrappers that just check `task` is on
+PATH and run `task verify` — replacing two separately-maintained 9-step
+pipelines. Rewrote `.github/workflows/quality-gate.yml`'s `dotnet`/`web`
+jobs into one `verify` job that installs Task (`arduino/setup-task@v2`) and
+calls `task verify` — this is what closes F-4, since `check:stale-refs` is
+now part of that same call and runs in the actual merge-blocking workflow
+for the first time.
+
+**Two gotchas worth remembering for next time:**
+1. `dotnet run --project X -- <args>` runs the child process with its CWD
+   set to the *project* directory, not the caller's shell CWD. A relative
+   output path in `check:openapi-drift` silently landed under
+   `src/TechInventory.Api/TestResults/...` instead of the repo root until I
+   forced an absolute path via Task's `{{.ROOT_DIR}}`.
+2. Hit the exact self-inflicted trap documented in my own T101 entry above —
+   wrote "stale-Playwright guard" in two `Taskfile.yml` task descriptions and
+   tripped the guard's own keyword scan. Reworded to "retired-harness
+   stale-reference guard" per the established convention (say what it does,
+   cite the one exempt spec file for the proper noun).
+
+Built `scripts/check-test-floors.mjs` — fail-closed collected-test floors for
+unit/integration/frontend, matching the existing `check-security.mjs`/
+`check-stale-playwright-references.mjs` pattern (repository-native tooling,
+no new test framework). Floors are ~10% below **measured** baselines, not
+guessed: unit 278→floor 250, integration 296 collected (292 passed/4
+skipped)→floor 265, frontend 649 tests/83 files→floor 580/74. Proved the
+fail-closed behavior directly: `dotnet test --filter
+"FullyQualifiedName~NoSuchTestNamespaceXYZ"` exits 0 (not an error!) with a
+TRX showing `<Counters total="0">` — exactly the silent-zero-collection
+failure mode T103 found in the retired Playwright harness, and exactly what
+these floors now catch. Added `--collect:"XPlat Code Coverage"` to the
+floor-check's `dotnet test` invocations so Quality Gate's old coverage-report
+side effect isn't lost in the consolidation (still not asserting a
+percentage threshold — only test-count floors are enforced; that gap is
+called out explicitly in `.github/workflows/README.md`'s security-gate
+table, not silently dropped).
+
+Pinned `dotnet-ef` as a local tool (`.config/dotnet-tools.json`, version
+10.0.11) rather than relying on the previously-unpinned global install, so
+`check:migration-drift` (`dotnet ef migrations has-pending-model-changes`)
+resolves deterministically in CI too.
+
+Resolved `.env.e2e`/`docker-compose.e2e.yml`: grepped for any consumer other
+than the deleted Playwright harness, found none — all "real HTTP integration
+tests" in this repo use in-process `WebApplicationFactory<Program>`, not a
+running container. Deleted both files rather than renaming them; updated
+the guard's `EXEMPT_EXACT_PATHS` (a file that doesn't exist needs no
+exemption), its test file (flipped from "exempts" to "does NOT exempt" as a
+regression guard), `.gitleaks.toml`'s now-dead `.env.e2e` allowlist entry,
+and a stale `docker-compose.yml` comment naming a `task test:e2e` that no
+longer exists. Also deleted `scripts/check-openapi-drift.sh` — it was
+`quality-gate.yml`'s old drift check, and its logic is now 100% duplicated by
+`Taskfile.yml`'s `check:openapi-drift`; nothing else referenced it.
+
+**No stage of `verify:fast`/`verify:contracts`/`verify:full` requires
+Docker.** Confirmed both by grepping the integration test project for any
+Docker reference (none) and by running the full suite without a compose
+stack up.
+
+Validated everything directly on this Windows machine (no bash available):
+`task verify:fast` ran clean end to end (format, build, unit 278/278,
+frontend 649/649, lint, type-check — exit 0). `task verify:contracts` passed
+`check:stale-refs` and `check:openapi-drift`, then stopped at
+`check:client-drift` — this is *expected*, not a T104 defect: this branch's
+own uncommitted T101/T102 changes to `openapi.yaml` (the 403-response
+additions) create a real diff against git's last-recorded state, confirmed
+present in `git status` before I touched anything. Did not commit it — not
+my call, per the explicit instruction not to commit or push. Validated the
+CI YAML changes are at least syntactically correct (`python -c "import
+yaml; yaml.safe_load(...)"` on both workflow files) but could not run them
+on GitHub Actions without pushing, so end-to-end CI execution of the new
+`quality-gate.yml`/`ci.yml` is a disclosed, not-yet-observed gap — flagged
+explicitly in `validation.md` §9.4 rather than claimed.
+
+Did not touch `.specify/memory/constitution.md` or `docs/prd.md` — the
+Playwright-mandate contradiction stays exactly as `validation.md` §7.8.5
+requires: honored, not resolved, not deepened. Did not start T105 (branch
+protection alignment, tamper-testing every guard) beyond exposing the stable
+task/check names T105 will need. Updated `tasks.md`, `validation.md`,
+`plan.md`, `coverage-migration.md` §14 with the full evidence trail. Marked
+T104 `VALIDATING`, not `DONE` — that transition is a human/reviewer call
+(`plan.md` §2.3), not mine to make.
+
+**Refs:** T104, AC-008, `coverage-migration.md` §14, `validation.md` §9.
+
 
 ### 2026-05-19 — DevBypass rip from E2E stack (parallel with Bishop + Vasquez)
 
@@ -446,4 +616,93 @@ Conducted comprehensive audit of infrastructure, local automation, container sec
 - D-173: Main Branch Image Tagging Policy Shift (`:latest` for rolling deployment)
 
 **Next Steps:** Audit and sync prod compose with CI image definitions, add Windows-specific E2E test job, document backup strategy.
+
+
+### 2026-09-02 — T105 revision: closing blockers B-3 and B-4 only
+
+**Branch:** `chore/agentic-development-foundation` (uncommitted) · **Requested
+by:** briandenicola · **Spec:** `specs/004-agentic-development-foundation/`.
+Bishop's independent reviewer gate rejected T105 (`validation.md` §13) with
+four blockers. Ripley and Apone were locked out for this revision cycle;
+Hicks owned B-1/B-2 in parallel (already visible, fixed, in this shared
+working tree — 22/22 `check:stale-refs` tests passing before I touched
+anything). My scope was exactly **B-3** and **B-4**. Full record:
+`specs/004-agentic-development-foundation/t105-setup-revision.md`.
+
+**B-3 — §2.10 exception clause unmet.** Constitution §8.3 and
+`docs/adr/0002-…` L111 both already asserted a `plan.md §2.10` exception
+record existed for (a) unapplied branch protection and (b) the manual PWA
+checklist — but neither record existed after §6.1 closed; both were forward
+references to an empty register. Added `plan.md` §6.2 (branch protection)
+and §6.3 (manual PWA checklist), mirroring §6.1's exact template (Rule
+contradicted / Scope / Reason / Owner `briandenicola` / Start date
+2026-09-02 / Closure trigger / Class `REVIEWED` not `ENFORCED`). Corrected
+the constitution §8.3 and ADR 0002 citations to point at §6.2/§6.3
+precisely instead of the generic `§2.10` (constitution version bumped
+1.1.0→1.1.1, new §15 row explicitly noting no rule was weakened — pure
+citation-precision fix). Annotated `t105-governance-evidence.md` §6 open
+item 3 as resolved (one line, not a rewrite of Ripley's file). Appended a
+"Revised by Hudson" block to `tasks.md`'s T105 section (same pattern as the
+existing Hicks/T104 precedent) and a new AC-009 row to `validation.md` §5 —
+**did not touch Bishop's §13 verdict text**. Reviewed
+`.github/pull_request_template.md`'s Explicit Exceptions table: it's a
+generic per-PR fill-in table, not a `§2.10`-specific citation, so it needed
+no change.
+
+**B-4 — clean-checkout `restore → verify` didn't provision gitleaks.**
+`check:security` depended on a pinned gitleaks binary that only
+`task hooks:install` provisioned, never `task restore`. Added a new
+`tools:gitleaks` Task (idempotent — a `status:` check calling a new
+cross-platform script `scripts/check-gitleaks-installed.mjs`, since Task's
+`status:` field does **not** support the `{cmd, platforms}` object form used
+elsewhere under `cmds:` — using it there raises `cannot unmarshal !!map into
+string`, a real schema gotcha worth remembering). `restore` and
+`hooks:install` now both depend on `tools:gitleaks` instead of each running
+their own copy of `install-gitleaks.ps1`/`.sh` — one install owner.
+`check:security` now declares `deps: [restore]` and documents that it
+consumes, not installs, the binary, failing clearly (no silent network
+fallback) if it's somehow missing. 10/10 new unit tests
+(`check-gitleaks-installed.test.mjs`) cover path resolution per-platform and
+exact-version matching (including a regression guard against substring
+false positives like "8.30.10" matching pinned "8.30.1"), wired into
+`restore`'s own `cmds:` so they always run. Removed the now-duplicate
+"Install pinned gitleaks" steps from both `quality-gate.yml` and `ci.yml`,
+replacing the latter with `task restore` (still needed there for an earlier
+direct `check-security.mjs --diff-range` call before `task verify` runs).
+
+**Clean-state proof, done carefully (no broad deletes, no restore-to-HEAD):**
+moved the pinned `.tools/gitleaks/gitleaks.exe` aside via `Move-Item` (a
+first attempt using `Remove-Item` was silently reversed by something in
+this sandboxed environment before the next command ran — same hash, same
+old timestamp — so I switched to rename+`Test-Path`, which reliably proved
+absence); confirmed the new script independently reports "not installed"
+(exit 1); ran `task restore`, which re-provisioned the exact pinned
+version, byte-identical (SHA-256) to the pre-test backup; ran
+`task check:security` against it — gitleaks executed correctly (no "not
+installed" error). Cleaned up: removed the backup, re-verified the hash,
+confirmed `git status` shows no tracked drift from the experiment.
+
+**Two disclosed, out-of-scope observations, not fixed:** (1)
+`validation.md` §13.2 itself quotes literal tamper-test text
+`localStorage` . `setItem('access_token', [REDACTED AUTH-TOKEN PERSISTENCE PAYLOAD])`, which trips
+`check-security.mjs`'s own `tokenStoragePattern` regex — meaning
+`task check:security`/`task verify` currently fails on the *unmodified*
+tree for a reason wholly unrelated to B-3/B-4; fixing it would mean editing
+Bishop's verdict content, which is out of scope. (2) `check-security.mjs`'s
+bare-`gitleaks`-on-`PATH` fallback can hang indefinitely on Windows when no
+bundled binary and nothing on `PATH` exist (likely an App Execution Alias
+quirk) — pre-existing script behavior, not touched here. Both recorded in
+`t105-setup-revision.md` §4 for the next reviewer.
+
+**Validated:** `task --list-all` parses clean; gitleaks unit suite 10/10;
+`task check:stale-refs` 22/22 (0 violations, 940 files); `task
+check:client-drift` 9/9; `task check:vulnerable` 13/13; `task hooks:install`
+reuses `tools:gitleaks` correctly. Did not run a fully green `task verify`
+— expected to still stop at `check:security` for the disclosed, unrelated
+reason above, not from any regression in this revision. **Did not** mark
+T105 `DONE`, edit Bishop's verdict, touch Ripley/Apone's authored content
+beyond the single annotation noted above, or commit/push anything.
+
+**Refs:** T105, AC-009, `validation.md` §13/§5, `plan.md` §6.2/§6.3,
+`t105-setup-revision.md`, `.squad/decisions/inbox/hudson-t105-setup-revision.md`.
 

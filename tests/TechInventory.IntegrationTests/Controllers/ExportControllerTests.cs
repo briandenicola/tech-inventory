@@ -117,6 +117,47 @@ public sealed class ExportControllerTests(IntegrationTestFactory<ExportControlle
         csvRows[0]["Name"].Should().Be("'=1+1");
     }
 
+    // H-03 — the export query string and the device-list query string must
+    // resolve to the same row set for the same supported predicate (status +
+    // brand here). Proves filtering isn't reimplemented divergently between
+    // ListDevicesQuery and ExportDevicesQuery, and that both the JSON and CSV
+    // export formats stay in lockstep with the list. The CSV body is parsed
+    // with the same CsvHelper reader used by the formula-injection test above,
+    // so this also reaffirms the export is parseable (and, via that existing
+    // test, safe against formula injection).
+    [Fact]
+    public async Task ExportDevices_AndDeviceList_ResolveToSameRowSetForSharedPredicate()
+    {
+        await ResetDatabaseAsync();
+        var references = await SeedDeviceReferenceDataAsync();
+        var matchingFirst = CreateDevice(references, $"Filter-{Guid.NewGuid():N}", DeviceStatus.Active);
+        var matchingSecond = CreateDevice(references, $"Filter-{Guid.NewGuid():N}", DeviceStatus.Active);
+        var excludedByStatus = CreateDevice(references, $"Filter-{Guid.NewGuid():N}", DeviceStatus.Disposed);
+        await SeedAsync(entities: [matchingFirst, matchingSecond, excludedByStatus]);
+        using var client = CreateClient();
+        var query = $"status=Active&brandId={references.Brand.Id}";
+
+        var listResponse = await client.GetAsync($"/api/v1/devices?{query}&pageSize=200");
+        var jsonExportResponse = await client.GetAsync($"/api/v1/exports/devices?format=json&{query}");
+        var csvExportResponse = await client.GetAsync($"/api/v1/exports/devices?format=csv&{query}", HttpCompletionOption.ResponseHeadersRead);
+
+        listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        jsonExportResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        csvExportResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var paged = await ReadJsonAsync<PagedResponse<DeviceResponse>>(listResponse);
+        var jsonRows = await ReadJsonAsync<DeviceExportRow[]>(jsonExportResponse);
+        var csvRows = ReadCsvRows(await csvExportResponse.Content.ReadAsStringAsync());
+
+        var listIds = paged.Items.Select(item => item.Id).ToHashSet();
+        var jsonIds = jsonRows.Select(row => row.Id).ToHashSet();
+        var csvIds = csvRows.Select(row => Guid.Parse(row["Id"])).ToHashSet();
+
+        listIds.Should().BeEquivalentTo([matchingFirst.Id, matchingSecond.Id]);
+        jsonIds.Should().BeEquivalentTo(listIds);
+        csvIds.Should().BeEquivalentTo(listIds);
+    }
+
     private static List<Dictionary<string, string>> ReadCsvRows(string csvBody)
     {
         using var stringReader = new StringReader(csvBody);

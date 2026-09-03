@@ -15,8 +15,6 @@ node_modules/
 build/
 dist/
 .pnpm-store/
-playwright-report/
-test-results/
 
 # Secrets and environment
 .env

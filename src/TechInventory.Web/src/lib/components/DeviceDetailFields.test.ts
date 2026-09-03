@@ -55,4 +55,71 @@ describe('DeviceDetailFields', () => {
 
 		expect(await axe(container)).toHaveNoViolations();
 	});
+
+	describe('F034 optional fields (C-08)', () => {
+		it('elides operatingSystem/version/ipAddress/macAddress/productUrl/purpose/notes rows when unset', () => {
+			// The base `props.device` factory leaves every F034 field null —
+			// none of their rows/labels should render at all.
+			render(DeviceDetailFields, { props });
+
+			for (const label of [
+				'Operating System',
+				'Version',
+				'IP Address',
+				'MAC Address',
+				'Product URL',
+				'Purpose',
+				'Notes'
+			]) {
+				expect(screen.queryByRole('rowheader', { name: label })).not.toBeInTheDocument();
+			}
+		});
+
+		it('renders operatingSystem/version/ipAddress/macAddress/productUrl/purpose/notes rows when set', () => {
+			const fullDevice = {
+				...device,
+				operatingSystem: 'Windows 11',
+				version: '23H2',
+				ipAddress: '192.168.1.42',
+				macAddress: 'AA:BB:CC:DD:EE:FF',
+				productUrl: 'https://example.com/product',
+				purpose: 'Runs the household media server',
+				notes: 'Replaced fan in 2024'
+			};
+
+			render(DeviceDetailFields, { props: { ...props, device: fullDevice } });
+
+			expect(screen.getByRole('rowheader', { name: 'Operating System' })).toBeInTheDocument();
+			expect(screen.getByText('Windows 11')).toBeInTheDocument();
+
+			expect(screen.getByRole('rowheader', { name: 'Version' })).toBeInTheDocument();
+			expect(screen.getByText('23H2')).toBeInTheDocument();
+
+			expect(screen.getByRole('rowheader', { name: 'IP Address' })).toBeInTheDocument();
+			expect(screen.getByText('192.168.1.42')).toBeInTheDocument();
+
+			expect(screen.getByRole('rowheader', { name: 'MAC Address' })).toBeInTheDocument();
+			expect(screen.getByText('AA:BB:CC:DD:EE:FF')).toBeInTheDocument();
+
+			expect(screen.getByRole('rowheader', { name: 'Product URL' })).toBeInTheDocument();
+			const productLink = screen.getByRole('link', { name: 'https://example.com/product' });
+			expect(productLink).toHaveAttribute('href', 'https://example.com/product');
+			expect(productLink).toHaveAttribute('target', '_blank');
+
+			expect(screen.getByRole('rowheader', { name: 'Purpose' })).toBeInTheDocument();
+			expect(screen.getByText('Runs the household media server')).toBeInTheDocument();
+
+			expect(screen.getByRole('rowheader', { name: 'Notes' })).toBeInTheDocument();
+			expect(screen.getByText('Replaced fan in 2024')).toBeInTheDocument();
+		});
+
+		it('always renders the Model row, falling back to an em dash when unset', () => {
+			const withoutModel = { ...device, model: null };
+
+			render(DeviceDetailFields, { props: { ...props, device: withoutModel } });
+
+			expect(screen.getByRole('rowheader', { name: 'Model' })).toBeInTheDocument();
+			expect(screen.getByText('—')).toBeInTheDocument();
+		});
+	});
 });

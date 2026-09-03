@@ -1,53 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "======================================"
-echo "Tech Inventory — Verification Pipeline"
-echo "======================================"
-echo ""
+# Tech Inventory verification pipeline (Linux/macOS)
+#
+# Thin compatibility wrapper — Task (https://taskfile.dev) is the one
+# authoritative verification interface (specs/004-agentic-development-
+# foundation, T104 · AC-008). This script does not duplicate any pipeline
+# logic; it only confirms `task` is on PATH and then delegates to
+# `task verify`, which is exactly what CI invokes. Run a narrower stage
+# directly if you don't need the full pipeline:
+#   task verify:fast      — format, backend build, frontend type-check, lint, unit + frontend tests
+#   task verify:contracts — stale-reference guard, OpenAPI/client drift, EF migration drift, integration tests
+#   task verify:full      — verify:fast + verify:contracts + frontend production build + vulnerability scan + auth-token/secret scan
 
-# Backend verification
-echo "🔍 [1/9] Checking .NET code formatting..."
-dotnet format --verify-no-changes
+if ! command -v task >/dev/null 2>&1; then
+  echo "Task (https://taskfile.dev) is not installed or not on PATH. Install it with 'brew install go-task/tap/go-task' and re-run." >&2
+  exit 1
+fi
 
-echo ""
-echo "🔨 [2/9] Building .NET solution..."
-dotnet build -c Release
-
-echo ""
-echo "🧪 [3/9] Running backend unit tests..."
-dotnet test tests/TechInventory.UnitTests/TechInventory.UnitTests.csproj -c Release --no-build
-
-echo ""
-echo "🧪 [4/9] Running backend integration tests..."
-dotnet test tests/TechInventory.IntegrationTests/TechInventory.IntegrationTests.csproj -c Release --no-build
-
-echo ""
-echo "🔒 [5/9] Scanning for vulnerable packages..."
-dotnet list package --vulnerable --include-transitive
-
-# Frontend verification
-echo ""
-echo "📦 [6/9] Installing frontend dependencies..."
-cd src/TechInventory.Web
-pnpm install --frozen-lockfile
-
-echo ""
-echo "🔍 [7/9] Checking frontend (tsc + svelte-check)..."
-pnpm run generate:client
-pnpm run check
-
-echo ""
-echo "✨ [8/9] Linting frontend..."
-pnpm run lint
-
-cd ../..
-
-echo ""
-echo "🎭 [9/9] Running Playwright against the hermetic compose stack..."
-./scripts/run-e2e.sh
-
-echo ""
-echo "======================================"
-echo "✅ Verification complete!"
-echo "======================================"
+task verify

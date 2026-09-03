@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TechInventory.Api.Authentication;
 using TechInventory.Api.Common;
 using TechInventory.Application.Common.Paging;
 using TechInventory.Application.Tags;
@@ -31,8 +32,10 @@ public sealed class TagsController(ISender sender) : ControllerBase
         => this.OkResult(await sender.Send(new GetTagByIdQuery(id), cancellationToken));
 
     [HttpPost]
+    [Authorize(Policy = AuthorizationPolicies.AdminOrMember)]
     [ProducesResponseType(typeof(TagResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<TagResponse>> CreateTag([FromBody] CreateTagRequest request, CancellationToken cancellationToken)
         => this.CreatedAtActionResult(
@@ -41,15 +44,19 @@ public sealed class TagsController(ISender sender) : ControllerBase
             response => new { id = response.Id });
 
     [HttpPut("{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.AdminOrMember)]
     [ProducesResponseType(typeof(TagResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<TagResponse>> UpdateTag(Guid id, [FromBody] UpdateTagRequest request, CancellationToken cancellationToken)
         => this.OkResult(await sender.Send(request.ToCommand(id), cancellationToken));
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.AdminOrMember)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> DeleteTag(Guid id, CancellationToken cancellationToken)

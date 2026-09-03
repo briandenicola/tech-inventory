@@ -329,6 +329,7 @@
 					type="file"
 					accept=".csv,text/csv,application/vnd.ms-excel"
 					class="sr-only"
+					aria-label={t('import.upload.title')}
 					onchange={handleFileInputChange}
 				/>
 			{:else}
@@ -391,7 +392,7 @@
 								<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
 								<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
 							</svg>
-							{t('common.loading')}
+							{t('common.states.loading')}
 						{:else}
 							{t('common.actions.next')}
 						{/if}
@@ -591,7 +592,7 @@
 							<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
 							<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
 						</svg>
-						{t('common.loading')}
+						{t('common.states.loading')}
 					{:else}
 						{t('import.commit.title')}
 					{/if}

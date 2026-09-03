@@ -222,75 +222,86 @@ this project's testing strategy.
 |---|---|---|---|
 | Unit (backend) | xUnit + FluentAssertions | Domain + Application layers | ✅ Mandatory |
 | Unit (frontend) | Vitest + Testing Library | Components, stores, utilities | ✅ Mandatory |
-| Integration (API) | xUnit + Testcontainers | API + real PostgreSQL | ✅ Mandatory |
+| Integration (API) | xUnit + in-process `WebApplicationFactory` | API over real HTTP + real SQLite (no mocks, no Docker) | ✅ Mandatory |
 | Contract | Schemathesis or equivalent | OpenAPI spec ↔ live API | ✅ Mandatory |
-| **End-to-End (UI)** | **Playwright** | **Full PWA against real stack** | ✅ **Mandatory** |
-| Accessibility | axe-core (in Vitest + Playwright) | All UI routes | ✅ Mandatory |
-| Performance | Lighthouse CI | Key routes (see §6.5.9) | ✅ Mandatory |
-| Visual regression | Playwright snapshots | High-value views only | ⚠️ Optional (v2) |
+| **End-to-End (UI)** | **Retired — no browser framework** | — | ❌ **Not required** (ADR 0002) |
+| Accessibility | axe-core (in Vitest unit + component tests) | All UI components and route harnesses | ✅ Mandatory |
+| Manual PWA validation | `docs/testing/manual-pwa-validation.md` | Install, offline/service worker, engine spot checks | ✅ Mandatory per release (manual, `REVIEWED`) |
+| Performance | Manual release profiling (`P-01`) | Key routes and budgets (see constitution §6.5.9) | ✅ Mandatory per release (`REVIEWED`; ADR 0002) |
+| Visual regression | — | — | ❌ Not adopted (would require an ADR; must not reintroduce a browser suite) |
 | Load | k6 or NBomber | Throughput baselines | ⚠️ Optional (v2) |
 
-### 7.5.3 Playwright (Mandatory E2E)
-- **Playwright** is the required end-to-end testing tool. No alternative
-  framework (Cypress, Selenium, Puppeteer, etc.) is accepted.
-- Tests live in `tests/e2e/` at the repo root
-- Tests run against the **full local Docker Compose stack**, not a mocked API
-- **Browser matrix (minimum)**: Chromium, WebKit, Firefox — all three must
-  pass in CI. Local dev may run Chromium-only for speed
-- **Viewport matrix**: at minimum one mobile (375×667) and one desktop
-  (1280×800) viewport per critical flow
-- **Authentication**: a documented Playwright fixture provisions a test
-  user via Entra ID test tenant or a documented local-dev auth bypass
-  (the bypass is **never** available in production builds — enforced at
-  the API layer)
-- **Network policy**: Playwright tests must not reach external hosts; any
-  outbound call to a non-localhost address fails the test
-- **Data setup**: tests create their own data via API calls or a documented
-  seed endpoint; tests must not rely on a pre-existing dataset
-- **Tear-down**: each test cleans up data it created, or runs against a
-  fresh database snapshot per test file
-- **Traces & video**: Playwright traces and videos retained on failure;
-  uploaded as CI artifacts; locally available in `playwright-report/`
-- **Page Object Model**: shared UI affordances captured in `tests/e2e/pages/`;
-  test files describe scenarios, not low-level selectors
+### 7.5.3 Browser End-to-End — Retired (ADR 0002)
+- The browser end-to-end layer is **retired**. There is **no** automated browser
+  test suite in any role: not merge-blocking, not scheduled, not per-release,
+  not optional, not manual-dispatch.
+- **No substitute** browser-automation framework (Cypress, Selenium, Puppeteer,
+  WebdriverIO, or equivalent) may be adopted in its place. Reintroducing any
+  automated browser layer requires a **new ADR superseding ADR 0002**, stating
+  the merge-blocking role it holds from day one, its collected-test floor, and
+  its named owner.
+- The behaviour that layer was supposed to assert lives at three places, and
+  only these three:
+  1. **Real-HTTP integration / contract tests** — in-process
+     `WebApplicationFactory<Program>` against real SQLite, no mocked API, no
+     Docker (`tests/TechInventory.IntegrationTests/`).
+  2. **Component tests** — Vitest + Testing Library + `axe-core`
+     (`src/TechInventory.Web/src/**/*.test.ts`).
+  3. **Owned manual checklist** — [`docs/testing/manual-pwa-validation.md`](./testing/manual-pwa-validation.md),
+     checks `M-01`…`M-16`, with a named owner and a release cadence.
+- Anything a browser could assert but the layers above cannot is an **accepted
+  gap with an owner** (`specs/004-agentic-development-foundation/coverage-migration.md`
+  §6, `G-01`…`G-10`). A manual check is `REVIEWED`; it is never reported as
+  automated coverage.
+- A stale-reference guard (`task check:stale-refs`) fails the build if the
+  retired harness returns to an active manifest, script, workflow, config, doc,
+  or test tree.
 
-### 7.5.4 Critical User Journeys (Playwright Coverage Required)
-The following journeys **must** have at least one passing Playwright test
-before any v1 release:
+### 7.5.4 Critical User Journeys (coverage required at the lowest reliable layer)
+The thirteen journeys below remain **mandatory product intents**. Each must have
+passing coverage at its destination layer before any v1 release. The browser
+requirement is removed by ADR 0002; the journeys themselves are not.
+Row-level evidence is in `specs/004-agentic-development-foundation/coverage-migration.md`
+§3 (per-journey) and §5–§6 (destinations and accepted gaps).
 
-1. **Sign in** (Entra ID happy path; sign-out)
-2. **Sign in denied** (user without role assignment is refused gracefully)
-3. **Create device** (Member fills form, saves, sees device in list)
-4. **Edit device** (Member changes fields, saves, sees changes persisted)
-5. **Delete device** (Member deletes with confirmation; device gone from list)
-6. **Browse and filter** (Viewer applies filters, results update, URL reflects
-   state, reload preserves view)
-7. **Detail view** (Viewer opens a device, sees all reference data resolved
-   to human-readable labels)
-8. **Import CSV** (Admin uploads a CSV; preview shown; errors surfaced;
-   commit succeeds)
-9. **Export CSV** (Admin exports current filtered view; downloaded file
-   parses cleanly)
-10. **Reference data admin** (Admin creates a new Location; it appears
-    immediately in the device-create form)
-11. **Role enforcement** (Viewer cannot see edit/delete affordances;
-    direct navigation to edit routes is refused)
-12. **Offline app shell** (PWA shell loads when API is unreachable;
-    cached data viewable; mutations queued or refused gracefully)
-13. **Accessibility smoke** (every route above passes axe-core with
-    zero violations)
+| # | Journey | Required evidence today |
+|---|---|---|
+| 1 | **Sign in** (Entra ID happy path; sign-out) | Component: `(authenticated)/+layout.ts` guard redirect (**C-01**), `AppMenuPopover` sign-out. Manual: real Entra redirect sign-in/out (**M-11**, gap **G-08**) |
+| 2 | **Sign in denied** (no role assignment refused gracefully) | HTTP: `AuthIntegrationTests.TokenWithNoRoles_Returns401Unauthorized`, `ViewerRoleAuthorizationTests`. Component: role-less denial surface (**C-03**) |
+| 3 | **Create device** | HTTP: `DevicesControllerTests` create round trip via typed builders (**H-01**). Component: `AddDeviceModal`, `DeviceForm`. Manual spot check: **M-12** (gap **G-01**) |
+| 4 | **Edit device** | HTTP: `DevicesControllerTests.UpdateDevice_WhenValid_…`. Component: detail-page affordances (**C-04**), cancel-discards (**C-05**) |
+| 5 | **Delete device** | HTTP: `DeleteDevice_WhenFound_Returns204` + audit-reason assertion (**H-02**). Component: `DeleteDeviceModal` type-to-confirm + reason gate |
+| 6 | **Browse and filter** (URL is source of truth) | Component: `deviceFilterUrl`, `DeviceFilters`, `viewState`, Clear-All URL reset (**C-06**) |
+| 7 | **Detail view** (reference data resolved to labels) | HTTP: `GetDeviceById_WhenFound_ReturnsDevice`. Component: breadcrumb landmark (**C-07**), `DeviceDetailFields` (**C-08**) |
+| 8 | **Import CSV** | HTTP: `ImportsControllerTests` (preview, commit, audit, lookups), `SharePointCsvImportTests` (**H-05**). Component: wizard chrome (**C-09**), preview rows (**C-19**). Manual: real file picker **M-12** (gap **G-02**) |
+| 9 | **Export CSV** | HTTP: `ExportControllerTests` + list/export predicate parity (**H-03**). Component: export CTAs (**C-10**). Manual: real download **M-13** (gap **G-03**) |
+| 10 | **Reference data admin** | HTTP: reference controller tests (Locations, Brands, Categories, Networks, Owners, Tags). Component: reference-cache invalidation refreshes `DeviceForm` (**C-11**) |
+| 11 | **Role enforcement** | HTTP: `ViewerRoleAuthorizationTests` — 403 for Viewer on device create/update/delete, import commit, reference mutation (**H-04**). Component: hidden affordances (**C-12**), edit-route guard (**C-13**) |
+| 12 | **Offline app shell** | Component: `/offline` route (**C-14**), Workbox config contract — `navigateFallback`, denylist, `NetworkOnly` mutations, `StaleWhileRevalidate` GETs (**C-15**), visible mutation failure (**C-16**), update prompt (**C-17**). Manual: **M-05**–**M-09** (gap **G-04**) |
+| 13 | **Accessibility smoke** (zero axe violations) | Component: 37 axe-asserting test files + route-level axe harnesses for `/devices/{id}`, `/admin/import`, `/admin/export`, `/admin/audit`, `/offline` (**C-18**; `/devices` is accepted gap **G-09**). The six reference-admin route compositions omitted from C-18 are accepted gap **G-10**, compensated by **M-16**. Manual: WebKit/Firefox spot checks **M-14**, **M-15** (gap **G-05**) |
 
 Additional journeys are added to this list as features ship. Removing a
-journey from this list requires an ADR.
+journey from this list requires an ADR. Moving a journey to a **lower** layer is
+allowed and expected; moving it to "manual only" requires a named owner, a
+release cadence, and a recorded accepted gap.
 
-### 7.5.5 The `task test` Contract
-A developer must be able to run the following from a clean checkout:
+### 7.5.5 The `task verify` Contract
+A developer must be able to run the following from a clean checkout, with **no
+Docker and no browser download**:
 
 ```bash
-task up        # bring up the full local stack (API, web, db)
-task test      # run all mandatory tests against the running stack
-task down      # tear down
+task restore   # .NET + pinned CLI tools + pnpm dependencies
+task verify    # THE authoritative pipeline — format, build, type-check, lint,
+               # backend unit, frontend unit/component, stale-reference guard,
+               # OpenAPI + generated-client drift, EF migration drift,
+               # real-HTTP integration tests, production build, vulnerability scan
 ```
+
+`task test` remains available for the test stages alone (backend unit, backend
+integration, frontend unit/component). `task up` / `task down` still run the
+full local stack for manual work, including the manual PWA checklist — they are
+**not** required to verify a change. CI invokes the same `task verify`
+entrypoint (`.github/workflows/quality-gate.yml`).
 
 ---
 

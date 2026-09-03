@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/svelte';
+import { render, screen, waitFor, fireEvent } from '@testing-library/svelte';
 import { axe } from 'vitest-axe';
 import userEvent from '@testing-library/user-event';
 import DeleteDeviceModal from './DeleteDeviceModal.svelte';
@@ -305,23 +305,60 @@ describe('DeleteDeviceModal', () => {
 		});
 	});
 
-	describe('focus trap', () => {
-		// NOTE: Focus trap Tab cycling is hard to test in jsdom (requires real DOM focus flow).
-		// Deferring to E2E tests per D-078 (decision drop).
-		// This test documents the expected behavior but may not actually cycle focus in jsdom.
-		it('contains focusable elements for focus trap', () => {
+	describe('focus trap (C-22: D-078 deferral was inaccurate — plain keydown handler, testable in jsdom)', () => {
+		async function renderWithSubmittableState() {
+			const user = userEvent.setup();
 			render(DeleteDeviceModal, { props: defaultProps });
 
-			// Modal should have focusable elements
-			const confirmInput = screen.getByLabelText(/devices.delete.confirmPrompt/i);
-			const reasonTextarea = screen.getByLabelText(/devices.delete.reasonLabel/i);
-			const cancelButton = screen.getByRole('button', { name: /common.actions.cancel/i });
-			const deleteButton = screen.getByRole('button', { name: /common.actions.delete/i });
+			// The trap's last focusable element is the Delete button, which is
+			// disabled (and therefore unfocusable) until the confirmation text
+			// and reason are valid — fill both so the wrap-around has a real,
+			// focusable last element to land on.
+			await user.type(screen.getByLabelText(/devices.delete.confirmPrompt/i), 'iPhone 15 Pro');
+			await user.type(screen.getByLabelText(/devices.delete.reasonLabel/i), 'Valid reason here');
 
-			expect(confirmInput).toBeInTheDocument();
-			expect(reasonTextarea).toBeInTheDocument();
-			expect(cancelButton).toBeInTheDocument();
-			expect(deleteButton).toBeInTheDocument();
+			const deleteButton = screen.getByRole('button', { name: /common.actions.delete/i });
+			await waitFor(() => expect(deleteButton).not.toBeDisabled());
+			return deleteButton;
+		}
+
+		it('wraps focus from the last focusable element back to the first on Tab', async () => {
+			const deleteButton = await renderWithSubmittableState();
+			const confirmInput = screen.getByLabelText(/devices.delete.confirmPrompt/i);
+
+			deleteButton.focus();
+			expect(document.activeElement).toBe(deleteButton);
+
+			fireEvent.keyDown(deleteButton, { key: 'Tab' });
+
+			expect(document.activeElement).toBe(confirmInput);
+		});
+
+		it('wraps focus from the first focusable element back to the last on Shift+Tab', async () => {
+			const deleteButton = await renderWithSubmittableState();
+			const confirmInput = screen.getByLabelText(/devices.delete.confirmPrompt/i);
+
+			confirmInput.focus();
+			expect(document.activeElement).toBe(confirmInput);
+
+			fireEvent.keyDown(confirmInput, { key: 'Tab', shiftKey: true });
+
+			expect(document.activeElement).toBe(deleteButton);
+		});
+
+		it('does not move focus on Tab from a middle element (only wraps at the ends)', async () => {
+			await renderWithSubmittableState();
+
+			const reasonTextarea = screen.getByLabelText(/devices.delete.reasonLabel/i);
+			reasonTextarea.focus();
+			expect(document.activeElement).toBe(reasonTextarea);
+
+			fireEvent.keyDown(reasonTextarea, { key: 'Tab' });
+
+			// The trap only intercepts Tab at the last element and Shift+Tab at
+			// the first — a middle element's own focus is left to native tab
+			// order (jsdom does not implement it, so focus simply stays put).
+			expect(document.activeElement).toBe(reasonTextarea);
 		});
 	});
 

@@ -6,7 +6,7 @@
 # https://inventory.denicolafamily.com.
 #
 # Local dev does NOT use this file — use `task dev:up` for the dotnet+pnpm
-# loop. The compose-driven Taskfile targets (`task up`, `task test:e2e`,
+# loop. The compose-driven Taskfile targets (`task up`,
 # `task backup:*`) still reference this file and may need rework now that
 # build sections and the prod-overlay file are gone (see open question in
 # the PR description).

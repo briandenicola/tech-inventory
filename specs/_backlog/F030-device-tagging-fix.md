@@ -25,8 +25,11 @@ photo-derived tag suggestions per F033).
 ## Proposed Solution
 This is half investigation, half a small UX delivery. Plan in three steps:
 
-1. **Reproduce + classify.** Apone runs the existing device-edit Playwright
-   journey, confirms whether tag input is missing, broken submit, or broken
+1. **Reproduce + classify.** Apone reproduces via the backend integration
+   test suite and a Vitest component pass on the device-edit modal (no
+   browser E2E layer exists post-retirement to run a journey against —
+   `specs/004-agentic-development-foundation/brief.md` §2.1), confirms
+   whether tag input is missing, broken submit, or broken
    render. Hicks confirms via API that
    `PUT /api/v1/devices/{id}` accepts and persists `tagIds`. Outcome
    determines whether the fix is frontend-only.
@@ -58,7 +61,9 @@ This is half investigation, half a small UX delivery. Plan in three steps:
 - [ ] `<TagPicker>` integrated in the device create + edit modals; multi-
       select with type-ahead; create-new-tag inline works
 - [ ] Submitting the modal persists `tagIds`; verified by a new integration
-      test on `PUT /api/v1/devices/{id}` and a Playwright test on the modal
+      test on `PUT /api/v1/devices/{id}` and a Vitest component test on the
+      modal's tag-picker interaction (no browser E2E layer exists
+      post-retirement — `specs/004-agentic-development-foundation/brief.md` §2.1)
 - [ ] Device detail page shows tags as chips with the same visual rhythm
       as the rest of the metadata blocks
 - [ ] Device cards show up to 3 tag chips + overflow indicator
@@ -77,7 +82,9 @@ This is half investigation, half a small UX delivery. Plan in three steps:
 ## Dependencies
 - Hicks: confirm/expose any missing API surface for tag CRUD if found
   during step 1.
-- Apone: ownership of repro + the new Playwright + integration tests.
+- Apone: ownership of repro + the new integration and Vitest component tests
+  (no browser E2E layer exists post-retirement —
+  `specs/004-agentic-development-foundation/brief.md` §2.1).
 
 ## Open Questions
 - Should we cap tags per device? FluentValidation should answer this — if

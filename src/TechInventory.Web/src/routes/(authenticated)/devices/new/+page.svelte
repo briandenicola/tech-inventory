@@ -3,6 +3,7 @@
 	import { page } from '$app/stores';
 	import { t } from '$lib/i18n';
 	import { devices, ApiError } from '$lib/api/client';
+	import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 	import DeviceForm from '$lib/components/DeviceForm.svelte';
 	import UnsavedChangesModal from '$lib/components/UnsavedChangesModal.svelte';
 	import { invalidateDevicesCache } from '$lib/queries/devices.svelte';
@@ -110,41 +111,13 @@
 </svelte:head>
 
 <!-- Breadcrumbs -->
-<nav class="mb-4 flex text-sm text-neutral-600 dark:text-neutral-400" aria-label="Breadcrumb">
-	<ol class="flex items-center space-x-2">
-		<li>
-			<a href="/" class="hover:text-primary-600 dark:hover:text-primary-400">
-				{t('navigation.home')}
-			</a>
-		</li>
-		<li>
-			<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-				<path
-					fill-rule="evenodd"
-					d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
-					clip-rule="evenodd"
-				/>
-			</svg>
-		</li>
-		<li>
-			<a href="/devices" class="hover:text-primary-600 dark:hover:text-primary-400">
-				{t('common.nouns.devices')}
-			</a>
-		</li>
-		<li>
-			<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-				<path
-					fill-rule="evenodd"
-					d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
-					clip-rule="evenodd"
-				/>
-			</svg>
-		</li>
-		<li aria-current="page" class="font-medium text-neutral-900 dark:text-neutral-100">
-			{t('devices.create.title')}
-		</li>
-	</ol>
-</nav>
+<Breadcrumbs
+	items={[
+		{ label: t('navigation.home'), href: '/' },
+		{ label: t('common.nouns.devices'), href: '/devices' },
+		{ label: t('devices.create.title') }
+	]}
+/>
 
 <!-- Page header -->
 <div class="mb-6">

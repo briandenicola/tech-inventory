@@ -143,6 +143,17 @@ export interface paths {
                         "text/json": components["schemas"]["ValidationProblemDetails"];
                     };
                 };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
                 /** @description Conflict */
                 409: {
                     headers: {
@@ -243,6 +254,17 @@ export interface paths {
                         "text/json": components["schemas"]["ValidationProblemDetails"];
                     };
                 };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
                 /** @description Not Found */
                 404: {
                     headers: {
@@ -285,6 +307,17 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
                 };
                 /** @description Not Found */
                 404: {
@@ -560,6 +593,17 @@ export interface paths {
                         "text/json": components["schemas"]["ValidationProblemDetails"];
                     };
                 };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
                 /** @description Not Found */
                 404: {
                     headers: {
@@ -710,6 +754,17 @@ export interface paths {
                         "text/json": components["schemas"]["ValidationProblemDetails"];
                     };
                 };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
                 /** @description Not Found */
                 404: {
                     headers: {
@@ -752,6 +807,17 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
                 };
                 /** @description Not Found */
                 404: {
@@ -1039,6 +1105,17 @@ export interface paths {
                         "text/json": components["schemas"]["ValidationProblemDetails"];
                     };
                 };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
                 /** @description Conflict */
                 409: {
                     headers: {
@@ -1139,6 +1216,17 @@ export interface paths {
                         "text/json": components["schemas"]["ValidationProblemDetails"];
                     };
                 };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
                 /** @description Not Found */
                 404: {
                     headers: {
@@ -1197,6 +1285,17 @@ export interface paths {
                         "text/plain": components["schemas"]["ValidationProblemDetails"];
                         "application/json": components["schemas"]["ValidationProblemDetails"];
                         "text/json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
                     };
                 };
                 /** @description Not Found */
@@ -1310,6 +1409,17 @@ export interface paths {
                         "text/json": components["schemas"]["ValidationProblemDetails"];
                     };
                 };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
                 /** @description Not Found */
                 404: {
                     headers: {
@@ -1378,6 +1488,17 @@ export interface paths {
                         "text/plain": components["schemas"]["ValidationProblemDetails"];
                         "application/json": components["schemas"]["ValidationProblemDetails"];
                         "text/json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
                     };
                 };
                 /** @description Not Found */
@@ -1457,6 +1578,17 @@ export interface paths {
                         "text/json": components["schemas"]["ValidationProblemDetails"];
                     };
                 };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
                 /** @description Not Found */
                 404: {
                     headers: {
@@ -1527,6 +1659,17 @@ export interface paths {
                         "text/plain": components["schemas"]["ValidationProblemDetails"];
                         "application/json": components["schemas"]["ValidationProblemDetails"];
                         "text/json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
                     };
                 };
                 /** @description Not Found */
@@ -1818,6 +1961,17 @@ export interface paths {
                         "text/plain": components["schemas"]["ValidationProblemDetails"];
                         "application/json": components["schemas"]["ValidationProblemDetails"];
                         "text/json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
                     };
                 };
                 /** @description Conflict */
@@ -2173,6 +2327,17 @@ export interface paths {
                         "text/json": components["schemas"]["ValidationProblemDetails"];
                     };
                 };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
                 /** @description Conflict */
                 409: {
                     headers: {
@@ -2273,6 +2438,17 @@ export interface paths {
                         "text/json": components["schemas"]["ValidationProblemDetails"];
                     };
                 };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
                 /** @description Not Found */
                 404: {
                     headers: {
@@ -2315,6 +2491,17 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
                 };
                 /** @description Not Found */
                 404: {
@@ -2590,6 +2777,17 @@ export interface paths {
                         "text/json": components["schemas"]["ValidationProblemDetails"];
                     };
                 };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
                 /** @description Conflict */
                 409: {
                     headers: {
@@ -2690,6 +2888,17 @@ export interface paths {
                         "text/json": components["schemas"]["ValidationProblemDetails"];
                     };
                 };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
                 /** @description Not Found */
                 404: {
                     headers: {
@@ -2732,6 +2941,17 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
                 };
                 /** @description Not Found */
                 404: {
@@ -3007,6 +3227,17 @@ export interface paths {
                         "text/json": components["schemas"]["ValidationProblemDetails"];
                     };
                 };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
                 /** @description Conflict */
                 409: {
                     headers: {
@@ -3107,6 +3338,17 @@ export interface paths {
                         "text/json": components["schemas"]["ValidationProblemDetails"];
                     };
                 };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
                 /** @description Not Found */
                 404: {
                     headers: {
@@ -3149,6 +3391,17 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
                 };
                 /** @description Not Found */
                 404: {
@@ -3796,6 +4049,17 @@ export interface paths {
                         "text/json": components["schemas"]["ValidationProblemDetails"];
                     };
                 };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
                 /** @description Conflict */
                 409: {
                     headers: {
@@ -3896,6 +4160,17 @@ export interface paths {
                         "text/json": components["schemas"]["ValidationProblemDetails"];
                     };
                 };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
+                };
                 /** @description Not Found */
                 404: {
                     headers: {
@@ -3938,6 +4213,17 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProblemDetails"];
+                        "application/json": components["schemas"]["ProblemDetails"];
+                        "text/json": components["schemas"]["ProblemDetails"];
+                    };
                 };
                 /** @description Not Found */
                 404: {

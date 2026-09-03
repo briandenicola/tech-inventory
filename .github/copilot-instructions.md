@@ -39,13 +39,10 @@ dotnet list package --vulnerable                # security audit
 ```bash
 cd src/TechInventory.Web
 pnpm install                                    # install deps (pnpm, not npm)
-npx playwright install --with-deps              # first-time E2E setup
 pnpm run check                                  # tsc --noEmit + svelte-check
 pnpm run lint                                   # ESLint
 pnpm run test                                   # Vitest unit tests
 pnpm run test -- --run src/lib/MyFile.test.ts   # single test file
-npx playwright test                             # E2E (requires running stack)
-npx playwright test tests/e2e/mytest.spec.ts    # single E2E test
 ```
 
 ### Full Verify Pipeline
@@ -84,14 +81,14 @@ task down    # tear down
 - Components < 200 lines, single-purpose, support loading/empty/error/success states
 - All strings in i18n catalogs (`src/lib/i18n/en.json`); no hard-coded strings
 - Design tokens in `src/lib/tokens.css`; no magic Tailwind values like `mt-[13px]`
-- Playwright is the only E2E framework; tests in `tests/e2e/` with Page Object Model
+- No automated browser E2E — that harness is retired (`specs/004-agentic-development-foundation/brief.md` §2.1); browser/engine-only behaviour is covered by the manual PWA validation checklist (`docs/testing/manual-pwa-validation.md`)
 
 ### Testing
 - 85% minimum line coverage on Domain + Application layers
 - xUnit + FluentAssertions + NSubstitute for backend unit tests
 - Vitest + Testing Library for frontend unit/component tests
-- Playwright for E2E (Chromium + WebKit + Firefox in CI)
-- axe-core accessibility checks in both unit and E2E — zero violations to merge
+- No automated browser E2E — that harness is retired (`specs/004-agentic-development-foundation/brief.md` §2.1); browser/engine-only behaviour lives in the manual PWA validation checklist (`docs/testing/manual-pwa-validation.md`)
+- axe-core accessibility checks in Vitest component tests — zero violations to merge
 - Tests own their data; no shared fixtures across files; no mocked DB in integration tests
 
 ### Security

@@ -55,9 +55,16 @@ When a grouping is active:
 - [ ] "Purchase year" buckets devices by calendar year of `purchaseDate`;
       devices with no purchase date land in a single "Unknown" group at the
       bottom.
-- [ ] At least one Vitest unit for the grouping/sorting logic and one
-      Playwright E2E covering "group by Owner → expand one group → click a
-      device → modal opens with the right device".
+- [x] At least one Vitest unit for the grouping/sorting logic — delivered as
+      `groupDevices.test.ts`. The "group by Owner → expand one group → click
+      a device → modal opens with the right device" journey has no browser
+      E2E layer to automate it post-retirement
+      (`specs/004-agentic-development-foundation/brief.md` §2.1); it is an
+      **accepted gap** in the same family as `coverage-migration.md`'s
+      **G-09** (whole-page `/devices` composition), compensated by
+      `DeviceTable.test.ts`'s row/group-header assertions plus the
+      `docs/testing/manual-pwa-validation.md` **M-14**/**M-15** spot checks
+      of `/devices` — not invented as automated coverage it does not have.
 - [ ] Zero axe-core violations on the new toolbar + headers.
 
 ## Out of Scope

@@ -1,15 +1,31 @@
 version: '3'
 
 # Tech Inventory — Local Development Automation
-# Requires: Docker, Task (https://taskfile.dev)
+# Requires: Docker (only for `task up`/`down`/`logs`/`ps`/`backup:*`), Task (https://taskfile.dev)
 #   Install Task via: `choco install go-task` (Windows) or `brew install go-task/tap/go-task` (macOS/Linux)
+#
+# Task is the one authoritative verification interface — humans and CI both
+# run `task verify` (or its `verify:fast`/`verify:contracts` stages). Nothing
+# in `verify`, `verify:fast`, or `verify:contracts` requires Docker; every
+# check runs against an in-process ASP.NET Core TestServer + real SQLite file,
+# not a container (specs/004-agentic-development-foundation, T104 · AC-008).
+#
+# `task restore` is the clean-checkout contract (docs/prd.md §7.5.5): it also
+# provisions the pinned `gitleaks` binary `check:security` needs (via
+# `tools:gitleaks`, idempotent — skips the download once the pinned version is
+# already present), so `restore` → `verify` works with no manual setup step and
+# no undeclared network fallback inside `verify` itself (specs/004-agentic-
+# development-foundation, T105 revision · B-4).
 #
 # Core commands:
 #   task up              — Bring up the full dev stack (API, Web, DB) via Docker Compose
 #   task dev:up          — Local (non-Docker) one-command dev: migrate + run API + Web in parallel
-#   task test            — Run all tests against the running stack
-#   task down            — Tear down the stack
-#   task verify          — Run the constitution-blessed verification pipeline
+#   task test            — Run unit + integration + frontend tests (no Docker; enforces collected-test floors)
+#   task down             — Tear down the stack
+#   task verify           — THE authoritative verification pipeline (alias for verify:full). No Docker required.
+#   task verify:fast      — format · backend build · frontend type-check · lint · unit · frontend unit/component tests
+#   task verify:contracts — retired-harness stale-reference guard · OpenAPI/client drift · EF migration drift · real-HTTP integration tests
+#   task verify:full      — verify:fast + verify:contracts + frontend production build + vulnerability scan + auth-token/secret scan
 #
 # Local validation:
 #   task validate:local  — Fresh checkout → working dev environment with DB migrations applied
@@ -26,32 +42,110 @@ silent: false
 method: timestamp
 
 tasks:
-  restore:
-    desc: Restore .NET and pnpm dependencies
+  tools:gitleaks:
+    desc: 'Provision the pinned gitleaks binary into .tools/gitleaks if it is not already present at the pinned version (idempotent — status check below skips the download once the pinned version is present, so restore''s many dependents do not re-download on every call). Single install path for gitleaks; restore (clean checkout) and hooks:install (pre-commit hook) both depend on this instead of each running their own copy of the download logic (specs/004-agentic-development-foundation, T105 revision, B-4)'
+    vars:
+      GITLEAKS_VERSION: '8.30.1'
+    status:
+      - node scripts/check-gitleaks-installed.mjs {{.GITLEAKS_VERSION}}
     cmds:
-      - dotnet restore
-      - pnpm --dir src/TechInventory.Web install
+      - cmd: powershell -NoProfile -ExecutionPolicy Bypass -Command "& '.\scripts\install-gitleaks.ps1' -Version '{{.GITLEAKS_VERSION}}'"
+        platforms: [windows]
+      - cmd: bash ./scripts/install-gitleaks.sh {{.GITLEAKS_VERSION}}
+        platforms: [linux, darwin]
 
-  build:
-    desc: Build backend and frontend
+  restore:
+    desc: Restore .NET dependencies, pinned CLI tools (dotnet-ef), pnpm dependencies, and the pinned gitleaks binary check:security needs (specs/004-agentic-development-foundation, T105 revision · B-4)
+    deps: [tools:gitleaks]
+    cmds:
+      - dotnet tool restore
+      - dotnet restore
+      - pnpm --dir src/TechInventory.Web install --frozen-lockfile
+      # Runs on every restore (not gated by tools:gitleaks' own status skip)
+      # so a regression in the provisioning checker cannot rot unnoticed —
+      # same pattern as check:client-drift/check:vulnerable's own suites
+      # (T105 revision · B-4).
+      - node --test scripts/check-gitleaks-installed.test.mjs
+
+  build:backend:
+    desc: Build the backend (.NET) in Release configuration
     deps: [restore]
     cmds:
       - dotnet build -c Release --no-restore
+
+  build:frontend:
+    desc: Build the frontend production bundle (SvelteKit static adapter)
+    deps: [restore]
+    cmds:
       - pnpm --dir src/TechInventory.Web run build
+
+  build:
+    desc: Build backend and frontend
+    deps: [build:backend, build:frontend]
+
+  check:format:
+    desc: Verify .NET code formatting with no changes required (dotnet format --verify-no-changes)
+    cmds:
+      - dotnet format --verify-no-changes
+
+  check:frontend:
+    desc: Type-check and Svelte-check the frontend without mutating generated artifacts
+    deps: [restore]
+    cmds:
+      - pnpm --dir src/TechInventory.Web run check
+
+  check:client-drift:
+    desc: Fail if the generated OpenAPI client (types.ts) has drifted from the working-tree openapi.yaml (snapshots the artifact, regenerates, compares, restores on both success and failure — never depends on committing); also runs this checker's own unit suite so a regression in the guard itself cannot rot unnoticed (T105 · F-10)
+    deps: [restore]
+    cmds:
+      - node scripts/check-client-drift.mjs
+      - node --test scripts/check-client-drift.test.mjs
+
+  check:openapi-drift:
+    desc: Fail if the committed OpenAPI document has drifted from the API project (regenerates via export-openapi and diffs structurally, ignoring JSON/YAML serializer noise)
+    deps: [restore]
+    vars:
+      GENERATED: '{{.ROOT_DIR}}/TestResults/openapi-drift/openapi.generated.yaml'
+    cmds:
+      - mkdir -p TestResults/openapi-drift
+      # `dotnet run --project` sets the child process's working directory to
+      # the *project* folder, not this shell's — the output path must be
+      # absolute or it lands under src/TechInventory.Api/ instead of the repo root.
+      - dotnet run --project src/TechInventory.Api/TechInventory.Api.csproj -c Release --no-launch-profile -- export-openapi "{{.GENERATED}}"
+      - cmd: python scripts/compare-openapi.py openapi.yaml "{{.GENERATED}}"
+        platforms: [windows]
+      - cmd: python3 scripts/compare-openapi.py openapi.yaml "{{.GENERATED}}"
+        platforms: [linux, darwin]
+
+  check:migration-drift:
+    desc: Fail if the EF Core model has pending changes not captured by a migration (dotnet ef migrations has-pending-model-changes)
+    deps: [restore]
+    cmds:
+      - dotnet ef migrations has-pending-model-changes --project src/TechInventory.Infrastructure/TechInventory.Infrastructure.csproj --startup-project src/TechInventory.Api/TechInventory.Api.csproj
+
+  check:vulnerable:
+    desc: Fail if any direct or transitive .NET package reports a Moderate+ vulnerability (constitution.md §5.8) — parses `dotnet list package --vulnerable --format json`, not just its exit code (the raw command exits 0 even when it reports advisories); also runs this checker's own unit suite so a regression in the guard itself cannot rot unnoticed (T105 · F-10)
+    deps: [restore]
+    cmds:
+      - node scripts/check-vulnerable.mjs
+      - node --test scripts/check-vulnerable.test.mjs
+
+  check:security:
+    desc: Fail if any tracked file contains an auth-token-persistence pattern (localStorage token/JWT/MSAL storage) or a gitleaks-detected secret — repo-wide scan of every tracked file, no diff range required (specs/004-agentic-development-foundation, T105 · F-5 — brings the existing check-security.mjs auth-token/secret scan under the one authoritative Task graph instead of leaving it reachable only from a workflow_dispatch-only workflow and a bypassable pre-commit hook). Consumes the gitleaks binary `restore` provisions; does not install it itself and fails clearly (not a silent network fallback) if it is missing (T105 revision · B-4).
+    deps: [restore]
+    cmds:
+      - node scripts/check-security.mjs --repo
 
   lint:
     desc: Lint backend and frontend
+    deps: [check:format]
     cmds:
-      - dotnet format --verify-no-changes
       - pnpm --dir src/TechInventory.Web run lint
 
   hooks:install:
-    desc: Install repo-managed git hooks and pinned gitleaks binary
+    desc: Install repo-managed git hooks and the pinned gitleaks binary (gitleaks install logic lives only in tools:gitleaks; restore uses the same task, T105 revision · B-4)
+    deps: [tools:gitleaks]
     cmds:
-      - cmd: powershell -NoProfile -ExecutionPolicy Bypass -Command "& '.\scripts\install-gitleaks.ps1'"
-        platforms: [windows]
-      - cmd: bash ./scripts/install-gitleaks.sh
-        platforms: [linux, darwin]
       - git config core.hooksPath .githooks
       - cmd: chmod +x .githooks/pre-commit
         platforms: [linux, darwin]
@@ -67,65 +161,75 @@ tasks:
       - docker compose down -v
 
   test:unit:
-    desc: Run backend unit tests
+    desc: Run backend unit tests (real xUnit, no Docker; enforces the collected-test floor — scripts/check-test-floors.mjs)
+    deps: [restore]
     cmds:
-      - dotnet test tests/TechInventory.UnitTests/TechInventory.UnitTests.csproj -c Release
+      - node scripts/check-test-floors.mjs unit
 
   test:integration:
-    desc: Run backend integration tests against isolated SQLite files
+    desc: Run backend integration tests — real HTTP via in-process WebApplicationFactory + real SQLite files, no Docker; enforces the collected-test floor
+    deps: [restore]
     cmds:
-      - dotnet test tests/TechInventory.IntegrationTests/TechInventory.IntegrationTests.csproj -c Release
+      - node scripts/check-test-floors.mjs integration
 
-  test:e2e:run:
-    internal: true
-    env:
-      BASE_URL: http://localhost:3000
+  test:frontend:
+    desc: Run frontend unit/component tests (Vitest + Testing Library + axe-core, no Docker; enforces the collected-test floor)
+    deps: [restore]
     cmds:
-      - cmd: powershell -NoProfile -ExecutionPolicy Bypass -Command "& { $maxAttempts = 60; for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) { try { $response = Invoke-WebRequest -Uri 'http://localhost:8080/health/ready' -UseBasicParsing -TimeoutSec 5; if ($response.StatusCode -eq 200) { exit 0 } } catch { } Start-Sleep -Seconds 2 }; throw 'API readiness check failed at http://localhost:8080/health/ready.' }"
-        platforms: [windows]
-      - cmd: bash -c 'for attempt in $(seq 1 60); do curl --fail --silent http://localhost:8080/health/ready >/dev/null && exit 0; sleep 2; done; echo "API readiness check failed at http://localhost:8080/health/ready." >&2; exit 1'
-        platforms: [linux, darwin]
-      - cmd: powershell -NoProfile -Command "Set-Location tests/e2e; npm ci; npx playwright test"
-        platforms: [windows]
-      - cmd: bash -c 'cd tests/e2e && npm ci && npx playwright test'
-        platforms: [linux, darwin]
-
-  test:e2e:
-    desc: Bring up the compose stack, run Playwright, and tear it down
-    cmds:
-      - cmd: powershell -NoProfile -ExecutionPolicy Bypass -Command "& '.\scripts\run-e2e.ps1'"
-        platforms: [windows]
-      - cmd: bash ./scripts/run-e2e.sh
-        platforms: [linux, darwin]
+      - node scripts/check-test-floors.mjs frontend
 
   test:
-    desc: Run all mandatory tests against the running stack (requires `task up` first)
+    desc: Run all mandatory tests — backend unit, backend integration, frontend unit/component. No Docker or running stack required.
     cmds:
       - task: test:unit
       - task: test:integration
-      - pnpm --dir src/TechInventory.Web run test
-      - task: test:e2e:run
+      - task: test:frontend
+
+  check:stale-refs:
+    desc: Fail if the retired browser-E2E harness has returned to active manifests, scripts, workflows, config, docs, or test trees
+    cmds:
+      - node ./scripts/check-stale-playwright-references.mjs
+      - node --test ./scripts/check-stale-playwright-references.test.mjs
+
+  verify:fast:
+    desc: "Fast local loop, no Docker: format · backend build · frontend type-check · lint · backend unit tests · frontend unit/component tests"
+    deps: [restore]
+    cmds:
+      - task: check:format
+      - task: build:backend
+      - task: check:frontend
+      - task: lint
+      - task: test:unit
+      - task: test:frontend
+
+  verify:contracts:
+    desc: "Contract verification, no Docker: retired-harness stale-reference guard · OpenAPI/client drift · EF migration drift · real-HTTP integration tests"
+    deps: [restore]
+    cmds:
+      - task: check:stale-refs
+      - task: check:openapi-drift
+      - task: check:client-drift
+      - task: check:migration-drift
+      - task: test:integration
+
+  verify:full:
+    desc: "Full verification, no Docker: verify:fast + verify:contracts + frontend production build + vulnerability scan + auth-token/secret scan"
+    cmds:
+      - task: verify:fast
+      - task: verify:contracts
+      - task: build:frontend
+      - task: check:vulnerable
+      - task: check:security
 
   verify:
-    desc: Run the full verification pipeline (format, build, test, security scan)
+    desc: THE authoritative verification pipeline — alias for verify:full. Same entrypoint humans and CI both run. No Docker required.
     cmds:
-      - cmd: .\scripts\verify.ps1
-        platforms: [windows]
-      - cmd: ./scripts/verify.sh
-        platforms: [linux, darwin]
+      - task: verify:full
 
   openapi:export:
     desc: Regenerate the committed OpenAPI YAML from the API project
     cmds:
       - dotnet run --project src/TechInventory.Api/TechInventory.Api.csproj -- export-openapi
-
-  openapi:verify:
-    desc: Fail if the committed OpenAPI document has drifted from the API project
-    cmds:
-      - cmd: ./scripts/check-openapi-drift.sh
-        platforms: [linux, darwin]
-      - cmd: bash ./scripts/check-openapi-drift.sh
-        platforms: [windows]
 
   logs:
     desc: Tail logs from all running containers

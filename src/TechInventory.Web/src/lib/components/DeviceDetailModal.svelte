@@ -56,8 +56,13 @@
 	const canEdit = $derived(currentUser?.role === 'Admin' || currentUser?.role === 'Member');
 	const canDelete = $derived(currentUser?.role === 'Admin');
 	const canViewHistory = $derived(currentUser?.role === 'Admin');
-	const canClaim = $derived(device && currentUser && device.ownerId !== currentUser.id);
-	const canRelease = $derived(device && currentUser && device.ownerId === currentUser.id);
+	// Claim/release are ownership-gated on top of the same Admin/Member role
+	// gate as canEdit — constitution §5.2 / docs/prd.md define Viewer as
+	// read-only, so a Viewer must never see these affordances regardless of
+	// device ownership (see ViewerRoleAuthorizationTests.ClaimDeviceOwnership_*
+	// / .ReleaseDeviceOwnership_* for the API-side 403 proof).
+	const canClaim = $derived(canEdit && device && currentUser && device.ownerId !== currentUser.id);
+	const canRelease = $derived(canEdit && device && currentUser && device.ownerId === currentUser.id);
 	const canRetire = $derived(canRetireDevice(device, currentUser));
 	const canUnretire = $derived(canUnretireDevice(device, currentUser));
 

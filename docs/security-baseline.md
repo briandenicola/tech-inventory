@@ -103,7 +103,7 @@ public async Task<IActionResult> ExchangeAuthCode([FromBody] ExchangeCodeRequest
 - **Code Review**: Every PR checked for localStorage usage. Rejection if found.
 - **Pre-Commit Hook**: `grep -r "localStorage.set" src/` → fail if match.
 - **Linting**: ESLint rule (TODO: configure `no-restricted-globals` or custom rule).
-- **Test**: Playwright test checks window.localStorage is empty after sign-in.
+- **Test**: Vitest asserts MSAL config uses `BrowserCacheLocation.SessionStorage` (`src/lib/auth/msal.test.ts`); no browser-automation check remains (harness retired — `specs/004-agentic-development-foundation/brief.md` §2.1).
 
 ---
 
@@ -308,7 +308,7 @@ public class UpdateDeviceCommandHandler : IRequestHandler<UpdateDeviceCommand, R
 
 - **Code Review**: Every [HttpGet/Post/Patch/Delete] must have `[Authorize(...)]`.
 - **Tests**: Unit tests verify policies are enforced (e.g., calling endpoint without token returns 401).
-- **E2E**: Playwright test #11 (Role enforcement) validates Viewer cannot access edit routes.
+- **Authorization**: `ViewerRoleAuthorizationTests` (real-HTTP integration) validates Viewer cannot mutate Admin/Member-gated endpoints (`specs/004-agentic-development-foundation/coverage-migration.md` **H-04**; browser-based E2E role check retired).
 
 ---
 
@@ -733,7 +733,7 @@ example.com {
 
 | Rule | Enforcement | Auditor |
 |------|-------------|---------|
-| Token storage | Code review + ESLint rule + Playwright | Vasquez (Code Review) |
+| Token storage | Code review + ESLint rule + `msal.test.ts` (Vitest) | Vasquez (Code Review) |
 | Serilog destructuring | Code review + log aggregator alerts | Hicks (Code Review) + Hudson (Ops) |
 | Authorization defaults | Code review + automated tests | Hicks (Code Review) |
 | Audit log immutability | Schema + repository tests | Hicks (Unit Tests) |

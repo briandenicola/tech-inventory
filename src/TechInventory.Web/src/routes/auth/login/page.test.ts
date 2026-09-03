@@ -160,4 +160,38 @@ describe('login page', () => {
 		expect(sessionStorage.getItem('ti_silent_sso_suppressed')).toBeNull();
 		expect(sessionStorage.getItem('ti_auto_interactive_signin_suppressed')).toBeNull();
 	});
+
+	describe('denial UI (C-03)', () => {
+		it('surfaces a 401 denial message from the auth store as an alert', () => {
+			(authStore as Writable<AuthState>).set({
+				...unauthenticatedState,
+				error: 'You must be signed in to access this page.'
+			});
+
+			render(Page);
+
+			expect(screen.getByRole('alert')).toHaveTextContent(
+				'You must be signed in to access this page.'
+			);
+		});
+
+		it('surfaces a 403 access-denied message from the auth store as an alert', () => {
+			(authStore as Writable<AuthState>).set({
+				...unauthenticatedState,
+				error: 'Access denied. You do not have permission to view this page.'
+			});
+
+			render(Page);
+
+			expect(screen.getByRole('alert')).toHaveTextContent(
+				'Access denied. You do not have permission to view this page.'
+			);
+		});
+
+		it('renders no alert when there is no denial error', () => {
+			render(Page);
+
+			expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+		});
+	});
 });

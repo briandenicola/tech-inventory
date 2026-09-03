@@ -2,9 +2,15 @@
  * Networks Schema Validation Tests — T33 Reference entity tests (partial)
  * 
  * Tests Zod validation for network admin form (name, description).
- * Full page-level tests deferred to E2E per D-124 (Zod 4.x import-time errors).
+ *
+ * C-22 (was: "Full page-level tests deferred to E2E per D-124, Zod 4.x
+ * import-time errors"): re-verified against the currently installed Zod
+ * version — the page module now imports cleanly in Vitest (see the
+ * "page module" smoke test below), so D-124 no longer applies. Coverage
+ * stays schema-focused here (full page interaction is out of scope for this
+ * file) but the import-time regression is now guarded against directly.
  * 
- * Constitution §3.4: Tests cover business logic; axe-core checked in E2E
+ * Constitution §3.4: Tests cover business logic; axe-core checked elsewhere
  */
 
 import { describe, it, expect } from 'vitest';
@@ -105,4 +111,11 @@ describe('networkSchema validation', () => {
 			}
 		});
 	});
+});
+
+
+describe('page module (C-22 regression guard)', () => {
+	it('imports the admin page module without throwing (guards against D-124 recurring)', async () => {
+		await expect(import('./+page.svelte')).resolves.toBeTruthy();
+	}, 20000);
 });

@@ -16,8 +16,12 @@ bulk delete with type-to-confirm + reason, atomic backend with per-device
 audit + shared correlation id). What's still missing are the power-user
 niceties and one safety net:
 
-- **Playwright E2E** — the v1 ship has integration + Vitest coverage but
-  no end-to-end "click 3, change category, verify in DB" walkthrough.
+- **End-to-end walkthrough coverage** — the v1 ship has integration + Vitest
+  coverage but no automated "click 3, change category, verify in DB"
+  walkthrough. The browser E2E harness is retired repo-wide
+  (`specs/004-agentic-development-foundation/brief.md` §2.1), so this gap
+  closes at the HTTP-integration layer (see Acceptance Criteria below), not
+  a browser suite.
 - **Shift-click range select** — handy for "all 20 between this row and
   that row" on desktop.
 - **"Select all N matching rows"** — when the header checkbox is checked
@@ -34,9 +38,13 @@ niceties and one safety net:
   transfers, this needs to route through the ownership-transfer pipeline.
 
 ## Acceptance Criteria
-- [ ] Playwright spec: "select 3 of 5 → bulk-set category → verify all 3
-      updated, other 2 unchanged, AuditEvent count = 3 sharing one
-      correlation id."
+- [ ] Backend integration test: bulk-set category applied to 3 of 5 seeded
+      devices asserts exactly those 3 updated, the other 2 unchanged, and
+      3 `AuditEvent` rows share one correlation id (extends
+      `DevicesControllerTests.BulkUpdateDevices_*`). A Vitest component test
+      covers the selection-range/undo UI interaction. No browser E2E layer
+      exists to add a walkthrough on top of this
+      (`specs/004-agentic-development-foundation/brief.md` §2.1).
 - [ ] Shift-click on a row checkbox selects the range from the
       last-anchored checkbox to the clicked one (desktop only).
 - [ ] When `selectAllVisible` is on AND there are more results in the

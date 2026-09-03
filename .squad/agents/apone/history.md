@@ -536,3 +536,335 @@ my change.
 **Boundary honored:** touched only `tests/e2e/**`; zero edits to
 `src/TechInventory.Web/**`. No commit/push per instructions.
 
+## 2026-09-02: T101 Revision — Closing Ripley's B1/B2 Rejection Blockers
+
+Ripley rejected Hudson's T101 (`validation.md` §7) on two blockers and named
+me as revision owner, Hudson locked out of the cycle. Closed both, touched
+nothing else, did not self-approve, did not start T104.
+
+**B1 — stale CI-checklist instructions.** `.github/T47-CI-SETUP-CHECKLIST.md`
+still told a reader to run `task test:e2e` / `task test:e2e:run` (deleted
+tasks) and kept an entire "API readiness check failed" troubleshooting block
+for a stage that no longer exists. Fixed by removing the dead instructions
+and the troubleshooting block outright (replaced with a dated note naming
+what was removed and why), and correcting every "…build, all tests, vuln
+scan, E2E" description to what `verify.sh`/`verify.ps1` step 9/9 actually
+runs today — the stale-reference guard. Deliberately did **not** describe
+T104's future unified verification surface as already existing; that
+would have repeated exactly the kind of promise-ahead-of-reality defect
+this whole package exists to eliminate.
+
+**B2 — the real lesson.** The guard's `EXEMPT_PATH_PREFIXES` had a blanket
+`'specs/'` entry, authorized by `coverage-migration.md` §5.5 classifying all
+of `specs/_backlog/` as "historical evidence only." It is not: per
+`constitution.md` §0, backlog spec files are authority source #6, a
+forward-looking definition of done, not a log — Ripley's ruling that
+"unbuilt backlog is instruction, not context" is the point to remember.
+Blanket directory-prefix exemptions in any guard are a standing invitation
+for exactly this: a document that looks like history but is read as a live
+promise by the next agent who picks it up. **The fix that actually closes
+the hole is naming exact file paths, not directory prefixes** — even
+Ripley's own suggested resolution (`specs/001-*`, `specs/002-*` prefixes)
+would have let a *new* file dropped into an already-exempt package sail
+through unnoticed; only an exact-path allowlist closes that permanently.
+
+Also learned: Ripley's own sample of "ten" backlog files was **not**
+exhaustive — a repository-wide audit (not a re-check of the named sample)
+found six more (F021, F023, F024, F026, F029, F030) carrying the same
+defect. **When a reviewer says "at least N," always re-derive the full set
+independently; don't just clear the named examples and call it done.**
+Every one of the 16 was rewritten to a real, verified destination — never
+checked a promise box without first confirming by name that the
+underlying test exists (`AuditEventsAuthorizationTests`,
+`BulkActionBar.test.ts`, `SharePointCsvImportTests`'s "Mohu Leaf Stitch"
+fixture, etc.) — and two behaviors (F023's grouped click-to-modal journey,
+F045's real-device-geometry checks) were declared accepted gaps in the
+existing **G-09** family rather than invented as new automated coverage,
+because jsdom/Vitest genuinely cannot prove them.
+
+**Also discovered, not mine to fix:** `specs/004-agentic-development-foundation/`
+is entirely untracked in git. `git grep` and any `git ls-files`-based tool —
+including the guard's own `main()` — cannot see it at all. My
+`EXEMPT_SPEC_PATHS` entries for that folder are future-proofing for whenever
+it's committed; today's "0/901 tracked files" guard run doesn't include it.
+Used a plain filesystem `grep`, not `git grep`, for the repo-wide
+re-classification search specifically because of this blind spot — worth
+remembering any time "0 references" is reported from a git-aware tool alone.
+
+**Proof discipline:** ran the guard's own test suite (15→18 cases, 18/18
+pass) and the live guard (0/901) before and after every edit; performed a
+real tamper test on a tracked backlog file (appended a synthetic Playwright
+line, confirmed exit 1 with exact file:line, restored from backup, confirmed
+`git hash-object` identical before/after, re-ran guard clean) rather than
+asserting fail-closed behavior from code reading alone — "tests own their
+data and guards must be proven fail-closed" only means something if the
+proof is a real, reverted run, not a described one.
+
+**Boundary honored:** did not repair or re-add any browser harness, did not
+touch `constitution.md`/`docs/prd.md` (ADR-gated per Ripley's §7.3 ruling),
+did not start T104, did not mark T101 `DONE` — updated `tasks.md`,
+`validation.md` §7.7, `plan.md`, and `coverage-migration.md` §13.9 to state
+"revised, awaiting Ripley re-review," leaving the actual approval gate to
+Ripley as the charter requires. No commit/push per instructions.
+
+
+---
+
+## 2026-09-02 — T104 independent review gate (Apone, reviewer) — REJECTED
+
+Reviewed Hudson's T104, "one authoritative verification interface,
+Playwright-free." Rejected on three blockers; assigned Hicks as revision
+owner (Hudson locked out for the cycle). Full record: `validation.md` §10,
+`.squad/decisions/inbox/apone-t104-review.md`.
+
+**The lesson worth keeping: "it fails because the branch is dirty" is a
+diagnosis, not an excuse — and it was wrong.** Hudson recorded
+`check:client-drift`'s failure as pre-existing and self-resolving ("it will
+pass once that work is committed"). I did not accept it, and I did not just
+read the Taskfile either. I hashed `types.ts`, ran `pnpm run generate:client`,
+and hashed it again: **byte-identical**. There was no drift at all. What the
+check actually does is regenerate from the *working-tree* `openapi.yaml` and
+then `git diff` the result against the *index/HEAD* copy — two different
+points in time. It reports the gap between them as drift. The sibling check
+in the same file, `check:openapi-drift`, gets this right by generating to a
+scratch path and comparing on-disk. Two drift gates in one pipeline, silently
+disagreeing about what "committed" means. **Any guard built on
+`git diff --exit-code` should be checked for which side of the comparison is
+the working tree — if the generator reads the working tree and the diff reads
+the index, the check measures commit hygiene, not drift.**
+
+**The one I nearly missed: a gate that passes because it cannot fail.**
+`check:vulnerable` runs `dotnet list package --vulnerable --include-transitive`
+and nothing else. That command prints HIGH-severity advisories and **exits
+0**. I proved it rather than asserting it — spun up a throwaway project
+pinned to `Newtonsoft.Json 12.0.1`, got the GHSA row printed, `EXIT_CODE=0`.
+The behaviour predates T104; the `| Enforced |` claim in the README T104
+itself rewrote does not. This is the *exact* shape of PR #140: a stage in the
+green pipeline that asserts nothing, documented as if it asserts everything.
+**When reviewing a pipeline, run each stage's tool against a known-bad input
+and read the exit code. "It ran and printed something" is not a gate.**
+
+**Floor tamper testing — the case that mattered wasn't the zero case.**
+I ran four tampers across both floor mechanisms. Zero-collection is the
+obvious one and it works. The one I'd actually cite is case 2: `dotnet test`
+filtered down to 115 real tests, **all passing, exit 0**, and the guard still
+rejected it against the floor of 250. A suite that loses 59% of itself while
+staying green is the realistic failure, not one that loses 100%. Hudson only
+proved the zero case; the below-floor-nonzero case is what makes the floor a
+floor. Every tamper restored byte-identically, `git hash-object` verified,
+`git status` back to its exact 145-entry baseline.
+
+**Also found by looking sideways rather than at the diff:** `check-security.mjs`
+— the auth-token-persistence scan — is not a Task target at all. It lives in a
+`workflow_dispatch`-only workflow and a `--no-verify`-bypassable pre-commit
+hook. A task claiming "one authoritative surface" is not finished while a real
+verification script sits outside it. And `ci.yml` now routes through
+`task verify` → `compare-openapi.py`, which needs PyYAML that
+`quality-gate.yml` installs and `ci.yml` does not: **when two workflows are
+claimed to call "the identical entrypoint," diff their setup steps, not just
+their run lines.**
+
+**What I approved without hesitation:** verify:fast green end to end, the
+stale-refs guard now inside the merge-blocking workflow (F-4 closed), no stage
+touching Docker or a browser, the `.env.e2e`/`docker-compose.e2e.yml`
+deletions (I read both files at `d303cd6` — each names `run-e2e.{sh,ps1}` as
+its only consumer), and the constitution/PRD contradiction left explicit in
+`docs/testing.md` rather than quietly papered over.
+
+**Boundary honored:** diagnosed but repaired nothing. No implementation file
+was edited except the two tamper targets, both restored and hash-verified. No
+commit, no push. Recorded the verdict in `validation.md` §10 / `tasks.md` /
+`plan.md` / `coverage-migration.md` §14 and left the fix to Hicks, per the
+reviewer-lockout rule.
+
+
+---
+
+## 2026-09-02 — T104 re-review gate (Apone, reviewer) — APPROVED
+
+Re-reviewed Hicks's revision of the three blockers I raised against T104,
+at the coherent checkpoint `b3c092f`. Approved: T104 `DONE`, AC-008 met,
+T105 authorized. Full record: `validation.md` §12,
+`.squad/decisions/inbox/apone-t104-rereview.md`.
+
+**The test that actually settled B-1 was the one nobody had run — a
+dirty-but-synchronized tree.** Reading the new script and re-running it on a
+clean checkout proves almost nothing: a clean tree passes under the old
+`git diff` check too. So I manufactured the exact condition the old check got
+wrong — appended a probe schema to the working-tree `openapi.yaml`,
+regenerated `types.ts` from it, so both files were internally consistent and
+both differed from HEAD — and ran the two comparisons side by side on that
+identical tree: **new check exit 0, `git diff --exit-code` exit 1.** That one
+line is the whole blocker, closed. **Lesson: to verify a fix to a
+comparison-basis defect, reconstruct the state that exposed the defect and
+run old and new against it together; a green run on a clean tree is not
+evidence about a dirty one.**
+
+**Restoration is a claim, and I checked it in the failure direction.** The
+stale case matters more than the clean case: I reverted `types.ts` to
+pre-probe bytes (genuinely stale), ran the check, got exit 1 at line 4952 —
+and then confirmed the file still carried the *stale* hash afterwards, not
+the regenerated one. A guard that "restores" by leaving a silently corrected
+file behind would look identical in a passing log and would quietly turn a
+drift gate into an autofix. I also corrupted `openapi.yaml` into invalid YAML
+so the generator itself failed: exit 1, artifact restored. **Prove restore on
+the failure path, and prove it restores what it started with, not what it
+produced.**
+
+**On B-2 I did not stop where the fix's own evidence stopped.** Hicks proved
+the direct-dependency case with `Newtonsoft.Json 12.0.1` — the same probe I
+used to expose the fail-open defect. But the constitution's rule (§5.8,
+`constitution.md:188`) covers transitive packages too, and the transitive path
+existed only as a JSON fixture. So I built a second probe on
+`Newtonsoft.Json.Bson 1.0.1`, which drags in `Newtonsoft.Json 10.0.1`
+transitively: `HIGH … (transitivePackages)`, exit 1. **When a policy names two
+categories and the evidence covers one, the untested category is where the
+gate is still theoretical — build the second probe.**
+
+**A PowerShell trap worth remembering:** `node script.mjs | Select-Object
+-First 3` reported `$LASTEXITCODE = 0` for a run that genuinely exits 1 —
+`-First` tears down the pipeline early and the exit code is lost. I nearly
+recorded a fail-closed check as fail-open because of it. Re-ran redirecting to
+a file: exit 1. **Never read an exit code through a truncating pipeline; use
+`-Last`, or redirect to a file and read `$LASTEXITCODE` directly.**
+
+**What I checked that wasn't in the blocker list, and would have changed the
+verdict if wrong:** the floors. Rather than re-run my four §10.2 tampers, I
+hashed `check-test-floors.mjs` — `fe45ebb…`, byte-identical to the file I
+already tamper-approved — which settles it faster and more conclusively than
+re-testing would. **A hash match against previously-proven evidence is a
+legitimate, cheaper proof of "unchanged behaviour" than re-running the
+tamper.** I also audited all eight workflows' triggers rather than the two
+under discussion, confirming no competing green, and checked `gh run list`
+for the branch: the only run at `b3c092f` is `Sync Squad Labels`, an ops
+workflow. That became finding F-13 — a green ops check on a branch with no
+Quality Gate run is exactly the kind of ambient green this whole package
+exists to stop being mistaken for verification.
+
+**A blind spot I flagged during T101 closed itself here, and I only saw it by
+reading a number that changed.** The stale-reference guard now reports
+**933** tracked files, up from 901/898, because `specs/004-*` and `.squad/**`
+are tracked as of this checkpoint — the spec package that was invisible to
+every git-aware tool during T101 is now scanned, and is clean. **Watch the
+denominators in guard output across runs; a moving file count is a statement
+about what the guard can see, not noise.**
+
+**New findings carried to T105 (none blocking):** F-10 — the two new
+checkers' own unit suites run in *no* task, unlike `check:stale-refs` which
+runs `node --test` inline; the regression tests protecting the two guards I
+just forced to be fail-closed can rot unobserved. F-11 — the malformed-output
+path is fixture-only. F-12 — the revision records still say "nothing was
+committed or pushed," now superseded by `b3c092f`. F-13 above. F-5 stands
+unchanged: `check-security.mjs` is still outside the Task surface while the
+README calls it "Enforced (ci.yml, manual)".
+
+**Boundary honored:** repaired nothing. Every tamper reverted and hash-verified
+against HEAD (`openapi.yaml` `be64bf6b…`, `types.ts` `cc678f4e…`), both
+throwaway probes deleted, scratch directory removed, `git status` back to
+clean. Recorded the verdict in `validation.md` §12 / `tasks.md` / `plan.md` /
+`coverage-migration.md` §14 and authorized T105. No commit, no push — the
+coordinator checkpoints reviewer records.
+
+## T105 — guard-proof implementation and tamper matrix (this checkpoint)
+
+Closed both findings I carried out of T104. **F-5**: `check-security.mjs` was
+"Enforced" only by convention (ci.yml + a manual invocation nobody exercised
+end-to-end). Its first-ever full-repo run (`--repo`, 933 files) failed on
+three real false positives that diff-range CI scans had simply never reached
+— a checker can be "passing" for months while its full-scope path has never
+executed once. Fixed via `.gitleaks.toml` allowlist entries, then wired
+`check:security` into `Taskfile.yml`'s `verify:full` so it is no longer a
+side-channel. **The fix took two attempts**: `gitleaks stdin` (what
+`check-security.mjs` always uses — no `detect --source`, so there is no file
+path in play) carries no path context, so a `paths`-scoped allowlist entry is
+silently inert; only `regexTarget = "match"` (against gitleaks' `Match`
+field — the text *with* surrounding context — not the narrower `Secret`
+field) actually suppresses it. **A security allowlist that "looks correct"
+but targets the wrong gitleaks field is a false negative waiting to happen —
+verify the allowlist entry actually fires, don't just add it and move on.**
+
+**F-10**: added `node --test scripts/check-client-drift.test.mjs` and
+`node --test scripts/check-vulnerable.test.mjs` inline in their respective
+Task targets, matching the existing `check:stale-refs` pattern, so both
+guards' regression suites now run under `task verify` and can't rot unseen.
+
+**Tamper matrix — ten guards, every one broken and restored with hash
+proof**: stale-Playwright (keyword + structural path), OpenAPI drift (title
+field — confirmed the comparator is structural/parsed, not textual; a
+comment-only edit produces no detected drift by design), client-drift (stale
+artifact *and* a live generator failure, which confirmed a subtlety worth
+repeating: **`check-client-drift.mjs` restores whatever it snapshotted at the
+start of its own run — the tampered bytes — not a freshly regenerated
+correct file. A drift guard's "restore" is not the same claim as "fix"; don't
+let a passing restore imply correctness it never asserted.**), EF
+migration/model drift, all three collected-test floors at both zero and
+below-floor-nonzero (dotnet TRX and Vitest JSON mechanisms differ enough that
+each needed its own tamper, not one representative case), vulnerable-package
+scan (direct HIGH, transitive HIGH via an untracked scratch project so no
+tracked file needed restoring, and a live tool-failure case), the security
+scan itself (localStorage token pattern), and the verification entrypoint
+(`task verify:contracts` with a tampered file stops at the first failing
+subtask, exit 201, and never reaches the later stages — Task's default
+abort-on-nonzero is real, not assumed).
+
+**One self-corrected mistake, worth keeping as a check on my own tamper
+craft:** the first README tamper for the entrypoint-propagation proof omitted
+the keyword the guard scans for — a copy-paste slip — so the guard correctly
+passed instead of failing, and I nearly logged a false green. Caught it by
+re-reading the tampered file's content before trusting the exit code, fixed
+the tamper, reran, got the expected failure. **A guard that passes on a
+tamper you *intended* to break is a signal to re-check the tamper, not the
+guard — read what you actually wrote before trusting what ran.**
+
+**What remains fixture-only, unchanged from T104:** `check:vulnerable`'s
+malformed-JSON-output branch (F-11) — `dotnet list package --format json`
+reliably emits valid JSON on every path this session could force; proving it
+live would require corrupting the tool under test, which is out of scope.
+Disclosed, not silently left unproven.
+
+**Boundary honored:** every tamper reverted and hash-verified (`README.md`
+`a2b177ab…`, `openapi.yaml` `be64bf6b…`, `types.ts` `cc678f4e…`,
+`Device.cs` `5f38b6f1…`, `check-test-floors.mjs` `fe45ebbd…` — unchanged
+from the hash T104 already cited, `msal.ts` `908386d5…`), throwaway spec file
+and scratch project deleted, `git status` clean of tamper leftovers. Full
+`task verify` run once, end-to-end, after all restores: exit 0 in 00:13:23,
+933/933 files clean on `check:security`. No commit, no push, no edit to
+`plan.md`/`tasks.md`/`validation.md` or any file Ripley owned in parallel
+(confirmed via `git status` before starting). Evidence recorded in
+`specs/004-agentic-development-foundation/t105-tamper-evidence.md`; T105 not
+marked DONE — governance evidence and independent integration review remain
+for others to close.
+
+## T105 addendum — exact-path exemption for Ripley's accepted ADR
+
+Integration note from Ripley: her accepted `docs/adr/0002-retire-browser-e2e-
+framework.md` intentionally names Playwright nine times as retirement
+history and tripped the stale-reference guard. Added a single **exact-path**
+exemption (`EXEMPT_EXACT_PATHS`, not a `docs/adr/**` prefix) plus two focused
+unit tests: one proving this exact ADR is allowed, one proving a different,
+unlisted ADR containing a genuine Playwright *promise* (not a historical
+citation) still fails — the regression guard against ever widening this to a
+directory prefix. Live-proved both directions: `task check:stale-refs`
+passes 0/933 with the real ADR in the tree; a scratch
+`docs/adr/0003-t105-tamper-probe.md` (staged, never committed) with a
+"we will adopt Playwright" line fails at exit 201 with an exact line
+citation, then is fully removed and the guard is green again. Only the
+checker script and its test file were touched — the ADR remained Ripley's
+file throughout, read-only to this session.
+
+**Worth repeating:** an ADR is exactly the shape of document where a
+directory-prefix exemption would be tempting and wrong — ADRs are
+constitution §0 authority sources that can *propose* future work, not just
+record the past. The instinct to write `docs/adr/**` the first time this
+came up would have quietly reopened the same blanket-exemption failure mode
+`validation.md` §7 B2 already found and closed for `specs/**`. **Any new
+document-tree exemption for this guard should default to an exact path,
+and only widen to a prefix with an explicit, reviewed reason it can't
+regress into a promise-hiding hole.**
+
+Also confirmed, incidentally: `TechInventory.IntegrationTests.Contract.
+OpenApiDriftTests` has an existing, non-deterministic `SQLitePCL.sqlite3`
+disposed-object flake in its database-reset path (291/292 on one run,
+292/292 on the immediate re-run, floor still satisfied either way) —
+unrelated to this addendum, not investigated further, noted here so a future
+agent doesn't mistake it for a regression this session caused.

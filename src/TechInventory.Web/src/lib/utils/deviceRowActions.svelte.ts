@@ -8,6 +8,15 @@
  * forking them. `DeviceDetailModal` keeps its own inline copy because it also
  * owns the fetch/refresh lifecycle for a single open device — this composable
  * is for a list of rows, each needing only the mutation + permission slice.
+ *
+ * `canClaim`/`canRelease` are role-gated (Admin/Member only) **and**
+ * ownership-gated — constitution §5.2 / `docs/prd.md` define Viewer as
+ * read-only, so a Viewer must never see a mutation affordance regardless of
+ * device ownership. The API's `PATCH /devices/{id}/owner` endpoint already
+ * enforces this via `AuthorizationPolicies.AdminOrMember`
+ * (`ViewerRoleAuthorizationTests.ClaimDeviceOwnership_WhenCallerIsViewer_ReturnsForbidden` /
+ * `.ReleaseDeviceOwnership_WhenCallerIsViewer_ReturnsForbidden`); this is the
+ * matching client-side affordance gate, not the security boundary.
  */
 import { devices } from '$lib/api/client';
 import { invalidateDevicesCache } from '$lib/queries/devices.svelte';
@@ -61,11 +70,15 @@ export function createDeviceRowActions(
 	const canClaim = $derived.by(() => {
 		const device = getDevice();
 		const user = getCurrentUser();
+		const role = user?.role;
+		if (role !== 'Admin' && role !== 'Member') return false;
 		return Boolean(device && user && device.ownerId !== user.id);
 	});
 	const canRelease = $derived.by(() => {
 		const device = getDevice();
 		const user = getCurrentUser();
+		const role = user?.role;
+		if (role !== 'Admin' && role !== 'Member') return false;
 		return Boolean(device && user && device.ownerId === user.id);
 	});
 	const canRetire = $derived(canRetireDevice(getDevice(), getCurrentUser()));

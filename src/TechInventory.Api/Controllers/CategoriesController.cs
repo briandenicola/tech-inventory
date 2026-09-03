@@ -43,8 +43,10 @@ public sealed class CategoriesController(ISender sender) : ControllerBase
         => this.OkResult(await sender.Send(new GetCategoryByIdQuery(id), cancellationToken));
 
     [HttpPost]
+    [Authorize(Policy = AuthorizationPolicies.AdminOrMember)]
     [ProducesResponseType(typeof(CategoryResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<CategoryResponse>> CreateCategory([FromBody] CreateCategoryRequest request, CancellationToken cancellationToken)
@@ -54,15 +56,19 @@ public sealed class CategoriesController(ISender sender) : ControllerBase
             response => new { id = response.Id });
 
     [HttpPut("{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.AdminOrMember)]
     [ProducesResponseType(typeof(CategoryResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<CategoryResponse>> UpdateCategory(Guid id, [FromBody] UpdateCategoryRequest request, CancellationToken cancellationToken)
         => this.OkResult(await sender.Send(request.ToCommand(id), cancellationToken));
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.AdminOrMember)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> DeleteCategory(Guid id, CancellationToken cancellationToken)

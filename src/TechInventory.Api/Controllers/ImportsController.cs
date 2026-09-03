@@ -2,6 +2,7 @@ using System.Text.Json;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TechInventory.Api.Authentication;
 using TechInventory.Api.Common;
 using TechInventory.Api.ExceptionHandling;
 using TechInventory.Application.Common.Paging;
@@ -33,11 +34,13 @@ public sealed class ImportsController(ISender sender, IConfiguration configurati
     }
 
     [HttpPost("commit")]
+    [Authorize(Policy = AuthorizationPolicies.AdminOrMember)]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(DefaultMaxFileSizeBytes)]
     [RequestFormLimits(MultipartBodyLengthLimit = DefaultMaxFileSizeBytes)]
     [ProducesResponseType(typeof(CommitImportResult), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status413PayloadTooLarge)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<CommitImportResult>> CommitImport([FromForm] ImportUploadRequest request, CancellationToken cancellationToken)

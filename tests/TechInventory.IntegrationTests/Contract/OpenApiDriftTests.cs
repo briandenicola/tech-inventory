@@ -28,6 +28,70 @@ public sealed class OpenApiDriftTests(IntegrationTestFactory<ApiMarker> factory)
         runtimeCanonical.Should().Be(committedCanonical, OpenApiContractAssertions.DescribeDrift(committedCanonical, runtimeCanonical));
     }
 
+    // B4 (Ripley T102 second review): every mutation gated by
+    // AuthorizationPolicies.AdminOrMember must document a 403 Forbidden
+    // response in the committed OpenAPI contract, not just carry the
+    // `[Authorize]` attribute at runtime. This is a parameterized contract
+    // assertion (not 26 repetitive test methods) covering every reference
+    // entity (Brands/Categories/Locations/Networks/Tags/Owners)
+    // Create/Update/Delete action, the 7 AdminOrMember-gated Devices
+    // actions, and the Imports commit action — the same 26 operations
+    // that gained `[ProducesResponseType(StatusCodes.Status403Forbidden)]`
+    // in this revision. Deliberately independent of
+    // `RuntimeOpenApi_WhenComparedToCommittedSpec_HasNoStructuralDrift`
+    // above: that test only proves the committed spec matches whatever the
+    // API emits, so a mutation missing its 403 declaration entirely would
+    // still pass it. This test fails if a currently-gated operation's 403
+    // response is ever removed from the committed spec.
+    [Theory]
+    [InlineData("POST", "/api/v1/brands")]
+    [InlineData("PUT", "/api/v1/brands/{id}")]
+    [InlineData("DELETE", "/api/v1/brands/{id}")]
+    [InlineData("POST", "/api/v1/categories")]
+    [InlineData("PUT", "/api/v1/categories/{id}")]
+    [InlineData("DELETE", "/api/v1/categories/{id}")]
+    [InlineData("POST", "/api/v1/locations")]
+    [InlineData("PUT", "/api/v1/locations/{id}")]
+    [InlineData("DELETE", "/api/v1/locations/{id}")]
+    [InlineData("POST", "/api/v1/networks")]
+    [InlineData("PUT", "/api/v1/networks/{id}")]
+    [InlineData("DELETE", "/api/v1/networks/{id}")]
+    [InlineData("POST", "/api/v1/tags")]
+    [InlineData("PUT", "/api/v1/tags/{id}")]
+    [InlineData("DELETE", "/api/v1/tags/{id}")]
+    [InlineData("POST", "/api/v1/owners")]
+    [InlineData("PUT", "/api/v1/owners/{id}")]
+    [InlineData("DELETE", "/api/v1/owners/{id}")]
+    [InlineData("POST", "/api/v1/devices")]
+    [InlineData("PUT", "/api/v1/devices/{id}")]
+    [InlineData("DELETE", "/api/v1/devices/{id}")]
+    [InlineData("POST", "/api/v1/devices/{id}/tags")]
+    [InlineData("DELETE", "/api/v1/devices/{id}/tags/{tagId}")]
+    [InlineData("PATCH", "/api/v1/devices/{id}/owner")]
+    [InlineData("POST", "/api/v1/devices/bulk/update")]
+    [InlineData("POST", "/api/v1/imports/commit")]
+    public async Task AdminOrMemberGatedOperation_DeclaresForbiddenResponse(string method, string specPath)
+    {
+        var committedDocument = OpenApiContractAssertions.LoadDocument(await File.ReadAllTextAsync(ResolveCommittedOpenApiPath()), "committed openapi.yaml");
+
+        committedDocument.Paths.TryGetValue(specPath, out var pathItem).Should().BeTrue($"Spec path '{specPath}' should exist.");
+        pathItem!.Operations.TryGetValue(ParseOperationType(method), out var operation).Should().BeTrue($"Operation {method} {specPath} should exist.");
+        operation!.Responses.Should().ContainKey(
+            "403",
+            $"{method} {specPath} is gated by AuthorizationPolicies.AdminOrMember and must document a 403 Forbidden response for a Viewer caller.");
+    }
+
+    private static Microsoft.OpenApi.Models.OperationType ParseOperationType(string method)
+        => method.ToUpperInvariant() switch
+        {
+            "GET" => Microsoft.OpenApi.Models.OperationType.Get,
+            "POST" => Microsoft.OpenApi.Models.OperationType.Post,
+            "PUT" => Microsoft.OpenApi.Models.OperationType.Put,
+            "PATCH" => Microsoft.OpenApi.Models.OperationType.Patch,
+            "DELETE" => Microsoft.OpenApi.Models.OperationType.Delete,
+            _ => throw new InvalidOperationException($"Unsupported HTTP method '{method}'.")
+        };
+
     [Fact]
     public async Task BrandsEndpoint_WhenGetByIdCalled_ResponseMatchesCommittedSchema()
     {

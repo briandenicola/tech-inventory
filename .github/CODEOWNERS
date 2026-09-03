@@ -1,8 +1,37 @@
-# Default owners
-*       @your-github-handle
+# CODEOWNERS — Tech Inventory
+#
+# Single-operator repository. `@briandenicola` owns everything; this file exists
+# so ownership is stated rather than assumed, and so a future second contributor
+# inherits working routing instead of a placeholder.
+#
+# Practical limits, stated plainly (do not treat this file as a control):
+#   * GitHub cannot request a review from the author of a PR. With one
+#     maintainer, code-owner review is unenforceable, so branch protection is
+#     recommended WITHOUT `require_code_owner_reviews`
+#     (specs/004-agentic-development-foundation/t105-governance-evidence.md §4).
+#   * Until branch protection exists, CODEOWNERS auto-requests reviews at most;
+#     it blocks nothing.
+#   * Every path below is verified to exist. Do not add a pattern for a path
+#     that does not exist — a rule that can never match is noise pretending to
+#     be governance. (The former `deploy/` entry was exactly that and is removed.)
 
-# Sensitive areas
-.specify/                   @your-github-handle
-.github/                    @your-github-handle
-deploy/                     @your-github-handle
-src/TechInventory.Api/      @your-github-handle
+# Default owner — everything
+*                           @briandenicola
+
+# Governance and authority documents (constitution §0 hierarchy)
+/.specify/                  @briandenicola
+/docs/prd.md                @briandenicola
+/docs/adr/                  @briandenicola
+/specs/                     @briandenicola
+
+# CI, workflows, PR/issue templates, and repository automation
+/.github/                   @briandenicola
+
+# Verification surface — the guards that decide whether a change is done
+/Taskfile.yml               @briandenicola
+/scripts/                   @briandenicola
+
+# API surface and contracts
+/src/TechInventory.Api/     @briandenicola
+/src/TechInventory.Domain/  @briandenicola
+/openapi.yaml               @briandenicola

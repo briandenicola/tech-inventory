@@ -1,10 +1,18 @@
 name: CI Pipeline
 
 # Disabled — left on workflow_dispatch only so it doesn't auto-fire on
-# every push/PR. Quality Gate carries the merge-blocking checks; this
-# workflow's verify.sh pipeline (Playwright E2E + Docker compose) is
-# the one we keep wanting to repair-then-mute. Run manually from the
-# Actions tab when you want the full verify pass.
+# every push/PR. Quality Gate (`.github/workflows/quality-gate.yml`) carries
+# the merge-blocking checks on every push/PR and now calls the identical
+# `task verify` entrypoint this workflow calls via `scripts/verify.sh`
+# (specs/004-agentic-development-foundation, T104 · AC-008) — so this
+# workflow is a manual-only alternate entrypoint into the same pipeline,
+# not a competing one. (Historical note: it was originally muted because
+# verify.sh's E2E step required a browser-automation harness + Docker; that
+# step was retired in T101 — see brief.md §2.1 — and verify.sh itself was
+# rewritten in T104 to be a thin wrapper around `task verify`. Whether to
+# re-enable this workflow on push/PR, or retire it in favor of Quality Gate
+# alone, is a decision for a future task — T104 only made the pipeline it
+# calls correct and non-duplicative.)
 on:
   workflow_dispatch:
 
@@ -32,8 +40,19 @@ jobs:
       - name: Enable pnpm via corepack
         run: corepack enable
 
-      - name: Install pinned gitleaks
-        run: bash ./scripts/install-gitleaks.sh
+      - name: Install Task
+        uses: arduino/setup-task@v2
+        with:
+          version: '3.x'
+
+      - name: Restore dependencies (incl. pinned gitleaks)
+        # `task restore` is the clean-checkout contract (docs/prd.md §7.5.5)
+        # and provisions the pinned gitleaks binary check-security.mjs
+        # resolves from .tools/gitleaks (Taskfile.yml `tools:gitleaks`, T105
+        # revision · B-4). Runs before the direct check-security.mjs call
+        # below (which pre-dates `task verify`) and before `task verify`
+        # itself so neither path duplicates install logic Task now owns.
+        run: task restore
 
       - name: Run auth token and secret scan
         shell: bash
@@ -63,10 +82,18 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-
 
-      - name: Restore .NET dependencies
-        run: dotnet restore
+      # check:openapi-drift's comparison parses the freshly-exported document,
+      # which OpenApiYamlWriter emits as real YAML — PyYAML is required to
+      # read it. This step must stay identical to quality-gate.yml's (T104
+      # revision · B-3): both workflows call the same `task verify` entrypoint
+      # via `scripts/verify.sh`, and it needs this dependency in either place.
+      - name: Install PyYAML for OpenAPI drift comparison
+        run: python3 -m pip install --quiet --disable-pip-version-check pyyaml
 
       - name: Run verification pipeline
+        # scripts/verify.sh is a thin wrapper that calls `task verify` — the
+        # same authoritative entrypoint Quality Gate and developer laptops
+        # use. No pipeline logic lives in this workflow or in verify.sh.
         run: ./scripts/verify.sh
 
       # Container build + push lives in `.github/workflows/release-images.yml`

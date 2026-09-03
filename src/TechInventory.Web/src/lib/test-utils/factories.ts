@@ -159,6 +159,7 @@ export function createDeviceCreateInput(
 		macAddress: '',
 		productUrl: '',
 		version: '',
+		status: 'Active',
 		...overrides
 	};
 }

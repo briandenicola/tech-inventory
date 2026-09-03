@@ -180,6 +180,12 @@ describe('DeviceForm', () => {
 			expect(brandNames).toContain('Apple');
 			expect(brandNames).toContain('Dell');
 		});
+
+		it('does not render a Status control in create mode (new devices are always Active server-side)', () => {
+			render(DeviceForm, { props: defaultProps });
+
+			expect(screen.queryByLabelText(/devices.columns.status/i)).not.toBeInTheDocument();
+		});
 	});
 
 	describe('edit mode', () => {
@@ -227,6 +233,92 @@ describe('DeviceForm', () => {
 
 			const submitButton = screen.getByRole('button', { name: /common\.actions\.save/i });
 			expect(submitButton).toBeDisabled();
+		});
+
+		// #133: the edit form previously had no Status control at all, so
+		// devices.update always omitted `status`. UpdateDeviceRequest.Status
+		// defaults to Active when omitted, so any edit to an InRepair/Lent/
+		// Retired device silently reset it back to Active. These three cases
+		// lock in that the form now pre-populates and preserves each status.
+		it.each(['InRepair', 'Lent', 'Retired'] as const)(
+			'pre-populates the Status control with the device\'s current status (%s)',
+			(status) => {
+				const initialData = createDeviceCreateInput({ name: 'Existing Device', status });
+
+				render(DeviceForm, {
+					props: { ...defaultProps, mode: 'edit' as const, initialData }
+				});
+
+				const statusSelect = screen.getByLabelText(
+					/devices.columns.status/i
+				) as HTMLSelectElement;
+				expect(statusSelect.value).toBe(status);
+			}
+		);
+
+		it.each(['InRepair', 'Lent', 'Retired'] as const)(
+			'preserves the current status (%s) in the submitted payload when the user does not touch it',
+			async (status) => {
+				const user = userEvent.setup();
+				const onSubmit = vi.fn<
+					(data: import('$lib/schemas/device').DeviceFormInput) => Promise<void>
+				>(async () => {});
+				const initialData = createDeviceCreateInput({
+					name: 'Existing Device',
+					brandId: testBrandId,
+					categoryId: testCategoryId,
+					ownerId: testOwnerId,
+					locationId: testLocationId,
+					status
+				});
+
+				render(DeviceForm, {
+					props: { ...defaultProps, onSubmit, mode: 'edit' as const, initialData }
+				});
+
+				// Touch an unrelated field so the form becomes dirty and submittable.
+				const nameInput = screen.getByLabelText(/devices.columns.name/i);
+				await user.clear(nameInput);
+				await user.type(nameInput, 'Existing Device Renamed');
+
+				const submitButton = screen.getByRole('button', { name: /common\.actions\.save/i });
+				await waitFor(() => expect(submitButton).toBeEnabled());
+				await user.click(submitButton);
+
+				await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+				const submitted = onSubmit.mock.calls[0][0];
+				expect(submitted.status).toBe(status);
+			}
+		);
+
+		it('allows selecting a different status and submits the newly selected value', async () => {
+			const user = userEvent.setup();
+			const onSubmit = vi.fn<
+				(data: import('$lib/schemas/device').DeviceFormInput) => Promise<void>
+			>(async () => {});
+			const initialData = createDeviceCreateInput({
+				name: 'Existing Device',
+				brandId: testBrandId,
+				categoryId: testCategoryId,
+				ownerId: testOwnerId,
+				locationId: testLocationId,
+				status: 'Active'
+			});
+
+			render(DeviceForm, {
+				props: { ...defaultProps, onSubmit, mode: 'edit' as const, initialData }
+			});
+
+			const statusSelect = screen.getByLabelText(/devices.columns.status/i);
+			await user.selectOptions(statusSelect, 'InRepair');
+
+			const submitButton = screen.getByRole('button', { name: /common\.actions\.save/i });
+			await waitFor(() => expect(submitButton).toBeEnabled());
+			await user.click(submitButton);
+
+			await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+			const submitted = onSubmit.mock.calls[0][0];
+			expect(submitted.status).toBe('InRepair');
 		});
 	});
 
@@ -581,6 +673,39 @@ describe('DeviceForm', () => {
 			expect(screen.getByLabelText('Travel')).toBeDisabled();
 			expect(screen.getByLabelText('Critical')).toBeDisabled();
 		});
+
+		// #133: the Status control must respect the same generic disabledFields
+		// mechanism as every other field — callers (e.g. role/permission gating
+		// on the edit route) disable it the same way they disable name/brandId/etc.
+		it('disables the Status control when "status" is in disabledFields (edit mode)', () => {
+			const initialData = createDeviceCreateInput({ name: 'Existing Device', status: 'Retired' });
+
+			render(DeviceForm, {
+				props: {
+					...defaultProps,
+					mode: 'edit' as const,
+					initialData,
+					disabledFields: ['status']
+				}
+			});
+
+			expect(screen.getByLabelText(/devices.columns.status/i)).toBeDisabled();
+		});
+
+		it('leaves the Status control enabled when it is not in disabledFields (edit mode)', () => {
+			const initialData = createDeviceCreateInput({ name: 'Existing Device', status: 'Active' });
+
+			render(DeviceForm, {
+				props: {
+					...defaultProps,
+					mode: 'edit' as const,
+					initialData,
+					disabledFields: ['name']
+				}
+			});
+
+			expect(screen.getByLabelText(/devices.columns.status/i)).not.toBeDisabled();
+		});
 	});
 
 	describe('accessibility', () => {
@@ -602,6 +727,26 @@ describe('DeviceForm', () => {
 					...defaultProps,
 					mode: 'edit',
 					initialData
+				}
+			});
+
+			const results = await axe(container);
+			expect(results).toHaveNoViolations();
+		});
+
+		it('has no axe violations in edit mode with the Status control on a non-default status', async () => {
+			const initialData = createDeviceCreateInput({
+				name: 'Test Device',
+				serialNumber: 'SN123',
+				status: 'InRepair'
+			});
+
+			const { container } = render(DeviceForm, {
+				props: {
+					...defaultProps,
+					mode: 'edit',
+					initialData,
+					disabledFields: ['status']
 				}
 			});
 

@@ -24,11 +24,18 @@
  * - macAddress: optional, max 17
  * - productUrl: optional, max 500
  * - version: optional, max 50
+ * - status: DeviceStatus enum, defaults to Active (F-D133: edit form must
+ *   always send the device's current status — the API's UpdateDeviceRequest
+ *   defaults an omitted status to Active, which silently reactivated
+ *   InRepair/Lent/Retired devices when the field was missing from payloads)
  * 
  * Related: specs/002-frontend-mvp/spec.md J5-J8, Constitution §4.3
  */
 
 import { z } from 'zod';
+
+/** Mirrors the generated `DeviceStatus` OpenAPI enum (components['schemas']['DeviceStatus']). */
+export const deviceStatusValues = ['Active', 'Retired', 'Disposed', 'InRepair', 'Lent'] as const;
 
 const deviceBaseSchema = z.object({
 	name: z
@@ -75,7 +82,8 @@ const deviceBaseSchema = z.object({
 	ipAddress: z.string().max(45, 'IP address must be 45 characters or less').optional().or(z.literal('')),
 	macAddress: z.string().max(17, 'MAC address must be 17 characters or less').optional().or(z.literal('')),
 	productUrl: z.string().max(500, 'Product URL must be 500 characters or less').optional().or(z.literal('')),
-	version: z.string().max(50, 'Version must be 50 characters or less').optional().or(z.literal(''))
+	version: z.string().max(50, 'Version must be 50 characters or less').optional().or(z.literal('')),
+	status: z.enum(deviceStatusValues).default('Active')
 });
 
 /**
@@ -97,3 +105,16 @@ export type DeviceFormInput = z.infer<typeof deviceFormSchema>;
  */
 export const deviceUpdateSchema = deviceCreateSchema;
 export type DeviceUpdateInput = z.infer<typeof deviceUpdateSchema>;
+
+/**
+ * Narrows a loosely-typed device status (e.g. `DeviceResponse.status`, which
+ * is a plain nullable `string` mirror of the API's `DeviceStatus` enum) down
+ * to a known `DeviceFormInput['status']` value, defaulting to `'Active'` for
+ * `null`/unrecognized values. Used when pre-populating the edit form so an
+ * unexpected value can't silently widen `formData.status` to `string`.
+ */
+export function toDeviceFormStatus(status: string | null | undefined): DeviceFormInput['status'] {
+	return (deviceStatusValues as readonly string[]).includes(status ?? '')
+		? (status as DeviceFormInput['status'])
+		: 'Active';
+}

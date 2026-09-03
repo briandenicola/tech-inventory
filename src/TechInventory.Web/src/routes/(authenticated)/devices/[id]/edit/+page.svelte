@@ -9,7 +9,7 @@
 	import LoadingSkeleton from '$lib/components/LoadingSkeleton.svelte';
 	import UnsavedChangesModal from '$lib/components/UnsavedChangesModal.svelte';
 	import { invalidateDevicesCache, type DeviceResponse } from '$lib/queries/devices.svelte';
-	import type { DeviceFormInput } from '$lib/schemas/device';
+	import { toDeviceFormStatus, type DeviceFormInput } from '$lib/schemas/device';
 	import { registerPullToRefresh } from '$lib/stores/pullToRefresh';
 	import { fetchReferenceData } from '$lib/stores/referenceData';
 	import { authStore } from '$lib/stores/auth';
@@ -126,6 +126,19 @@
 		serverErrors = {};
 		try {
 			const { tagIds, ...deviceData } = data;
+			// F-133: UpdateDeviceRequest.Status defaults to Active when omitted,
+			// so deviceData.status (always populated by DeviceForm now) must be
+			// forwarded on every edit — otherwise InRepair/Lent/Retired devices
+			// silently reactivate. When the device is currently Retired, the API's
+			// "retired devices are read-only" guard does a strict equality check
+			// on retiredDate/disposalMethod against the stored values (unlike the
+			// general status-change path, which falls back to the current value
+			// when omitted), so those two fields must be explicitly preserved here
+			// or an ordinary notes-only edit throws a 409. Reusing
+			// buildRetireDeviceRequest/buildUnretireDeviceRequest wasn't viable —
+			// they build a full request for the one-click retire/unretire actions,
+			// not a partial patch layered on the form's own field set.
+			const preserveRetiredMetadata = device.status === 'Retired';
 			const payload = {
 				...deviceData,
 				model: data.model || undefined,
@@ -137,7 +150,9 @@
 				purchaseDate: data.purchaseDate || undefined,
 				purchasePrice: data.purchasePrice ?? undefined,
 				currencyCode: data.currencyCode || undefined,
-				notes: data.notes || undefined
+				notes: data.notes || undefined,
+				retiredDate: preserveRetiredMetadata ? (device.retiredDate ?? undefined) : undefined,
+				disposalMethod: preserveRetiredMetadata ? (device.disposalMethod ?? undefined) : undefined
 			};
 
 			await devices.update(device.id, payload);
@@ -291,7 +306,8 @@
 				ipAddress: device.ipAddress ?? '',
 				macAddress: device.macAddress ?? '',
 				productUrl: device.productUrl ?? '',
-				version: device.version ?? ''
+				version: device.version ?? '',
+				status: toDeviceFormStatus(device.status)
 			}}
 			{disabledFields}
 			onSubmit={handleSubmit}

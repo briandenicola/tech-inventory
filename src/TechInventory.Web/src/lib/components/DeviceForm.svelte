@@ -18,7 +18,7 @@
 	import { t } from '$lib/i18n';
 	import { fetchReferenceData, referenceDataStore } from '$lib/stores/referenceData';
 	import DeviceTagSelector from '$lib/components/DeviceTagSelector.svelte';
-	import { deviceFormSchema, type DeviceFormInput } from '$lib/schemas/device';
+	import { deviceFormSchema, deviceStatusValues, type DeviceFormInput } from '$lib/schemas/device';
 	import type { ZodError } from 'zod';
 
 	interface Props {
@@ -67,7 +67,8 @@
 			ipAddress: initialData.ipAddress ?? '',
 			macAddress: initialData.macAddress ?? '',
 			productUrl: initialData.productUrl ?? '',
-			version: initialData.version ?? ''
+			version: initialData.version ?? '',
+			status: initialData.status ?? 'Active'
 		}))
 	);
 
@@ -110,6 +111,10 @@
 
 		if (formKey === 'purchasePrice') {
 			return null;
+		}
+
+		if (formKey === 'status') {
+			return 'Active';
 		}
 
 		return '';
@@ -302,6 +307,31 @@
 			<p class="mt-1 text-sm text-danger-600 dark:text-danger-400">{errors.categoryId}</p>
 		{/if}
 	</div>
+
+	<!-- Status (F-133: edit form must always submit the device's current
+	     status; create defaults to Active server-side, so the control is
+	     only shown once a device exists to edit) -->
+	{#if mode === 'edit'}
+		<div>
+			<label for="status" class="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+				{t('devices.columns.status')}
+			</label>
+			<select
+				id="status"
+				bind:value={formData.status}
+				onblur={() => handleBlur('status')}
+				disabled={isDisabled('status')}
+				class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 transition-colors hover:border-neutral-400 focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100 dark:hover:border-neutral-600 dark:focus-visible:border-primary-500 dark:disabled:bg-neutral-900"
+			>
+				{#each deviceStatusValues as statusOption (statusOption)}
+					<option value={statusOption}>{t(`devices.filters.status${statusOption}`)}</option>
+				{/each}
+			</select>
+			{#if touched.status && errors.status}
+				<p class="mt-1 text-sm text-danger-600 dark:text-danger-400">{errors.status}</p>
+			{/if}
+		</div>
+	{/if}
 
 	<!-- Owner -->
 	<div>

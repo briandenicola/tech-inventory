@@ -196,5 +196,5 @@ git commit -F $msgFile
 - ❌ Committing first, scanning later — validation MUST happen before commit
 - ❌ Silently skipping secret detection — fail loud, never silent
 - ❌ Trusting agents to "know better" — enforce at multiple layers (prompt, hook, architecture)
-- ❌ Writing secrets to "temporary" files in `.squad/` — Scribe commits ALL `.squad/` changes
+- ❌ Writing secrets to "temporary" files in `.squad/` — anything written there (by an agent or by Scribe) is committed to the repo; nothing in `.squad/` is private or ephemeral
 - ❌ Extracting "just the host" from a connection string — still leaks infrastructure topology

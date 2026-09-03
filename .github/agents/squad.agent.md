@@ -73,14 +73,14 @@ No team exists yet. Propose one — but **DO NOT create any files until the user
 
 **Team.md structure:** `team.md` MUST contain a section titled exactly `## Members` (not "## Team Roster" or other variations) containing the roster table. This header is hard-coded in GitHub workflows (`squad-heartbeat.yml`, `squad-issue-assign.yml`, `squad-triage.yml`, `sync-squad-labels.yml`) for label automation. If the header is missing or titled differently, label routing breaks.
 
-**Merge driver for append-only files:** Create or update `.gitattributes` at the repo root to enable conflict-free merging of `.squad/` state across branches:
+**Merge driver for append-only files:** Create or update `.gitattributes` at the repo root to reduce local merge friction for already-tracked append-only `.squad/` state (e.g. `main` merging into a long-lived worktree, or reconciling a dedicated `squad/state-sync-*` branch):
 ```
 .squad/decisions.md merge=union
 .squad/agents/*/history.md merge=union
 .squad/log/** merge=union
 .squad/orchestration-log/** merge=union
 ```
-The `union` merge driver keeps all lines from both sides, which is correct for append-only files. This makes worktree-local strategy work seamlessly when branches merge — decisions, memories, and logs from all branches combine automatically.
+The `union` merge driver keeps all lines from both sides on a **local** `git merge`, which is correct for append-only files. **This is a local git convenience only, not an enforcement mechanism:** GitHub's server-side PR merge does not invoke local merge drivers, so this attribute has no bearing on PR mergeability, and it does not substitute for the Feature-Branch State Policy — feature agents still must not write transient/derived state (`history.md`, `identity/now.md`, `.squad/log/**`, `.squad/orchestration-log/**`, decision-inbox consolidation) on feature branches in the first place (see Feature-Branch State Policy).
 
 7. Say: *"✅ Team hired. Try: '{FirstCastName}, set up the project structure'"*
 
@@ -628,9 +628,10 @@ Squad and all spawned agents may be running inside a **git worktree** rather tha
 
 **Cross-worktree considerations (worktree-local strategy — recommended for concurrent work):**
 - `.squad/` files are **branch-local**. Each worktree works independently — no locking, no shared-state races.
-- When branches merge into main, `.squad/` state merges with them. The **append-only** pattern ensures both sides only added content, making merges clean.
-- A `merge=union` driver in `.gitattributes` (see Init Mode) auto-resolves append-only files by keeping all lines from both sides — no manual conflict resolution needed.
-- The Scribe commits `.squad/` changes to the worktree's branch. State flows to other branches through normal git merge / PR workflow.
+- On a feature branch (`IS_FEATURE_BRANCH: true`), agents do not write transient/derived state at all (see Feature-Branch State Policy) — only durable core changes land in the branch, so there is little or nothing left for a merge driver to reconcile.
+- When branches merge into main, any already-tracked append-only `.squad/` state merges with them. The **append-only** pattern ensures both sides only added content, which keeps a **local** `git merge` clean.
+- A `merge=union` driver in `.gitattributes` (see Init Mode) can auto-resolve append-only files by keeping all lines from both sides during a **local** `git merge`. This is a local git convenience only — GitHub's server-side PR merge does not invoke local merge drivers, so it does not influence PR mergeability, and manual conflict resolution may still be required there.
+- Scribe does not commit derived/transient state (`history.md`, `identity/now.md`, `.squad/log/**`, `.squad/orchestration-log/**`, decision-inbox consolidation) to an ordinary feature worktree branch — that consolidation happens only after merge to `main`, or via a dedicated `squad/state-sync-*` branch/PR (see Feature-Branch State Policy). Durable core edits an agent makes directly may still be committed to the feature branch as part of normal work.
 
 **Cross-worktree considerations (main-checkout strategy):**
 - All worktrees share the same `.squad/` state on disk via the main checkout — changes are immediately visible without merging.

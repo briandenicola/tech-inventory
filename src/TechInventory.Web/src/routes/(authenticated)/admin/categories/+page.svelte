@@ -3,7 +3,7 @@
 	import { page } from '$app/stores';
 	import { t } from '$lib/i18n';
 	import { authStore } from '$lib/stores/auth';
-	import api from '$lib/api/client';
+	import api, { ApiError } from '$lib/api/client';
 	import type { CategoryResponse } from '$lib/api/types';
 	import { categorySchema, type CategoryFormData } from '$lib/schemas/category';
 	import { addToast } from '$lib/stores/toast';
@@ -108,12 +108,33 @@
 		selectedIds = clearReferenceSelection();
 	});
 
+	// #132: recursively flattens the nested category tree returned by
+	// `/api/v1/categories/tree` into the flat, parentId-linked array this
+	// page's tree rendering and search already expect. Every level (root,
+	// child, grandchild, ...) carries the same shape, so this generalizes
+	// past the current 3-deep render without hard-coding a depth.
+	function flattenCategoryTree(nodes: readonly CategoryResponse[]): CategoryResponse[] {
+		const flat: CategoryResponse[] = [];
+		function visit(node: CategoryResponse) {
+			flat.push(node);
+			(node.children ?? []).forEach(visit);
+		}
+		nodes.forEach(visit);
+		return flat;
+	}
+
 	async function loadCategories() {
 		loading = true;
 		error = null;
 		try {
-			const response = await api.categories.list({ includeInactive: urlParams.includeInactive });
-			categories = response.items ?? [];
+			// #132 root cause: the paginated `/api/v1/categories` endpoint pages
+			// over ROOT categories only — each root's `children` are nested in
+			// the response but were previously discarded, so descendant
+			// categories never appeared in this page's flat list or its search.
+			// The full tree endpoint returns every category at every depth
+			// (still respecting includeInactive) in one unpaginated response.
+			const tree = await api.categories.tree({ includeInactive: urlParams.includeInactive });
+			categories = flattenCategoryTree(tree ?? []);
 			// Auto-expand all on load
 			expandedIds = new Set(categories.map((c) => c.id).filter((id): id is string => !!id));
 		} catch (err: unknown) {
@@ -232,6 +253,30 @@
 		} catch (err: unknown) {
 			console.error('[CategoriesAdmin] Submit failed:', err);
 			const message = getApiErrorMessage(err, 'Failed to save category');
+			// #132: the backend returns a generic 409 Conflict with only a
+			// free-text `detail` (no FluentValidation-style field `errors`
+			// dict — see mapApiFieldErrors), so there is no shared pattern to
+			// map it onto formErrors.name automatically. Rather than parsing
+			// that string, we already know the two things the AC asks the
+			// inline message to name: the name the user typed and the parent
+			// they picked (looked up locally from the now-complete flattened
+			// category tree) — building the message from those is more
+			// reliable than scraping the server string.
+			if (err instanceof ApiError && err.status === 409) {
+				const parentId = result.data.parentId || null;
+				const parentName = parentId
+					? (categories.find((c) => c.id === parentId)?.name ?? null)
+					: null;
+				formErrors = {
+					...formErrors,
+					name: parentName
+						? t('admin.categories.duplicate.underParent', {
+								name: result.data.name,
+								parent: parentName
+							})
+						: t('admin.categories.duplicate.atRoot', { name: result.data.name })
+				};
+			}
 			addToast({ type: 'error', message });
 		} finally {
 			formSubmitting = false;
@@ -403,6 +448,26 @@
 		return displayedCategories.some((c) => c.parentId === categoryId);
 	}
 
+	// #132: wires up the previously-dead `admin.categories.list.showInactive`
+	// i18n key to an actual control. Deactivated categories were already
+	// fetchable via `includeInactive=true` and already rendered with an
+	// "Inactive" badge (see categoryRow below) — there was simply no UI
+	// affordance to opt in, so they were undiscoverable in practice.
+	function toggleIncludeInactive(checked: boolean) {
+		const params = new URLSearchParams($page.url.searchParams);
+		if (checked) {
+			params.set('includeInactive', 'true');
+		} else {
+			params.delete('includeInactive');
+		}
+		const query = params.toString();
+		goto(query ? `?${query}` : $page.url.pathname, {
+			replaceState: true,
+			keepFocus: true,
+			noScroll: true
+		});
+	}
+
 	const primaryActionButtonClass =
 		'text-sm font-medium text-primary-600 hover:text-primary-700 hover:underline dark:text-primary-400 dark:hover:text-primary-300';
 	const warningActionButtonClass =
@@ -429,13 +494,22 @@
 	</div>
 
 	<!-- Search -->
-	<div class="mt-6 mb-4">
+	<div class="mt-6 mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
 		<input
 			type="text"
 			bind:value={searchQuery}
 			placeholder={t('admin.categories.list.searchPlaceholder')}
-			class="block min-h-11 w-full rounded-md border border-neutral-300 px-4 py-2 text-sm focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
+			class="block min-h-11 w-full flex-1 rounded-md border border-neutral-300 px-4 py-2 text-sm focus-visible:border-primary-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-50"
 		/>
+		<label class="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">
+			<input
+				type="checkbox"
+				checked={urlParams.includeInactive}
+				onchange={(e) => toggleIncludeInactive((e.target as HTMLInputElement).checked)}
+				class="h-5 w-5 rounded-md border-neutral-300 text-primary-600 focus-visible:ring-primary-500 focus-visible:ring-offset-0 dark:border-neutral-600 dark:bg-neutral-800"
+			/>
+			{t('admin.categories.list.showInactive')}
+		</label>
 	</div>
 
 	<!-- Loading -->

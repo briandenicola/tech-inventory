@@ -354,27 +354,50 @@ export function useDevices(getFilters: () => DeviceFilters): DevicesQueryResult 
 	const normalizedFilters = $derived(normalizeDeviceFilters(getFilters()));
 	const cacheKey = $derived(serializeDeviceFilters(normalizedFilters));
 
+	// #128: monotonically increasing request id. Rapid successive filter
+	// changes (e.g. the live-debounced search box, or the filter panel's
+	// Apply) can start a new fetch before an earlier one resolves. Without
+	// this guard the earlier request could resolve *after* the later one
+	// and overwrite `data` with stale results that no longer match the
+	// current filters/URL — the exact "stale results rendered" defect
+	// called out in #128's acceptance criteria. Only the response whose
+	// request id still matches the latest issued request is committed;
+	// every earlier one is silently discarded.
+	let latestRequestId = 0;
+
 	// Fetch function (called on mount + filter change)
 	async function fetchDevices() {
+		const requestId = ++latestRequestId;
 		isLoading = true;
 		error = null;
 
 		const filters = normalizedFilters;
-		const cached = cache.get(cacheKey);
+		const key = cacheKey;
+		const cached = cache.get(key);
 		if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
-			data = cached.value;
-			isLoading = false;
+			if (requestId === latestRequestId) {
+				data = cached.value;
+				isLoading = false;
+			}
 			return;
 		}
 
 		try {
 			const validated = await fetchDevicesPage(filters);
-			cache.set(cacheKey, { value: validated, fetchedAt: Date.now() });
+			if (requestId !== latestRequestId) {
+				// A newer request has since been issued — discard this
+				// out-of-order response instead of rendering stale rows.
+				return;
+			}
+			cache.set(key, { value: validated, fetchedAt: Date.now() });
 			data = validated;
+			isLoading = false;
 		} catch (err) {
+			if (requestId !== latestRequestId) {
+				return;
+			}
 			console.error('[devices] Fetch error:', err);
 			error = getApiErrorMessage(err, 'Failed to fetch devices');
-		} finally {
 			isLoading = false;
 		}
 	}

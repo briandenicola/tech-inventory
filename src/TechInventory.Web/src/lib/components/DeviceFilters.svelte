@@ -10,7 +10,7 @@
 	Related: specs/002-frontend-mvp/spec.md §5, T16
 -->
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { t } from '$lib/i18n';
 	import { referenceDataStore, fetchReferenceData } from '$lib/stores/referenceData';
 	import type { DeviceFilters, DeviceStatus } from '$lib/queries/devices.svelte';
@@ -54,16 +54,68 @@
 	// Define status options with proper typing
 	const statusOptions: DeviceStatus[] = ['Active', 'Retired', 'Disposed', 'InRepair', 'Lent'];
 
-	// Filter change handlers
+	// #128 explicit Apply model: every control in this panel edits a local
+	// `pending` copy of the filters, never the applied `filters` prop
+	// directly. Nothing reaches the parent (and therefore the URL, the
+	// query, the rendered rows, or the applied-filter badge) until the user
+	// presses Apply. This is what fixes "changing filter values only
+	// sometimes updates the device list" — previously every control called
+	// `onFiltersChange` immediately, so partial/interrupted interactions
+	// (e.g. two checkboxes ticked in quick succession) raced each other.
+	// The top-of-page search box is intentionally NOT part of this model —
+	// it lives outside this component entirely (in the devices page header)
+	// and keeps its existing live-debounced behavior.
+	// `untrack` makes the one-time-only read explicit to both the compiler
+	// (silencing the "state_referenced_locally" warning) and future readers
+	// — this line intentionally does NOT react to `filters` changing; the
+	// `$effect` below is what re-baselines `pending` afterward.
+	let pending = $state<DeviceFilters>(untrack(() => ({ ...filters })));
+
+	// Re-baseline `pending` from the applied `filters` every time the panel
+	// transitions to open. This guarantees a freshly opened panel always
+	// reflects reality (fixing stale-panel bugs) while deliberately
+	// discarding any never-applied edits from a previous open/close cycle —
+	// closing the panel without pressing Apply abandons those edits, which
+	// mirrors how the Escape/backdrop-close already behaved for focus.
+	$effect(() => {
+		if (panelOpen) {
+			pending = { ...filters };
+		}
+	});
+
+	function statusSetsEqual(a: DeviceStatus[] | undefined, b: DeviceStatus[] | undefined): boolean {
+		const left = [...(a || [])].sort();
+		const right = [...(b || [])].sort();
+		return left.length === right.length && left.every((value, index) => value === right[index]);
+	}
+
+	// True whenever the panel's local edits differ from the last-applied
+	// filters — drives the visually-distinct pending state (banner + Apply
+	// button emphasis) required by #128's acceptance criteria.
+	const hasPendingChanges = $derived.by(() => {
+		return (
+			(pending.groupBy || undefined) !== (filters.groupBy || undefined) ||
+			(pending.brandId || undefined) !== (filters.brandId || undefined) ||
+			(pending.categoryId || undefined) !== (filters.categoryId || undefined) ||
+			(pending.ownerId || undefined) !== (filters.ownerId || undefined) ||
+			(pending.locationId || undefined) !== (filters.locationId || undefined) ||
+			(pending.networkId || undefined) !== (filters.networkId || undefined) ||
+			(pending.purchaseYearMin || undefined) !== (filters.purchaseYearMin || undefined) ||
+			(pending.purchaseYearMax || undefined) !== (filters.purchaseYearMax || undefined) ||
+			!statusSetsEqual(pending.status, filters.status)
+		);
+	});
+
+	// Filter change handlers — write to `pending` only (see above).
 	function handleFilterChange(
 		key: keyof DeviceFilters,
 		value: string | number | DeviceStatus[] | undefined
 	) {
-		onFiltersChange({ ...filters, [key]: value || undefined, page: 1 });
+		pending = { ...pending, [key]: value || undefined, page: 1 };
 	}
 
 	// Status multi-select
-	let statusValues = $derived(filters.status || []);
+	let statusValues = $derived(pending.status || []);
 	function toggleStatus(status: DeviceStatus) {
 		const current = [...statusValues];
 		const index = current.indexOf(status);
@@ -72,12 +124,29 @@
 		} else {
 			current.push(status);
 		}
-		onFiltersChange({ ...filters, status: current.length > 0 ? current : undefined, page: 1 });
+		pending = { ...pending, status: current.length > 0 ? current : undefined, page: 1 };
 	}
 
-	// Clear all filters
+	// Apply pending changes — the only place (besides Clear All) that calls
+	// onFiltersChange, so the URL/query/rows/badge only ever move in one
+	// deliberate step.
+	function applyFilters() {
+		onFiltersChange({ ...pending });
+	}
+
+	// Clear all filters. Unlike other panel edits this applies immediately:
+	// it is an unambiguous, explicit action rather than an in-progress edit,
+	// so there is nothing to stage. pageSize and groupBy are preserved from
+	// the current panel state (groupBy is a view preference, not a filter
+	// criterion — see F045 B2) rather than silently reverted.
 	function clearAll() {
-		onFiltersChange({ page: 1, pageSize: filters.pageSize || 25, groupBy: filters.groupBy });
+		const cleared: DeviceFilters = {
+			page: 1,
+			pageSize: pending.pageSize || 25,
+			groupBy: pending.groupBy
+		};
+		pending = cleared;
+		onFiltersChange(cleared);
 	}
 
 	function trapFocus(event: KeyboardEvent) {
@@ -215,6 +284,18 @@
 	</div>
 
 	<div class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-7 py-6">
+		<!-- #128: pending-changes banner. Visually + programmatically (aria-live)
+			 distinguishes unapplied edits from the applied state without gating
+			 focus/keyboard reachability of the controls below. -->
+		{#if hasPendingChanges}
+			<div
+				role="status"
+				aria-live="polite"
+				class="mb-6 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800 dark:border-amber-700/60 dark:bg-amber-900/30 dark:text-amber-200"
+			>
+				{t('devices.filters.pendingChanges')}
+			</div>
+		{/if}
 		<!-- Search -->
 	<div class="mb-6">
 		<label for="groupBy" class="mb-2 block text-base font-medium text-neutral-800 dark:text-neutral-200">
@@ -222,14 +303,14 @@
 		</label>
 		<select
 			id="groupBy"
-			value={filters.groupBy || (implicitGroupingActive ? 'category' : 'none')}
+			value={pending.groupBy || (implicitGroupingActive ? 'category' : 'none')}
 			onchange={(e) => {
 				const value = (e.target as HTMLSelectElement).value;
-				onFiltersChange({
-					...filters,
+				pending = {
+					...pending,
 					groupBy: value as 'none' | 'category' | 'owner' | 'year',
 					page: 1
-				});
+				};
 			}}
 			class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:bg-neutral-900"
 		>
@@ -261,7 +342,7 @@
 		</label>
 		<select
 			id="brand"
-			value={filters.brandId || ''}
+			value={pending.brandId || ''}
 			onchange={(e) => handleFilterChange('brandId', (e.target as HTMLSelectElement).value)}
 			class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:bg-neutral-900"
 		>
@@ -279,7 +360,7 @@
 		</label>
 		<select
 			id="category"
-			value={filters.categoryId || ''}
+			value={pending.categoryId || ''}
 			onchange={(e) => handleFilterChange('categoryId', (e.target as HTMLSelectElement).value)}
 			class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:bg-neutral-900"
 		>
@@ -297,7 +378,7 @@
 		</label>
 		<select
 			id="owner"
-			value={filters.ownerId || ''}
+			value={pending.ownerId || ''}
 			onchange={(e) => handleFilterChange('ownerId', (e.target as HTMLSelectElement).value)}
 			class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:bg-neutral-900"
 		>
@@ -315,7 +396,7 @@
 		</label>
 		<select
 			id="location"
-			value={filters.locationId || ''}
+			value={pending.locationId || ''}
 			onchange={(e) => handleFilterChange('locationId', (e.target as HTMLSelectElement).value)}
 			class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:bg-neutral-900"
 		>
@@ -333,7 +414,7 @@
 		</label>
 		<select
 			id="network"
-			value={filters.networkId || ''}
+			value={pending.networkId || ''}
 			onchange={(e) => handleFilterChange('networkId', (e.target as HTMLSelectElement).value)}
 			class="w-full min-h-11 rounded-xl border-0 bg-neutral-100 px-4 py-2.5 text-base text-neutral-900 focus:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:bg-neutral-900"
 		>
@@ -379,7 +460,7 @@
 					id="yearMin"
 					min="1990"
 					max={currentYear}
-					value={filters.purchaseYearMin || ''}
+					value={pending.purchaseYearMin || ''}
 					oninput={(e) =>
 						handleFilterChange(
 							'purchaseYearMin',
@@ -396,7 +477,7 @@
 					id="yearMax"
 					min="1990"
 					max={currentYear}
-					value={filters.purchaseYearMax || ''}
+					value={pending.purchaseYearMax || ''}
 					oninput={(e) =>
 						handleFilterChange(
 							'purchaseYearMax',
@@ -417,6 +498,24 @@
 
 	<div class="sticky bottom-0 z-10 shrink-0 border-t border-neutral-200/70 bg-white/95 backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-950/95">
 		<div class="flex flex-col gap-2 px-7 pt-4" style={`padding-bottom: ${footerPaddingBottom};`}>
+			<!--
+				#128: Apply is the explicit gate that turns `pending` into the
+				applied filters — the ONLY place besides Clear All that calls
+				onFiltersChange. Always enabled (never `disabled`) so it stays in
+				the natural Tab order regardless of pending state; the emphasis
+				classes below are the visual (not focus-gating) distinction
+				between "pending edits waiting" and "nothing to apply".
+			-->
+			<button
+				type="button"
+				onclick={applyFilters}
+				class="inline-flex min-h-11 w-full items-center justify-center rounded-full px-5 py-2.5 text-base font-medium text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 {hasPendingChanges
+					? 'bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600'
+					: 'bg-neutral-400 hover:bg-neutral-500 dark:bg-neutral-600 dark:hover:bg-neutral-500'}"
+			>
+				{t('devices.filters.apply')}
+			</button>
+
 			<button
 				type="button"
 				onclick={clearAll}
@@ -431,11 +530,23 @@
 						<button
 							type="button"
 							onclick={onSaveDefault}
-							disabled={!canSaveDefault}
+							disabled={!canSaveDefault || hasPendingChanges}
 							class="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-primary-600 px-5 py-2.5 text-base font-medium text-white transition-colors hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-primary-500 dark:hover:bg-primary-600"
 						>
 							{t('devices.filters.saveDefault')}
 						</button>
+						{#if hasPendingChanges}
+							<!--
+								#128: Save as default view must save the applied filter
+								set (D-188), not in-progress panel edits — otherwise the
+								user thinks they saved what they see, but the stored
+								default silently diverges. Disabling and explaining is
+								cheaper and clearer than re-defining what "default" means.
+							-->
+							<p class="text-sm text-neutral-500 dark:text-neutral-400">
+								{t('devices.filters.saveDefaultPendingHint')}
+							</p>
+						{/if}
 					{/if}
 					{#if onClearDefault && hasStoredDefault}
 						<button
@@ -451,3 +562,4 @@
 		</div>
 	</div>
 </div>
+

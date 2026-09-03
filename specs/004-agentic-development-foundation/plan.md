@@ -349,25 +349,19 @@ register entry existed for either of them to point at. This is that entry.
   — it reports, but nothing on GitHub prevents a merge without it, and no
   merge to `main` is currently blocked by CI status, review, linear history,
   or signature state.
-- **Reason declined-for-now, not declined outright:** applying a GitHub
-  repository setting is explicitly out of this work package's scope
-  (`brief.md` §4; `plan.md` §3 — T105's *Out of scope* line reads "applying
-  GitHub repository settings from within this package"). The written,
-  ready-to-apply recommendation exists — exact payload, field-by-field
-  rationale, and the Aurearia precedent it is modelled on — at
-  [`t105-governance-evidence.md`](./t105-governance-evidence.md) §4.3. Its own
-  sequencing note is binding: apply only **after** one PR from this branch has
-  run Quality Gate and the exact required-context strings are confirmed with
-  `gh pr checks`, because a required context that never reports leaves a PR
-  permanently "Expected — waiting for status to be reported." As of this
-  entry, `verify` has never run on GitHub Actions (`validation.md` §13.5.1) —
-  applying the payload today would be a self-inflicted outage, not a gate.
+- **Decision:** after PR #150 reported the exact contexts `verify`, `codeql`,
+  `secrets`, and `container-config-scan` successfully, `briandenicola`
+  explicitly declined applying the reviewed protection payload on 2026-09-03.
+  The ready-to-apply recommendation remains at
+  [`t105-governance-evidence.md`](./t105-governance-evidence.md) §4.3, but it
+  is not repository state and must not be described as enforced.
 - **Owner:** `briandenicola` — the only human able to change a GitHub
   repository setting, and the addressee of `t105-governance-evidence.md` §4's
   recommendation.
 - **Start date:** 2026-09-02 (posture first observed and recorded at the T105
   reviewer gate; the underlying unprotected state predates this record and is
-  not newly introduced by it).
+  not newly introduced by it). Explicit decline recorded 2026-09-03 after
+  real PR context observation.
 - **Review / closure trigger:** closes the moment `briandenicola` applies the
   `t105-governance-evidence.md` §4.3 payload (or a revision of it, confirmed
   against a real Quality Gate run) and `gh api

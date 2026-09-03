@@ -803,40 +803,6 @@ PR from `fix/ios-pwa-silent-sso-redirect` → review → merge.
 
 **Next Steps:** Open Wave 1 PR (both fixes reviewable together as one PR — independent files, no overlap); do not merge; await review.
 
----
-
-### #131 — Clone Device action (`squad/131-clone-device`, isolated worktree)
-
-Added a "Clone Device" action to the shared `DeviceActionsMenu` (wired into
-detail route, list-page modal, PWA row — same `canEdit` gate as Edit),
-linking to `/devices/new?cloneFrom=<id>`. That route fetches the source
-device fresh via `devices.get`/`listTags` (URL carries only the id, never
-serialized device data) and pre-fills the normal create form via a narrow
-field-copy matrix, submitting through the unchanged `devices.create()`
-path — new id/audit trail every time, source device untouched.
-
-**Field-copy matrix:** COPIED = model, brandId, categoryId, ownerId,
-locationId, networkId, tagIds, currencyCode, purpose, operatingSystem,
-productUrl, version. CLEARED = name (blank+required), serialNumber,
-ipAddress, macAddress, purchaseDate, purchasePrice, notes, status/
-retiredDate/disposalMethod (create mode never shows Status), id/audit
-timestamps (never part of `DeviceFormInput`). Documented in-code
-(`devices/new/+page.svelte` header comment) and in the new
-`page.clone.test.ts` file header — no new generalized "clone framework".
-
-**Validation:** targeted suite (`DeviceActionsMenu`, `DevicePwaRow`,
-`DeviceDetailModal`, `[id]/page`, `new/page`, `new/page.clone`) 38/38;
-full frontend suite 85 files/692 tests green; `pnpm run check`/`lint`/
-`build` clean; `task verify` (verify:full) green — backend unit 279,
-integration 316/4-skipped, vulnerability/security scans clean.
-Tamper-tested twice (both reverted): (1) re-added `name` to the copied
-fields — 2 assertions failed as expected; (2) routed submission through
-`devices.update` instead of `devices.create` — the create-not-update
-assertion failed as expected.
-
-**Commit:** `960c3d6` on `squad/131-clone-device`.
-
-**Next Steps:** Open focused PR closing #131; do not merge; await review.
 ## 2026-09-03 — Wave 2 quick cleanup: #135 Coming-soon/F020b placeholder removal + #139 ADMIN→Configuration nav label rename (branch `squad/135-139-quick-cleanup`, PR #154)
 
 **Scope:** Two tiny, independent "quick win" fixes in one worktree.

@@ -6,9 +6,11 @@
 	 *  - Display name editable for the current user (PATCH /api/v1/owners/me).
 	 *  - Email/oid + role rendered read-only (Entra owns those).
 	 *
-	 * Out of scope (deferred to F020b): avatar upload,
-	 * default landing page, density, session tab. The page leaves room for
-	 * those by sectioning Profile vs future panels.
+	 * Out of scope (deferred to F020b, tracked in the backlog — not rendered
+	 * here): avatar upload, default landing page, density, session tab.
+	 * See #135: the placeholder "Coming soon" card that used to advertise
+	 * this backlog item in the UI was removed; only Profile/Appearance/table
+	 * column sections render below.
 	 */
 	import { onMount } from 'svelte';
 	import { t } from '$lib/i18n';
@@ -243,17 +245,5 @@
 		<div class="mt-6">
 			<TableColumnSettings />
 		</div>
-
-		<section
-			class="mt-6 rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-6 text-sm text-neutral-600 dark:border-neutral-700 dark:bg-neutral-900/40 dark:text-neutral-400"
-			aria-label={t('settings.deferred.heading')}
-		>
-			<h2 class="text-base font-semibold text-neutral-900 dark:text-neutral-100">
-				{t('settings.deferred.heading')}
-			</h2>
-			<p class="mt-1">
-				{t('settings.deferred.body')}
-			</p>
-		</section>
 	{/if}
 </div>

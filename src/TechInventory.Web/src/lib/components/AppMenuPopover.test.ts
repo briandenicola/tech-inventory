@@ -129,6 +129,20 @@ describe('AppMenuPopover', () => {
 		expect(screen.getByText('Test User')).toBeInTheDocument();
 	});
 
+	it('labels the reference-data section heading "Configuration", not "ADMIN" (#139); role badge is unaffected', async () => {
+		const user = userEvent.setup();
+		render(AppMenuPopover, { props: { ...defaultProps, currentUser: makeUser('Admin') } });
+		await user.click(screen.getByRole('button', { name: 'Menu' }));
+
+		const menu = screen.getByRole('menu');
+		expect(within(menu).getByText('Configuration')).toBeInTheDocument();
+		expect(within(menu).queryByText('ADMIN')).not.toBeInTheDocument();
+		// The role badge next to the user's name still reads "Admin" — role
+		// naming is out of scope for #139 and must remain unchanged.
+		expect(screen.getByText('Test User')).toBeInTheDocument();
+		expect(within(menu).getByText('Admin')).toBeInTheDocument();
+	});
+
 	it('hides Admin-only and Member-only items for a Viewer', async () => {
 		const user = userEvent.setup();
 		render(AppMenuPopover, { props: { ...defaultProps, currentUser: makeUser('Viewer') } });

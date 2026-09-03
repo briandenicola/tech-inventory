@@ -33,7 +33,7 @@
 
 	{#if visibleAdminNavItems.length > 0}
 		<section aria-label="Harness admin section">
-			<h2>{t('navigation.admin')}</h2>
+			<h2>{t('navigation.configuration')}</h2>
 			<ul class="flex flex-col gap-2">
 				{#each visibleAdminNavItems as item (item.href)}
 					<li>

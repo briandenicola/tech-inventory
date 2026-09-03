@@ -151,7 +151,7 @@
 		"imports": "Import",
 		"exports": "Export",
 		"settings": "Settings",
-		"admin": "Admin",
+		"configuration": "Configuration",
 		"adminBrands": "Brands",
 		"adminCategories": "Categories",
 		"adminLocations": "Locations",
@@ -1033,10 +1033,6 @@
 			"toast": {
 				"success": "Display name updated."
 			}
-		},
-		"deferred": {
-			"heading": "Coming soon",
-			"body": "Avatar upload, default landing page, and density controls land in the next iteration (F020b)."
 		},
 		"theme": {
 			"heading": "Appearance",

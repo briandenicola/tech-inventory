@@ -124,6 +124,7 @@
 	<div class="self-center">
 		<DeviceActionsMenu
 			editHref={rowActions.canEdit ? `/devices/${device.id}/edit` : undefined}
+			cloneHref={rowActions.canEdit ? `/devices/new?cloneFrom=${device.id}` : undefined}
 			onClaim={rowActions.canClaim ? () => (rowActions.openModal = 'claim') : undefined}
 			onRelease={rowActions.canRelease ? () => (rowActions.openModal = 'release') : undefined}
 			onChangeStatus={rowActions.canChangeStatus ? () => (rowActions.openModal = 'changeStatus') : undefined}

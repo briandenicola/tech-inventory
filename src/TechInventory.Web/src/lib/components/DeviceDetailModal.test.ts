@@ -110,6 +110,12 @@ describe('DeviceDetailModal (C-12 role-gated detail actions)', () => {
 		expect(screen.getByRole('menuitem', { name: 'Edit' })).toBeInTheDocument();
 		expect(screen.getAllByRole('menuitem', { name: 'Delete' }).length).toBeGreaterThan(0);
 		expect(screen.getByRole('menuitem', { name: 'View change history' })).toBeInTheDocument();
+		// #131: Clone Device is gated the same way as Edit (canEdit) — Admin
+		// gets both, pointing the clone action at the create-flow deep link.
+		expect(screen.getByRole('menuitem', { name: 'Clone Device' })).toHaveAttribute(
+			'href',
+			`/devices/new?cloneFrom=${device.id}`
+		);
 		// Admin owns the device fixture (see makeUser's id vs. the factory
 		// default ownerId) — Release Ownership must still be offered to a
 		// mutating role, proving B3's role gate doesn't over-block Admin/Member.

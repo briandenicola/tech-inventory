@@ -90,6 +90,19 @@ describe('DevicePwaRow', () => {
 		expect(screen.getByRole('button', { name: /more actions/i })).toBeInTheDocument();
 	});
 
+	it('includes a Clone Device link pointing at /devices/new?cloneFrom=<id> for an Admin user (#131)', async () => {
+		const user = userEvent.setup();
+		const device = createDeviceResponse();
+		render(DevicePwaRow, { props: { device, currentUser: makeUser('Admin') } });
+
+		await user.click(screen.getByRole('button', { name: /more actions/i }));
+
+		expect(screen.getByRole('menuitem', { name: 'Clone Device' })).toHaveAttribute(
+			'href',
+			`/devices/new?cloneFrom=${device.id}`
+		);
+	});
+
 	it('does not nest an interactive checkbox/actions-menu inside the row body (no nested interactive elements)', () => {
 		const device = createDeviceResponse();
 		const { container } = render(DevicePwaRow, {

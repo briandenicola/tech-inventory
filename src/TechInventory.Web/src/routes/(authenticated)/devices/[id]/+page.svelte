@@ -71,7 +71,7 @@
 	const canClaim = $derived(canEdit && device && currentUser && device.ownerId !== currentUser.id);
 	// Release: visible when current user IS the owner
 	const canRelease = $derived(canEdit && device && currentUser && device.ownerId === currentUser.id);
-	// Retire: visible when device is Active and user can edit
+	// Change status: visible when device is not already in a terminal state and user can edit
 	const canChangeStatus = $derived(canChangeDeviceStatus(device, currentUser));
 	const statusOptions = $derived(deviceStatusOptions(t));
 
@@ -312,6 +312,7 @@
 		<div class="flex shrink-0 justify-end">
 			<DeviceActionsMenu
 				editHref={canEdit ? `/devices/${device.id}/edit` : undefined}
+				cloneHref={canEdit ? `/devices/new?cloneFrom=${device.id}` : undefined}
 				onClaim={canClaim ? () => (showClaimModal = true) : undefined}
 				onRelease={canRelease ? () => (showReleaseModal = true) : undefined}
 				onChangeStatus={canChangeStatus ? () => (showChangeStatusModal = true) : undefined}

@@ -32,22 +32,111 @@ describe('DeviceDetailFields', () => {
 		formatDateTime: (value: string | null) => value ?? '—'
 	};
 
-	it('renders details in a horizontal table layout', () => {
-		render(DeviceDetailFields, { props });
+	describe('semantic definition-list structure', () => {
+		it('renders a definition list, not a table', () => {
+			const { container } = render(DeviceDetailFields, { props });
 
-		const tables = screen.getAllByRole('table');
-		expect(tables.length).toBeGreaterThan(0);
-		expect(screen.getByRole('rowheader', { name: 'Brand' })).toBeInTheDocument();
-		expect(screen.getByText('Apple')).toBeInTheDocument();
-		expect(screen.getByRole('rowheader', { name: 'Location' })).toBeInTheDocument();
-		expect(screen.getByText('Home Office')).toBeInTheDocument();
+			expect(container.querySelector('dl')).toBeInTheDocument();
+			expect(container.querySelector('table')).not.toBeInTheDocument();
+		});
+
+		it('renders field labels as <dt> and values as <dd>', () => {
+			const { container } = render(DeviceDetailFields, { props });
+
+			const dts = Array.from(container.querySelectorAll('dt')).map(
+				(el) => el.textContent?.trim()
+			);
+			expect(dts).toContain('Brand');
+			expect(dts).toContain('Location');
+			expect(dts).toContain('Tags');
+
+			expect(screen.getByText('Apple')).toBeInTheDocument();
+			expect(screen.getByText('Home Office')).toBeInTheDocument();
+		});
+
+		it('renders tag chips under the Tags term', () => {
+			const { container } = render(DeviceDetailFields, { props });
+
+			const dts = Array.from(container.querySelectorAll('dt')).map(
+				(el) => el.textContent?.trim()
+			);
+			expect(dts).toContain('Tags');
+			expect(screen.getByText('Portable')).toBeInTheDocument();
+		});
 	});
 
-	it('renders tag chips in the value column', () => {
-		render(DeviceDetailFields, { props });
+	describe('responsive grid layout', () => {
+		it('applies single-column base and two-column desktop classes to the main field list', () => {
+			const { container } = render(DeviceDetailFields, { props });
 
-		expect(screen.getByText('Portable')).toBeInTheDocument();
-		expect(screen.getByRole('rowheader', { name: 'Tags' })).toBeInTheDocument();
+			const mainDl = container.querySelector('dl');
+			expect(mainDl?.className).toContain('grid-cols-1');
+			expect(mainDl?.className).toContain('sm:grid-cols-2');
+		});
+
+		it('applies the same grid classes to the audit trail definition list', () => {
+			const { container } = render(DeviceDetailFields, { props });
+
+			const allDls = Array.from(container.querySelectorAll('dl'));
+			// One for main fields, one for audit trail
+			expect(allDls.length).toBeGreaterThanOrEqual(2);
+
+			const auditDl = allDls[allDls.length - 1];
+			expect(auditDl?.className).toContain('grid-cols-1');
+			expect(auditDl?.className).toContain('sm:grid-cols-2');
+		});
+
+		it('multiline fields span the full grid width', () => {
+			const fullDevice = {
+				...device,
+				purpose: 'Runs the household media server',
+				notes: 'Replaced fan in 2024'
+			};
+			const { container } = render(DeviceDetailFields, {
+				props: { ...props, device: fullDevice }
+			});
+
+			const fullWidthDivs = Array.from(container.querySelectorAll('dl > div')).filter((div) =>
+				div.className.includes('col-span-full')
+			);
+			// purpose + notes + tags = at least 3 full-width cells
+			expect(fullWidthDivs.length).toBeGreaterThanOrEqual(3);
+		});
+
+		it('tags always span the full grid width', () => {
+			const { container } = render(DeviceDetailFields, { props });
+
+			const tagsGroup = Array.from(container.querySelectorAll('dl > div')).find((div) =>
+				div.querySelector('dt')?.textContent?.trim() === 'Tags'
+			);
+			expect(tagsGroup?.className).toContain('col-span-full');
+		});
+	});
+
+	describe('audit trail consistency', () => {
+		it('renders Created and Last Modified in the audit section', () => {
+			const { container } = render(DeviceDetailFields, { props });
+
+			const dts = Array.from(container.querySelectorAll('dt')).map(
+				(el) => el.textContent?.trim()
+			);
+			expect(dts).toContain('Created');
+			expect(dts).toContain('Last Modified');
+		});
+
+		it('renders audit actor attribution when provided', () => {
+			render(DeviceDetailFields, { props });
+
+			// "by Brian" appears for both created and modified
+			expect(screen.getAllByText('by Brian')).toHaveLength(2);
+		});
+
+		it('renders audit timestamps in <time> elements', () => {
+			const { container } = render(DeviceDetailFields, { props });
+
+			const timeEls = container.querySelectorAll('time');
+			expect(timeEls.length).toBeGreaterThanOrEqual(2);
+		});
 	});
 
 	it('has no accessibility violations', async () => {
@@ -57,11 +146,14 @@ describe('DeviceDetailFields', () => {
 	});
 
 	describe('F034 optional fields (C-08)', () => {
-		it('elides operatingSystem/version/ipAddress/macAddress/productUrl/purpose/notes rows when unset', () => {
+		it('elides operatingSystem/version/ipAddress/macAddress/productUrl/purpose/notes terms when unset', () => {
 			// The base `props.device` factory leaves every F034 field null —
-			// none of their rows/labels should render at all.
-			render(DeviceDetailFields, { props });
+			// none of their labels should render as <dt> at all.
+			const { container } = render(DeviceDetailFields, { props });
 
+			const dtLabels = Array.from(container.querySelectorAll('dt')).map(
+				(el) => el.textContent?.trim()
+			);
 			for (const label of [
 				'Operating System',
 				'Version',
@@ -71,11 +163,11 @@ describe('DeviceDetailFields', () => {
 				'Purpose',
 				'Notes'
 			]) {
-				expect(screen.queryByRole('rowheader', { name: label })).not.toBeInTheDocument();
+				expect(dtLabels).not.toContain(label);
 			}
 		});
 
-		it('renders operatingSystem/version/ipAddress/macAddress/productUrl/purpose/notes rows when set', () => {
+		it('renders operatingSystem/version/ipAddress/macAddress/productUrl/purpose/notes terms when set', () => {
 			const fullDevice = {
 				...device,
 				operatingSystem: 'Windows 11',
@@ -87,38 +179,44 @@ describe('DeviceDetailFields', () => {
 				notes: 'Replaced fan in 2024'
 			};
 
-			render(DeviceDetailFields, { props: { ...props, device: fullDevice } });
+			const { container } = render(DeviceDetailFields, { props: { ...props, device: fullDevice } });
 
-			expect(screen.getByRole('rowheader', { name: 'Operating System' })).toBeInTheDocument();
+			const dtLabels = Array.from(container.querySelectorAll('dt')).map(
+				(el) => el.textContent?.trim()
+			);
+			expect(dtLabels).toContain('Operating System');
 			expect(screen.getByText('Windows 11')).toBeInTheDocument();
 
-			expect(screen.getByRole('rowheader', { name: 'Version' })).toBeInTheDocument();
+			expect(dtLabels).toContain('Version');
 			expect(screen.getByText('23H2')).toBeInTheDocument();
 
-			expect(screen.getByRole('rowheader', { name: 'IP Address' })).toBeInTheDocument();
+			expect(dtLabels).toContain('IP Address');
 			expect(screen.getByText('192.168.1.42')).toBeInTheDocument();
 
-			expect(screen.getByRole('rowheader', { name: 'MAC Address' })).toBeInTheDocument();
+			expect(dtLabels).toContain('MAC Address');
 			expect(screen.getByText('AA:BB:CC:DD:EE:FF')).toBeInTheDocument();
 
-			expect(screen.getByRole('rowheader', { name: 'Product URL' })).toBeInTheDocument();
+			expect(dtLabels).toContain('Product URL');
 			const productLink = screen.getByRole('link', { name: 'https://example.com/product' });
 			expect(productLink).toHaveAttribute('href', 'https://example.com/product');
 			expect(productLink).toHaveAttribute('target', '_blank');
 
-			expect(screen.getByRole('rowheader', { name: 'Purpose' })).toBeInTheDocument();
+			expect(dtLabels).toContain('Purpose');
 			expect(screen.getByText('Runs the household media server')).toBeInTheDocument();
 
-			expect(screen.getByRole('rowheader', { name: 'Notes' })).toBeInTheDocument();
+			expect(dtLabels).toContain('Notes');
 			expect(screen.getByText('Replaced fan in 2024')).toBeInTheDocument();
 		});
 
-		it('always renders the Model row, falling back to an em dash when unset', () => {
+		it('always renders the Model term, falling back to an em dash when unset', () => {
 			const withoutModel = { ...device, model: null };
 
-			render(DeviceDetailFields, { props: { ...props, device: withoutModel } });
+			const { container } = render(DeviceDetailFields, { props: { ...props, device: withoutModel } });
 
-			expect(screen.getByRole('rowheader', { name: 'Model' })).toBeInTheDocument();
+			const dtLabels = Array.from(container.querySelectorAll('dt')).map(
+				(el) => el.textContent?.trim()
+			);
+			expect(dtLabels).toContain('Model');
 			expect(screen.getByText('—')).toBeInTheDocument();
 		});
 	});

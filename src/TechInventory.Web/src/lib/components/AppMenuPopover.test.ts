@@ -234,24 +234,29 @@ describe('AppMenuPopover', () => {
 		expect(await axe(container)).toHaveNoViolations();
 	});
 
-	describe('menu row geometry parity (#144 R2 correction)', () => {
-		// Reopened #144 / rejected #166 visual result: the active-item highlight
-		// still visually inflated the selected row. #166 used `min-h-11 py-1.5`
-		// — the internal 12px vertical padding (6px top + bottom) created blank
-		// zones within the 44px coloured box, making it visually "bubble" against
-		// inactive rows whose transparent background hid the same blank zones.
-		// R2 fix: `h-11` (exact 44px, NO py-*) locks both states to the same
-		// exact visible box. This suite locks that contract in place and MUST
-		// fail if any of the following regressions appear:
-		//   · active-only vertical geometry (padding, margin, height, min-height)
-		//   · list gap wider than gap-0.5
-		//   · return of min-h-11 or py-1.5 that can grow the box beyond 44px
+	describe('menu row geometry parity + density (R3)', () => {
+		// History: #144 R2 fixed the active row visually inflating relative to
+		// inactive rows by locking every row to an exact `h-11` (44px) block
+		// with no `py-*` (the rejected #166 attempt used `min-h-11 py-1.5`,
+		// whose 12px internal padding created blank zones inside the coloured
+		// active box). R3 keeps that contract and shrinks the shared block to
+		// `h-9` (36px) with a `gap-0` container, because 44px rows around a
+		// 14px label still read as mostly empty space on a phone.
 		//
-		// Tamper evidence (R2): added `class:h-14={active}` to the Devices <a>
-		// in AppMenuPopover.svelte → test "exact same non-colour class set" failed
-		// with `unexpected non-colour class diff: "h-14"`. Restored → 19/19 green.
-		// Also increased container to `gap-2` → test "compact container gap"
-		// failed: expected `gap-0.5` but class list had `gap-2`. Restored → green.
+		// This suite MUST fail if any of the following appear:
+		//   · active-only vertical geometry (padding, margin, height, min-height)
+		//   · a row block taller than h-9, or any min-h-*/py-* that can grow it
+		//   · a non-zero gap on the role="menu" container
+		//
+		// Tamper evidence (R3), each mutation applied and reverted in isolation
+		// against this file (20 tests in the suite):
+		//   · row block `h-9` → `h-11`: "shared compact geometry" failed
+		//     (1 failed | 19 passed).
+		//   · container `gap-0` → `gap-0.5`: "stacks the rows flush" failed
+		//     (1 failed | 19 passed).
+		//   · added `class:h-14={active}` to the Devices <a>: "exact same
+		//     non-colour class set" failed (1 failed | 19 passed).
+		// All three green again after restore.
 		const COLOR_ONLY_PREFIXES = [
 			'bg-',
 			'text-',
@@ -299,13 +304,17 @@ describe('AppMenuPopover', () => {
 			expect(activeGeometry).toEqual(inactiveGeometry);
 		});
 
-		it('gives every row the same shared compact geometry: exact 44px block height, standard gap, standard radius, no growth-inducing padding', async () => {
+		it('gives every row the same shared compact geometry: exact 36px block height, standard gap, standard radius, no growth-inducing padding', async () => {
 			await openMenu();
 
 			for (const name of ['Devices', 'Reports', 'Settings']) {
 				const classes = rowClassList(getRow(name));
-				// R2: exact h-11, NOT min-h-11 — prevents growth beyond 44px via padding
-				expect(classes).toContain('h-11'); // exact 44px block height (WCAG 2.5.8 touch target)
+				// R3: exact h-9 (36px). Comfortably above WCAG 2.5.8 (AA, 24x24)
+				// given the full-panel-width hit area; the 44px of 2.5.5 (AAA) is
+				// deliberately traded for density here only.
+				expect(classes).toContain('h-9');
+				expect(classes).not.toContain('h-11'); // must not regress to the R2 44px block
+				expect(classes).not.toContain('min-h-9'); // exact height, not a floor that padding can grow
 				expect(classes).not.toContain('min-h-11'); // must not regress to #166's min-h approach
 				expect(classes).not.toContain('py-1.5'); // must not carry internal vertical padding that inflates the box
 				expect(classes).not.toContain('py-2'); // guard against any re-added vertical padding
@@ -316,16 +325,35 @@ describe('AppMenuPopover', () => {
 			}
 		});
 
-		it('places a compact gap-0.5 (2px) on the role="menu" container — smallest token gap, tighter than #166 gap-1', async () => {
+		it('stacks the rows flush (gap-0) on the role="menu" container — hover/active tint separates them, not whitespace', async () => {
 			await openMenu();
 
 			const menu = screen.getByRole('menu');
 			const menuClasses = rowClassList(menu);
 			expect(menuClasses).toContain('flex-col');
-			// R2: gap-0.5 (2px) — smallest useful Tailwind gap. Must not regress to gap-1 or wider.
-			expect(menuClasses).toContain('gap-0.5');
+			// R3: gap-0. Any non-zero gap re-introduces dead space between rows.
+			expect(menuClasses).toContain('gap-0');
+			expect(menuClasses).not.toContain('gap-0.5');
 			expect(menuClasses).not.toContain('gap-1');
 			expect(menuClasses).not.toContain('gap-2');
+		});
+
+		it('keeps the panel chrome tight: p-1.5 panel padding and my-1 section dividers', async () => {
+			await openMenu();
+
+			const panel = document.getElementById('app-menu-popover');
+			expect(panel?.className).toContain('p-1.5');
+			expect(panel?.className).not.toContain('p-2');
+
+			// Every section divider inside the menu region stays at my-1 (4px
+			// each side); a wider margin puts the wasted space back.
+			const menuRules = Array.from(screen.getByRole('menu').querySelectorAll('hr'));
+			expect(menuRules.length).toBeGreaterThan(0);
+			for (const rule of menuRules) {
+				expect(rule.className).toContain('my-1');
+				expect(rule.className).not.toContain('my-2');
+				expect(rule.className).not.toContain('my-3');
+			}
 		});
 
 		it('distinguishes active from inactive state visually (Devices carries active tint, Reports does not)', async () => {

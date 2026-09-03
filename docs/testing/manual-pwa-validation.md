@@ -71,8 +71,10 @@ as an explicit exception under `plan.md` §2.10, not silently dropped.
 | M-24 | **#165 — Per-device action menu layering (installed PWA, portrait, 320/375/390/430 CSS px):** On the device list in PWA Cards view, tap the ⋮ kebab/ellipsis button on the **first** row, a **middle** row, and the **last** row in a group. Each time the action menu (Edit / Clone / Claim / Release / Change Status / View change history / Delete) must appear **fully visible above** all other content — it must not be clipped by the row container, the group boundary, or any sibling element; the full menu height is visible without scrolling; tapping outside dismisses it. `REVIEWED/manual — not jsdom-proven.` | | |
 | M-25 | **#148 — Add/Edit Device form containment at narrow viewports (installed PWA, portrait, 320/375/390/430 CSS px):** On each viewport, open the Add Device form (and separately the Edit Device form from a device detail row). Verify: (a) the Purchase Date field label and native date input stay within the form column width — no horizontal overflow; (b) tapping the date input opens the native iOS date picker and the form does not scroll wider than the viewport at any picker stage; (c) the Purchase Price number input stays within its grid column (no overflow); (d) the Notes textarea fills its column without overflow; (e) the form as a whole does not cause the modal to scroll horizontally. `REVIEWED/manual — not jsdom-proven.` | | |
 | M-26 | **#170 — Ellipsis right-alignment (installed PWA, portrait, iPhone width ≈ 375 CSS px):** Open `/devices` in PWA Cards view. Verify five specific rows across groups: "Mohu Leaf Stitch 60m Range / Mohu · Leaf Stitch", "4-Door French Door Fridge / Samsung · RF28JBEDBSG/AA", "Air Fryer / Ninja · DZ400 A", "Aqua Flosser / AquaSonic · Aqua Flosser PRO", "Coffee Maker / Keurig · K-Classic". All five ⋮ ellipsis buttons must form a **visibly straight vertical column** at the right inset — none displaced inward by short or long text. Text that is too long must truncate (ellipsis) rather than pushing the action button left or right. Each ⋮ button must be comfortably tappable (≥44 px touch target). Compact ghost style (no large border circle). Verify in both light and dark themes. `REVIEWED/manual — not jsdom-proven.` | | |
+| M-27 | **Overflow menu density (installed PWA, portrait, 320/375/390/430 CSS px):** Tap the header hamburger to open the app menu. Every row (Devices, Reports, Import, Export, Audit Log, the Configuration group, Settings, Sign Out) must render as a **36 px block sitting flush against its neighbours** — no blank band above or below the label, no visible whitespace gutter between rows. The active row's tint must be exactly the same height as an inactive row. Verify the whole menu fits without scrolling on a 390 px-tall-viewport phone where it previously scrolled, and that each row is still comfortably tappable with a thumb. Check both light and dark themes. `REVIEWED/manual — not jsdom-proven.` | | |
+| M-28 | **Device details compact layout (installed PWA, portrait, 320/375/390/430 CSS px):** Open a device from the list (both the detail modal and the `/devices/{id}` page). Fields must render as a **flush inset list — label left, value right on one line, hairline divider between rows** — not as stacked label-over-value cards. Long values (Product URL, MAC address) must wrap or truncate inside their row without pushing the label off-screen; Purpose and Notes stay stacked. Confirm the same screen opened in **mobile Safari/Chrome (not installed)** still shows the roomy stacked layout, since the compact variant is gated on `display-mode: standalone`. Check both light and dark themes. `REVIEWED/manual — not jsdom-proven.` | | |
 
-**26 checks, all owner `briandenicola`.** M-16 compensates for the route-level
+**28 checks, all owner `briandenicola`.** M-16 compensates for the route-level
 composition gap identified by the post-major-work QC audit; M-17 and M-18 cover
 the mobile-popover and desktop-nav tap-target density introduced by issues #134
 and #144 (branch `squad/134-144-desktop-nav-density`); M-19 covers the real
@@ -103,7 +105,19 @@ M-26 covers the ellipsis right-alignment in the PWA device list (#170) —
 component tests prove `.pwa-row` uses the two-column grid class contract
 (`minmax(0,1fr) auto`) ensuring the action column is always last and carries
 `h-11 w-11`, but cannot measure rendered pixel positions or verify the
-visually-straight column in a real browser. The remaining
+visually-straight column in a real browser;
+M-27 covers the R3 overflow-menu density — component tests prove the shared
+`h-9` row block, the `gap-0` container, `p-1.5` panel padding and `my-1`
+dividers, but cannot measure rendered row pitch, confirm the menu now fits
+without scrolling on a real phone, or judge whether a 36 px row is still
+comfortable under a thumb;
+M-28 covers the compact PWA device-detail layout — component tests prove the
+`compact` variant drops the grid for a `divide-y` single-line row list with
+right-aligned values and identical `dt` ordering, but cannot verify real
+wrapping/truncation of long values, and cannot exercise the
+`display-mode: standalone` gate that decides which variant a real device gets
+(jsdom has no `matchMedia`, so tests only ever see the roomy default unless
+`compact` is passed explicitly). The remaining
 checks exist only because their risks require a real browser environment. None
 duplicates an existing Vitest or HTTP
 integration/contract assertion — each exists only because the risk is

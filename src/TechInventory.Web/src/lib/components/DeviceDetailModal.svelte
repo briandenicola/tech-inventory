@@ -16,6 +16,7 @@
 	import AuditLogModal from '$lib/components/AuditLogModal.svelte';
 	import DeviceActionsMenu from '$lib/components/DeviceActionsMenu.svelte';
 	import DeviceDetailFields from '$lib/components/DeviceDetailFields.svelte';
+	import { displayMode } from '$lib/stores/displayMode.svelte';
 	import { canChangeDeviceStatus, deviceStatusOptions } from '$lib/utils/deviceRetirement';
 	import type { DeviceResponse } from '$lib/queries/devices.svelte';
 	import type { components } from '$lib/api/generated/types';
@@ -407,6 +408,7 @@
 				{:else if device}
 					<DeviceDetailFields
 						{device}
+						compact={displayMode.isPwa}
 						{brandName}
 						{categoryName}
 						{ownerName}

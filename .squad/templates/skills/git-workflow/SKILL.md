@@ -110,10 +110,11 @@ All PRs target `dev` independently. Agents never interfere with each other's fil
 
 ### .squad/ State in Worktrees
 
-The `.squad/` directory exists in each worktree as a copy. This is safe because:
-- `.gitattributes` declares `merge=union` on append-only files (history.md, decisions.md, logs)
-- Each agent appends to its own section; union merge reconciles on PR merge to dev
-- **Rule:** Never rewrite or reorder `.squad/` files in a worktree — append only
+The `.squad/` directory exists in each worktree as a copy. A worktree is always on a feature branch, so the Core-Only State Policy applies (see `.github/agents/squad.agent.md` → Feature-Branch State Policy):
+- Durable core (`team.md`, `routing.md`, `ceremonies.md`, `config.json`, `casting/*`, `agents/{name}/charter.md`, canonical `decisions.md` content, `skills/*/SKILL.md`, `templates/**`, `identity/wisdom.md`) may be read, and written/committed where the agent's role allows it.
+- Derived/transient state — `agents/{name}/history.md`, `identity/now.md`, `.squad/log/**`, `.squad/orchestration-log/**`, and the *consolidation* of `.squad/decisions/inbox/` into `decisions.md` — must NOT be written from a worktree. Report learnings in your final response, or drop a `.squad/decisions/inbox/{name}-{brief-slug}.md` artifact (safe on any branch); Scribe consolidates these only after merge to dev/main, or via a dedicated state-only PR — never mid-feature.
+- `.gitattributes`'s `merge=union` driver only helps a local `git merge`/rebase — GitHub does not run local merge drivers when merging a PR, so it is not a substitute for the policy above; at most it avoids local conflict noise if derived state is ever touched.
+- **Rule:** Never rewrite or reorder `.squad/` files in a worktree — append only, and only for durable-core or drop-box files.
 
 ### Cleanup After Merge
 

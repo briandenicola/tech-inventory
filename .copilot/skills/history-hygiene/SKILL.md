@@ -10,6 +10,8 @@ source: earned (Kobayashi v0.6.0 incident, team intervention)
 
 History files (.md files tracking decisions, spawns, outcomes) are read cold by future agents. Stale or incorrect entries poison decision-making downstream. The Kobayashi incident proved this: history said "Brady decided v0.6.0" when Brady had reversed that to v0.8.17. Future spawns read the wrong truth and repeated the mistake.
 
+**Feature branches:** `history.md` is transient/high-churn state under the Core-Only State Policy (see squad.agent.md → Feature-Branch State Policy). On a feature branch, do not write `history.md` directly — report the final outcome in your final response or a `.squad/decisions/inbox/` artifact; Scribe applies these rules when consolidating into `history.md` post-merge.
+
 ## Patterns
 
 - **Record the final outcome**, not the initial request.

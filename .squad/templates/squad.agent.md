@@ -73,14 +73,14 @@ No team exists yet. Propose one — but **DO NOT create any files until the user
 
 **Team.md structure:** `team.md` MUST contain a section titled exactly `## Members` (not "## Team Roster" or other variations) containing the roster table. This header is hard-coded in GitHub workflows (`squad-heartbeat.yml`, `squad-issue-assign.yml`, `squad-triage.yml`, `sync-squad-labels.yml`) for label automation. If the header is missing or titled differently, label routing breaks.
 
-**Merge driver for append-only files:** Create or update `.gitattributes` at the repo root to enable conflict-free merging of `.squad/` state across branches:
+**Merge driver for append-only files:** Create or update `.gitattributes` at the repo root to reduce local merge friction for already-tracked append-only `.squad/` state (e.g. `main` merging into a long-lived worktree, or reconciling a dedicated `squad/state-sync-*` branch):
 ```
 .squad/decisions.md merge=union
 .squad/agents/*/history.md merge=union
 .squad/log/** merge=union
 .squad/orchestration-log/** merge=union
 ```
-The `union` merge driver keeps all lines from both sides, which is correct for append-only files. This makes worktree-local strategy work seamlessly when branches merge — decisions, memories, and logs from all branches combine automatically.
+The `union` merge driver keeps all lines from both sides on a **local** `git merge`, which is correct for append-only files. **This is a local git convenience only, not an enforcement mechanism:** GitHub's server-side PR merge does not invoke local merge drivers, so this attribute has no bearing on PR mergeability, and it does not substitute for the Feature-Branch State Policy — feature agents still must not write transient/derived state (`history.md`, `identity/now.md`, `.squad/log/**`, `.squad/orchestration-log/**`, decision-inbox consolidation) on feature branches in the first place (see Feature-Branch State Policy).
 
 7. Say: *"✅ Team hired. Try: '{FirstCastName}, set up the project structure'"*
 
@@ -583,8 +583,8 @@ When the user gives any task, the Coordinator MUST:
 To enable full parallelism, shared writes use a drop-box pattern that eliminates file conflicts:
 
 **decisions.md** — Agents do NOT write directly to `decisions.md`. Instead:
-- Agents write decisions to individual drop files: `.squad/decisions/inbox/{agent-name}-{brief-slug}.md`
-- Scribe merges inbox entries into the canonical `.squad/decisions.md` and clears the inbox
+- Agents write decisions to individual drop files: `.squad/decisions/inbox/{agent-name}-{brief-slug}.md` — safe to write/commit on any branch (see Feature-Branch State Policy)
+- Scribe merges inbox entries into the canonical `.squad/decisions.md` and clears the inbox — **only on `main` (post-merge) or a dedicated state-only PR, never mid-feature**
 - All agents READ from `.squad/decisions.md` at spawn time (last-merged snapshot)
 
 **orchestration-log/** — Scribe writes one entry per agent after each batch:
@@ -592,8 +592,9 @@ To enable full parallelism, shared writes use a drop-box pattern that eliminates
 - The coordinator passes a spawn manifest to Scribe; Scribe creates the files
 - Format matches the existing orchestration log entry template
 - Append-only, never edited after write
+- **Feature-branch batches:** Scribe is not spawned for this purpose mid-feature; entries are written during the post-merge/state-only consolidation pass (see Feature-Branch State Policy)
 
-**history.md** — No change. Each agent writes only to its own `history.md` (already conflict-free).
+**history.md** — Each agent writes only to its own `history.md` (already conflict-free) — **but only when `IS_FEATURE_BRANCH` is false**. On feature branches, agents report learnings in their final response instead; Scribe appends them to `history.md` during post-merge consolidation (see Feature-Branch State Policy).
 
 **log/** — No change. Already per-session files.
 
@@ -627,9 +628,10 @@ Squad and all spawned agents may be running inside a **git worktree** rather tha
 
 **Cross-worktree considerations (worktree-local strategy — recommended for concurrent work):**
 - `.squad/` files are **branch-local**. Each worktree works independently — no locking, no shared-state races.
-- When branches merge into main, `.squad/` state merges with them. The **append-only** pattern ensures both sides only added content, making merges clean.
-- A `merge=union` driver in `.gitattributes` (see Init Mode) auto-resolves append-only files by keeping all lines from both sides — no manual conflict resolution needed.
-- The Scribe commits `.squad/` changes to the worktree's branch. State flows to other branches through normal git merge / PR workflow.
+- On a feature branch (`IS_FEATURE_BRANCH: true`), agents do not write transient/derived state at all (see Feature-Branch State Policy) — only durable core changes land in the branch, so there is little or nothing left for a merge driver to reconcile.
+- When branches merge into main, any already-tracked append-only `.squad/` state merges with them. The **append-only** pattern ensures both sides only added content, which keeps a **local** `git merge` clean.
+- A `merge=union` driver in `.gitattributes` (see Init Mode) can auto-resolve append-only files by keeping all lines from both sides during a **local** `git merge`. This is a local git convenience only — GitHub's server-side PR merge does not invoke local merge drivers, so it does not influence PR mergeability, and manual conflict resolution may still be required there.
+- Scribe does not commit derived/transient state (`history.md`, `identity/now.md`, `.squad/log/**`, `.squad/orchestration-log/**`, decision-inbox consolidation) to an ordinary feature worktree branch — that consolidation happens only after merge to `main`, or via a dedicated `squad/state-sync-*` branch/PR (see Feature-Branch State Policy). Durable core edits an agent makes directly may still be committed to the feature branch as part of normal work.
 
 **Cross-worktree considerations (main-checkout strategy):**
 - All worktrees share the same `.squad/` state on disk via the main checkout — changes are immediately visible without merging.
@@ -771,6 +773,7 @@ prompt: |
   
   WORKTREE_PATH: {worktree_path}
   WORKTREE_MODE: {true|false}
+  IS_FEATURE_BRANCH: {true|false}  # false only on the repo default branch (main); true on squad/* and all other branches
   
   {% if WORKTREE_MODE %}
   **WORKTREE:** You are working in a dedicated worktree at `{WORKTREE_PATH}`.
@@ -778,6 +781,14 @@ prompt: |
   - Do NOT switch branches — the worktree IS your branch (`{branch_name}`)
   - Build and test in the worktree, not the main repo
   - Commit and push from the worktree
+  {% endif %}
+  
+  {% if IS_FEATURE_BRANCH %}
+  **CORE-ONLY STATE POLICY:** This is a feature branch. Do NOT write or commit
+  `.squad/agents/{name}/history.md`, `.squad/identity/now.md`, `.squad/log/**`, or
+  `.squad/orchestration-log/**`. Report learnings in your final response and/or a
+  `.squad/decisions/inbox/{name}-{brief-slug}.md` artifact instead. See "Feature-Branch
+  State Policy" in squad.agent.md.
   {% endif %}
   
   Read .squad/agents/{name}/history.md (your project knowledge).
@@ -801,12 +812,18 @@ prompt: |
   ⚠️ OUTPUT: Report outcomes in human terms. Never expose tool internals or SQL.
   
   AFTER work:
-  1. APPEND to .squad/agents/{name}/history.md under "## Learnings":
-     architecture decisions, patterns, user preferences, key file paths.
+  1. {% if IS_FEATURE_BRANCH %}Do NOT write .squad/agents/{name}/history.md — report
+     learnings (architecture decisions, patterns, user preferences, key file paths)
+     in your FINAL response instead. Scribe consolidates them into history.md after
+     this work merges to main (see Feature-Branch State Policy).
+     {% else %}APPEND to .squad/agents/{name}/history.md under "## Learnings":
+     architecture decisions, patterns, user preferences, key file paths.{% endif %}
   2. If you made a team-relevant decision, write to:
-     .squad/decisions/inbox/{name}-{brief-slug}.md
+     .squad/decisions/inbox/{name}-{brief-slug}.md — this drop file is safe to write
+     and commit on any branch; it is a report, not consolidated state.
   3. SKILL EXTRACTION: If you found a reusable pattern, write/update
-     .squad/skills/{skill-name}/SKILL.md (read templates/skill.md for format).
+     .squad/skills/{skill-name}/SKILL.md (read templates/skill.md for format) —
+     durable core, safe to write and commit on any branch.
   
   ⚠️ RESPONSE ORDER: After ALL tool calls, write a 2-3 sentence plain text
   summary as your FINAL output. No tool calls after this summary.
@@ -844,7 +861,7 @@ After each batch of agent work:
 
 3. **Show compact results:** `{emoji} {Name} — {1-line summary of what they did}`
 
-4. **Spawn Scribe** (background, never wait). Only if agents ran or inbox has files:
+4. **Spawn Scribe** (background, never wait). Only if agents ran or inbox has files, **AND only when `IS_FEATURE_BRANCH` is false** (i.e. on `main` post-merge, or on a dedicated `squad/state-sync-*` state-only branch/PR). **On a feature branch, do not spawn Scribe for state consolidation** — high-churn state (history, `identity/now.md`, logs, orchestration logs, decision-inbox merges) is deferred to the post-merge/state-only pass. See "Feature-Branch State Policy" under Source of Truth Hierarchy.
 
 ```
 agent_type: "general-purpose"
@@ -854,6 +871,11 @@ description: "📋 Scribe: Log session & merge decisions"
 prompt: |
   You are the Scribe. Read .squad/agents/scribe/charter.md.
   TEAM ROOT: {team_root}
+  BRANCH: {branch_name}
+
+  CORE-ONLY STATE POLICY: only consolidate on `main` or a `squad/state-sync-*`
+  state-only branch. If BRANCH is any other branch, do nothing and report
+  "Skipped — feature-branch state consolidation deferred to post-merge."
 
   SPAWN MANIFEST: {spawn_manifest}
 
@@ -924,18 +946,20 @@ If the user wants to remove someone:
 | File | Status | Who May Write | Who May Read |
 |------|--------|---------------|--------------|
 | `.github/agents/squad.agent.md` | **Authoritative governance.** All roles, handoffs, gates, and enforcement rules. | Repo maintainer (human) | Squad (Coordinator) |
-| `.squad/decisions.md` | **Authoritative decision ledger.** Single canonical location for scope, architecture, and process decisions. | Squad (Coordinator) — append only | All agents |
-| `.squad/team.md` | **Authoritative roster.** Current team composition. | Squad (Coordinator) | All agents |
+| `.squad/decisions.md` | **Durable core / authoritative decision ledger.** Single canonical location for scope, architecture, and process decisions. Content is durable; the *consolidation act* (merging `decisions/inbox/` into it) only runs post-merge or via a state-only PR — see Feature-Branch State Policy. | Squad (Coordinator), Scribe (inbox merge, post-merge/state-only only) — append only | All agents |
+| `.squad/identity/wisdom.md` | **Durable core.** Distilled, reusable team wisdom (patterns/anti-patterns) — long-lived, not session-scoped. | Scribe (post-merge/state-only consolidation) | All agents |
+| `.squad/identity/now.md` | **Transient.** Current-session focus pointer — high-churn, session-scoped. Feature-branch writes prohibited — see Feature-Branch State Policy. | Squad (Coordinator) on `main`; Scribe during post-merge/state-only consolidation | All agents |
+| `.squad/team.md` | **Durable core / authoritative roster.** Current team composition. | Squad (Coordinator) | All agents |
 | `.squad/routing.md` | **Authoritative routing.** Work assignment rules. | Squad (Coordinator) | Squad (Coordinator) |
 | `.squad/ceremonies.md` | **Authoritative ceremony config.** Definitions, triggers, and participants for team ceremonies. | Squad (Coordinator) | Squad (Coordinator), Facilitator agent (read-only at ceremony time) |
 | `.squad/casting/policy.json` | **Authoritative casting config.** Universe allowlist and capacity. | Squad (Coordinator) | Squad (Coordinator) |
 | `.squad/casting/registry.json` | **Authoritative name registry.** Persistent agent-to-name mappings. | Squad (Coordinator) | Squad (Coordinator) |
 | `.squad/casting/history.json` | **Derived / append-only.** Universe usage history and assignment snapshots. | Squad (Coordinator) — append only | Squad (Coordinator) |
 | `.squad/agents/{name}/charter.md` | **Authoritative agent identity.** Per-agent role and boundaries. | Squad (Coordinator) at creation; agent may not self-modify | Squad (Coordinator) reads to inline at spawn; owning agent receives via prompt |
-| `.squad/agents/{name}/history.md` | **Derived / append-only.** Personal learnings. Never authoritative for enforcement. | Owning agent (append only), Scribe (cross-agent updates, summarization) | Owning agent only |
-| `.squad/agents/{name}/history-archive.md` | **Derived / append-only.** Archived history entries. Preserved for reference. | Scribe | Owning agent (read-only) |
-| `.squad/orchestration-log/` | **Derived / append-only.** Agent routing evidence. Never edited after write. | Scribe | All agents (read-only) |
-| `.squad/log/` | **Derived / append-only.** Session logs. Diagnostic archive. Never edited after write. | Scribe | All agents (read-only) |
+| `.squad/agents/{name}/history.md` | **Transient / derived / append-only.** Personal learnings. Never authoritative for enforcement. High-churn — feature-branch writes prohibited, see Feature-Branch State Policy. | Owning agent (append only, `main`/state-only only), Scribe (cross-agent updates, summarization, post-merge/state-only only) | Owning agent only |
+| `.squad/agents/{name}/history-archive.md` | **Derived / append-only.** Archived history entries. Preserved for reference. | Scribe (post-merge/state-only only) | Owning agent (read-only) |
+| `.squad/orchestration-log/` | **Transient / derived / append-only.** Agent routing evidence. Never edited after write. High-churn — feature-branch writes prohibited, see Feature-Branch State Policy. | Scribe (post-merge/state-only only) | All agents (read-only) |
+| `.squad/log/` | **Transient / derived / append-only.** Session logs. Diagnostic archive. Never edited after write. High-churn — feature-branch writes prohibited, see Feature-Branch State Policy. | Scribe (post-merge/state-only only) | All agents (read-only) |
 | `.squad/templates/` | **Reference.** Format guides for runtime files. Not authoritative for enforcement. | Squad (Coordinator) at init | Squad (Coordinator) |
 | `.squad/plugins/marketplaces.json` | **Authoritative plugin config.** Registered marketplace sources. | Squad CLI (`squad plugin marketplace`) | Squad (Coordinator) |
 
@@ -944,6 +968,18 @@ If the user wants to remove someone:
 2. Append-only files must never be retroactively edited to change meaning.
 3. Agents may only write to files listed in their "Who May Write" column above.
 4. Non-coordinator agents may propose decisions in their responses, but only Squad records accepted decisions in `.squad/decisions.md`.
+
+### Feature-Branch State Policy (Core-Only State)
+
+Durable core (roster, routing, ceremonies, config, casting, charters, canonical decision *content*, reusable skills, governance/templates, `identity/wisdom.md`) is tracked and reviewable in any PR. High-churn derived state (`agents/{name}/history.md`, `identity/now.md`, `.squad/log/**`, `.squad/orchestration-log/**`, and the *consolidation* of `.squad/decisions/inbox/` into `decisions.md`) must never be written by feature agents on feature branches and must never land in a product feature PR.
+
+1. **On a feature branch** (`IS_FEATURE_BRANCH: true` — any branch that is not the repo default branch, e.g. `squad/{issue}-{slug}`):
+   - Feature agents do NOT append to their own `history.md`, do NOT touch `identity/now.md`, and do NOT write `.squad/log/**` or `.squad/orchestration-log/**`. They report reusable learnings in their **final response** to the coordinator, or drop a **decision inbox artifact** at `.squad/decisions/inbox/{name}-{brief-slug}.md` — this drop file is a report, not consolidated state, and is safe to write/commit on any branch (as is a new/updated `.squad/skills/{skill}/SKILL.md`).
+   - The coordinator does not update `.squad/identity/now.md` on a feature branch.
+   - Scribe is **not** spawned for state consolidation mid-feature (skip the "Spawn Scribe" step entirely). Decision-inbox files are left uncommitted-to-ledger for later consolidation.
+   - If a feature PR diff unavoidably touches `history.md`, `identity/now.md`, `.squad/log/`, or `.squad/orchestration-log/`, strip those hunks before requesting review.
+2. **After a feature PR merges to `main`, or via one dedicated state-only PR** (branch `squad/state-sync-{date}`, touching only the transient files above plus `.squad/decisions.md`/inbox): Scribe runs the full consolidation pass — orchestration log + session log entries, decision-inbox merge into `decisions.md` (dedupe, clear inbox), cross-agent history propagation, decisions archiving, history summarization, and an `identity/now.md` update. Never mix this consolidation into a product feature PR.
+3. This policy governs *when and where* transient state is written — it does not delete or rewrite any already-tracked history, decision, or log entry. Existing append-only content stays exactly as merged.
 
 ---
 

@@ -234,17 +234,24 @@ describe('AppMenuPopover', () => {
 		expect(await axe(container)).toHaveNoViolations();
 	});
 
-	describe('menu row geometry parity (#144 correction)', () => {
-		// Reopened #144: field validation found the active-item highlight
-		// visually inflating row height/whitespace relative to inactive rows.
-		// This locks the fix in place with a class-contract comparison —
-		// jsdom cannot compute real layout, so we assert on the Tailwind
-		// utility classes that *would* produce that geometry instead.
-
-		// Any class matching one of these prefixes is a colour-only affordance
-		// (background/text/ring tint) that active vs inactive rows are allowed
-		// to differ on. Everything else must be identical between the two, or
-		// one state is carrying its own box geometry.
+	describe('menu row geometry parity (#144 R2 correction)', () => {
+		// Reopened #144 / rejected #166 visual result: the active-item highlight
+		// still visually inflated the selected row. #166 used `min-h-11 py-1.5`
+		// — the internal 12px vertical padding (6px top + bottom) created blank
+		// zones within the 44px coloured box, making it visually "bubble" against
+		// inactive rows whose transparent background hid the same blank zones.
+		// R2 fix: `h-11` (exact 44px, NO py-*) locks both states to the same
+		// exact visible box. This suite locks that contract in place and MUST
+		// fail if any of the following regressions appear:
+		//   · active-only vertical geometry (padding, margin, height, min-height)
+		//   · list gap wider than gap-0.5
+		//   · return of min-h-11 or py-1.5 that can grow the box beyond 44px
+		//
+		// Tamper evidence (R2): added `class:h-14={active}` to the Devices <a>
+		// in AppMenuPopover.svelte → test "exact same non-colour class set" failed
+		// with `unexpected non-colour class diff: "h-14"`. Restored → 19/19 green.
+		// Also increased container to `gap-2` → test "compact container gap"
+		// failed: expected `gap-0.5` but class list had `gap-2`. Restored → green.
 		const COLOR_ONLY_PREFIXES = [
 			'bg-',
 			'text-',
@@ -292,12 +299,16 @@ describe('AppMenuPopover', () => {
 			expect(activeGeometry).toEqual(inactiveGeometry);
 		});
 
-		it('gives every row the same shared compact geometry: >=44px min-height, standard gap, standard radius', async () => {
+		it('gives every row the same shared compact geometry: exact 44px block height, standard gap, standard radius, no growth-inducing padding', async () => {
 			await openMenu();
 
 			for (const name of ['Devices', 'Reports', 'Settings']) {
 				const classes = rowClassList(getRow(name));
-				expect(classes).toContain('min-h-11'); // >= 44px touch target (WCAG 2.5.8)
+				// R2: exact h-11, NOT min-h-11 — prevents growth beyond 44px via padding
+				expect(classes).toContain('h-11'); // exact 44px block height (WCAG 2.5.8 touch target)
+				expect(classes).not.toContain('min-h-11'); // must not regress to #166's min-h approach
+				expect(classes).not.toContain('py-1.5'); // must not carry internal vertical padding that inflates the box
+				expect(classes).not.toContain('py-2'); // guard against any re-added vertical padding
 				expect(classes).toContain('gap-2'); // icon/label gap
 				expect(classes).toContain('rounded-lg'); // standard compact radius, not an oversized pill
 				expect(classes).not.toContain('rounded-xl');
@@ -305,13 +316,16 @@ describe('AppMenuPopover', () => {
 			}
 		});
 
-		it('places a single consistent token-scale gap on the role="menu" container instead of per-row/state spacing', async () => {
+		it('places a compact gap-0.5 (2px) on the role="menu" container — smallest token gap, tighter than #166 gap-1', async () => {
 			await openMenu();
 
 			const menu = screen.getByRole('menu');
 			const menuClasses = rowClassList(menu);
 			expect(menuClasses).toContain('flex-col');
-			expect(menuClasses.some((c) => /^gap-\d/.test(c))).toBe(true);
+			// R2: gap-0.5 (2px) — smallest useful Tailwind gap. Must not regress to gap-1 or wider.
+			expect(menuClasses).toContain('gap-0.5');
+			expect(menuClasses).not.toContain('gap-1');
+			expect(menuClasses).not.toContain('gap-2');
 		});
 
 		it('distinguishes active from inactive state visually (Devices carries active tint, Reports does not)', async () => {

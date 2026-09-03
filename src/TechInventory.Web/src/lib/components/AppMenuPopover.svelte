@@ -6,7 +6,7 @@
 	as horizontal links and the Configuration group is in AppDesktopConfigMenu.
 
 	Density (#144): rows use py-1.5 (vs the former py-2.5) with a 44px min-h
-	tap target preserved via min-h-[2.75rem]. Leading icons are rendered from
+	tap target preserved via min-h-11. Leading icons are rendered from
 	navIcons.ts so the role="menu" composite stays accessible (icons are
 	aria-hidden; labels carry the name).
 -->
@@ -169,7 +169,7 @@
 					role="menuitem"
 					tabindex="-1"
 					onclick={closeMenu}
-					class="flex min-h-[2.75rem] items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-medium transition-colors"
+					class="flex min-h-11 items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-medium transition-colors"
 					class:bg-primary-50={active}
 					class:text-primary-700={active}
 					class:dark:bg-primary-900={active}
@@ -202,7 +202,7 @@
 						role="menuitem"
 						tabindex="-1"
 						onclick={closeMenu}
-						class="flex min-h-[2.75rem] items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-medium transition-colors"
+						class="flex min-h-11 items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-medium transition-colors"
 						class:bg-primary-50={active}
 						class:text-primary-700={active}
 						class:dark:bg-primary-900={active}
@@ -229,7 +229,7 @@
 				role="menuitem"
 				tabindex="-1"
 				onclick={closeMenu}
-				class="flex min-h-[2.75rem] items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-medium transition-colors"
+				class="flex min-h-11 items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-medium transition-colors"
 				class:bg-primary-50={settingsActive}
 				class:text-primary-700={settingsActive}
 				class:dark:bg-primary-900={settingsActive}
@@ -278,7 +278,7 @@
 						closeMenu();
 						onSignOut();
 					}}
-					class="flex min-h-[2.75rem] w-full items-center gap-2 rounded-xl px-3 py-1.5 text-left text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+					class="flex min-h-11 w-full items-center gap-2 rounded-xl px-3 py-1.5 text-left text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
 				>
 					<svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={signOutIconPath} />

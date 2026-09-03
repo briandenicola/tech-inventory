@@ -61,9 +61,15 @@ as an explicit exception under `plan.md` §2.10, not silently dropped.
 | M-14 | WebKit/Safari spot check: `/devices`, a device detail page, and the filter sheet render correctly (safe-area insets, sticky headers) | | |
 | M-15 | Firefox spot check: `/devices` + filter sheet; keyboard-only pass reaches the nav, opens the menu, and Escape restores focus | | |
 | M-16 | Admin reference pages (`/admin/brands`, `/admin/categories`, `/admin/owners`, `/admin/locations`, `/admin/networks`, `/admin/tags`): keyboard navigation, labels, focus visibility, contrast, and responsive layout spot check | | |
+| M-17 | On a standard phone viewport (≤ 390 px wide, e.g. iPhone 14 / Pixel 7): open the mobile nav popover (`AppMenuPopover`) — every nav item row is at least 44 px tall and the full label is readable without truncation in both light and dark themes | | |
+| M-18 | On a desktop browser (≥ 768 px): open the header user-menu dropdown and the Configuration dropdown (`AppDesktopConfigMenu`) — each row is at least 44 px tall and renders correctly in both light and dark themes | | |
 
-**16 checks, all owner `briandenicola`.** M-16 compensates for the route-level
-composition gap identified by the post-major-work QC audit; the remaining
+**18 checks, all owner `briandenicola`.** M-16 compensates for the route-level
+composition gap identified by the post-major-work QC audit; M-17 and M-18 cover
+the mobile-popover and desktop-nav tap-target density introduced by issues #134
+and #144 (branch `squad/134-144-desktop-nav-density`) — these are rendered
+viewport observations that cannot be asserted by jsdom or in-process HTTP
+clients. The remaining
 checks exist only because their risks require a real browser environment. None
 duplicates an existing Vitest or HTTP
 integration/contract assertion — each exists only because the risk is

@@ -128,6 +128,44 @@ describe('/devices/[id]/edit (C-13 Viewer route guard)', () => {
 	});
 });
 
+describe('/devices/[id]/edit — #148 edit form wrapper containment contract', () => {
+	// ── TAMPER-TESTED sentinel ────────────────────────────────────────────────
+	// The edit page wraps <DeviceForm> in a div. That wrapper must carry
+	// overflow-x-hidden so narrow-viewport native inputs (iOS date, number)
+	// cannot push the page wider than the viewport — mirroring the
+	// AddDeviceModal scroll-body fix from #148.
+	beforeEach(() => {
+		resetFactories();
+		getMock.mockReset().mockResolvedValue(createDeviceResponse({ id: 'device-1' }));
+		listTagsMock.mockReset().mockResolvedValue([]);
+		authStore.set({
+			currentUser: { id: 'u1', role: 'Admin', displayName: 'T', entraObjectId: null },
+			isAuthenticated: true,
+			isLoading: false,
+			error: null,
+			authMethod: 'entra',
+			mustChangePassword: false
+		});
+	});
+
+	it('form wrapper carries overflow-x-hidden to contain native input overflow on iOS', async () => {
+		const { container } = render(Page);
+		await screen.findByLabelText(/^Name/);
+
+		// The form wrapper is the only non-loading, non-breadcrumb div that
+		// wraps DeviceForm; it carries overflow-x-hidden + rounded-lg + border.
+		const wrapper = container.querySelector('[class*="overflow-x-hidden"][class*="rounded-lg"]');
+		expect(
+			wrapper,
+			'edit page form wrapper must exist with overflow-x-hidden and rounded-lg'
+		).toBeTruthy();
+		expect(
+			wrapper!.className,
+			'edit page form wrapper must carry overflow-x-hidden to match AddDeviceModal #148 fix'
+		).toMatch(/\boverflow-x-hidden\b/);
+	});
+});
+
 describe('/devices/[id]/edit — status preservation on submit (#133)', () => {
 	// Valid RFC4122-shaped UUIDs so the zod deviceFormSchema (which validates
 	// categoryId/ownerId/locationId as `.uuid()`) accepts the pre-populated

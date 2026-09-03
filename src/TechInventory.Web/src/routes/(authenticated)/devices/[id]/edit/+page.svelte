@@ -283,7 +283,7 @@
 {:else if device}
 	<!-- Form -->
 	<div
-		class="rounded-lg border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-950"
+		class="overflow-x-hidden rounded-lg border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-950"
 	>
 		<DeviceForm
 			mode="edit"

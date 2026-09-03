@@ -1,17 +1,16 @@
 /**
  * DevicePwaList — field regression guards (#165).
  *
- * Issue: The inset-grouped list container carries `overflow-hidden` which
- * clips absolutely-positioned children — specifically the DeviceActionsMenu
+ * Issue: The inset-grouped list container carried `overflow-hidden` which
+ * clipped absolutely-positioned children — specifically the DeviceActionsMenu
  * dropdown that renders `absolute right-0 top-full` inside DevicePwaRow.
  * CSS overflow:hidden clips absolutely-positioned children even when their
- * z-index is high; the fix is to remove `overflow-hidden` from the row list
- * container (or replace it with `overflow-clip` / `overflow-visible`).
+ * z-index is high; the fix removes `overflow-hidden` from the row list
+ * container so the dropdown can escape the card boundary.
  *
- * PRE-FIX STATUS:
- *   The row list container currently carries `overflow-hidden`. This test is
- *   a pre-fix sentinel — it WILL FAIL on the current HEAD and pass once
- *   Vasquez removes the class in #165.
+ * TAMPER-TESTED: Both guards are currently met by the implementation.
+ *   Re-adding overflow-hidden to the row list container div causes the first
+ *   test to fail; restoring it makes it pass again.
  *
  * jsdom LIMITATION: jsdom cannot verify that removing overflow-hidden actually
  * un-clips the menu at runtime. The source contract test guards against the
@@ -72,16 +71,14 @@ describe('DevicePwaList — #165 row list container overflow contract', () => {
 		resetFactories();
 	});
 
-	// ── PRE-FIX sentinel ──────────────────────────────────────────────────────
+	// ── TAMPER-TESTED sentinel ───────────────────────────────────────────────
 	// The div that wraps <DevicePwaRow> items must NOT carry `overflow-hidden`.
 	// That class clips the absolutely-positioned DeviceActionsMenu dropdown
 	// regardless of the dropdown's z-index, causing the per-device action menu
 	// to be visually trapped inside the list container boundary.
-	//
-	// NOTE: This test WILL FAIL on the current HEAD.
-	// It will pass once Vasquez removes overflow-hidden from the rowList snippet
-	// in DevicePwaList.svelte as part of #165.
-	it('row list container does not carry overflow-hidden (pre-fix: will fail until Vasquez lands #165)', () => {
+	// Re-adding overflow-hidden to the row list container div causes this test
+	// to fail.
+	it('row list container does not carry overflow-hidden', () => {
 		const devices = createDeviceList(2);
 		const { container } = render(DevicePwaList, {
 			props: { devices, currentUser: null }

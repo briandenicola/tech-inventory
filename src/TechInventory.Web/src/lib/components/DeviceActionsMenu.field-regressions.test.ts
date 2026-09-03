@@ -14,7 +14,11 @@
  *      carry `overflow-hidden` (which would clip absolutely-positioned
  *      children regardless of z-index).
  *
- * TAMPER-TESTED: Both guards are currently met by the implementation.
+ *   3. compact prop: `compact=true` renders a ghost icon trigger (no border,
+ *      no background circle) for inline row/list contexts; `compact=false`
+ *      (default) retains the bordered circle used in DeviceDetailModal.
+ *
+ * TAMPER-TESTED: All guards are currently met by the implementation.
  * Removing `style="z-index: var(--z-dropdown);"` from the dropdown div, or
  * adding `overflow-hidden` to the root container, causes the respective test
  * to fail.  Restoring the source makes them pass again.
@@ -88,5 +92,46 @@ describe('DeviceActionsMenu — #165 tokenized z-index + overflow contract', () 
 			).not.toMatch(/\boverflow-hidden\b/);
 			node = node.parentElement;
 		}
+	});
+});
+
+describe('DeviceActionsMenu — #165 compact trigger visual contract', () => {
+	// ── TAMPER-TESTED sentinel ───────────────────────────────────────────────
+	// compact=true renders a ghost icon button (no border, no background
+	// circle) for inline DevicePwaRow contexts. The trigger must NOT carry
+	// the bordered-circle classes (rounded-full, border) that indicate a
+	// standalone detail-view affordance.
+	//
+	// The distinction matters for #165: DevicePwaRow passes compact so the
+	// trigger is visually lightweight inside the card, while DeviceDetailModal
+	// uses the default (compact=false) bordered circle.
+	it('compact=true trigger lacks rounded-full and border classes (ghost icon, no bordered bubble)', () => {
+		render(DeviceActionsMenu, { props: { compact: true, editHref: '/devices/d1/edit' } });
+		const trigger = screen.getByRole('button', { name: /more actions/i });
+		expect(
+			trigger.className,
+			'compact trigger must not carry rounded-full — that is the detail-view bordered-circle style'
+		).not.toMatch(/\brounded-full\b/);
+		expect(
+			trigger.className,
+			'compact trigger must not carry a border class — ghost triggers have no visible border ring'
+		).not.toMatch(/\bborder\b/);
+	});
+
+	// ── TAMPER-TESTED sentinel ───────────────────────────────────────────────
+	// compact=false (the default) retains the bordered circle used in
+	// DeviceDetailModal and the device detail page. The trigger must carry
+	// both rounded-full and border so it renders as a visible circle.
+	it('compact=false (default) trigger carries rounded-full and border classes (bordered circle preserved)', () => {
+		render(DeviceActionsMenu, { props: { editHref: '/devices/d1/edit' } });
+		const trigger = screen.getByRole('button', { name: /more actions/i });
+		expect(
+			trigger.className,
+			'default trigger must carry rounded-full — the bordered-circle affordance for detail views'
+		).toMatch(/\brounded-full\b/);
+		expect(
+			trigger.className,
+			'default trigger must carry border — the visible ring distinguishing it from ghost triggers'
+		).toMatch(/\bborder\b/);
 	});
 });

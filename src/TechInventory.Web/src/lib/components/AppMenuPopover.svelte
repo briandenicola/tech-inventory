@@ -190,7 +190,7 @@
 			{#if visibleAdminNavItems.length > 0}
 				<hr class="my-2 border-t border-neutral-200 dark:border-neutral-800" />
 				<div class="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-neutral-600 dark:text-neutral-400">
-					{t('navigation.admin')}
+					{t('navigation.configuration')}
 				</div>
 				{#each visibleAdminNavItems as item (item.href)}
 					{@const active = isNavItemActive(pathname, item)}

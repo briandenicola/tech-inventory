@@ -842,3 +842,89 @@ rejected pattern from T101's own B2 finding, `validation.md` §7) or to
 rewrite the evidence file in euphemism style to dodge the allowlist
 question entirely; both would have made a future real regression harder to
 catch, not easier.
+
+### 2026-09-03 — #129/#138 reference-deactivation PATCH route fix (PR #151)
+
+Assigned Wave 1 backlog item: admin "Deactivate" fails with 404 across all
+six reference entity types (Brands, Categories, Locations, Networks,
+Owners, Tags). Root cause investigation (not assumption) confirmed both
+issues share one cause: the frontend's `api.<entity>.deactivate()` calls
+`PATCH /api/v1/{entity}/{id}/deactivate`, but **no controller anywhere**
+exposed that route — every `Delete*Command` handler (`DeleteBrandCommand`,
+`DeleteCategoryCommand`, etc.) already performs a soft deactivate
+(`entity.Deactivate()`, never a hard delete) via the existing `DELETE {id}`
+endpoint, so the missing piece was purely the route, not the capability.
+
+**Design choice — reuse, don't duplicate:** added a
+`PATCH {id:guid}/deactivate` action to each of the six reference
+controllers, each delegating to the *existing* `Delete*Command`/handler
+rather than introducing a parallel `DeactivateXCommand`. This means
+authorization (`AdminOrMember`), the audit event
+(`AuditAction.Deleted` — there is no separate `Deactivated` enum value,
+confirmed by reading `AuditAction.cs`), ProblemDetails shaping, and every
+existing invariant come along for free with zero duplicated business logic:
+Category's cascade-to-active-descendants and Owner's
+block-while-device-referenced 409 guard both apply identically to the new
+route because it is *the same command*, not a copy.
+
+**Investigated rather than assumed on the Category/Owner invariants (per
+task brief):** read every `Delete*Command` handler before writing any
+controller code. Categories cascade-deactivate active descendants
+(`GetDescendants` walking a parent→children lookup) — confirmed this still
+fires correctly through the new route with a dedicated
+`DeactivateCategory_WhenArchivingParent_CascadesArchiveToChildren` test.
+Owners have a `HasAssignedDevicesAsync` guard blocking deactivation with
+409 while *any* device (active or historical) references the owner — this
+directly conflicts with #138's own acceptance criterion ("existing devices
+retain their historical owner reference" implies deactivation should
+succeed even with historical device links). Rather than silently "fixing"
+that business rule as part of a route-fix PR, left it untouched
+(scoped-fixes discipline: one root cause — the missing route — one fix)
+and flagged the tension explicitly on both the PR and both GitHub issues,
+plus a `.squad/decisions/inbox/hicks-wave1-deactivation.md` entry for
+Ripley/product to resolve. **Learning: when an issue's acceptance criteria
+imply a different business rule than the code you're about to reuse
+already encodes, don't quietly change the rule to make the criteria pass —
+surface the conflict as a named decision and ship the confirmed root-cause
+fix only.**
+
+**OpenAPI/generated-client regeneration, done through the existing
+workflow only:** used `task openapi:export` (regenerates `openapi.yaml`
+from the API project's `export-openapi` CLI command) then
+`pnpm run generate:client` (openapi-typescript regenerates
+`src/lib/api/generated/types.ts`) — confirmed via `git status --short`
+that only those two generated files plus the six controllers changed, no
+hand-edits to generated output.
+
+**Tamper test, done for real, not just described:** temporarily renamed
+the Brands `PATCH .../deactivate` route to `deactivate-TAMPERED`, rebuilt
+both the API and integration-test projects, reran the three new Brands
+deactivate tests — two failed with `Expected ... NoContent, but found
+NotFound` and `Expected ... Conflict, but found NotFound`, exactly
+reproducing the original bug's symptom — then restored the route, rebuilt,
+and reran (15/15 Brands tests green) before moving on.
+
+**`task verify` timing surprise:** the full pipeline appeared to hang for
+~10+ minutes at `check:security` (repo-wide gitleaks scan via
+`scripts/check-security.mjs --repo`) with almost no visible progress and
+low CPU on the `gitleaks`/`node` processes — looked exactly like a deadlock
+from the process list alone. It was not: it finished on its own
+(`Security scan (repo) passed for 941 file(s).`) and the whole `task verify`
+run completed with exit 0 end to end (278 unit + 313 integration tests,
+frontend build/lint/tests, OpenAPI/client drift, EF migration drift, all
+green). **Learning: a long silent gap in `task verify` output during
+`check:security` on this repo size is apparently normal, not a hang — don't
+kill and restart prematurely; `Get-Process` CPU deltas here were a poor
+signal since the tool alternates short-lived `gitleaks`/`node` child
+processes rather than one long-running one.** This matches Hudson/Apone's
+prior "F-17: align check-security.mjs --repo to tracked + untracked
+non-ignored file enumeration" backlog note — the scan surface (941 files)
+is wide by design, so its wall-clock cost is a known, not a bug.
+
+**Validation:** `dotnet format --verify-no-changes` clean; `dotnet build -c
+Release` 0 warnings/errors; `dotnet test -c Release` 278 unit + 313
+integration passing (4 pre-existing skips); `task verify` exit 0 end to
+end. Commit `f642c4e` on `squad/129-reference-deactivation`, pushed, PR
+#151 opened against `main` (not merged). Both #129 and #138 commented with
+root-cause notes cross-referencing each other and the PR, `squad:hicks`
+label applied to both, neither closed pending PR merge.

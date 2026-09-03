@@ -1,49 +1,40 @@
 ---
-updated_at: 2026-09-03T13:40:00Z
-focus_area: Wave 3/4 complete; manual PWA validation and backlog triage ahead
-active_issues: Wave 3/4 merged to main (PRs #158, #159, #160, #161); QC audit complete, 0 blockers
+updated_at: 2026-09-03T15:15:00Z
+focus_area: Wave 5 complete; all seven issues closed, all two PRs merged; manual PWA validation (M-19/M-20/M-21) pending device testing; concurrent PR #149 proceeding independently
+active_issues: Wave 5 merged to main at commit 7247623 (+ concurrent PR #166 post-merge → 9558e51); 7 GitHub issues closed; zero QC blockers; 1381 tests cumulative green
 ---
 
 # What We're Focused On
 
-**Wave 3/4 Desktop & Mobile UX is COMPLETE and APPROVED** (commit `9895a70`, 2026-09-03).
+**Wave 5 Device-List Cleanup & PWA Chrome Refinement is COMPLETE and APPROVED** (commits `c015cebf` → `7247623`, 2026-09-03).
 
-Three feature streams implemented in parallel, validated comprehensively, and merged to main with zero blockers:
-- **PR #158:** Definition-list semantic refactoring for device detail (issue #137)
-- **PR #159:** Inline quick-create for Category/Brand/Location from device form (issue #136)
-- **PR #160:** Desktop primary navigation + mobile compact menu density (issues #134/#144)
-- **PR #161:** Merge-order correction for nav spacing baseline alignment (design-token hygiene)
+Seven feature issues implemented in two parallel PR streams, validated comprehensively, and merged to main with zero blockers:
+- **PR #162:** Device-list cleanup — status badges (#142), PWA single-view (#141), list-only guards (#145)
+- **PR #163:** PWA chrome refinement — bottom-nav pill (#143), anchored menu (#146), app-bar scroll (#147), date containment (#148)
 
-**Immediate next action:** Manual PWA validation (M-17/M-18 checklist)
-- M-17: Pull-to-refresh behavior on iOS 17.1+ (owner: Brian)
-- M-18: Manifest icon rendering on Android 13+ (owner: Brian)
-- Pending items: `max-h-[85vh]` token convention ADR, DeviceForm composition extract recommendation, cosmetic AppLayout spacing polish
+**Current state:**
+- All 7 issues closed (#142, #141, #145, #143, #146, #147, #148)
+- All 2 PRs merged to main (wave 5 span: c015cebf → 7247623; concurrent #166 → 9558e51 current HEAD)
+- Cumulative main audit (7247623): 1381 tests green (279 unit + 316 integration + 786 frontend)
+- Architecture review: Ripley QC complete, 0 blockers
+- Security gates: gitleaks, Trivy, SBOM, vulnerability scan all green
+- Accessibility: 0 axe-core violations across all PWA routes
 
-**Wave 3/4 state:**
-- Code coverage: 87% on Domain+Application (exceeds 85% floor)
-- Tests green: 279 unit + 316 integration + 760 frontend = 1355 ✓
-- Accessibility: 0 axe-core violations across all three streams
-- QC audit: Ripley review complete, 0 blockers identified
-- Permission gates: +23 tests added, 100% coverage on quick-create mutations
-- Main branch: Commit `9895a70`, ready for deployment
+**Immediate next action:** Manual PWA validation (M-19/M-20/M-21 checklist, owner: Brian)
+- M-19: Pull-to-refresh behavior on iOS 17.1+ (gesture support, notification)
+- M-20: Manifest icon rendering on Android 13+ (home screen, app drawer, 192px + 512px variants)
+- M-21: Bottom-nav persistence & scroll behavior (stickiness across routes, scroll containment)
+- Pending items: Explicit owner assignment to Brian; pre-release gate status; completion target
 
-**Backlog triage complete** (#127–#148 prioritized in seven-wave sequence):
-- Wave 5: #130 (Admin bulk-delete contract mismatch)
-- Wave 5b: #129+#138 (Admin bulk-deactivate 404 fix)
-- Wave 6: #133→#127 (Priority: silent status reset fix → retire/unretire unwind)
-- Wave 6b: #132→#128 (Filter category tree, inactive badge)
-- Wave 7: #135→#139 (Settings placeholder, nav label)
-- Wave 8: #142→#145→#141→#143→#146→#147→#148 (PWA wave: batch operations, export refinement, reporting dashboard)
-- Wave 9: #131→#136 (Clone device, quick-create refinement)
-- Wave 10: #134→#144→#137 (Advanced nav patterns, mobile density follow-up)
+**Wave 5 engineering decisions codified:**
+- **D-185:** Z-Index canonical ladder (sticky 20 < fixed 30 < modal-backdrop 40 < modal 50 < popover 60 < tooltip 70)
+- **D-186:** PWA presentation modes (three orthogonal patterns: PWA, Mobile, Desktop; detected via `isStandalonePwa()`, never viewport breakpoints)
+- **D-187:** Fixed-element containing-block safety (all `transition-*`, `will-change`, `filter` on layout wrappers must be conditional or absent; WebKit bug 160953 mitigation)
+- **D-188:** Reference bulk-delete (#130) — no server-side referential guard; client-side pre-flight only; backend hardening recommended
+- **D-189:** Device edit Status control (#133) — no new ownership gating; pre-existing authorization gap documented
 
-**Known follow-ups** (post-Wave 3/4, non-blocking):
-- F-17: Align `check-security.mjs --repo` to tracked + untracked file enumeration
-- Migration drift: Make check clean/rebuild-safe for incremental build output
-- Design-token convention: Establish guideline for `max-h-[85vh]` vs. semantic tokens
-- Component size: DeviceForm (590 lines) recommend composition extract in next polish
-- Cosmetic Polish: AppLayout spacing micro-adjustment (D-169, deferred)
+**Phase**: Post-Wave 5 release candidate. Main ready for manual PWA validation and release. No further product code changes needed before M-19/M-20/M-21 sign-off.
 
-**Phase**: Post-Wave 3/4 release candidate. Main ready for manual PWA validation and/or deployment. No further product code changes pending.
+**Concurrent work:** PR #149 (`squad/149-api-key-support-spec`) proceeding independently on separate branch; no blockers from Wave 5; state unchanged.
 
-Updated by Scribe at session end: Wave 3/4 merged, QC audit complete, 0 blockers, ready for manual PWA validation.
+Updated by Scribe at session end: Wave 5 complete, all 7 issues closed, both PRs merged, cumulative gate passed, manual PWA checks M-19/M-20/M-21 pending Brian's device testing.

@@ -849,3 +849,59 @@ PR from `fix/ios-pwa-silent-sso-redirect` → review → merge.
 
 **Merge Status:** ✓ All merged to main. QC audit by Ripley: 0 blockers. Ready for manual PWA validation (M-17/M-18) or deployment.
 
+## 2026-09-03 — Wave 5 Implementation: Device-List Cleanup & PWA Chrome Refinement (PRs #162, #163)
+
+**Scope:** Two parallel feature streams (W5A device-list cleanup, W5B PWA chrome refinement) across 7 GitHub issues and 2 PRs.
+
+**W5A Device-List Cleanup (PR #162, commit c015cebf):**
+- **#142:** Unified device status indicators → `DeviceStatusBadge.svelte` component (reusable, consistent typography/color/a11y)
+- **#141:** PWA single-view guards (header/nav hidden in standalone mode via `isStandalonePwa()`)
+- **#145:** Role-based action menu gating (Viewer sees no edit/delete buttons)
+- Added 12 Vitest test assertions covering badge rendering, PWA mode detection, role-visibility
+- QC: Apone tamper-tested badge spoofing, PWA mode bypass attempts, role-gated actions → exit 0
+
+**W5B PWA Chrome & Navigation (PR #163, commit 7247623):**
+- **#143:** Persistent bottom-nav pill (3.5rem, 3 equal-width items: DeviceList, Export, Settings)
+- **#146:** Anchored menu popover (no backdrop, no scroll-lock, positioned to bottom-nav)
+- **#147:** App-bar scroll containment (z-index layer enforcement, header/nav/menu non-collision)
+- **#148:** Date field containment in PWA rows (no overflow, proper line-height respect)
+- **DeviceTable.svelte refactor:** Thin selector + per-mode renderers (desktop table, mobile cards, PWA rows) — splits 596-line component correctly across three presentation modes
+- Added 17 Vitest test assertions + manual PWA checks (M-19/M-20/M-21)
+- Established z-index canonical ladder (D-185): sticky 20 < fixed 30 < modal-backdrop 40 < modal 50 < popover 60 < tooltip 70
+- Established PWA presentation modes (D-186): three orthogonal patterns (PWA, Mobile, Desktop) detected via `isStandalonePwa()`, never viewport breakpoints
+- Established fixed-element containing-block safety (D-187): all `transition-*`, `will-change`, `filter` on layout wrappers must be conditional or absent (WebKit bug 160953 mitigation)
+- QC: Apone tamper-tested bottom-nav bypasses, menu anchor safety, date overflow; cumulative main audit at 7247623 → 1381 tests green, all security gates green, zero axe-core violations → exit 0
+
+**Key Implementation Learnings:**
+
+- **Z-index ladder is now project canon.** The canonical `--z-sticky: 20`, `--z-fixed: 30`, `--z-modal-backdrop: 40`, `--z-modal: 50`, `--z-popover: 60`, `--z-tooltip: 70` prevents accidental stacking-context traps. Never use z-50+ on page-level elements; reserve for modals/overlays. One stray `z-50` on an app header trapped modal content in an inescapable stacking context — fixed and now enforced.
+
+- **PWA presentation modes require orthogonal detection.** Conflating viewport breakpoints with PWA status (installed-app chrome) led to logic errors — narrow desktop window should never render bottom-nav pill. `isStandalonePwa()` is the single source of truth (reused auth-module primitive from D-170/D-171). All PWA chrome conditional only on this boolean; responsive design is orthogonal.
+
+- **Implicit-default pattern is reinforced.** F045 PWA category grouping follows F026 pattern: apply a default, do NOT write to URL, do NOT count in active-filter badge, provide explicit sentinel to defeat it. Prevents URL pollution and shared-link poisoning. Reuses `setDevicesViewState` session restore.
+
+- **Fixed-element containing-block trap is WebKit-specific and dangerous.** Even an inactive `transition-property: transform` (from Tailwind `transition-transform`) creates containing block for fixed descendants (WebKit bug 160953). Established D-187 mitigation: all `transition-*`, `will-change`, `filter`, `contain` on layout wrappers must be conditional via `class:` directives or absent. Tests mandatory for any component with fixed descendants. **This is not theory** — it manifests in production as menu items appearing mid-page instead of anchored to viewport.
+
+- **Vestigial props fossilize quickly.** FAB `raised` prop from pre-D-129 era became dead code after design decision repositioned FABs to opposite corners. Removing it cleanly revealed both FABs now use identical positioning. Pattern: when design decisions supersede a component's purpose, aggressively prune vestigial code **in the same PR**. Leaving it to "refactor later" results in fossil code nobody dares touch.
+
+- **Component renderer split must be done right.** `DeviceTable.svelte` was 596 lines (exceeding 200-line guideline) with three renderers inline (desktop table, mobile cards, PWA rows). Splitting into thin selector + per-mode components is the only acceptable pattern for multi-renderer components. Tried inline renderer #4? No — split is precondition of the feature, not follow-up.
+
+- **Cumulative main audit required after major UI refresh.** W5A+B introduced new PWA chrome, new navigation patterns, new component split strategy. After both PRs merged, full `task verify` on main (not per-PR validation) caught no issues: 1381 tests green, all security gates green. This is the only validation that catches ordering issues and cumulative regressions.
+
+- **Role-based UI gating must be backed by backend guards.** Wave 5 frontend added role-based action menu visibility; backend `[Authorize]` is the authoritative guard. QC discovered bulk-delete operations lack server-side referential checks (D-188, client-side pre-flight only). Risk flagged for backend hardening; soft-delete non-destructive means not a blocker. Frontend affordances guide UX; backend guards enforce security.
+
+- **Safe-area-inset is not optional for iOS PWA.** Bottom-nav positioning must account for `safe-area-inset-bottom` (home bar clearance). Modal top padding must account for `safe-area-inset-top` (notch + status bar). Use `env(safe-area-inset-*)` in CSS or `padding: 0 var(--space-6)` via design tokens; never ignore it.
+
+- **Manual PWA validation checklist must be explicit and owned.** M-19 (Pull-to-Refresh iOS 17.1+), M-20 (Manifest icon Android 13+), M-21 (Bottom-nav persistence) added to `docs/testing/manual-pwa-validation.md` with owner (Brian), cadence, and closure criterion. Implicit "test it on device" gets forgotten; explicit checklist makes it part of release definition.
+
+**Validation:**
+✅ Targeted: W5A 12 assertions, W5B 17 assertions
+✅ Full: Cumulative main at 7247623 — 1381 tests green (279 unit + 316 integration + 786 frontend)
+✅ Security: gitleaks (0 secrets), Trivy (0 CVEs), SBOM generated, dotnet list package --vulnerable (0 flagged)
+✅ Accessibility: zero axe-core violations across all new PWA routes
+✅ Client drift: generated OpenAPI client validated against runtime schema
+✅ Tamper-test #162: removed role-visibility guard in DeviceTable → 2/12 assertions failed as expected (Viewer sees edit/delete); restored, green
+✅ Tamper-test #163: removed conditional on `transition-transform` in AppMenuPopover → containing-block test failures detected correct containing-block presence; restored, green
+
+**Commits:** `c015cebf` (PR #162), `7247623` (PR #163) on `main`. Both merged to main; no blockers. Ready for manual PWA validation (M-19/M-20/M-21 owner: Brian) before release.
+

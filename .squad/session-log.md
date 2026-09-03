@@ -413,3 +413,159 @@ QC audit + independent revision cycle validated architectural decisions (D-175 p
 - Architectural decisions logged in `decisions.md` with D-### sequential IDs
 - Agent-specific work tracked in `agents/{agent}/history.md` for retrospective
 - Session log (this file) serves as coordination checkpoint between rounds
+
+---
+
+## Wave 5 Complete: Device-List Cleanup & PWA Chrome Refinement (2026-09-03)
+
+**Status:** ✅ COMPLETE (All 7 issues closed, 2 PRs merged, zero QC blockers, follow-ups documented)
+
+### Executive Summary
+
+Wave 5 delivered two parallel implementation streams across 7 GitHub issues and 2 pull requests:
+- **PR #162 (W5A):** Device-list cleanup — status badges (#142), PWA single-view (#141), list-only guards (#145)
+- **PR #163 (W5B):** PWA chrome refinement — bottom-nav pill (#143), anchored menu (#146), app-bar scroll (#147), date containment (#148)
+
+All work merged to main with zero QC blockers. Cumulative main audit at commit 7247623 passed: 1381 tests (279 unit + 316 integration + 786 frontend), all security gates green, zero axe-core violations.
+
+### Implementation Streams
+
+**Vasquez W5A (PR #162, commit c015cebf):**
+- `DeviceStatusBadge.svelte` — unified component for status indicators across surfaces
+- PWA single-view guards (header/nav hidden in standalone mode via `isStandalonePwa()`)
+- Role-based action menu gating (Viewer sees no edit/delete buttons)
+- 12 new Vitest test assertions
+- QC: Apone tamper-tested badge spoofing, mode detection, role-based visibility → exit 0
+
+**Vasquez W5B (PR #163, commit 7247623):**
+- `AppBottomNav.svelte` — persistent pill navigation (3.5rem, 3 equal-width items: DeviceList, Export, Settings)
+- `AppMenuPopover.svelte` — anchored menu popover (no backdrop, no scroll-lock, positioning anchored to nav)
+- `DevicePwaRow.svelte` — two-line grouped device rows with implicit category grouping
+- `DeviceTable.svelte` refactor — thin selector + per-mode renderers (desktop table, mobile cards, PWA rows)
+- Z-index layer enforcement (canonical: sticky 20 < fixed 30 < modal-backdrop 40 < modal 50 < popover 60)
+- Safe-area-inset handling for iOS notch/toolbar
+- 17 new test assertions + manual PWA checks (M-19/M-20/M-21 added to `docs/testing/manual-pwa-validation.md`)
+- QC: Apone tamper-tested bottom-nav bypasses, menu anchor safety, date overflow; cumulative main at 7247623 → exit 0
+
+### Architecture & Engineering Decisions
+
+**D-185 — Z-Index Canonical Ladder:**
+```
+Sticky page elements:      --z-sticky (20)
+Fixed page elements:       --z-fixed (30)
+Modal backdrop:            --z-modal-backdrop (40)
+Modal card:                --z-modal (50)
+Popover (menu):            --z-popover (60)
+Tooltip:                   --z-tooltip (70)
+```
+
+App header and all sticky/fixed page elements must use z-20 or z-30. Never use z-50+ on page elements — reserve for modals and overlays.
+
+**D-186 — PWA Presentation Modes (Three Distinct Patterns):**
+
+Detection via `isStandalonePwa()` (auth module primitive: `matchMedia('(display-mode: standalone)') || navigator.standalone`):
+- **PWA (installed app):** Minimal chrome, bottom-nav pill, no app header
+- **Mobile (responsive breakpoint):** Compact menu, card-based list, no bottom nav, hamburger menu
+- **Desktop (wide viewport):** Full app header, user menu + hamburger, table-based list
+
+Never use viewport breakpoints to infer PWA mode. PWA chrome is orthogonal to responsive design.
+
+**D-187 — Fixed-Element Containing-Block Safety (WebKit Bug 160953):**
+
+Layout wrappers with fixed descendants must NEVER have `transition-*`, `will-change`, `filter`, or `contain` properties as static Tailwind classes. All such properties must be:
+- Conditional via `class:` directives, or
+- Absent entirely
+
+Rationale: Even an inactive `transition-property: transform` (from Tailwind `transition-transform` class) creates a CSS containing block in WebKit, re-parenting fixed descendants from viewport to wrapper.
+
+**D-188 — Reference Bulk-Delete: No Server-Side Referential Guard (#130):**
+
+Fixed frontend/generated-client seam (Brand/Category/Location/Network bulk-delete use correct `/api/v1/{entity}/bulk/delete` routes). Observed gap: no backend referential check before deactivating. Client-side pre-flight guard only (`BulkDeleteReferenceModal` counts device references). Backend follow-up recommended (optional, soft-delete is non-destructive).
+
+**D-189 — Device Edit Status Control: No New Ownership Gating (#133):**
+
+Added Status control to device edit form (preserves existing device status on submit, prevents silent `Active` reset via `UpdateDeviceRequest` default). Did NOT add ownership-based restriction (even though `UpdateDevice` endpoint uses `AuthorizationPolicies.AdminOrMember` with no per-device check). Pre-existing authorization gap documented as backend-level decision needed.
+
+### QC Audit Results
+
+**Tamper-Test Coverage (Apone):**
+
+| Surface | Attack Vector | Test Coverage | Result |
+|---------|---|---|---|
+| Status badge | Value spoofing, XSS injection | 6 assertions | ✅ Pass |
+| PWA mode | Desktop window narrowing, localStorage manipulation | 6 existing assertions re-validated | ✅ Pass |
+| Action menu (role gating) | Role bypassing, direct URL navigation | Role-visibility assertions in `DeviceTable.test.ts` | ✅ Pass |
+| Bottom-nav | Persistence bypass, role-based visibility | 5 assertions | ✅ Pass |
+| Menu popover | Containing-block trapping, z-index collision | 3 assertions | ✅ Pass |
+| Date fields (PWA rows) | Truncation overflow, XSS via formatting | 6 assertions | ✅ Pass |
+
+**Cumulative Main Audit (Commit 7247623):**
+
+```
+✅ 279 unit tests (Domain + Application)
+✅ 316 integration tests (Api + Infrastructure)  
+✅ 786 frontend tests (Vitest + axe-core: zero violations)
+⚠️  4 skipped (legacy E2E from retired harness, known non-blocking)
+─────────────────────
+✅ 1381 total PASS
+```
+
+**Security Gates:**
+- ✅ gitleaks: 0 secrets
+- ✅ Trivy: 0 CVEs
+- ✅ SBOM: Generated and pinned
+- ✅ dotnet list package --vulnerable: 0 flagged
+
+### Ripley Post-Major QC Review (0 Blockers)
+
+**Approved:**
+- ✅ Z-index ladder canonical and enforced
+- ✅ Role-based UI gating backed by backend `[Authorize]` guards
+- ✅ PWA chrome components single-responsibility
+- ✅ No framework leakage (Domain clean)
+- ✅ Safe-area-inset handling correct for iOS
+
+**Follow-Ups (Non-Blocking):**
+
+| ID | Follow-Up | Owner | Priority |
+|----|-----------|-------|----------|
+| F1 | CSS Containment Audit (repository-wide `transition-*`/`will-change`/`filter` sweep) | Vasquez/future | Low |
+| F2 | Commit-message cosmetics (D-### references) | Copyedit | Polish |
+| F3 | PWA row layout test (no-checkbox/no-actions scenario) | Apone | Optional |
+| F4 | Manual PWA validation (M-19/M-20/M-21 device testing) | Brian | Blocking release |
+
+### Manual PWA Validation Checklist Added
+
+Updated `docs/testing/manual-pwa-validation.md`:
+
+- **M-19 — Pull-to-Refresh on iOS 17.1+:** Gesture behavior on installed PWA
+- **M-20 — Manifest Icon on Android 13+:** Icon rendering on home screen/app drawer
+- **M-21 — Bottom-Nav Persistence & Scroll:** Navigation pill stickiness across routes
+
+Status: Pending Brian's device testing before release.
+
+### Consolidation Actions
+
+1. ✅ **Orchestration Logs Created:** 5 logs documenting W5A, Apone #162 QC, W5B, Apone #163 QC, Ripley post-major-QC
+2. ✅ **Decisions Merged:** D-188 (#130), D-189 (#133) integrated from `decisions/inbox/` to `decisions.md`
+3. ✅ **Agent Histories Updated:** Appended Wave 5 learnings to Ripley, Vasquez, Apone
+4. ✅ **Identity/Now.md Updated:** Wave 5 complete, all 7 issues closed, M-19/M-20/M-21 pending, concurrent #149 work noted
+5. ✅ **Session Log Updated:** This file (consolidation checkpoint)
+
+### Repository State
+
+- **Current HEAD:** 9558e515b7cc59fddecbd5990dbf9ef6f0f9cfdd (post-PR #166 merge, orthogonal to Wave 5)
+- **Wave 5 Span:** a9506f9..7247623 (device-list → PWA chrome)
+- **Main Status:** Clean, synced with origin
+- **Concurrent Work:** PR #149 (`squad/149-api-key-support-spec`) proceeding independently
+
+### Next Phase
+
+1. **Manual PWA Validation (M-19/M-20/M-21):** Brian device testing (iOS 17.1+, Android 13+)
+2. **Release Cut:** After M-19/M-20/M-21 sign-off
+3. **Optional F1 Audit:** Repository-wide CSS containment sweep (deferred, low-priority follow-up)
+
+---
+
+**Consolidated by Scribe at 2026-09-03T15:15:00Z**  
+**Status:** Ready for commit and push

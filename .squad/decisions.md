@@ -4766,3 +4766,180 @@ D-170 contains the security gates and constraints. D-171 is the implementation v
 **Implementation:** Backlog triage completed (see `.squad/identity/now.md`); seven-wave sequence established: Wave 5 (#130); Wave 5b (#129+#138); Wave 6 (#133→#127); Wave 6b (#132→#128); Wave 7 (#135→#139); Wave 8 (#142→#145→#141→#143→#146→#147→#148 as PWA additions); Wave 9 (#131→#136); Wave 10 (#134→#144→#137). Ready for Brian's approval before next spawn.
 
 ---
+
+### D-185: Z-Index Canonical Ladder — Modal/Overlay Layering
+
+- **Author:** Ripley (Architect)
+- **Date:** 2026-09-03
+- **Status:** Decided (Approved by Ripley, implemented in Wave 5)
+- **Related:** PR #162, PR #163, F045 PWA shell, WebKit containing-block audit
+
+**Decision.** Establish canonical z-index scale for all modal, overlay, and fixed-element layers:
+
+```
+--z-sticky (20):              Page-level sticky elements (e.g., device table headers)
+--z-fixed (30):               Page-level fixed elements (e.g., app header, FABs)
+--z-modal-backdrop (40):      Modal backdrop overlay (darkens page)
+--z-modal (50):               Modal card (higher than backdrop)
+--z-popover (60):             Popover menus, tooltips (e.g., app menu, user menu)
+--z-tooltip (70):             Tooltip (highest, for edge-case overlaps)
+```
+
+**Rationale:** Prevents accidental stacking-context traps. App header and all sticky/fixed page elements MUST use z-20 or z-30. Never use z-50+ on page elements — reserve for modals and overlays.
+
+**Consequences:** 
+- All existing and future fixed/sticky elements audited and re-layered
+- `AppLayout.svelte` header changed from z-50 to z-30
+- Modal positioning wrappers use z-40 backdrop (respects app header)
+- Popover/menu uses z-60 (above modals)
+- New components must declare z-layer intent in component charter
+
+---
+
+### D-186: PWA Presentation Modes — Three Distinct Patterns (Not Viewport-Based)
+
+- **Author:** Ripley (Architect)
+- **Date:** 2026-09-03
+- **Status:** Decided (Approved by Ripley, implemented in Wave 5)
+- **Related:** PR #162 (PWA single-view), PR #163 (PWA chrome), F045 feature, `isStandalonePwa()` auth primitive
+
+**Decision.** Three presentation modes detected via `isStandalonePwa()` function (reuses auth module's iOS detection logic):
+
+1. **PWA (Installed App):** `isStandalonePwa() === true`
+   - Minimal chrome: no app header, no hamburger menu
+   - Bottom-nav pill (persistent across routes)
+   - Single-column device layout (PWA rows, no table)
+   - Implicit category grouping (no URL pollution)
+
+2. **Mobile (Responsive Breakpoint):** `isStandalonePwa() === false` AND viewport < 768px
+   - Compact menu (hamburger + user menu)
+   - Card-based device layout (2-up or stacked cards)
+   - No bottom-nav pill
+   - Full header with back navigation
+
+3. **Desktop (Wide Viewport):** `isStandalonePwa() === false` AND viewport >= 768px
+   - Full app header (user menu + hamburger)
+   - Table-based device list
+   - No bottom-nav pill
+   - Full navigation menus
+
+**Rationale:** Conflating viewport breakpoints with PWA detection led to logic errors (narrow desktop window triggering PWA chrome). `isStandalonePwa()` is the single source of truth for PWA mode. Responsive design (viewport breakpoints) is orthogonal and applies within each presentation mode.
+
+**Detection Logic (reused from D-170/D-171):**
+```javascript
+export function isStandalonePwa(): boolean {
+  return matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+}
+```
+
+**Consequences:**
+- No duplicated mode-detection logic in components
+- PWA chrome components (`AppBottomNav`, `AppMenuPopover`) conditional only on `isStandalonePwa()`, never on viewport width
+- Desktop narrow-window never renders PWA affordances
+- iOS PWA (home-screen app) and Android PWA (installed via Chrome) both correctly detected
+
+---
+
+### D-187: Fixed-Element Containing-Block Safety — WebKit Bug 160953 Mitigation
+
+- **Author:** Ripley (Architect)
+- **Date:** 2026-09-03
+- **Status:** Decided (Approved by Ripley, implemented in Wave 5 containment tests)
+- **Related:** PR #163 (PWA chrome), WebKit bug 160953, `AppMenuPopover.containing-block.test.ts`
+
+**Decision.** Layout wrappers with fixed descendants must NEVER have `transition-*`, `will-change`, `filter`, or `contain` properties as static Tailwind classes. All such properties must be:
+- Conditional via `class:` directives (only applied when active), or
+- Absent entirely
+
+**Rationale:** WebKit bug 160953 — even an inactive `transition-property: transform` (from Tailwind `transition-transform` class) creates a CSS containing block for `position: fixed` descendants, re-parenting them from viewport to wrapper. Result: fixed elements (FABs, modals, popovers) appear mid-page over content instead of anchored to viewport.
+
+**Examples of Problematic Patterns:**
+- ❌ `<div class="transition-transform duration-200 ease-out">{children}</div>` — always creates containing block
+- ❌ `<div class="will-change-transform">{children}</div>` — always creates containing block
+- ✅ `<div class:transition-transform={isAnimating}>{children}</div>` — conditional, safe
+- ✅ `<div class="transform" class:transition-transform={isAnimating}>{children}</div>` — transform conditional, safe
+
+**Test Coverage:** `AppMenuPopover.containing-block.test.ts` (3 assertions):
+1. Menu popover does not have `transition-*` as static class
+2. Menu popover does not have `will-change` as static class
+3. Menu popover's fixed descendants (popup menu items) resolve z-index against viewport, not wrapper
+
+**Consequences:**
+- All PullToRefresh, modal, and popover components audited for conditional CSS properties
+- New components with fixed descendants require containing-block test
+- Future layout refactors must verify fixed descendants remain viewport-parented
+
+---
+
+### D-188: Reference Bulk-Delete (#130) — No Server-Side Referential Guard, Client-Side Pre-Flight Only
+
+- **Author:** Vasquez (Frontend), validated by Ripley (Architect)
+- **Date:** 2026-09-03
+- **Status:** Implemented with Backend Follow-Up Recommendation
+- **Related:** Issue #130, PR #153 (#162/#163 merged but upstream decision applies)
+
+**Decision.** Fixed the frontend/generated-client seam so Brand/Category/Location/Network bulk-delete commands use the correct `/api/v1/{entity}/bulk/delete` routes with entity-specific request bodies (`brandIds`, `categoryIds`, `locationIds`, `networkIds`). All four commands perform soft-deactivate only (no hard-delete introduced).
+
+**What Was Fixed:**
+- Generated OpenAPI client types now match backend routes
+- Frontend `BulkDeleteReferenceModal.svelte` calls `fetchReferenceDeviceCount` per selected item
+- Submit button disabled if any item has active device references (client-side UX guard)
+- Pattern matches existing `devices.bulkDelete` implementation
+
+**Observed Gap (Backend-Owned, Not Fixed):**
+None of the four backend bulk-delete handlers (`BulkDeleteBrandsCommand`, `BulkDeleteCategoriesCommand`, `BulkDeleteLocationsCommand`, `BulkDeleteNetworksCommand`) validate referential integrity before deactivating. The only guard is client-side pre-flight.
+
+**Risk:**
+- Concurrent bulk-delete requests could bypass client guard
+- External API callers (scripts, future mobile app) bypassing frontend would see no server-side refusal
+- Soft-delete is non-destructive (reversible), so treated as hardening follow-up rather than blocker
+
+**Recommendation for Backend (Hicks):**
+Add server-side referential check to each bulk-delete handler, returning `Conflict` response for referenced items, mirroring `fetchReferenceDeviceCount` logic server-side.
+
+**Consequences:**
+- Frontend user cannot accidentally deactivate referenced reference entities
+- Backend remains vulnerable to direct API calls; hardening recommended
+- Status: frontend seam fixed; backend decision pending
+
+---
+
+### D-189: Device Edit Status Control (#133) — Preserves Status; No New Ownership Gating
+
+- **Author:** Vasquez (Frontend), validated by Ripley (Architect)
+- **Date:** 2026-09-03
+- **Status:** Implemented with Backend Authorization Gap Documented
+- **Related:** Issue #133, PR #153 (#162/#163 merged but upstream decision applies)
+
+**Decision.** Added `Status` control to device edit form so `status` is always forwarded on submit, fixing the defect where omitted status caused `UpdateDeviceRequest.Status`'s C# default (`Active`) to silently reactivate/reset InRepair/Lent/Retired devices on any other form edit.
+
+**What Was Fixed:**
+- Device edit form now always includes `status` in payload
+- Preserves `retiredDate` and `disposalMethod` in payload when device status is `Retired` (backend guard requires exact field match)
+- Prevents silent status reset on form save
+
+**Authorization Decision:**
+Did NOT add ownership-based restriction to the new edit-form Status control, even though backend endpoint uses `AuthorizationPolicies.AdminOrMember` with no per-device ownership check. Frontend's existing `canRetireDevice` / `canUnretireDevice` helpers restrict Members to their own devices for quick-action retire/unretire, but this new Status control omits that restriction.
+
+**Rationale:**
+- Inventing new ownership restriction would exceed this issue's scope
+- Pre-existing authorization gap (Members can edit any device via form, but can't quick-retire others' devices)
+- Pattern: delegate to generic `disabledFields` prop for future/adjacent gating
+
+**Pre-Existing Inconsistency (Backend/Product Decision Needed):**
+- Member can currently change ANY device's status via edit form (no ownership check)
+- Member's quick-action retire/unretire buttons restrict Members to devices they own
+- Frontend fix only protects requests through this form; direct API callers (scripts, future mobile) would hit backend `[Authorize]` but still no per-device check
+
+**Backend Vulnerability Flagged:**
+`UpdateDeviceRequest.Status` defaults to `Active` on omission. Frontend fix protects form-routed requests; direct API calls remain vulnerable. Recommend backend either:
+1. Make `Status` required (no default) on `UpdateDeviceRequest`, or
+2. Resolve missing status server-side from existing device state instead of defaulting to `Active`
+
+**Consequences:**
+- Frontend form always forwards status; silent reset no longer possible via form
+- Backend remains vulnerable to direct API calls without status field
+- Pre-existing role-based authorization gap surfaces more clearly (Members can edit all devices)
+- Status: frontend seam fixed; backend hardening and authorization audit recommended
+
+---

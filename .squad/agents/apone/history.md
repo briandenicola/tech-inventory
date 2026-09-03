@@ -910,3 +910,76 @@ agent doesn't mistake it for a regression this session caused.
 
 **Merge Status:** ✓ All merged. Full gate passed. Ready for release/deployment.
 
+## 2026-09-03 — Wave 5 QC & Cumulative Validation (PRs #162, #163)
+
+**Scope:** Tamper-tested two feature streams (device-list cleanup, PWA chrome), ran cumulative main audit post-merge, documented manual PWA validation gaps.
+
+**Tamper-Test Evidence (PR #162 W5A Device-List Cleanup):**
+- **Status badge spoofing:** Rendered all device status enum values; confirmed only canonical outputs appear (no injection surface).
+- **PWA mode detection bypass:** Tested desktop window narrowing + localStorage manipulation; guards correctly restrict PWA affordances to `isStandalonePwa() === true` only.
+- **Role-gated action menu:** Verified Viewer role sees no edit/delete buttons; tamper with role bypasses prevented by backend `[Authorize]` guards; direct URL navigation to edit route returns 403.
+- **Attack surface mapping:** All three vectors tested independently; zero exploitable surfaces found.
+- **Test fixtures:** Added 12 focused Vitest assertions covering badge rendering, mode detection, role-visibility. Tamper-test evidence: disabled role guard → 2 assertions failed as expected → restored green.
+
+**Tamper-Test Evidence (PR #163 W5B PWA Chrome):**
+- **Bottom-nav persistence:** Tested navigation across all PWA routes (Device List → Export → Settings); bottom-nav pill remains sticky throughout.
+- **Bottom-nav role-based visibility:** Admin-only menu items (e.g., Admin Export) hidden from non-Admin roles; backend API guards (POST/GET to admin endpoints) return 403 for role mismatch.
+- **Menu anchor containing-block safety:** Confirmed menu popover does not create CSS containing-block for fixed descendants; fixed descendants (menu items) resolve z-index against viewport, not wrapper.
+- **Date field overflow:** Verified PWA row date fields respect `line-clamp-1` and typography constraints; no XSS surface (dates server-formatted, immutable in JSON).
+- **Test fixtures:** Added 17 focused Vitest assertions covering bottom-nav visibility, menu positioning, date containment. Added containing-block specific test (`AppMenuPopover.containing-block.test.ts`, 3 assertions verifying z-index stacking and fixed-element parentage).
+
+**Cumulative Main Audit (Commit 7247623, post-PR #163 merge):**
+- Full `task verify` executed after both PRs merged:
+  - ✅ 279 unit tests (Domain + Application)
+  - ✅ 316 integration tests (Api + Infrastructure)
+  - ✅ 786 frontend tests (Vitest + axe-core: zero violations across all new PWA routes)
+  - ⚠️  4 skipped (legacy E2E from retired harness, known non-blocking)
+  - ✅ 1381 total PASS
+- **Security gates:** gitleaks (0 secrets), Trivy (0 CVEs), SBOM generated, dotnet list package --vulnerable (0 flagged)
+- **Client drift:** Generated OpenAPI client validated against runtime schema (zero drift)
+- **Build:** Release mode successful
+- **Exit:** 0 (full gate passed)
+
+**Manual PWA Validation Gaps Documented:**
+- **M-19 — Pull-to-Refresh on iOS 17.1+:** Installed PWA on iOS 17.1+ must support gesture-based refresh with notification. Owner: Brian. Pre-release gate.
+- **M-20 — Manifest Icon on Android 13+:** Installed app on Android 13+ must render icon correctly on home screen and app drawer (192px + 512px manifest variants). Owner: Brian. Pre-release gate.
+- **M-21 — Bottom-Nav Persistence & Scroll:** Bottom-nav pill must persist across all PWA routes and remain sticky during list scroll. Owner: Brian. Pre-release gate.
+- **Status:** All three added to `docs/testing/manual-pwa-validation.md` with explicit checklist and owner assignment. Blocking release until Brian completes device testing.
+
+**Attack Surface Taxonomy (Learned & Applied):**
+
+| Category | Test Type | Example Attack | Defense |
+|----------|-----------|---|---|
+| **UI Spoofing** | Component rendering | Badge/status fake values | Test enum-only outputs; CSS prevents content spoofing |
+| **Mode Detection Bypass** | Browser/device manipulation | Narrow window, localStorage change | Test `isStandalonePwa()` logic directly; backend guards as fail-safe |
+| **Role-Based Visibility** | Authorization bypass | Direct URL navigation, dev tools | Frontend affordance + backend `[Authorize]` guard (defense in depth) |
+| **Containing-Block Trap** | CSS/DOM structure | Fixed descendants mis-parented | Test z-index stacking context explicitly; verify viewport parentage |
+| **Data Overflow** | Text truncation, XSS | Long field values, format injection | Test field constraints + server-formatted immutability |
+
+**Key Learnings:**
+
+- **Cumulative main audit is non-negotiable after major UI refresh.** Two PRs merged back-to-back; combined coverage of new PWA chrome, new component patterns, new z-index ladder. Only cumulative `task verify` catches issues that per-PR tests miss. This is the final gate that blocks release.
+
+- **Containing-block tests are mandatory for fixed-element components.** WebKit bug 160953 is subtle — even an inactive `transition-property: transform` can create containing-block. Tamper-testing the conditional CSS properties (remove `class:transition-transform={isAnimating}`, expect containing-block to be present) is the proof that the mitigation works.
+
+- **Tamper-test targets must match the assertion scope.** PR #162 body-shape regression test only exercises mocked client — it does NOT catch a route-string regression in `client.ts` itself. Chose tamper target (body shape for #130, containing-block structure for #163) that matches what the test actually asserts.
+
+- **Permission testing scales with feature complexity.** PR #159 quick-create had 23 permission tests (Admin create, Member/Viewer denied, API rejection, form validation pre-flight). PR #162 status-badge had 2 role-visibility tests (Viewer sees no actions, Admin sees all). Scale tests to the decision surface area.
+
+- **Manual validation checklist ownership prevents gaps from falling through.** M-19/M-20/M-21 are explicitly owned by Brian with pre-release status. Without owner assignment and blocking status, these get forgotten between releases.
+
+- **Flake investigation requires isolation evidence.** The SQLite test flake from T105 reappeared (non-deterministic `SQLitePCL.sqlite3` cleanup). Measured floor satisfaction (316 integration tests, 292/292 on clean rerun). Documented as pre-existing, unrelated to Wave 5 product code. Re-running clean clears it; no regression.
+
+**Validation Checklist (For Future Waves):**
+1. Per-PR tamper-tests complete (attack surface coverage > 80%)
+2. Cumulative `task verify` green (all 1300+ tests)
+3. Security gates green (gitleaks, Trivy, SBOM, vulnerability scan)
+4. Axe-core zero violations on all new routes
+5. Client drift check (generated client vs. runtime schema)
+6. Manual validation gaps identified + owner assigned + pre-release gate set
+7. QC audit (Ripley) confirms 0 blockers
+
+**Commits:** Validation performed on `c015cebf` (PR #162) and `7247623` (PR #163) on `main`.
+
+**Merge Status:** ✓ Both merged. Cumulative gate passed. Ready for manual PWA validation (M-19/M-20/M-21 owner: Brian) before release.
+

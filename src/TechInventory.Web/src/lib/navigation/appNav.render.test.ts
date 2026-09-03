@@ -33,4 +33,35 @@ describe('appNav rendering', () => {
 
 		expect(await axe(container)).toHaveNoViolations();
 	});
+
+	it('labels the reference-data section heading "Configuration", not "ADMIN" (#139)', () => {
+		render(AppNavMenuHarness, {
+			props: {
+				role: 'Admin',
+				pathname: '/admin/brands'
+			}
+		});
+
+		expect(screen.getByRole('heading', { name: 'Configuration' })).toBeInTheDocument();
+		expect(screen.queryByText('ADMIN')).not.toBeInTheDocument();
+		expect(screen.queryByText('Admin', { selector: 'h2' })).not.toBeInTheDocument();
+		// Membership/order is unchanged — only the heading label moved.
+		expect(screen.getByRole('link', { name: 'Brands' })).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Categories' })).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Locations' })).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Networks' })).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Owners' })).toBeInTheDocument();
+		expect(screen.getByRole('link', { name: 'Tags' })).toBeInTheDocument();
+	});
+
+	it('hides the Configuration section for non-Admin roles (role visibility unchanged)', () => {
+		render(AppNavMenuHarness, {
+			props: {
+				role: 'Member',
+				pathname: '/devices'
+			}
+		});
+
+		expect(screen.queryByRole('heading', { name: 'Configuration' })).not.toBeInTheDocument();
+	});
 });

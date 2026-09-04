@@ -520,16 +520,36 @@
 		<legend class="mb-2 block text-base font-medium text-neutral-800 dark:text-neutral-200">
 			{t('devices.filters.statusLabel')}
 		</legend>
-		<div class="space-y-2.5">
+		<!--
+			Two per row: five stacked full-width rows spent 255px on five short
+			words. Paired, the same five options cost 161.5px and the row grows from
+			min-h-10 to min-h-11 (42.5 -> 46.75px), so the tap target improves while
+			the panel gets 93.5px shorter.
+
+			Measured in Chromium against the built stylesheet at 320/360/375/390/430
+			CSS px — no overlap, no truncation, both columns of a row aligned at
+			every width. At the narrowest (320px, where the w-[22rem] panel is
+			capped by max-w-full) each column is 124.9px, leaving 82.4px of text
+			room after the checkbox, gap and padding; the widest label ("Disposed")
+			needs 69px. That headroom is why the in-label gap is gap-2 and the
+			padding px-1.5 rather than the old gap-3/px-2, which left "In Repair"
+			wrapping to two lines at 320px — exactly the misalignment this layout
+			must not introduce.
+
+			`truncate` is the belt-and-braces guard: a longer translation or a wider
+			system font ellipsises inside its own column rather than wrapping and
+			pushing its row taller than its neighbour's.
+		-->
+		<div class="grid grid-cols-2 gap-2.5">
 			{#each statusOptions as status}
-				<label class="flex min-h-10 cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800">
+				<label class="flex min-h-11 min-w-0 cursor-pointer items-center gap-2 rounded-lg px-1.5 py-1.5 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800">
 					<input
 						type="checkbox"
 						checked={statusValues.includes(status)}
 						onchange={() => toggleStatus(status)}
-						class="h-5 w-5 rounded-md border-neutral-300 text-primary-600 focus-visible:ring-primary-500 focus-visible:ring-offset-0 dark:border-neutral-600 dark:bg-neutral-800"
+						class="h-5 w-5 shrink-0 rounded-md border-neutral-300 text-primary-600 focus-visible:ring-primary-500 focus-visible:ring-offset-0 dark:border-neutral-600 dark:bg-neutral-800"
 					/>
-					<span class="text-base text-neutral-800 dark:text-neutral-200">
+					<span class="min-w-0 truncate text-base text-neutral-800 dark:text-neutral-200">
 						{t(`devices.filters.status${status}`)}
 					</span>
 				</label>

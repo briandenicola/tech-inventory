@@ -719,4 +719,107 @@ describe('DeviceFilters', () => {
 			expect(await axe(container)).toHaveNoViolations();
 		});
 	});
+	// Five stacked full-width rows spent 255px on five short words. The options
+	// now sit two per row (161.5px, and a bigger tap target). The layout is only
+	// safe because the labels fit their half-width columns — jsdom has no layout
+	// engine, so these guard the structural preconditions for that fit and M-33
+	// carries the pixel judgement.
+	//
+	// TAMPER-TESTED: reverting the container to `space-y-2.5` fails "lays the
+	//   status options out two per row"; restoring the old `gap-3`/`px-2` inside
+	//   the label fails "keeps the in-label spacing that lets the longest label
+	//   fit"; dropping `truncate` fails "clips an over-long label instead of
+	//   letting it wrap"; and `min-h-10` fails the tap-target guard.
+	describe('status option density', () => {
+		function statusList(container: HTMLElement): HTMLElement {
+			const legend = [...container.querySelectorAll('legend')].find(
+				(node) => node.textContent?.trim() === 'Status'
+			);
+			expect(legend, 'Status fieldset must exist').toBeTruthy();
+			const list = legend!.parentElement!.querySelector<HTMLElement>('div');
+			expect(list, 'Status options container must exist').toBeTruthy();
+			return list!;
+		}
+
+		const baseProps = {
+			filters: defaultFilters,
+			onFiltersChange: vi.fn(),
+			isOpen: true,
+			onClose: vi.fn()
+		};
+
+		it('lays the status options out two per row', () => {
+			const { container } = render(DeviceFilters, { props: { ...baseProps } });
+
+			const list = statusList(container);
+			expect(list.className).toMatch(/\bgrid\b/);
+			expect(list.className).toMatch(/\bgrid-cols-2\b/);
+			// A vertical stack is what this replaced.
+			expect(list.className).not.toMatch(/\bspace-y-/);
+		});
+
+		it('still renders every status option exactly once', () => {
+			const { container } = render(DeviceFilters, { props: { ...baseProps } });
+
+			const labels = [...statusList(container).querySelectorAll('label')].map((node) =>
+				node.textContent?.trim()
+			);
+
+			expect(labels).toEqual(['Active', 'Retired', 'Disposed', 'In Repair', 'Lent']);
+		});
+
+		it('keeps the in-label spacing that lets the longest label fit its column', () => {
+			const { container } = render(DeviceFilters, { props: { ...baseProps } });
+
+			for (const label of statusList(container).querySelectorAll('label')) {
+				// gap-3 + px-2 costs 12.75px of the 82.4px a column has for text at
+				// 320px, which is what made "In Repair" wrap to two lines there.
+				expect(label.className).toMatch(/\bgap-2\b/);
+				expect(label.className).toMatch(/\bpx-1\.5\b/);
+				expect(label.className).not.toMatch(/\bgap-3\b/);
+			}
+		});
+
+		it('clips an over-long label instead of letting it wrap its row taller', () => {
+			const { container } = render(DeviceFilters, { props: { ...baseProps } });
+
+			for (const label of statusList(container).querySelectorAll('label')) {
+				const text = label.querySelector('span');
+				expect(text!.className, label.textContent ?? '').toMatch(/\btruncate\b/);
+				// The checkbox must not be squeezed when the text is the long one.
+				expect(label.querySelector('input')!.className).toMatch(/\bshrink-0\b/);
+			}
+		});
+
+		it('gives every status option a 44px-plus tap target', () => {
+			const { container } = render(DeviceFilters, { props: { ...baseProps } });
+
+			for (const label of statusList(container).querySelectorAll('label')) {
+				// min-h-11 is 2.75rem = 46.75px at this app's 17px root (D-137);
+				// the stacked layout this replaced used min-h-10 (42.5px).
+				expect(label.className, label.textContent ?? '').toMatch(/\bmin-h-11\b/);
+			}
+		});
+
+		it('still toggles a status through the pending gate when paired', async () => {
+			const user = userEvent.setup();
+			const onFiltersChange = vi.fn();
+
+			render(DeviceFilters, { props: { ...baseProps, onFiltersChange } });
+
+			await user.click(screen.getByLabelText('In Repair'));
+			expect(onFiltersChange).not.toHaveBeenCalled();
+
+			await user.click(screen.getByRole('button', { name: 'Apply' }));
+			expect(onFiltersChange).toHaveBeenCalledWith(
+				expect.objectContaining({ status: ['InRepair'] })
+			);
+		});
+
+		it('has no accessibility violations with the paired status options', async () => {
+			const { container } = render(DeviceFilters, { props: { ...baseProps } });
+
+			expect(await axe(container)).toHaveNoViolations();
+		});
+	});
 });

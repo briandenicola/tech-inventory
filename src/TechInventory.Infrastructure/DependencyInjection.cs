@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using TechInventory.Application.Abstractions.Persistence;
 using TechInventory.Application.Abstractions.Repositories;
 using TechInventory.Application.Abstractions.Services;
@@ -43,6 +44,18 @@ public static class DependencyInjection
         services.AddScoped<IAuditEventRepository, AuditEventRepository>();
         services.AddScoped<IImportBatchRepository, ImportBatchRepository>();
         services.AddScoped<ILocalUserRepository, LocalUserRepository>();
+        services.AddScoped<IApiKeyRepository, ApiKeyRepository>();
+
+        // #149 / ADR 0003 — API key verification. The pepper is a required deployment
+        // secret: ValidateOnStart turns a missing, malformed, short, or reused value into
+        // a startup failure with a specific message, rather than a 500 on the first
+        // authentication attempt. Existing deployments must add ApiKeys:HmacPepper before
+        // upgrading — see docs/operations.md, "API Key Administration".
+        services.AddOptions<ApiKeyOptions>()
+            .Bind(configuration.GetSection(ApiKeyOptions.SectionPath))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<ApiKeyOptions>, ApiKeyOptionsValidator>();
+        services.AddSingleton<IApiKeyHasher, HmacApiKeyHasher>();
 
         // F025 — local-account fallback wiring. Options bind even when the
         // feature is disabled so test configs can still touch the values.

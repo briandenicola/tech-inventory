@@ -11,6 +11,8 @@ public sealed class AppDbContext(
 {
     private readonly AuditSaveChangesInterceptor _auditSaveChangesInterceptor = auditSaveChangesInterceptor ?? throw new ArgumentNullException(nameof(auditSaveChangesInterceptor));
 
+    public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
+
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 
     public DbSet<Brand> Brands => Set<Brand>();

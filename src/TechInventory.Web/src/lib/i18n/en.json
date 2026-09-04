@@ -1037,6 +1037,49 @@
 			"dark": "Dark",
 			"system": "System"
 		},
+		"apiKeys": {
+			"heading": "API Keys",
+			"subheading": "Create keys so scripts, shortcuts, and integrations can reach your inventory without signing in.",
+			"empty": "You have no API keys yet.",
+			"loading": "Loading API keys…",
+			"createdLabel": "Created {date}",
+			"expiresLabel": "Expires {date}",
+			"expired": "Expired",
+			"revoked": "Revoked",
+			"namePlaceholder": "Key name",
+			"nameLabel": "New key name",
+			"scopeLabel": "Access",
+			"create": "Create Key",
+			"creating": "Creating…",
+			"revoke": "Revoke",
+			"revoking": "Revoking…",
+			"revokeConfirm": "Revoke this API key? This cannot be undone.",
+			"quotaHint": "{count} of {max} keys in use.",
+			"scope": {
+				"read": "Read",
+				"write": "Read & write",
+				"readDescription": "View devices and reference data.",
+				"writeDescription": "View and change devices."
+			},
+			"secret": {
+				"heading": "Key created — copy it now, it won't be shown again:",
+				"copy": "Copy",
+				"copied": "Copied",
+				"copyFailed": "Copy failed — select the key and copy it manually.",
+				"dismiss": "Dismiss",
+				"label": "Your new API key"
+			},
+			"errors": {
+				"load": "Could not load your API keys.",
+				"create": "Could not create the API key.",
+				"revoke": "Could not revoke the API key.",
+				"nameRequired": "Enter a name for this key."
+			},
+			"toast": {
+				"created": "API key created.",
+				"revoked": "API key revoked."
+			}
+		},
 		"tableColumns": {
 			"heading": "Table Columns",
 			"subheading": "Choose which columns to display in the devices table and their order. Drag to reorder.",

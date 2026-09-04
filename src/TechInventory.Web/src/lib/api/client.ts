@@ -731,6 +731,25 @@ export const localAuth = {
 		})
 };
 
+// #149 — personal API keys. `create` returns the plaintext credential exactly once;
+// nothing else on this client can retrieve it again, so callers must surface it
+// immediately or lose it.
+export const apiKeys = {
+	list: async (params?: paths['/api/v1/api-keys']['get']['parameters']['query']) =>
+		apiFetch<GetResponse<paths['/api/v1/api-keys']>>(`/api/v1/api-keys${buildQueryString(params)}`),
+
+	create: async (body: PostRequestBody<paths['/api/v1/api-keys']>) =>
+		apiFetch<PostResponse<paths['/api/v1/api-keys']>>(`/api/v1/api-keys`, {
+			method: 'POST',
+			body: JSON.stringify(body)
+		}),
+
+	revoke: async (id: string) =>
+		apiFetch<void>(`/api/v1/api-keys/${encodeURIComponent(id)}`, {
+			method: 'DELETE'
+		})
+};
+
 const api = {
 	devices,
 	brands,
@@ -744,6 +763,7 @@ const api = {
 	auditEvents,
 	reports,
 	localAuth,
+	apiKeys,
 	setApiConfig
 };
 

@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.Threading.RateLimiting;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Serilog;
@@ -76,6 +77,20 @@ if (entraConfigured)
         options.ForwardDefaultSelector = context =>
         {
             var header = context.Request.Headers.Authorization.ToString();
+
+            // #149 — checked before any scheme forward. Presenting both credential
+            // types is never legitimate, and silently picking one would let a caller
+            // probe which of the two the server trusts.
+            if (ApiKeyCredentialRouting.HasAmbiguousCredentials(context.Request))
+            {
+                return ApiAuthenticationSchemes.AmbiguousScheme;
+            }
+
+            if (ApiKeyCredentialRouting.IsApiKeyRequest(context.Request))
+            {
+                return ApiAuthenticationSchemes.ApiKeyScheme;
+            }
+
             if (!string.IsNullOrEmpty(header) && header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
             {
                 var token = header["Bearer ".Length..].Trim();
@@ -197,7 +212,21 @@ else
     // (controllers, fallback policy, audit logging) is unaffected.
     authenticationBuilder.AddPolicyScheme(ApiAuthenticationSchemes.DefaultScheme, ApiAuthenticationSchemes.DefaultScheme, options =>
     {
-        options.ForwardDefaultSelector = _ => ApiAuthenticationSchemes.LocalScheme;
+        // #149 — the ApiKey branch and ambiguity guard must exist here too. This is the
+        // selector a deployment without Entra actually uses, so omitting it would mean
+        // API keys silently never authenticate in exactly the setup most likely to run
+        // them (a home deployment on the local issuer).
+        options.ForwardDefaultSelector = context =>
+        {
+            if (ApiKeyCredentialRouting.HasAmbiguousCredentials(context.Request))
+            {
+                return ApiAuthenticationSchemes.AmbiguousScheme;
+            }
+
+            return ApiKeyCredentialRouting.IsApiKeyRequest(context.Request)
+                ? ApiAuthenticationSchemes.ApiKeyScheme
+                : ApiAuthenticationSchemes.LocalScheme;
+        };
     });
 }
 
@@ -241,15 +270,70 @@ builder.Services.AddOptions<JwtBearerOptions>(ApiAuthenticationSchemes.LocalSche
         };
     });
 
+// #149 / ADR 0003 — API key scheme plus the rejection target the ambiguity guard
+// forwards to. The latter is a real scheme rather than inline middleware so the
+// rejection happens inside the authentication pipeline, before routing.
+authenticationBuilder.AddScheme<ApiKeyAuthenticationOptions, ApiKeyAuthenticationHandler>(
+    ApiAuthenticationSchemes.ApiKeyScheme, _ => { });
+authenticationBuilder.AddScheme<AmbiguousCredentialOptions, AmbiguousCredentialHandler>(
+    ApiAuthenticationSchemes.AmbiguousScheme, _ => { });
+
+builder.Services.AddOptions<ApiKeyRateLimitOptions>()
+    .Bind(builder.Configuration.GetSection(ApiKeyRateLimitOptions.SectionPath));
+
+builder.Services.AddRateLimiter(rateLimiterOptions =>
+{
+    // Global, not a named policy on one action. The limit must cover every request an
+    // API key can make — the whole inventory surface — and the key-management endpoints
+    // it would otherwise have decorated are bearer-only, where there is no selector to
+    // partition by. Bearer traffic lands in an unlimited partition, so interactive users
+    // are unaffected.
+    rateLimiterOptions.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+        ApiKeyRateLimiting.CreatePartition(
+            httpContext,
+            httpContext.RequestServices.GetRequiredService<IOptions<ApiKeyRateLimitOptions>>().Value));
+
+    rateLimiterOptions.OnRejected = async (context, cancellationToken) =>
+    {
+        var options = context.HttpContext.RequestServices.GetRequiredService<IOptions<ApiKeyRateLimitOptions>>().Value;
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        context.HttpContext.Response.ContentType = "application/problem+json";
+        context.HttpContext.Response.Headers.RetryAfter =
+            ApiKeyProblemDetailsFactory.FormatRetryAfter(TimeSpan.FromSeconds(options.WindowSeconds));
+
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            ApiKeyProblemDetailsFactory.Create(
+                StatusCodes.Status429TooManyRequests,
+                "Too Many Requests",
+                "Too many API key requests. Retry after the window resets.",
+                "RateLimitExceeded",
+                context.HttpContext.TraceIdentifier),
+            cancellationToken);
+    };
+});
+
+builder.Services.AddSingleton<IAuthorizationHandler, ApiKeyScopeAuthorizationHandler>();
+
+// #149 — ApiKeyScopeRequirement is attached to the default, fallback, AND named
+// policies. Attaching it to only some would leave whichever policy was missed as a
+// hole a key could reach through; the requirement is a no-op for bearer callers, so
+// applying it everywhere costs nothing.
 builder.Services.AddAuthorizationBuilder()
+    .SetDefaultPolicy(new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .AddRequirements(new ApiKeyScopeRequirement())
+        .Build())
     .SetFallbackPolicy(new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
+        .AddRequirements(new ApiKeyScopeRequirement())
         .Build())
     .AddPolicy(AuthorizationPolicies.Admin, policy => policy
         .RequireAuthenticatedUser()
+        .AddRequirements(new ApiKeyScopeRequirement())
         .RequireRole("Admin"))
     .AddPolicy(AuthorizationPolicies.AdminOrMember, policy => policy
         .RequireAuthenticatedUser()
+        .AddRequirements(new ApiKeyScopeRequirement())
         .RequireRole("Admin", "Member"));
 
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
@@ -274,6 +358,19 @@ builder.Services.AddSwaggerGen(options =>
     {
         Title = "Tech Inventory API",
         Version = "v1",
+    });
+
+    // #149 / ADR 0003. Declared here rather than hand-edited into openapi.yaml so the
+    // committed spec stays reproducible from `task openapi:export` and the drift test
+    // keeps passing.
+    options.AddSecurityDefinition("ApiKeyAuth", new OpenApiSecurityScheme
+    {
+        Type = SecuritySchemeType.ApiKey,
+        In = ParameterLocation.Header,
+        Name = "Authorization",
+        Description =
+            "API key authentication. Send as: Authorization: ApiKey <selector>.<secret>. "
+            + "Scoped to inventory operations only.",
     });
 });
 builder.Services.AddHealthChecks();
@@ -330,7 +427,18 @@ if (!app.Environment.IsDevelopment())
 app.UseCors("ApiCorsPolicy");
 
 app.UseAuthentication();
+
+// #149 — between authentication and authorization. Must be middleware, not only an
+// authorization requirement: [Authorize(Roles = "...")] builds an ad-hoc policy that
+// skips the configured default policy, so a requirement alone leaves every
+// role-attribute controller (Settings, Reports) unguarded against API keys.
+app.UseMiddleware<ApiKeyScopeMiddleware>();
+
 app.UseAuthorization();
+
+// After UseAuthorization: the per-selector partition reads the apikey_selector claim,
+// which only exists once authentication has run.
+app.UseRateLimiter();
 
 // F025 — must-change-password gate. While a local-auth principal carries
 // must_change_password=true, allow only the change-password endpoint (plus

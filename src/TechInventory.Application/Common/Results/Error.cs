@@ -27,6 +27,12 @@ public sealed record Error
 
     public static Error NotFound(string message) => new("NotFound", message);
 
+    /// <summary>The caller is authenticated but not permitted to perform this action (#149).</summary>
+    public static Error Forbidden(string message) => new("Forbidden", message);
+
+    /// <summary>A per-principal allowance is already fully used (#149: five active API keys).</summary>
+    public static Error QuotaExceeded(string message) => new("QuotaExceeded", message);
+
     public static Error Validation(IReadOnlyDictionary<string, string[]> validationErrors, string message = "One or more validation failures occurred.")
         => new("Validation", message, validationErrors);
 

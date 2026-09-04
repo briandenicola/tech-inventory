@@ -51,6 +51,14 @@ public class IntegrationTestFactory<TMarker> : WebApplicationFactory<Program>
     /// </summary>
     protected virtual bool UseTestAuth => true;
 
+    /// <summary>
+    /// Fixed 48-byte base64 pepper for tests. Not a secret and never used in a real
+    /// deployment — its only jobs are to satisfy the startup validator and to make
+    /// verifier hashes deterministic across test runs.
+    /// </summary>
+    internal const string TestApiKeyPepper =
+        "dGVzdC1vbmx5LWFwaS1rZXktcGVwcGVyLW5vdC1hLXJlYWwtc2VjcmV0LTAxMjM0NTY3ODk=";
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment(Environment);
@@ -62,7 +70,12 @@ public class IntegrationTestFactory<TMarker> : WebApplicationFactory<Program>
                 // Disable the local-admin seed in test hosts. Each test class
                 // gets its own SQLite file and uses TestAuthHandler for auth,
                 // so the seed service would just create noise.
-                ["Auth:Local:SeedEnabled"] = "false"
+                ["Auth:Local:SeedEnabled"] = "false",
+                // #149 — the API refuses to start without a pepper (ADR 0003), so every
+                // test host must supply one. A fixed non-secret value keeps HMAC results
+                // reproducible across runs; it must stay distinct from
+                // Auth:Local:SigningKey, which the same validator enforces.
+                ["ApiKeys:HmacPepper"] = TestApiKeyPepper
             });
         });
 

@@ -110,3 +110,113 @@ If a local account already exists and the password is just forgotten:
   endpoint itself.
 - Tokens live in `sessionStorage` only (Constitution §6 forbids
   `localStorage`).
+
+---
+
+## API Key Administration (#149 / ADR 0003)
+
+API keys let a household member drive device inventory from scripts, cron, or a
+Home Assistant integration without an interactive sign-in. They are inventory-only
+and always expire.
+
+### Required configuration — read this before upgrading
+
+`ApiKeys:HmacPepper` is **mandatory**. The API refuses to start without it, and
+this is deliberate: a missing pepper is a deployment error, not something to
+discover as a 500 on the first authentication attempt.
+
+**An existing deployment will not boot after this upgrade until the pepper is
+set.** Add it to `.env` before pulling:
+
+```bash
+# Generate a value with at least 32 decoded bytes
+openssl rand -base64 48
+```
+
+```dotenv
+ApiKeys__HmacPepper=<the generated value>
+```
+
+Startup validation rejects a pepper that is absent, not valid base64, shorter than
+32 decoded bytes, or **equal to `Auth__Local__SigningKey`**. The last check matters:
+sharing one secret between JWT signing and key verification means a leak of either
+compromises both.
+
+### How a key is stored
+
+A key is `<selector>.<secret>`. Only the selector and an HMAC-SHA-256 of the secret
+(keyed by the pepper) are persisted — the plaintext secret is returned exactly once,
+at creation, and cannot be recovered afterwards. A database breach alone therefore
+yields no usable keys; an attacker would also need the pepper.
+
+The selector is public: it appears in logs and list responses, and is the safe way
+to identify a key in an incident.
+
+### Rotating the pepper
+
+Rotation invalidates **every outstanding key at once** — there is no grace period,
+by design. Treat it as a break-glass procedure for a suspected pepper compromise:
+
+1. Generate a new value and update `ApiKeys__HmacPepper`.
+2. Restart the API.
+3. Tell every key holder to create replacements; all existing keys now return 401.
+
+### Emergency revocation
+
+Any Admin can revoke any key, not just their own:
+
+```bash
+# List every key in the household, with owner names
+curl -H "Authorization: Bearer $ADMIN_TOKEN" \
+  https://<host>/api/v1/api-keys/all
+
+# Revoke one (idempotent — a second call is still 204)
+curl -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" \
+  https://<host>/api/v1/api-keys/<id>
+```
+
+Revocation takes effect on the next request; there is no cache to wait out.
+
+Deactivating or demoting the owning account has the same practical effect without
+touching the keys: the principal's role and active status are re-checked live on
+every request, so a deactivated owner's keys stop working immediately.
+
+### Limits
+
+| Setting | Value | Where |
+|---|---|---|
+| Default expiry | 90 days | `ApiKey.DefaultExpiryDays` — code change |
+| Maximum expiry | 365 days | `ApiKey.MaxExpiryDays` — code change |
+| Active keys per person | 5 | `ApiKey.MaxActiveKeysPerPrincipal` — code change |
+| Rate limit | 60 requests/minute per selector | `RateLimiting:ApiKey:PermitLimit` / `WindowSeconds` |
+
+Quota and expiry are Domain constants rather than configuration: changing them is a
+deliberate product decision, not a deployment knob. There is no non-expiring key and
+no rotation endpoint — revoke and create is the supported path, which the 5-key quota
+leaves room for.
+
+Exceeding the rate limit returns `429` with a `Retry-After` header.
+
+### What keys can and cannot reach
+
+`inventory.read` grants GET on devices and reference data (brands, categories,
+locations, networks, owners, tags). `inventory.write` adds POST/PUT/DELETE on
+devices only — reference data stays read-only.
+
+Keys never reach admin, audit, import, export, report, settings, local-auth, or
+key-management endpoints, **regardless of the holder's role**. A key cannot mint or
+revoke keys, including itself.
+
+### Logs to alert on
+
+Every authentication attempt is logged with the selector, never the secret:
+
+| Property | Meaning |
+|---|---|
+| `ApiKeySelector` | Which key was presented — safe to log and to alert on |
+| `ApiKeyPrincipalId` | Whose key it is |
+| `ApiKeyScope` | The scope it carries |
+
+Worth alerting on: repeated `API key authentication failed` for the same selector
+(a stale or leaked key being retried), and any such failure naming a selector that
+was revoked — that indicates someone still holds a credential they should not.

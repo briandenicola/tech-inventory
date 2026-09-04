@@ -43,7 +43,7 @@ describe('DeviceFilters', () => {
 			}
 		});
 
-		const dialog = screen.getByRole('dialog', { name: 'Filters' });
+		const dialog = screen.getByRole('dialog', { name: 'View' });
 		expect(dialog).toHaveClass('h-dvh');
 		expect(dialog).toHaveAttribute('aria-modal', 'true');
 		expect(container.querySelector('div.sticky.top-0')).toBeInTheDocument();
@@ -66,7 +66,7 @@ describe('DeviceFilters', () => {
 			}
 		});
 
-		const closeButton = screen.getByRole('button', { name: 'Close Filters' });
+		const closeButton = screen.getByRole('button', { name: 'Close view panel' });
 		expect(closeButton).toHaveFocus();
 
 		await user.keyboard('{Escape}');
@@ -355,7 +355,7 @@ describe('DeviceFilters', () => {
 				props: { filters: dirtyFilters, onFiltersChange, isOpen: true, onClose: vi.fn() }
 			});
 
-			await user.click(screen.getByRole('button', { name: 'Clear All Filters' }));
+			await user.click(screen.getByRole('button', { name: 'Clear all' }));
 
 			// pageSize and groupBy (F045 B2 user choice) survive Clear All;
 			// every other filter dimension — including status — comes back
@@ -382,7 +382,7 @@ describe('DeviceFilters', () => {
 				}
 			});
 
-			await user.click(screen.getByRole('button', { name: 'Clear All Filters' }));
+			await user.click(screen.getByRole('button', { name: 'Clear all' }));
 
 			expect(onFiltersChange).toHaveBeenCalledWith({
 				page: 1,
@@ -405,7 +405,9 @@ describe('DeviceFilters', () => {
 			});
 
 			expect(screen.queryByRole('region', { name: 'SELECTION' })).not.toBeInTheDocument();
-			expect(screen.queryByRole('button', { name: 'Enable Selection Mode' })).not.toBeInTheDocument();
+			expect(
+				screen.queryByRole('button', { name: 'Enable Selection Mode' })
+			).not.toBeInTheDocument();
 		});
 
 		it('shows the SELECTION section with "Enable Selection Mode" button when isPwa=true and selection is off', () => {
@@ -440,7 +442,9 @@ describe('DeviceFilters', () => {
 			});
 
 			expect(screen.getByRole('button', { name: 'Exit Selection Mode' })).toBeInTheDocument();
-			expect(screen.queryByRole('button', { name: 'Enable Selection Mode' })).not.toBeInTheDocument();
+			expect(
+				screen.queryByRole('button', { name: 'Enable Selection Mode' })
+			).not.toBeInTheDocument();
 		});
 
 		it('calls onEnablePwaSelection and onClose when "Enable Selection Mode" is tapped', async () => {
@@ -500,6 +504,320 @@ describe('DeviceFilters', () => {
 					pwaSelectionMode: false
 				}
 			});
+
+			expect(await axe(container)).toHaveNoViolations();
+		});
+	});
+	// The panel is the "View" panel now: it carries view options (Group by, bulk
+	// expand/collapse, selection mode) alongside the filter facets.
+	describe('group bulk actions', () => {
+		it('hides Expand/Collapse all when no grouping is in effect', () => {
+			render(DeviceFilters, {
+				props: {
+					filters: defaultFilters,
+					onFiltersChange: vi.fn(),
+					isOpen: true,
+					onClose: vi.fn(),
+					groupingActive: false
+				}
+			});
+
+			expect(screen.queryByTestId('expand-all-groups')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('collapse-all-groups')).not.toBeInTheDocument();
+		});
+
+		it('shows Expand/Collapse all when grouping is in effect', () => {
+			render(DeviceFilters, {
+				props: {
+					filters: { ...defaultFilters, groupBy: 'category' as const },
+					onFiltersChange: vi.fn(),
+					isOpen: true,
+					onClose: vi.fn(),
+					groupingActive: true
+				}
+			});
+
+			expect(screen.getByRole('button', { name: 'Expand all groups' })).toBeInTheDocument();
+			expect(screen.getByRole('button', { name: 'Collapse all groups' })).toBeInTheDocument();
+		});
+
+		it('calls onExpandAllGroups and closes the panel, without applying filters', async () => {
+			const user = userEvent.setup();
+			const onExpandAllGroups = vi.fn();
+			const onFiltersChange = vi.fn();
+			const onClose = vi.fn();
+
+			render(DeviceFilters, {
+				props: {
+					filters: { ...defaultFilters, groupBy: 'category' as const },
+					onFiltersChange,
+					isOpen: true,
+					onClose,
+					groupingActive: true,
+					onExpandAllGroups
+				}
+			});
+
+			await user.click(screen.getByRole('button', { name: 'Expand all groups' }));
+
+			expect(onExpandAllGroups).toHaveBeenCalledOnce();
+			expect(onClose).toHaveBeenCalledOnce();
+			// Display-only action: it must not push a query change through.
+			expect(onFiltersChange).not.toHaveBeenCalled();
+		});
+
+		it('calls onCollapseAllGroups and closes the panel', async () => {
+			const user = userEvent.setup();
+			const onCollapseAllGroups = vi.fn();
+			const onClose = vi.fn();
+
+			render(DeviceFilters, {
+				props: {
+					filters: { ...defaultFilters, groupBy: 'owner' as const },
+					onFiltersChange: vi.fn(),
+					isOpen: true,
+					onClose,
+					groupingActive: true,
+					onCollapseAllGroups
+				}
+			});
+
+			await user.click(screen.getByRole('button', { name: 'Collapse all groups' }));
+
+			expect(onCollapseAllGroups).toHaveBeenCalledOnce();
+			expect(onClose).toHaveBeenCalledOnce();
+		});
+
+		it('has no accessibility violations with the group actions visible', async () => {
+			const { container } = render(DeviceFilters, {
+				props: {
+					filters: { ...defaultFilters, groupBy: 'category' as const },
+					onFiltersChange: vi.fn(),
+					isOpen: true,
+					onClose: vi.fn(),
+					groupingActive: true
+				}
+			});
+
+			expect(await axe(container)).toHaveNoViolations();
+		});
+	});
+	// The panel's sticky footer was four stacked full-width pills — ~235px of
+	// permanent chrome that hid the options the panel exists to show. It is now
+	// one row of two, with the occasional default-view actions moved into the
+	// scroll area.
+	//
+	// TAMPER-TESTED: reverting the footer row to `flex-col` fails "lays the two
+	//   pinned actions out in a single two-column row"; putting a Save-as-default
+	//   button back in the footer fails "pins only Clear all and Apply" (and the
+	//   two relocation tests); dropping either pinned button to `min-h-9` fails
+	//   "keeps both pinned actions at a 44px-plus tap target".
+	describe('footer density', () => {
+		function footerOf(container: HTMLElement): HTMLElement {
+			const footer = container.querySelector<HTMLElement>('div.sticky.bottom-0');
+			expect(footer, 'sticky footer must exist').toBeTruthy();
+			return footer!;
+		}
+
+		function scrollBodyOf(container: HTMLElement): HTMLElement {
+			const body = container.querySelector<HTMLElement>('div.flex-1.overflow-y-auto');
+			expect(body, 'scrollable body must exist').toBeTruthy();
+			return body!;
+		}
+
+		const withDefaults = {
+			filters: defaultFilters,
+			onFiltersChange: vi.fn(),
+			isOpen: true,
+			onClose: vi.fn(),
+			onSaveDefault: vi.fn(),
+			onClearDefault: vi.fn(),
+			hasStoredDefault: true,
+			canSaveDefault: true
+		};
+
+		it('pins only Clear all and Apply', () => {
+			const { container } = render(DeviceFilters, { props: { ...withDefaults } });
+
+			const footerButtons = Array.from(footerOf(container).querySelectorAll('button')).map(
+				(button) => button.textContent?.trim()
+			);
+
+			expect(footerButtons).toEqual(['Clear all', 'Apply']);
+		});
+
+		it('lays the two pinned actions out in a single two-column row', () => {
+			const { container } = render(DeviceFilters, { props: { ...withDefaults } });
+
+			const row = footerOf(container).querySelector('div.grid');
+			expect(row, 'pinned actions must share one grid row').toBeTruthy();
+			expect(row!.className).toMatch(/\bgrid-cols-2\b/);
+			// A stack would reintroduce the height this change removed.
+			expect(row!.className).not.toMatch(/\bflex-col\b/);
+		});
+
+		it('keeps both pinned actions at a 44px-plus tap target', () => {
+			const { container } = render(DeviceFilters, { props: { ...withDefaults } });
+
+			for (const button of footerOf(container).querySelectorAll('button')) {
+				// min-h-11 is 2.75rem = 46.75px at this app's 17px root (D-137).
+				expect(button.className, button.textContent ?? '').toMatch(/\bmin-h-11\b/);
+			}
+		});
+
+		it('moves Save as default view and Clear saved default into the scroll area', () => {
+			const { container } = render(DeviceFilters, { props: { ...withDefaults } });
+
+			const body = scrollBodyOf(container);
+			const footer = footerOf(container);
+
+			const save = screen.getByRole('button', { name: 'Save as default view' });
+			const clear = screen.getByRole('button', { name: 'Clear saved default' });
+
+			expect(body.contains(save)).toBe(true);
+			expect(footer.contains(save)).toBe(false);
+			expect(body.contains(clear)).toBe(true);
+			expect(footer.contains(clear)).toBe(false);
+		});
+
+		it('still wires the relocated default-view actions to their callbacks', async () => {
+			const user = userEvent.setup();
+			const onSaveDefault = vi.fn();
+			const onClearDefault = vi.fn();
+
+			render(DeviceFilters, {
+				props: { ...withDefaults, onSaveDefault, onClearDefault }
+			});
+
+			await user.click(screen.getByRole('button', { name: 'Save as default view' }));
+			expect(onSaveDefault).toHaveBeenCalledOnce();
+
+			await user.click(screen.getByRole('button', { name: 'Clear saved default' }));
+			expect(onClearDefault).toHaveBeenCalledOnce();
+		});
+
+		it('omits the default-view section entirely when neither callback is supplied', () => {
+			const { container } = render(DeviceFilters, {
+				props: {
+					filters: defaultFilters,
+					onFiltersChange: vi.fn(),
+					isOpen: true,
+					onClose: vi.fn()
+				}
+			});
+
+			expect(
+				screen.queryByRole('button', { name: 'Save as default view' })
+			).not.toBeInTheDocument();
+			expect(screen.queryByRole('button', { name: 'Clear saved default' })).not.toBeInTheDocument();
+			expect(footerOf(container).querySelectorAll('button')).toHaveLength(2);
+		});
+
+		it('has no accessibility violations with the relocated default-view section', async () => {
+			const { container } = render(DeviceFilters, { props: { ...withDefaults } });
+
+			expect(await axe(container)).toHaveNoViolations();
+		});
+	});
+	// Five stacked full-width rows spent 255px on five short words. The options
+	// now sit two per row (161.5px, and a bigger tap target). The layout is only
+	// safe because the labels fit their half-width columns — jsdom has no layout
+	// engine, so these guard the structural preconditions for that fit and M-33
+	// carries the pixel judgement.
+	//
+	// TAMPER-TESTED: reverting the container to `space-y-2.5` fails "lays the
+	//   status options out two per row"; restoring the old `gap-3`/`px-2` inside
+	//   the label fails "keeps the in-label spacing that lets the longest label
+	//   fit"; dropping `truncate` fails "clips an over-long label instead of
+	//   letting it wrap"; and `min-h-10` fails the tap-target guard.
+	describe('status option density', () => {
+		function statusList(container: HTMLElement): HTMLElement {
+			const legend = [...container.querySelectorAll('legend')].find(
+				(node) => node.textContent?.trim() === 'Status'
+			);
+			expect(legend, 'Status fieldset must exist').toBeTruthy();
+			const list = legend!.parentElement!.querySelector<HTMLElement>('div');
+			expect(list, 'Status options container must exist').toBeTruthy();
+			return list!;
+		}
+
+		const baseProps = {
+			filters: defaultFilters,
+			onFiltersChange: vi.fn(),
+			isOpen: true,
+			onClose: vi.fn()
+		};
+
+		it('lays the status options out two per row', () => {
+			const { container } = render(DeviceFilters, { props: { ...baseProps } });
+
+			const list = statusList(container);
+			expect(list.className).toMatch(/\bgrid\b/);
+			expect(list.className).toMatch(/\bgrid-cols-2\b/);
+			// A vertical stack is what this replaced.
+			expect(list.className).not.toMatch(/\bspace-y-/);
+		});
+
+		it('still renders every status option exactly once', () => {
+			const { container } = render(DeviceFilters, { props: { ...baseProps } });
+
+			const labels = [...statusList(container).querySelectorAll('label')].map((node) =>
+				node.textContent?.trim()
+			);
+
+			expect(labels).toEqual(['Active', 'Retired', 'Disposed', 'In Repair', 'Lent']);
+		});
+
+		it('keeps the in-label spacing that lets the longest label fit its column', () => {
+			const { container } = render(DeviceFilters, { props: { ...baseProps } });
+
+			for (const label of statusList(container).querySelectorAll('label')) {
+				// gap-3 + px-2 costs 12.75px of the 82.4px a column has for text at
+				// 320px, which is what made "In Repair" wrap to two lines there.
+				expect(label.className).toMatch(/\bgap-2\b/);
+				expect(label.className).toMatch(/\bpx-1\.5\b/);
+				expect(label.className).not.toMatch(/\bgap-3\b/);
+			}
+		});
+
+		it('clips an over-long label instead of letting it wrap its row taller', () => {
+			const { container } = render(DeviceFilters, { props: { ...baseProps } });
+
+			for (const label of statusList(container).querySelectorAll('label')) {
+				const text = label.querySelector('span');
+				expect(text!.className, label.textContent ?? '').toMatch(/\btruncate\b/);
+				// The checkbox must not be squeezed when the text is the long one.
+				expect(label.querySelector('input')!.className).toMatch(/\bshrink-0\b/);
+			}
+		});
+
+		it('gives every status option a 44px-plus tap target', () => {
+			const { container } = render(DeviceFilters, { props: { ...baseProps } });
+
+			for (const label of statusList(container).querySelectorAll('label')) {
+				// min-h-11 is 2.75rem = 46.75px at this app's 17px root (D-137);
+				// the stacked layout this replaced used min-h-10 (42.5px).
+				expect(label.className, label.textContent ?? '').toMatch(/\bmin-h-11\b/);
+			}
+		});
+
+		it('still toggles a status through the pending gate when paired', async () => {
+			const user = userEvent.setup();
+			const onFiltersChange = vi.fn();
+
+			render(DeviceFilters, { props: { ...baseProps, onFiltersChange } });
+
+			await user.click(screen.getByLabelText('In Repair'));
+			expect(onFiltersChange).not.toHaveBeenCalled();
+
+			await user.click(screen.getByRole('button', { name: 'Apply' }));
+			expect(onFiltersChange).toHaveBeenCalledWith(
+				expect.objectContaining({ status: ['InRepair'] })
+			);
+		});
+
+		it('has no accessibility violations with the paired status options', async () => {
+			const { container } = render(DeviceFilters, { props: { ...baseProps } });
 
 			expect(await axe(container)).toHaveNoViolations();
 		});

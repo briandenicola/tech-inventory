@@ -75,8 +75,11 @@ as an explicit exception under `plan.md` §2.10, not silently dropped.
 | M-28 | **Device details compact layout (installed PWA, portrait, 320/375/390/430 CSS px):** Open a device from the list (both the detail modal and the `/devices/{id}` page). Fields must render as a **flush inset list — label left, value right on one line, hairline divider between rows** — not as stacked label-over-value cards. Long values (Product URL, MAC address) must wrap or truncate inside their row without pushing the label off-screen; Purpose and Notes stay stacked. Confirm the same screen opened in **mobile Safari/Chrome (not installed)** still shows the roomy stacked layout, since the compact variant is gated on `display-mode: standalone`. Check both light and dark themes. `REVIEWED/manual — not jsdom-proven.` | | |
 | M-29 | **#149 — API Keys card in Settings (installed PWA, portrait, 320/375/390/430 CSS px):** Open Settings and find the **API Keys** card. Create a key: the name field, Read/Read&write toggle and Create Key button must all fit without horizontal overflow, and each stays tappable. On success the green one-time key panel appears with the full key visible (wrapping, not clipped). Revoke a key and confirm the native confirmation appears and is dismissable. Verify list rows truncate long key names rather than pushing the Revoke button off-screen. Check both light and dark themes. `REVIEWED/manual — not jsdom-proven.` | | |
 | M-30 | **#149 — Copy-to-clipboard for a new API key (installed PWA on iOS Safari AND Android Chrome):** Create a key and tap **Copy**. The button must report "Copied" and the key must actually paste correctly into another app (Notes/Keep) — verify the pasted value matches the displayed one character-for-character. Then repeat with clipboard permission denied: the panel must show the "copy failed — select the key and copy it manually" message, select the field, and keep the key visible so it can still be copied by hand. `REVIEWED/manual — not jsdom-proven.` | | |
+| M-31 | **Group expand/collapse in the View panel (installed PWA, portrait, 320/375/390/430 CSS px):** On `/devices` with grouping in effect, open the panel from the header button — its heading and the button both read **"View"**. Tap **Collapse all groups**: the panel closes and every group header shows collapsed (chevron rotated, no rows). Hand-expand one group, then tap **Collapse all groups** again — it must collapse again, not be ignored. Tap **Expand all groups** and confirm every group opens. Pull-to-refresh (or let the list refetch) and confirm a hand-expanded group stays open. Set Settings → Grouped Lists to **Collapsed**, reopen `/devices`, and confirm groups start closed; switch Group by to another dimension and confirm the new groups also start closed. Finally set Group by to **None** and confirm the two buttons disappear. `REVIEWED/manual — not jsdom-proven.` | | |
+| M-32 | **View panel footer density (installed PWA, portrait, 320/375/390/430 CSS px):** Open the View panel on each viewport. The pinned footer holds exactly **one row of two buttons** — **Clear all** (left, outlined) and **Apply** (right, filled) — each on a single line with **no ellipsis truncation** and each comfortably tappable (≥44 px). **Save as default view** and **Clear saved default** must appear in the scrolling area under a **DEFAULT VIEW** heading, not pinned. Confirm noticeably more option rows are visible above the footer than before, that the footer clears the home indicator (`safe-area-inset-bottom`), and that scrolling to the very bottom reveals the default-view buttons fully. Check both light and dark themes. `REVIEWED/manual — not jsdom-proven.` | | |
+| M-33 | **View panel status options, two per row (installed PWA, portrait, 320/375/390/430 CSS px):** Open the View panel and scroll to **Status**. The five options sit **two per row** (Active/Retired, Disposed/In Repair, then Lent alone). On each viewport confirm: every label renders on **one line with no ellipsis**; the two labels in a row share the same baseline and their checkboxes line up in two straight columns; no checkbox or label overlaps its neighbour; each row is comfortably tappable (≥44 px); tapping either column toggles only its own checkbox. Watch 320 px in particular — **In Repair** and **Disposed** are the tightest fits. Repeat with the OS text size raised one or two steps (iOS Settings → Display & Brightness → Text Size): labels may ellipsise there, but rows must stay aligned and must not overlap. Check both light and dark themes. `REVIEWED/manual — not jsdom-proven.` | | |
 
-**30 checks, all owner `briandenicola`.** M-16 compensates for the route-level
+**33 checks, all owner `briandenicola`.** M-16 compensates for the route-level
 composition gap identified by the post-major-work QC audit; M-17 and M-18 cover
 the mobile-popover and desktop-nav tap-target density introduced by issues #134
 and #144 (branch `squad/134-144-desktop-nav-density`); M-19 covers the real
@@ -129,7 +132,25 @@ proves both branches of `navigator.clipboard.writeText` (resolve and reject) dri
 the right UI, but jsdom cannot prove a real clipboard write round-trips, and iOS
 Safari's clipboard permission behaviour has no jsdom equivalent. This one matters
 more than most: the plaintext key is displayed exactly once and is unrecoverable
-afterwards, so a silent copy failure costs the user the credential. The remaining
+afterwards, so a silent copy failure costs the user the credential;
+M-31 covers bulk group expand/collapse and the Settings default — component
+tests prove the seeding effect, the counter-driven bulk toggle and the
+"equivalent rebuild must not reseed" guard, but jsdom cannot exercise a real
+refetch cycle in the installed app, cannot prove the panel actually closes over
+a list the user can then see, and cannot reach the `display-mode: standalone`
+gate that decides whether the grouped list presentation renders at all;
+M-32 covers the View panel's footer density — component tests prove the footer
+holds only the two pinned actions, in one two-column row, at a 44px-plus tap
+target, and that the default-view actions moved into the scroll area, but jsdom
+has no layout engine: it cannot prove "Clear all" and "Apply" actually fit their
+half-width pills without truncating at 320px, nor that the safe-area inset keeps
+the row clear of the home indicator;
+M-33 covers the two-per-row status options — component tests prove the grid, the
+in-label spacing, the truncate guard and the tap target, and the layout was
+measured in headless Chromium against the built stylesheet (255px to 161.5px,
+no overlap and no truncation at 320/360/375/390/430), but that is one engine at
+one text size: only a real device proves the fit under iOS/WebKit metrics and
+the user's own Dynamic Type setting. The remaining
 checks exist only because their risks require a real browser environment. None
 duplicates an existing Vitest or HTTP
 integration/contract assertion — each exists only because the risk is

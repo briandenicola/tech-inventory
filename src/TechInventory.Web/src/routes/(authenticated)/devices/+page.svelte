@@ -31,6 +31,7 @@
 		getTableColumns,
 		getTableColumnWidths,
 		setTableColumnWidth,
+		getGroupDefaultState,
 		DEFAULT_TABLE_COLUMNS,
 		DEFAULT_TABLE_COLUMN_WIDTHS,
 		type DevicesViewMode,
@@ -247,6 +248,27 @@
 		setTableColumnWidth(currentUser?.id, column, null);
 	}
 
+	// Bulk expand/collapse of PWA groups. A counter rather than a boolean so that
+	// pressing "Collapse all" twice — with hand-expanded groups in between — takes
+	// effect both times.
+	let groupsStartCollapsed = $state(false);
+	let bulkToggleSignal = $state(0);
+	let bulkToggleTarget = $state<'expand' | 'collapse'>('expand');
+
+	// Collapsible groups only exist in the installed PWA's list presentation, so the
+	// panel's bulk actions stay hidden everywhere else even when grouping is on.
+	const groupingActive = $derived(displayMode.isPwa && Boolean(effectiveGroupBy));
+
+	function expandAllGroups() {
+		bulkToggleTarget = 'expand';
+		bulkToggleSignal += 1;
+	}
+
+	function collapseAllGroups() {
+		bulkToggleTarget = 'collapse';
+		bulkToggleSignal += 1;
+	}
+
 	// #145: PWA selection mode — row checkboxes are hidden by default in the
 	// installed PWA. The user opts in via the filter panel's "Enable Selection Mode"
 	// command. Exiting clears the current selection.
@@ -391,6 +413,11 @@
 		}
 
 		columnWidths = getTableColumnWidths(currentUser?.id);
+
+		// Seeds DevicePwaList's collapse state. Read once on mount — changing
+		// it in Settings is a "next time you open a grouped list" preference, not a
+		// live override of whatever the user has expanded here.
+		groupsStartCollapsed = getGroupDefaultState(currentUser?.id) === 'collapsed';
 
 		const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 		const updateMotionPreference = () => {
@@ -780,6 +807,9 @@
 	{pwaSelectionMode}
 	onEnablePwaSelection={enablePwaSelection}
 	onDisablePwaSelection={disablePwaSelection}
+	{groupingActive}
+	onExpandAllGroups={expandAllGroups}
+	onCollapseAllGroups={collapseAllGroups}
 />
 
 <!-- Main content -->
@@ -983,6 +1013,9 @@
 			onResizeColumn={handleResizeColumn}
 			onResetColumnWidth={handleResetColumnWidth}
 			presentation={displayMode.isPwa ? 'pwa' : 'auto'}
+			defaultCollapsed={groupsStartCollapsed}
+			{bulkToggleSignal}
+			{bulkToggleTarget}
 			{currentUser}
 			onChanged={refreshDevicesList}
 		/>

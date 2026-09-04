@@ -1,9 +1,14 @@
 <!--
-	DeviceFilters.svelte — T16 Filters sidebar (search + facets)
+	DeviceFilters.svelte — T16 "View" panel (search + facets + view options)
+
+	Named DeviceFilters for its history; the panel now also carries view options
+	(Group by, bulk expand/collapse, PWA selection mode), so its heading and the
+	button that opens it read "View" rather than "Filters".
 	
 	Layout: Sidebar on desktop (~280px left of table), collapsible drawer on mobile.
 	Controls: search (debounced 300ms), brand/category/owner/location/network dropdowns,
-	status multi-select, purchase year range, "Clear all" button.
+	status multi-select, purchase year range, "Clear all" button,
+	Group by + Expand/Collapse all groups.
 	URL-backed via $page.url.searchParams.
 	Reference data cached in referenceDataStore (fetch once on mount).
 	
@@ -38,6 +43,16 @@
 		onEnablePwaSelection?: () => void;
 		/** #145: called when the user taps "Exit Selection Mode" (clears selection). */
 		onDisablePwaSelection?: () => void;
+		/** True when a grouping dimension is actually in effect for the rendered
+		 *  list — the explicit `groupBy`, or the PWA's implicit category default.
+		 *  Gates the bulk expand/collapse actions, which have nothing to act on
+		 *  when the list is flat. Deliberately the *applied* grouping, not
+		 *  `pending.groupBy`: the buttons act on what is on screen right now. */
+		groupingActive?: boolean;
+		/** Expand every group in the current list. */
+		onExpandAllGroups?: () => void;
+		/** Collapse every group in the current list. */
+		onCollapseAllGroups?: () => void;
 	}
 
 	let {
@@ -53,7 +68,10 @@
 		isPwa = false,
 		pwaSelectionMode = false,
 		onEnablePwaSelection,
-		onDisablePwaSelection
+		onDisablePwaSelection,
+		groupingActive = false,
+		onExpandAllGroups,
+		onCollapseAllGroups
 	}: Props = $props();
 
 	const refData = $derived($referenceDataStore);
@@ -376,6 +394,35 @@
 				{t('devices.groups.pwaDefaultNote')}
 			</p>
 		{/if}
+
+		<!--
+			Bulk expand/collapse. Immediate actions rather than Apply-gated edits:
+			they change nothing about the query, only how the already-loaded list is
+			displayed, so there is nothing to stage (same reasoning as "Clear All
+			Filters" above). Closing the panel is the point — the result is behind it.
+			Rendered only while grouping is actually in effect, since a flat list has
+			no groups to act on.
+		-->
+		{#if groupingActive}
+			<div class="mt-3 flex gap-2" role="group" aria-label={t('devices.filters.groupActionsLabel')}>
+				<button
+					type="button"
+					data-testid="expand-all-groups"
+					onclick={() => { onExpandAllGroups?.(); onClose?.(); }}
+					class="inline-flex min-h-11 flex-1 items-center justify-center rounded-full border border-neutral-300 px-4 py-2.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+				>
+					{t('devices.filters.expandAllGroups')}
+				</button>
+				<button
+					type="button"
+					data-testid="collapse-all-groups"
+					onclick={() => { onCollapseAllGroups?.(); onClose?.(); }}
+					class="inline-flex min-h-11 flex-1 items-center justify-center rounded-full border border-neutral-300 px-4 py-2.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+				>
+					{t('devices.filters.collapseAllGroups')}
+				</button>
+			</div>
+		{/if}
 	</div>
 
 	<!-- Brand -->
@@ -473,16 +520,36 @@
 		<legend class="mb-2 block text-base font-medium text-neutral-800 dark:text-neutral-200">
 			{t('devices.filters.statusLabel')}
 		</legend>
-		<div class="space-y-2.5">
+		<!--
+			Two per row: five stacked full-width rows spent 255px on five short
+			words. Paired, the same five options cost 161.5px and the row grows from
+			min-h-10 to min-h-11 (42.5 -> 46.75px), so the tap target improves while
+			the panel gets 93.5px shorter.
+
+			Measured in Chromium against the built stylesheet at 320/360/375/390/430
+			CSS px — no overlap, no truncation, both columns of a row aligned at
+			every width. At the narrowest (320px, where the w-[22rem] panel is
+			capped by max-w-full) each column is 124.9px, leaving 82.4px of text
+			room after the checkbox, gap and padding; the widest label ("Disposed")
+			needs 69px. That headroom is why the in-label gap is gap-2 and the
+			padding px-1.5 rather than the old gap-3/px-2, which left "In Repair"
+			wrapping to two lines at 320px — exactly the misalignment this layout
+			must not introduce.
+
+			`truncate` is the belt-and-braces guard: a longer translation or a wider
+			system font ellipsises inside its own column rather than wrapping and
+			pushing its row taller than its neighbour's.
+		-->
+		<div class="grid grid-cols-2 gap-2.5">
 			{#each statusOptions as status}
-				<label class="flex min-h-10 cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800">
+				<label class="flex min-h-11 min-w-0 cursor-pointer items-center gap-2 rounded-lg px-1.5 py-1.5 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800">
 					<input
 						type="checkbox"
 						checked={statusValues.includes(status)}
 						onchange={() => toggleStatus(status)}
-						class="h-5 w-5 rounded-md border-neutral-300 text-primary-600 focus-visible:ring-primary-500 focus-visible:ring-offset-0 dark:border-neutral-600 dark:bg-neutral-800"
+						class="h-5 w-5 shrink-0 rounded-md border-neutral-300 text-primary-600 focus-visible:ring-primary-500 focus-visible:ring-offset-0 dark:border-neutral-600 dark:bg-neutral-800"
 					/>
-					<span class="text-base text-neutral-800 dark:text-neutral-200">
+					<span class="min-w-0 truncate text-base text-neutral-800 dark:text-neutral-200">
 						{t(`devices.filters.status${status}`)}
 					</span>
 				</label>
@@ -533,41 +600,18 @@
 		</div>
 	</fieldset>
 
-		<!-- ARIA live region for results announcement -->
-		<div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
-			<!-- Will be populated by parent component with result count -->
-		</div>
-	</div>
-
-	<div class="sticky bottom-0 z-10 shrink-0 border-t border-neutral-200/70 bg-white/95 backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-950/95">
-		<div class="flex flex-col gap-2 px-7 pt-4" style={`padding-bottom: ${footerPaddingBottom};`}>
-			<!--
-				#128: Apply is the explicit gate that turns `pending` into the
-				applied filters — the ONLY place besides Clear All that calls
-				onFiltersChange. Always enabled (never `disabled`) so it stays in
-				the natural Tab order regardless of pending state; the emphasis
-				classes below are the visual (not focus-gating) distinction
-				between "pending edits waiting" and "nothing to apply".
-			-->
-			<button
-				type="button"
-				onclick={applyFilters}
-				class="inline-flex min-h-11 w-full items-center justify-center rounded-full px-5 py-2.5 text-base font-medium text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 {hasPendingChanges
-					? 'bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600'
-					: 'bg-neutral-400 hover:bg-neutral-500 dark:bg-neutral-600 dark:hover:bg-neutral-500'}"
-			>
-				{t('devices.filters.apply')}
-			</button>
-
-			<button
-				type="button"
-				onclick={clearAll}
-				class="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-neutral-300 px-5 py-2.5 text-base font-medium text-neutral-700 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-			>
-				{t('devices.filters.clearAll')}
-			</button>
-
-			{#if onSaveDefault || onClearDefault}
+		<!--
+			Save/Clear default view live in the scroll area, not the sticky footer.
+			They are occasional actions — set once, rarely revisited — and pinning
+			them cost ~110px of permanent chrome on every phone viewport, hiding the
+			options the panel exists to show. Apply and Clear all stay pinned
+			because they are what you reach for on the way out.
+		-->
+		{#if onSaveDefault || onClearDefault}
+			<section aria-label={t('devices.filters.defaultViewSection')} class="mb-6">
+				<p class="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+					{t('devices.filters.defaultViewSection')}
+				</p>
 				<div class="flex flex-col gap-2">
 					{#if onSaveDefault}
 						<button
@@ -601,7 +645,50 @@
 						</button>
 					{/if}
 				</div>
-			{/if}
+			</section>
+		{/if}
+
+		<!-- ARIA live region for results announcement -->
+		<div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
+			<!-- Will be populated by parent component with result count -->
+		</div>
+	</div>
+
+	<div class="sticky bottom-0 z-10 shrink-0 border-t border-neutral-200/70 bg-white/95 backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-950/95">
+		<!--
+			One row, not a stack: two 46.75px pills side by side cost one row of
+			height instead of two, and the panel's whole job is showing the options
+			above them. Clear sits left and Apply right so the destructive-ish
+			action is not under the thumb that just reached for Apply.
+			`min-w-0` on both so a long localized label truncates its own button
+			rather than forcing the row wider than the panel at 320px.
+		-->
+		<div class="grid grid-cols-2 gap-2 px-7 pt-3" style={`padding-bottom: ${footerPaddingBottom};`}>
+			<button
+				type="button"
+				onclick={clearAll}
+				class="inline-flex min-h-11 w-full min-w-0 items-center justify-center rounded-full border border-neutral-300 px-4 py-2.5 text-base font-medium text-neutral-700 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+			>
+				<span class="truncate">{t('devices.filters.clearAll')}</span>
+			</button>
+
+			<!--
+				#128: Apply is the explicit gate that turns `pending` into the
+				applied filters — the ONLY place besides Clear All that calls
+				onFiltersChange. Always enabled (never `disabled`) so it stays in
+				the natural Tab order regardless of pending state; the emphasis
+				classes below are the visual (not focus-gating) distinction
+				between "pending edits waiting" and "nothing to apply".
+			-->
+			<button
+				type="button"
+				onclick={applyFilters}
+				class="inline-flex min-h-11 w-full min-w-0 items-center justify-center rounded-full px-4 py-2.5 text-base font-medium text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 {hasPendingChanges
+					? 'bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600'
+					: 'bg-neutral-400 hover:bg-neutral-500 dark:bg-neutral-600 dark:hover:bg-neutral-500'}"
+			>
+				<span class="truncate">{t('devices.filters.apply')}</span>
+			</button>
 		</div>
 	</div>
 </div>

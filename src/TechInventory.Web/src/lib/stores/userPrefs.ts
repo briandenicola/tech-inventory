@@ -70,12 +70,25 @@ export const MAX_TABLE_COLUMN_WIDTH = 640;
  */
 const TableColumnWidthsSchema = z.record(z.string(), z.number());
 
+/**
+ * Whether grouped lists start with every group open or closed.
+ *
+ * A default, not live state: collapsing a group while browsing stays ephemeral, so
+ * a stray tap is never persisted into a preference the user has to hunt down later.
+ */
+export const GROUP_DEFAULT_STATES = ['expanded', 'collapsed'] as const;
+export type GroupDefaultState = (typeof GROUP_DEFAULT_STATES)[number];
+
+/** Expanded: a new user sees their devices, not a wall of closed headers. */
+export const DEFAULT_GROUP_STATE: GroupDefaultState = 'expanded';
+
 const UserPrefsSchema = z.object({
 	version: z.literal(STORAGE_VERSION),
 	devicesDefaultView: z.string().nullable().optional(),
 	devicesViewMode: z.enum(['cards', 'table']).nullable().optional(),
 	themePreference: z.enum(['light', 'dark', 'system']).nullable().optional(),
 	tableColumns: z.array(TableColumnSchema).nullable().optional(),
+	groupDefaultState: z.enum(GROUP_DEFAULT_STATES).nullable().optional(),
 	tableColumnWidths: TableColumnWidthsSchema.nullable().optional()
 });
 
@@ -278,6 +291,25 @@ export function resetTableColumnWidths(userId: string | null | undefined): void 
 	if (!userId) return;
 	const prefs = readPrefs(userId);
 	prefs.tableColumnWidths = null;
+	writePrefs(userId, prefs);
+}
+
+/**
+ * The user's preferred starting state for grouped lists, or the default when unset.
+ */
+export function getGroupDefaultState(userId: string | null | undefined): GroupDefaultState {
+	if (!userId) return DEFAULT_GROUP_STATE;
+	return readPrefs(userId).groupDefaultState ?? DEFAULT_GROUP_STATE;
+}
+
+/** Persist the starting state for grouped lists. Pass null to fall back to the default. */
+export function setGroupDefaultState(
+	userId: string | null | undefined,
+	state: GroupDefaultState | null
+): void {
+	if (!userId) return;
+	const prefs = readPrefs(userId);
+	prefs.groupDefaultState = state;
 	writePrefs(userId, prefs);
 }
 

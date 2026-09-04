@@ -152,6 +152,7 @@
 		"exports": "Export",
 		"settings": "Settings",
 		"configuration": "Configuration",
+		"config": "Config",
 		"adminBrands": "Brands",
 		"adminCategories": "Categories",
 		"adminLocations": "Locations",
@@ -286,6 +287,9 @@
 			"macAddress": "MAC Address",
 			"productUrl": "Product URL",
 			"version": "Version"
+		},
+		"table": {
+			"resizeColumn": "Resize {column} column"
 		},
 		"form": {
 			"tags": "Tags",

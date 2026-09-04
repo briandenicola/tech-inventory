@@ -38,6 +38,10 @@
 		onOpenDevice?: (deviceId: string) => void;
 		/** Visible columns in display order. Desktop-table-only (D-178). */
 		visibleColumns?: TableColumnId[];
+		/** Effective per-column widths. Desktop instance only. */
+		columnWidths?: Record<TableColumnId, number>;
+		onResizeColumn?: (column: TableColumnId, width: number) => void;
+		onResetColumnWidth?: (column: TableColumnId) => void;
 		/** F045: 'pwa' renders DevicePwaList instead of the 2-up card grid. */
 		presentation?: 'auto' | 'pwa';
 		/** F045: required by DevicePwaList's DeviceActionsMenu permission checks. */
@@ -61,6 +65,9 @@
 		mobileViewMode = 'cards',
 		onOpenDevice,
 		visibleColumns = DEFAULT_TABLE_COLUMNS,
+		columnWidths,
+		onResizeColumn,
+		onResetColumnWidth,
 		presentation = 'auto',
 		currentUser = null,
 		onChanged
@@ -101,6 +108,10 @@
 			{someVisibleSelected}
 			{onOpenDevice}
 			{visibleColumns}
+			resizable
+			{columnWidths}
+			{onResizeColumn}
+			{onResetColumnWidth}
 		/>
 	</div>
 

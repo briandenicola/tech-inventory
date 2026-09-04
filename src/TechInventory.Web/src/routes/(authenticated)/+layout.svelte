@@ -211,13 +211,17 @@
 						{t(item.labelKey)}
 					</a>
 				{/each}
+
+				<!--
+					Sits at the end of the primary row rather than in the right-hand
+					cluster, and renders as a nav item like its neighbours. Admin-only, so
+					it simply does not render for Member/Viewer — the row ends at Audit Log.
+				-->
+				<AppDesktopConfigMenu pathname={$page.url.pathname} {currentUser} />
 			</nav>
 
 			<!-- Right cluster: config menu + user menu + mobile hamburger -->
 			<div class="ml-auto flex flex-shrink-0 items-center gap-2">
-
-			<!-- Desktop Configuration popover (Admin-only, md+) — #134 -->
-			<AppDesktopConfigMenu pathname={$page.url.pathname} {currentUser} />
 
 			<!-- Desktop user menu — account-scoped only: Settings + Sign Out (#134) -->
 			<div class="relative hidden md:block">

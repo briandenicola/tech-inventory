@@ -21,6 +21,7 @@
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import TableColumnSettings from '$lib/components/TableColumnSettings.svelte';
+	import ApiKeysSettings from '$lib/components/ApiKeysSettings.svelte';
 	import { getApiErrorMessage } from '$lib/utils/apiErrors';
 
 	const currentUser = $derived($authStore.currentUser);
@@ -240,6 +241,8 @@
 				<ThemeToggle />
 			</div>
 		</section>
+
+		<ApiKeysSettings />
 
 		<!-- Table column configuration -->
 		<div class="mt-6">

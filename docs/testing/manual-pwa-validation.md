@@ -73,8 +73,10 @@ as an explicit exception under `plan.md` §2.10, not silently dropped.
 | M-26 | **#170 — Ellipsis right-alignment (installed PWA, portrait, iPhone width ≈ 375 CSS px):** Open `/devices` in PWA Cards view. Verify five specific rows across groups: "Mohu Leaf Stitch 60m Range / Mohu · Leaf Stitch", "4-Door French Door Fridge / Samsung · RF28JBEDBSG/AA", "Air Fryer / Ninja · DZ400 A", "Aqua Flosser / AquaSonic · Aqua Flosser PRO", "Coffee Maker / Keurig · K-Classic". All five ⋮ ellipsis buttons must form a **visibly straight vertical column** at the right inset — none displaced inward by short or long text. Text that is too long must truncate (ellipsis) rather than pushing the action button left or right. Each ⋮ button must be comfortably tappable (≥44 px touch target). Compact ghost style (no large border circle). Verify in both light and dark themes. `REVIEWED/manual — not jsdom-proven.` | | |
 | M-27 | **Overflow menu density (installed PWA, portrait, 320/375/390/430 CSS px):** Tap the header hamburger to open the app menu. Every row (Devices, Reports, Import, Export, Audit Log, the Configuration group, Settings, Sign Out) must render as a **38.25 px block sitting flush against its neighbours** (`h-9` = 2.25rem at this app's 17px root, not the 36px the Tailwind name implies) — no blank band above or below the label, no visible whitespace gutter between rows. The active row's tint must be exactly the same height as an inactive row. Verify the whole menu fits without scrolling on a 390 px-tall-viewport phone where it previously scrolled, and that each row is still comfortably tappable with a thumb. Check both light and dark themes. `REVIEWED/manual — not jsdom-proven.` | | |
 | M-28 | **Device details compact layout (installed PWA, portrait, 320/375/390/430 CSS px):** Open a device from the list (both the detail modal and the `/devices/{id}` page). Fields must render as a **flush inset list — label left, value right on one line, hairline divider between rows** — not as stacked label-over-value cards. Long values (Product URL, MAC address) must wrap or truncate inside their row without pushing the label off-screen; Purpose and Notes stay stacked. Confirm the same screen opened in **mobile Safari/Chrome (not installed)** still shows the roomy stacked layout, since the compact variant is gated on `display-mode: standalone`. Check both light and dark themes. `REVIEWED/manual — not jsdom-proven.` | | |
+| M-29 | **#149 — API Keys card in Settings (installed PWA, portrait, 320/375/390/430 CSS px):** Open Settings and find the **API Keys** card. Create a key: the name field, Read/Read&write toggle and Create Key button must all fit without horizontal overflow, and each stays tappable. On success the green one-time key panel appears with the full key visible (wrapping, not clipped). Revoke a key and confirm the native confirmation appears and is dismissable. Verify list rows truncate long key names rather than pushing the Revoke button off-screen. Check both light and dark themes. `REVIEWED/manual — not jsdom-proven.` | | |
+| M-30 | **#149 — Copy-to-clipboard for a new API key (installed PWA on iOS Safari AND Android Chrome):** Create a key and tap **Copy**. The button must report "Copied" and the key must actually paste correctly into another app (Notes/Keep) — verify the pasted value matches the displayed one character-for-character. Then repeat with clipboard permission denied: the panel must show the "copy failed — select the key and copy it manually" message, select the field, and keep the key visible so it can still be copied by hand. `REVIEWED/manual — not jsdom-proven.` | | |
 
-**28 checks, all owner `briandenicola`.** M-16 compensates for the route-level
+**30 checks, all owner `briandenicola`.** M-16 compensates for the route-level
 composition gap identified by the post-major-work QC audit; M-17 and M-18 cover
 the mobile-popover and desktop-nav tap-target density introduced by issues #134
 and #144 (branch `squad/134-144-desktop-nav-density`); M-19 covers the real
@@ -117,7 +119,17 @@ right-aligned values and identical `dt` ordering, but cannot verify real
 wrapping/truncation of long values, and cannot exercise the
 `display-mode: standalone` gate that decides which variant a real device gets
 (jsdom has no `matchMedia`, so tests only ever see the roomy default unless
-`compact` is passed explicitly). The remaining
+`compact` is passed explicitly);
+M-29 covers the API Keys settings card (#149) — component tests prove the four
+states, the scope toggle, the revoke confirmation and axe-cleanliness, but cannot
+show whether the name field, scope toggle and Create button actually fit side by
+side at 320 px on a real device;
+M-30 covers copy-to-clipboard for a newly created key (#149) — the component test
+proves both branches of `navigator.clipboard.writeText` (resolve and reject) drive
+the right UI, but jsdom cannot prove a real clipboard write round-trips, and iOS
+Safari's clipboard permission behaviour has no jsdom equivalent. This one matters
+more than most: the plaintext key is displayed exactly once and is unrecoverable
+afterwards, so a silent copy failure costs the user the credential. The remaining
 checks exist only because their risks require a real browser environment. None
 duplicates an existing Vitest or HTTP
 integration/contract assertion — each exists only because the risk is

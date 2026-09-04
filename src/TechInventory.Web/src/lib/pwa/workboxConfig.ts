@@ -11,8 +11,19 @@
  *   must fail normally rather than being served the offline shell.
  * - `POST`/`PUT`/`PATCH`/`DELETE` against `/api/v1/*` are `NetworkOnly` — mutations
  *   are refused offline, never silently queued (C-16).
- * - `GET` against `/api/v1/*` is `StaleWhileRevalidate` so cached device
- *   data remains viewable offline.
+ * - `GET` against `/api/v1/*` is `NetworkFirst` so a reader online always sees
+ *   current data, while the cache still backs "device data viewable offline".
+ *
+ * It was `StaleWhileRevalidate`, which made the app permanently one fetch behind:
+ * SWR answers from cache and refreshes it in the background, so the refetch that
+ * follows a create or edit returned the *pre-mutation* body and only warmed the
+ * cache with the new one. The user then had to refresh a second time to see their
+ * own change. The `maxAgeSeconds` cap did not bound this — SWR re-caches on every
+ * request, which resets the entry's age, so an actively-used URL never aged out.
+ *
+ * `NetworkFirst` keeps the offline guarantee (`coverage-migration.md`:267,
+ * manual check M-07) because it falls back to the same cache when the network
+ * fails or exceeds `networkTimeoutSeconds`.
  */
 import type { VitePWAOptions } from 'vite-plugin-pwa';
 
@@ -43,10 +54,15 @@ export const workboxConfig: Partial<VitePWAOptions['workbox']> = {
 		},
 		{
 			urlPattern: ({ url }: { url: URL }) => url.pathname.startsWith('/api/v1/'),
-			handler: 'StaleWhileRevalidate',
+			handler: 'NetworkFirst',
 			method: 'GET',
 			options: {
 				cacheName: 'tech-inventory-api',
+				// 3s: long enough to ride out a slow mobile round-trip, short enough
+				// that a dead network falls back to cached data before the UI feels
+				// hung. Only reached when the network stalls — a normal response,
+				// fast or slow, is always preferred over the cached copy.
+				networkTimeoutSeconds: 3,
 				expiration: { maxEntries: 100, maxAgeSeconds: 5 * 60 },
 				cacheableResponse: { statuses: [0, 200] }
 			}

@@ -15,6 +15,7 @@ using OpenTelemetry.Trace;
 using Serilog;
 using TechInventory.Api.Authentication;
 using TechInventory.Api.ExceptionHandling;
+using TechInventory.Api.Http;
 using TechInventory.Api.OpenApi;
 using TechInventory.Application;
 using TechInventory.Application.Abstractions.Services;
@@ -404,6 +405,11 @@ if (args.Length > 0 && string.Equals(args[0], "export-openapi", StringComparison
     await OpenApiDocumentExporter.ExportAsync(app.Services, outputPath).ConfigureAwait(false);
     return;
 }
+
+// First in the pipeline: it registers an OnStarting hook, so the header lands on
+// every /api/v1/* response including ones produced by the exception handler,
+// UseStatusCodePages, and the 401/403 paths below.
+app.UseMiddleware<NoStoreCacheHeaderMiddleware>();
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();

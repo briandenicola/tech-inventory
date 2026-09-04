@@ -76,14 +76,14 @@
 	}: Props = $props();
 
 	/**
-	 * Widths shown right now. Seeded from the persisted values and updated live
-	 * during a drag so the column tracks the cursor; the caller only hears about it
-	 * when the gesture ends, so a drag is one write rather than dozens.
+	 * Widths shown right now. A writable $derived: it tracks the persisted values from
+	 * the caller, and a drag assigns straight to it so the column follows the cursor
+	 * without a round trip. The caller only hears about the change when the gesture
+	 * ends, so one drag is one write rather than dozens.
 	 */
-	let draftWidths = $state<Record<string, number>>({ ...DEFAULT_TABLE_COLUMN_WIDTHS });
-
-	$effect(() => {
-		draftWidths = { ...DEFAULT_TABLE_COLUMN_WIDTHS, ...(columnWidths ?? {}) };
+	let draftWidths = $derived<Record<string, number>>({
+		...DEFAULT_TABLE_COLUMN_WIDTHS,
+		...(columnWidths ?? {})
 	});
 
 	function widthOf(column: TableColumnId): number {
@@ -290,14 +290,18 @@
 							on the cell's own right edge whatever the column width is.
 						-->
 						<!--
-							svelte-ignore a11y_no_noninteractive_tabindex
 							A focusable separator IS interactive per WAI-ARIA — this is the
 							Window Splitter pattern (role="separator" + tabindex + aria-valuenow),
-							which is precisely what a resize grip is. The rule does not model
-							that case. Downgrading to a non-focusable element would make the
-							column keyboard-unreachable, which is the actual accessibility
-							failure this suppression avoids.
+							which is precisely what a resize grip is. The a11y rule below does
+							not model that case; downgrading to a non-focusable element would
+							make the column keyboard-unreachable, which is the real
+							accessibility failure this suppression avoids.
+
+							The directive gets its own comment: svelte-ignore treats the whole
+							rest of its comment as a space-separated rule list, so prose sharing
+							the comment is parsed as dozens of unknown rule names.
 						-->
+						<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 						<span
 							role="separator"
 							tabindex="0"

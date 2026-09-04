@@ -11,6 +11,7 @@
 		DEFAULT_TABLE_COLUMNS,
 		getTableColumns,
 		setTableColumns,
+		resetTableColumnWidths,
 		type TableColumnId
 	} from '$lib/stores/userPrefs';
 
@@ -84,6 +85,10 @@
 		columns = [...DEFAULT_TABLE_COLUMNS];
 		enabledSet = new Set(DEFAULT_TABLE_COLUMNS);
 		setTableColumns(currentUser?.id, null);
+		// Widths are part of "how my table looks" as far as the user is concerned, so
+		// Reset returns the whole thing — visibility, order and widths — rather than
+		// leaving a hand-dragged column behind that they then have to hunt down.
+		resetTableColumnWidths(currentUser?.id);
 		addToast({ type: 'success', message: t('settings.tableColumns.toast.reset') });
 	}
 

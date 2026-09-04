@@ -372,8 +372,10 @@
 			"groupByOwner": "Owner",
 			"groupByYear": "Purchase year",
 			"groupActionsLabel": "Groups",
-			"expandAllGroups": "Expand all groups",
-			"collapseAllGroups": "Collapse all groups",
+			"expandGroups": "Expand",
+			"expandGroupsAria": "Expand all groups",
+			"collapseGroups": "Collapse",
+			"collapseGroupsAria": "Collapse all groups",
 			"selectionSection": "SELECTION",
 			"enableSelectionMode": "Enable Selection Mode",
 			"exitSelectionMode": "Exit Selection Mode"

@@ -404,22 +404,39 @@
 			no groups to act on.
 		-->
 		{#if groupingActive}
+			<!--
+				One word each. "Expand all groups" wrapped to two lines in these
+				half-width pills and read as a paragraph rather than a button; the
+				surrounding "Grouped by …" note and the Group by control directly
+				above already say what is being expanded.
+
+				The fuller phrase stays as the accessible name, so a screen-reader
+				user still hears "Expand all groups" out of context. WCAG 2.5.3 is
+				satisfied because the accessible name starts with the visible label.
+
+				`whitespace-nowrap` is the actual fix for the wrap; `truncate` is the
+				fallback for a translation that still cannot fit, so it ellipsises
+				inside its own pill rather than growing the row (the footer pair
+				above carries the same guard).
+			-->
 			<div class="mt-3 flex gap-2" role="group" aria-label={t('devices.filters.groupActionsLabel')}>
 				<button
 					type="button"
 					data-testid="expand-all-groups"
+					aria-label={t('devices.filters.expandGroupsAria')}
 					onclick={() => { onExpandAllGroups?.(); onClose?.(); }}
-					class="inline-flex min-h-11 flex-1 items-center justify-center rounded-full border border-neutral-300 px-4 py-2.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+					class="inline-flex min-h-11 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-full border border-neutral-300 px-4 py-2.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
 				>
-					{t('devices.filters.expandAllGroups')}
+					<span class="truncate">{t('devices.filters.expandGroups')}</span>
 				</button>
 				<button
 					type="button"
 					data-testid="collapse-all-groups"
+					aria-label={t('devices.filters.collapseGroupsAria')}
 					onclick={() => { onCollapseAllGroups?.(); onClose?.(); }}
-					class="inline-flex min-h-11 flex-1 items-center justify-center rounded-full border border-neutral-300 px-4 py-2.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+					class="inline-flex min-h-11 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-full border border-neutral-300 px-4 py-2.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
 				>
-					{t('devices.filters.collapseAllGroups')}
+					<span class="truncate">{t('devices.filters.collapseGroups')}</span>
 				</button>
 			</div>
 		{/if}

@@ -588,6 +588,69 @@ describe('DeviceFilters', () => {
 			expect(onClose).toHaveBeenCalledOnce();
 		});
 
+		// "Expand all groups" wrapped to two lines in these half-width pills. The
+		// visible label is now one word; the fuller phrase survives as the
+		// accessible name, which is why the queries above still find these buttons
+		// by 'Expand all groups'.
+		//
+		// TAMPER-TESTED: putting the long string back as visible text fails the
+		//   one-word test; dropping aria-label fails it too (the accessible name
+		//   collapses to "Expand") and also breaks the three callback tests above;
+		//   removing whitespace-nowrap fails the no-wrap test.
+		it('labels the bulk actions with a single word', () => {
+			render(DeviceFilters, {
+				props: {
+					filters: { ...defaultFilters, groupBy: 'category' as const },
+					onFiltersChange: vi.fn(),
+					isOpen: true,
+					onClose: vi.fn(),
+					groupingActive: true
+				}
+			});
+
+			expect(screen.getByTestId('expand-all-groups').textContent?.trim()).toBe('Expand');
+			expect(screen.getByTestId('collapse-all-groups').textContent?.trim()).toBe('Collapse');
+		});
+
+		it('keeps the full phrase as the accessible name', () => {
+			render(DeviceFilters, {
+				props: {
+					filters: { ...defaultFilters, groupBy: 'category' as const },
+					onFiltersChange: vi.fn(),
+					isOpen: true,
+					onClose: vi.fn(),
+					groupingActive: true
+				}
+			});
+
+			// WCAG 2.5.3 Label in Name: the accessible name must contain the
+			// visible label, so "Expand" has to be a prefix of what is announced.
+			const expand = screen.getByTestId('expand-all-groups');
+			const collapse = screen.getByTestId('collapse-all-groups');
+			expect(expand).toHaveAttribute('aria-label', 'Expand all groups');
+			expect(collapse).toHaveAttribute('aria-label', 'Collapse all groups');
+			expect('Expand all groups'.startsWith(expand.textContent!.trim())).toBe(true);
+			expect('Collapse all groups'.startsWith(collapse.textContent!.trim())).toBe(true);
+		});
+
+		it('never lets a bulk-action label wrap its pill onto a second line', () => {
+			render(DeviceFilters, {
+				props: {
+					filters: { ...defaultFilters, groupBy: 'category' as const },
+					onFiltersChange: vi.fn(),
+					isOpen: true,
+					onClose: vi.fn(),
+					groupingActive: true
+				}
+			});
+
+			for (const id of ['expand-all-groups', 'collapse-all-groups']) {
+				const button = screen.getByTestId(id);
+				expect(button.className, id).toMatch(/\bwhitespace-nowrap\b/);
+				expect(button.querySelector('span')!.className, id).toMatch(/\btruncate\b/);
+			}
+		});
+
 		it('has no accessibility violations with the group actions visible', async () => {
 			const { container } = render(DeviceFilters, {
 				props: {

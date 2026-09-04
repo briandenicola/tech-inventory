@@ -9,4 +9,6 @@ public sealed class SystemCurrentUserService : ICurrentUserService
     public string? GetDisplayName() => null;
 
     public string? GetRoleClaim() => null;
+
+    public string? GetAuthenticationMethod() => null;
 }

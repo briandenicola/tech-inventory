@@ -43,6 +43,8 @@ public sealed class HttpContextCurrentUserService(IHttpContextAccessor httpConte
             ?? user?.FindFirst("role")?.Value;
     }
 
+    public string? GetAuthenticationMethod() => GetAuthenticatedUser()?.FindFirst("auth_method")?.Value;
+
     private ClaimsPrincipal? GetAuthenticatedUser()
     {
         var user = httpContextAccessor.HttpContext?.User;

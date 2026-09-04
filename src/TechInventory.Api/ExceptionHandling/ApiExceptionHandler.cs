@@ -85,6 +85,8 @@ public sealed class ApiExceptionHandler(
             "Validation" => StatusCodes.Status400BadRequest,
             "NotFound" => StatusCodes.Status404NotFound,
             "Conflict" => StatusCodes.Status409Conflict,
+            "Forbidden" => StatusCodes.Status403Forbidden,
+            "QuotaExceeded" => StatusCodes.Status409Conflict,
             "PayloadTooLarge" => StatusCodes.Status413PayloadTooLarge,
             _ => StatusCodes.Status400BadRequest,
         };
@@ -93,6 +95,7 @@ public sealed class ApiExceptionHandler(
         => statusCode switch
         {
             StatusCodes.Status404NotFound => "Not Found",
+            StatusCodes.Status403Forbidden => "Forbidden",
             StatusCodes.Status409Conflict => "Conflict",
             StatusCodes.Status413PayloadTooLarge => "Payload Too Large",
             _ => "Bad Request",

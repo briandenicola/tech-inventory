@@ -170,8 +170,9 @@
 	// implicitGroupingActive: true only when the PWA's implicit category
 	// default is in effect with no explicit user choice at all — distinct
 	// from groupByExplicitlyNone (explicit opt-out) and from an explicit
-	// dimension pick. Drives the presentation-only note in DeviceFilters
-	// (never written to the URL or counted in activeFilterCount).
+	// dimension pick. Selects "Category" in the panel's Group by control so it
+	// shows the dimension actually in force (never written to the URL or counted
+	// in activeFilterCount).
 	const implicitGroupingActive = $derived(
 		displayMode.isPwa && !urlFilters.groupBy && !groupByExplicitlyNone
 	);

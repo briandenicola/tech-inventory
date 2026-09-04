@@ -135,7 +135,7 @@ describe('DeviceFilters', () => {
 			);
 		});
 
-		it('shows Category selected and renders the implicit-default note when implicitGroupingActive is true (dead i18n key follow-up)', () => {
+		it('shows Category selected when the PWA implicit default is in force', () => {
 			render(DeviceFilters, {
 				props: {
 					filters: defaultFilters,
@@ -144,20 +144,33 @@ describe('DeviceFilters', () => {
 				}
 			});
 
+			// The control itself is the disclosure: it shows the dimension actually
+			// in force, whether or not the user picked it.
 			expect(screen.getByLabelText('Group by')).toHaveValue('category');
-			expect(screen.getByText('Grouped by category')).toBeInTheDocument();
 		});
 
-		it('does not render the implicit-default note when a groupBy value is already explicit', () => {
-			render(DeviceFilters, {
-				props: {
-					filters: { ...defaultFilters, groupBy: 'category' },
-					onFiltersChange: vi.fn(),
+		// The Group by control used to carry a "Grouped by category" note beneath
+		// it. It repeated what the <select> directly above already showed, and it
+		// only rendered for the implicit default — choosing Owner or Year removed
+		// it instead of updating it, so it read as stale rather than explanatory.
+		//
+		// TAMPER-TESTED: re-adding a <p>{t('devices.groups.pwaDefaultNote')}</p>
+		//   under the select fails this test in the implicitGroupingActive case.
+		it('renders no explanatory note under the Group by control, implicit or explicit', () => {
+			for (const props of [
+				{ filters: defaultFilters, implicitGroupingActive: true },
+				{
+					filters: { ...defaultFilters, groupBy: 'category' as const },
 					implicitGroupingActive: false
 				}
-			});
+			]) {
+				const { unmount } = render(DeviceFilters, {
+					props: { ...props, onFiltersChange: vi.fn() }
+				});
 
-			expect(screen.queryByText('Grouped by category')).not.toBeInTheDocument();
+				expect(screen.queryByText(/grouped by/i)).not.toBeInTheDocument();
+				unmount();
+			}
 		});
 	});
 

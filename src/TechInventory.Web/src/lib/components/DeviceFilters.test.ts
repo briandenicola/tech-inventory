@@ -43,7 +43,7 @@ describe('DeviceFilters', () => {
 			}
 		});
 
-		const dialog = screen.getByRole('dialog', { name: 'Filters' });
+		const dialog = screen.getByRole('dialog', { name: 'View' });
 		expect(dialog).toHaveClass('h-dvh');
 		expect(dialog).toHaveAttribute('aria-modal', 'true');
 		expect(container.querySelector('div.sticky.top-0')).toBeInTheDocument();
@@ -66,7 +66,7 @@ describe('DeviceFilters', () => {
 			}
 		});
 
-		const closeButton = screen.getByRole('button', { name: 'Close Filters' });
+		const closeButton = screen.getByRole('button', { name: 'Close view panel' });
 		expect(closeButton).toHaveFocus();
 
 		await user.keyboard('{Escape}');
@@ -498,6 +498,100 @@ describe('DeviceFilters', () => {
 					onClose: vi.fn(),
 					isPwa: true,
 					pwaSelectionMode: false
+				}
+			});
+
+			expect(await axe(container)).toHaveNoViolations();
+		});
+	});
+	// The panel is the "View" panel now: it carries view options (Group by, bulk
+	// expand/collapse, selection mode) alongside the filter facets.
+	describe('group bulk actions', () => {
+		it('hides Expand/Collapse all when no grouping is in effect', () => {
+			render(DeviceFilters, {
+				props: {
+					filters: defaultFilters,
+					onFiltersChange: vi.fn(),
+					isOpen: true,
+					onClose: vi.fn(),
+					groupingActive: false
+				}
+			});
+
+			expect(screen.queryByTestId('expand-all-groups')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('collapse-all-groups')).not.toBeInTheDocument();
+		});
+
+		it('shows Expand/Collapse all when grouping is in effect', () => {
+			render(DeviceFilters, {
+				props: {
+					filters: { ...defaultFilters, groupBy: 'category' as const },
+					onFiltersChange: vi.fn(),
+					isOpen: true,
+					onClose: vi.fn(),
+					groupingActive: true
+				}
+			});
+
+			expect(screen.getByRole('button', { name: 'Expand all groups' })).toBeInTheDocument();
+			expect(screen.getByRole('button', { name: 'Collapse all groups' })).toBeInTheDocument();
+		});
+
+		it('calls onExpandAllGroups and closes the panel, without applying filters', async () => {
+			const user = userEvent.setup();
+			const onExpandAllGroups = vi.fn();
+			const onFiltersChange = vi.fn();
+			const onClose = vi.fn();
+
+			render(DeviceFilters, {
+				props: {
+					filters: { ...defaultFilters, groupBy: 'category' as const },
+					onFiltersChange,
+					isOpen: true,
+					onClose,
+					groupingActive: true,
+					onExpandAllGroups
+				}
+			});
+
+			await user.click(screen.getByRole('button', { name: 'Expand all groups' }));
+
+			expect(onExpandAllGroups).toHaveBeenCalledOnce();
+			expect(onClose).toHaveBeenCalledOnce();
+			// Display-only action: it must not push a query change through.
+			expect(onFiltersChange).not.toHaveBeenCalled();
+		});
+
+		it('calls onCollapseAllGroups and closes the panel', async () => {
+			const user = userEvent.setup();
+			const onCollapseAllGroups = vi.fn();
+			const onClose = vi.fn();
+
+			render(DeviceFilters, {
+				props: {
+					filters: { ...defaultFilters, groupBy: 'owner' as const },
+					onFiltersChange: vi.fn(),
+					isOpen: true,
+					onClose,
+					groupingActive: true,
+					onCollapseAllGroups
+				}
+			});
+
+			await user.click(screen.getByRole('button', { name: 'Collapse all groups' }));
+
+			expect(onCollapseAllGroups).toHaveBeenCalledOnce();
+			expect(onClose).toHaveBeenCalledOnce();
+		});
+
+		it('has no accessibility violations with the group actions visible', async () => {
+			const { container } = render(DeviceFilters, {
+				props: {
+					filters: { ...defaultFilters, groupBy: 'category' as const },
+					onFiltersChange: vi.fn(),
+					isOpen: true,
+					onClose: vi.fn(),
+					groupingActive: true
 				}
 			});
 

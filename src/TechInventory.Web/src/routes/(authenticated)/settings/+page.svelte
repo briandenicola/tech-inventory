@@ -21,6 +21,7 @@
 	import ErrorState from '$lib/components/ErrorState.svelte';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import TableColumnSettings from '$lib/components/TableColumnSettings.svelte';
+	import GroupDefaultSettings from '$lib/components/GroupDefaultSettings.svelte';
 	import ApiKeysSettings from '$lib/components/ApiKeysSettings.svelte';
 	import { getApiErrorMessage } from '$lib/utils/apiErrors';
 
@@ -247,6 +248,11 @@
 		<!-- Table column configuration -->
 		<div class="mt-6">
 			<TableColumnSettings />
+		</div>
+
+		<!-- Starting state for grouped lists -->
+		<div class="mt-6">
+			<GroupDefaultSettings />
 		</div>
 	{/if}
 </div>

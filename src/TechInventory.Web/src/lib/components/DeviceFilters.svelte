@@ -1,9 +1,14 @@
 <!--
-	DeviceFilters.svelte — T16 Filters sidebar (search + facets)
+	DeviceFilters.svelte — T16 "View" panel (search + facets + view options)
+
+	Named DeviceFilters for its history; the panel now also carries view options
+	(Group by, bulk expand/collapse, PWA selection mode), so its heading and the
+	button that opens it read "View" rather than "Filters".
 	
 	Layout: Sidebar on desktop (~280px left of table), collapsible drawer on mobile.
 	Controls: search (debounced 300ms), brand/category/owner/location/network dropdowns,
-	status multi-select, purchase year range, "Clear all" button.
+	status multi-select, purchase year range, "Clear all" button,
+	Group by + Expand/Collapse all groups.
 	URL-backed via $page.url.searchParams.
 	Reference data cached in referenceDataStore (fetch once on mount).
 	
@@ -38,6 +43,16 @@
 		onEnablePwaSelection?: () => void;
 		/** #145: called when the user taps "Exit Selection Mode" (clears selection). */
 		onDisablePwaSelection?: () => void;
+		/** True when a grouping dimension is actually in effect for the rendered
+		 *  list — the explicit `groupBy`, or the PWA's implicit category default.
+		 *  Gates the bulk expand/collapse actions, which have nothing to act on
+		 *  when the list is flat. Deliberately the *applied* grouping, not
+		 *  `pending.groupBy`: the buttons act on what is on screen right now. */
+		groupingActive?: boolean;
+		/** Expand every group in the current list. */
+		onExpandAllGroups?: () => void;
+		/** Collapse every group in the current list. */
+		onCollapseAllGroups?: () => void;
 	}
 
 	let {
@@ -53,7 +68,10 @@
 		isPwa = false,
 		pwaSelectionMode = false,
 		onEnablePwaSelection,
-		onDisablePwaSelection
+		onDisablePwaSelection,
+		groupingActive = false,
+		onExpandAllGroups,
+		onCollapseAllGroups
 	}: Props = $props();
 
 	const refData = $derived($referenceDataStore);
@@ -375,6 +393,35 @@
 			<p class="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
 				{t('devices.groups.pwaDefaultNote')}
 			</p>
+		{/if}
+
+		<!--
+			Bulk expand/collapse. Immediate actions rather than Apply-gated edits:
+			they change nothing about the query, only how the already-loaded list is
+			displayed, so there is nothing to stage (same reasoning as "Clear All
+			Filters" above). Closing the panel is the point — the result is behind it.
+			Rendered only while grouping is actually in effect, since a flat list has
+			no groups to act on.
+		-->
+		{#if groupingActive}
+			<div class="mt-3 flex gap-2" role="group" aria-label={t('devices.filters.groupActionsLabel')}>
+				<button
+					type="button"
+					data-testid="expand-all-groups"
+					onclick={() => { onExpandAllGroups?.(); onClose?.(); }}
+					class="inline-flex min-h-11 flex-1 items-center justify-center rounded-full border border-neutral-300 px-4 py-2.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+				>
+					{t('devices.filters.expandAllGroups')}
+				</button>
+				<button
+					type="button"
+					data-testid="collapse-all-groups"
+					onclick={() => { onCollapseAllGroups?.(); onClose?.(); }}
+					class="inline-flex min-h-11 flex-1 items-center justify-center rounded-full border border-neutral-300 px-4 py-2.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+				>
+					{t('devices.filters.collapseAllGroups')}
+				</button>
+			</div>
 		{/if}
 	</div>
 

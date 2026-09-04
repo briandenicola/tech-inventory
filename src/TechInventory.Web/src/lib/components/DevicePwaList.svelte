@@ -21,6 +21,20 @@
 		onOpenDevice?: (deviceId: string) => void;
 		currentUser: CurrentUser | null;
 		onChanged?: () => void;
+		/**
+		 * Starting state for groups. Applied when the set of groups changes (first
+		 * load, or a switch of Group By), never on every render — otherwise expanding
+		 * a group would be undone the moment anything else re-rendered the list.
+		 */
+		defaultCollapsed?: boolean;
+		/**
+		 * Bumped by the caller to force every group open or closed right now. A
+		 * counter rather than a boolean because "collapse all" twice in a row is a
+		 * legitimate thing to ask for, and a boolean would ignore the second press.
+		 */
+		bulkToggleSignal?: number;
+		/** Which way `bulkToggleSignal` applies. */
+		bulkToggleTarget?: 'expand' | 'collapse';
 	}
 
 	let {
@@ -31,7 +45,10 @@
 		onToggleSelect,
 		onOpenDevice,
 		currentUser,
-		onChanged
+		onChanged,
+		defaultCollapsed = false,
+		bulkToggleSignal = 0,
+		bulkToggleTarget = 'expand'
 	}: Props = $props();
 
 	const isGrouped = $derived(Array.isArray(groups) && groups.length > 0);
@@ -40,8 +57,31 @@
 		return selectedIds?.has(id) ?? false;
 	}
 
-	// Ephemeral collapse state — not URL-persisted per spec.
+	// Ephemeral collapse state — not URL-persisted per spec. The user's saved
+	// preference seeds it; individual toggles after that are session-only.
 	let collapsedKeys = $state(new Set<string>());
+
+	/** Every group key currently rendered, as a stable string for change detection. */
+	const groupKeys = $derived((groups ?? []).map((group) => group.key));
+
+	// Re-seed only when the group set itself changes. Keyed on the joined keys rather
+	// than the array identity: the parent rebuilds `groups` on every data refresh, and
+	// reacting to identity would reset the user's expansions on any poll or refetch.
+	let lastSeededKeys = $state<string | null>(null);
+	$effect(() => {
+		const signature = groupKeys.join('\u0000');
+		if (signature === lastSeededKeys) return;
+		lastSeededKeys = signature;
+		collapsedKeys = defaultCollapsed ? new Set(groupKeys) : new Set();
+	});
+
+	// Bulk expand/collapse, driven by a counter so repeated presses always take effect.
+	let lastHandledSignal = $state(0);
+	$effect(() => {
+		if (bulkToggleSignal === lastHandledSignal) return;
+		lastHandledSignal = bulkToggleSignal;
+		collapsedKeys = bulkToggleTarget === 'collapse' ? new Set(groupKeys) : new Set();
+	});
 	function toggleGroup(key: string) {
 		const next = new Set(collapsedKeys);
 		if (next.has(key)) next.delete(key);

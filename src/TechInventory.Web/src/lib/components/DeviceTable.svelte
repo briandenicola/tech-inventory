@@ -46,6 +46,11 @@
 		presentation?: 'auto' | 'pwa';
 		/** F045: required by DevicePwaList's DeviceActionsMenu permission checks. */
 		currentUser?: CurrentUser | null;
+		/** Starting state for PWA groups, from the user's saved preference. */
+		defaultCollapsed?: boolean;
+		/** Counter that forces every PWA group open or closed. */
+		bulkToggleSignal?: number;
+		bulkToggleTarget?: 'expand' | 'collapse';
 		/** F045: refresh hook forwarded to DevicePwaList row actions. */
 		onChanged?: () => void;
 	}
@@ -69,6 +74,9 @@
 		onResizeColumn,
 		onResetColumnWidth,
 		presentation = 'auto',
+		defaultCollapsed = false,
+		bulkToggleSignal = 0,
+		bulkToggleTarget = 'expand',
 		currentUser = null,
 		onChanged
 	}: Props = $props();
@@ -84,6 +92,9 @@
 	<DevicePwaList
 		{devices}
 		{groups}
+		{defaultCollapsed}
+		{bulkToggleSignal}
+		{bulkToggleTarget}
 		{selectable}
 		{selectedIds}
 		{onToggleSelect}

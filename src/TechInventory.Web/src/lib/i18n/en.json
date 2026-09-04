@@ -337,7 +337,7 @@
 			"showingAll": "Showing all {count} devices"
 		},
 		"filters": {
-			"title": "Filters",
+			"title": "View",
 			"searchPlaceholder": "Search devices…",
 			"brandLabel": "Brand",
 			"categoryLabel": "Category",
@@ -356,8 +356,8 @@
 			"clearDefault": "Clear saved default",
 			"defaultSaved": "Default view saved",
 			"defaultCleared": "Default view cleared",
-			"filterButton": "Filter",
-			"closeFilters": "Close Filters",
+			"filterButton": "View",
+			"closeFilters": "Close view panel",
 			"allOption": "All",
 			"statusActive": "Active",
 			"statusRetired": "Retired",
@@ -370,6 +370,9 @@
 			"groupByCategory": "Category",
 			"groupByOwner": "Owner",
 			"groupByYear": "Purchase year",
+			"groupActionsLabel": "Groups",
+			"expandAllGroups": "Expand all groups",
+			"collapseAllGroups": "Collapse all groups",
 			"selectionSection": "SELECTION",
 			"enableSelectionMode": "Enable Selection Mode",
 			"exitSelectionMode": "Exit Selection Mode"
@@ -1094,6 +1097,18 @@
 			"toast": {
 				"saved": "Table column preferences saved.",
 				"reset": "Table columns reset to defaults."
+			}
+		},
+		"groupDefault": {
+			"heading": "Grouped Lists",
+			"subheading": "Choose how groups start out when you group devices by category, owner or purchase year.",
+			"legend": "Groups start",
+			"expanded": "Expanded",
+			"expandedHelp": "Every group opens showing its devices.",
+			"collapsed": "Collapsed",
+			"collapsedHelp": "Only the group headers show; tap one to open it.",
+			"toast": {
+				"saved": "Default group state saved."
 			}
 		}
 	},

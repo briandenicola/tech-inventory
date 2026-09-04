@@ -38,12 +38,45 @@ export const DEFAULT_TABLE_COLUMNS: TableColumnId[] = [...ALL_TABLE_COLUMNS];
 
 const TableColumnSchema = z.enum(ALL_TABLE_COLUMNS);
 
+/**
+ * Per-column widths in CSS pixels, for the resizable desktop table.
+ *
+ * Defaults are hand-set rather than uniform: Name carries the longest values and
+ * is the sticky identity column, while Status holds a short badge. Splitting the
+ * width evenly is what squeezed "Purchase Date" into "Pur D" in the first place.
+ */
+export const DEFAULT_TABLE_COLUMN_WIDTHS: Record<TableColumnId, number> = {
+	name: 260,
+	model: 200,
+	brand: 160,
+	category: 160,
+	owner: 160,
+	status: 120,
+	purchaseDate: 150
+};
+
+/** Narrow enough to stay useful, wide enough that a header is never clipped to nonsense. */
+export const MIN_TABLE_COLUMN_WIDTH = 80;
+
+/** Beyond this a single column pushes everything else off-screen with no benefit. */
+export const MAX_TABLE_COLUMN_WIDTH = 640;
+
+/**
+ * Stored widths are intentionally sparse — only columns the user actually resized
+ * are written, so a default that changes later still reaches everyone who never
+ * touched that column. Keys are validated against ALL_TABLE_COLUMNS on read rather
+ * than in the schema, so a stale key from a removed column is ignored instead of
+ * failing the whole preferences blob.
+ */
+const TableColumnWidthsSchema = z.record(z.string(), z.number());
+
 const UserPrefsSchema = z.object({
 	version: z.literal(STORAGE_VERSION),
 	devicesDefaultView: z.string().nullable().optional(),
 	devicesViewMode: z.enum(['cards', 'table']).nullable().optional(),
 	themePreference: z.enum(['light', 'dark', 'system']).nullable().optional(),
-	tableColumns: z.array(TableColumnSchema).nullable().optional()
+	tableColumns: z.array(TableColumnSchema).nullable().optional(),
+	tableColumnWidths: TableColumnWidthsSchema.nullable().optional()
 });
 
 export type UserPrefs = z.infer<typeof UserPrefsSchema>;
@@ -177,6 +210,74 @@ export function setTableColumns(
 	if (!userId) return;
 	const prefs = readPrefs(userId);
 	prefs.tableColumns = columns;
+	writePrefs(userId, prefs);
+}
+
+/**
+ * Clamp a width into the supported range.
+ *
+ * Applied on read as well as on write: a stored value can predate a change to these
+ * bounds, or have been hand-edited in localStorage, and a 4-pixel or 20000-pixel
+ * column would leave the table unusable with no obvious way back.
+ */
+export function clampTableColumnWidth(width: number): number {
+	if (!Number.isFinite(width)) return MIN_TABLE_COLUMN_WIDTH;
+	return Math.min(MAX_TABLE_COLUMN_WIDTH, Math.max(MIN_TABLE_COLUMN_WIDTH, Math.round(width)));
+}
+
+/**
+ * Effective widths for every column: the user's stored values where present,
+ * defaults elsewhere. Always returns a width for every column, so callers never
+ * have to handle a partially-configured table.
+ */
+export function getTableColumnWidths(
+	userId: string | null | undefined
+): Record<TableColumnId, number> {
+	const stored: Record<string, number> | null | undefined = userId
+		? readPrefs(userId).tableColumnWidths
+		: null;
+	const widths = { ...DEFAULT_TABLE_COLUMN_WIDTHS };
+
+	if (!stored) return widths;
+
+	for (const column of ALL_TABLE_COLUMNS) {
+		const value = stored[column];
+		if (typeof value === 'number') {
+			widths[column] = clampTableColumnWidth(value);
+		}
+	}
+
+	return widths;
+}
+
+/**
+ * Persist one column's width. Pass null to drop the override and fall back to the
+ * default for that column.
+ */
+export function setTableColumnWidth(
+	userId: string | null | undefined,
+	column: TableColumnId,
+	width: number | null
+): void {
+	if (!userId) return;
+	const prefs = readPrefs(userId);
+	const widths = { ...(prefs.tableColumnWidths ?? {}) };
+
+	if (width === null) {
+		delete widths[column];
+	} else {
+		widths[column] = clampTableColumnWidth(width);
+	}
+
+	prefs.tableColumnWidths = Object.keys(widths).length > 0 ? widths : null;
+	writePrefs(userId, prefs);
+}
+
+/** Drop every width override, returning the table to the defaults above. */
+export function resetTableColumnWidths(userId: string | null | undefined): void {
+	if (!userId) return;
+	const prefs = readPrefs(userId);
+	prefs.tableColumnWidths = null;
 	writePrefs(userId, prefs);
 }
 

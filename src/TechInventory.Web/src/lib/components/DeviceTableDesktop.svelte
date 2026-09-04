@@ -13,7 +13,14 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
 	import { referenceDataStore } from '$lib/stores/referenceData';
-	import { DEFAULT_TABLE_COLUMNS, type TableColumnId } from '$lib/stores/userPrefs';
+	import {
+		DEFAULT_TABLE_COLUMNS,
+		DEFAULT_TABLE_COLUMN_WIDTHS,
+		MAX_TABLE_COLUMN_WIDTH,
+		MIN_TABLE_COLUMN_WIDTH,
+		type TableColumnId
+	} from '$lib/stores/userPrefs';
+	import { columnResize } from '$lib/actions/columnResize';
 	import { lookupName } from '$lib/utils/deviceDisplay';
 	import type { DeviceResponse } from '$lib/queries/devices.svelte';
 	import type { DeviceGroup } from '$lib/utils/groupDevices';
@@ -33,6 +40,19 @@
 		onOpenDevice?: (deviceId: string) => void;
 		/** Visible columns in display order. Desktop-table-only per D-178. */
 		visibleColumns?: TableColumnId[];
+		/**
+		 * Enables drag/keyboard column resizing. Off by default because this same
+		 * component also renders the mobile horizontally-scrolling table view, where
+		 * the table is already wider than the viewport and a resize handle would just
+		 * be a hard-to-hit target competing with the scroll gesture.
+		 */
+		resizable?: boolean;
+		/** Effective widths in CSS pixels, keyed by column. */
+		columnWidths?: Record<TableColumnId, number>;
+		/** Fired when a resize gesture ends. The caller persists. */
+		onResizeColumn?: (column: TableColumnId, width: number) => void;
+		/** Fired when the user asks for one column's default back. */
+		onResetColumnWidth?: (column: TableColumnId) => void;
 	}
 
 	let {
@@ -48,8 +68,48 @@
 		allVisibleSelected = false,
 		someVisibleSelected = false,
 		onOpenDevice,
-		visibleColumns = DEFAULT_TABLE_COLUMNS
+		visibleColumns = DEFAULT_TABLE_COLUMNS,
+		resizable = false,
+		columnWidths,
+		onResizeColumn,
+		onResetColumnWidth
 	}: Props = $props();
+
+	/**
+	 * Widths shown right now. Seeded from the persisted values and updated live
+	 * during a drag so the column tracks the cursor; the caller only hears about it
+	 * when the gesture ends, so a drag is one write rather than dozens.
+	 */
+	let draftWidths = $state<Record<string, number>>({ ...DEFAULT_TABLE_COLUMN_WIDTHS });
+
+	$effect(() => {
+		draftWidths = { ...DEFAULT_TABLE_COLUMN_WIDTHS, ...(columnWidths ?? {}) };
+	});
+
+	function widthOf(column: TableColumnId): number {
+		return draftWidths[column] ?? DEFAULT_TABLE_COLUMN_WIDTHS[column];
+	}
+
+	/** Select checkbox (48) + every visible column + the sticky Actions column (120). */
+	const totalWidth = $derived(
+		(selectable ? 48 : 0) +
+			visibleColumns.reduce((sum, col) => sum + widthOf(col), 0) +
+			120
+	);
+
+	function commitWidth(column: TableColumnId, width: number) {
+		draftWidths = { ...draftWidths, [column]: width };
+		onResizeColumn?.(column, width);
+	}
+
+	function previewWidth(column: TableColumnId, width: number) {
+		draftWidths = { ...draftWidths, [column]: width };
+	}
+
+	function resetWidth(column: TableColumnId) {
+		draftWidths = { ...draftWidths, [column]: DEFAULT_TABLE_COLUMN_WIDTHS[column] };
+		onResetColumnWidth?.(column);
+	}
 
 	const refData = $derived($referenceDataStore);
 	const isGrouped = $derived(Array.isArray(groups) && groups.length > 0);
@@ -149,8 +209,29 @@
 	}
 </script>
 
-<table class="min-w-full divide-y divide-neutral-200 dark:divide-neutral-800">
+<!--
+	`table-fixed` + <colgroup> only in the resizable (desktop) case. Auto layout
+	ignores width hints once the table is cramped — which is exactly when a width
+	matters — so honouring a user's chosen width requires fixed layout. The mobile
+	table view keeps auto layout, where letting content size the columns is the
+	better default.
+-->
+<table
+	class="divide-y divide-neutral-200 dark:divide-neutral-800 {resizable ? 'table-fixed' : 'min-w-full'}"
+	style={resizable ? `width:${totalWidth}px;min-width:100%` : undefined}
+>
 	<caption class="sr-only">{t('devices.list.title')}</caption>
+	{#if resizable}
+		<colgroup>
+			{#if selectable}
+				<col style="width:48px" />
+			{/if}
+			{#each visibleColumns as col (col)}
+				<col style={`width:${widthOf(col)}px`} />
+			{/each}
+			<col style="width:120px" />
+		</colgroup>
+	{/if}
 	<thead class="bg-neutral-50 dark:bg-neutral-900">
 		<tr>
 			{#if selectable}
@@ -170,7 +251,7 @@
 				{@const sortable = isSortable(col)}
 				<th
 					scope="col"
-					class="{isFirst ? 'sticky left-0 z-10 bg-neutral-50 dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]' : ''} px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300"
+					class="relative {isFirst ? 'sticky left-0 z-10 bg-neutral-50 dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]' : ''} px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300 {resizable ? 'truncate' : ''}"
 					aria-sort={sortable ? getAriaSort(col as SortableColumn) : undefined}
 				>
 					{#if sortable}
@@ -196,6 +277,54 @@
 						</button>
 					{:else}
 						{t(`devices.columns.${col}`)}
+					{/if}
+
+					{#if resizable}
+						<!--
+							role="separator" with aria-valuenow is the ARIA pattern for a
+							resize grip: it announces the current width and makes the arrow-key
+							behaviour discoverable, rather than presenting a bare div that a
+							screen reader would skip entirely.
+
+							Placed inside the <th>, which is position:relative, so the grip sits
+							on the cell's own right edge whatever the column width is.
+						-->
+						<!--
+							svelte-ignore a11y_no_noninteractive_tabindex
+							A focusable separator IS interactive per WAI-ARIA — this is the
+							Window Splitter pattern (role="separator" + tabindex + aria-valuenow),
+							which is precisely what a resize grip is. The rule does not model
+							that case. Downgrading to a non-focusable element would make the
+							column keyboard-unreachable, which is the actual accessibility
+							failure this suppression avoids.
+						-->
+						<span
+							role="separator"
+							tabindex="0"
+							aria-orientation="vertical"
+							aria-label={t('devices.table.resizeColumn', {
+								column: t(`devices.columns.${col}`)
+							})}
+							aria-valuenow={widthOf(col)}
+							aria-valuemin={MIN_TABLE_COLUMN_WIDTH}
+							aria-valuemax={MAX_TABLE_COLUMN_WIDTH}
+							data-testid={`resize-${col}`}
+							class="absolute inset-y-0 right-0 z-20 w-2 cursor-col-resize touch-none select-none opacity-0 transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none"
+							use:columnResize={{
+								width: widthOf(col),
+								min: MIN_TABLE_COLUMN_WIDTH,
+								max: MAX_TABLE_COLUMN_WIDTH,
+								onResize: (width) => previewWidth(col, width),
+								onCommit: (width) => commitWidth(col, width),
+								onReset: () => resetWidth(col)
+							}}
+						>
+							<!-- The visible grip: a hairline that thickens on hover/focus. -->
+							<span
+								class="pointer-events-none absolute inset-y-1 right-0 w-0.5 rounded bg-primary-500"
+								aria-hidden="true"
+							></span>
+						</span>
 					{/if}
 				</th>
 			{/each}

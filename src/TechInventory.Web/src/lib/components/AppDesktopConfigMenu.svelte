@@ -32,6 +32,16 @@
 	const currentRole = $derived(currentUser?.role ?? null);
 	const visibleAdminNavItems = $derived(getVisibleNavItems(adminNavItems, currentRole));
 
+	/**
+	 * Whether the current route is one this menu links to. The other nav items get an
+	 * active tint from aria-current; this trigger is a button, not a link, so it has to
+	 * work that out itself — without it, navigating to Brands would leave the whole nav
+	 * row looking as though nothing were selected.
+	 */
+	const anyAdminRouteActive = $derived(
+		visibleAdminNavItems.some((item) => isNavItemActive(pathname, item))
+	);
+
 	async function openMenu() {
 		isOpen = true;
 		await tick();
@@ -110,20 +120,42 @@
 <svelte:window onclick={handleWindowClick} onkeydown={handleWindowKeydown} />
 
 {#if visibleAdminNavItems.length > 0}
-	<div class="relative hidden md:block" bind:this={rootElement}>
+	<div class="relative" bind:this={rootElement}>
+		<!--
+			Styled to match the primary nav links it now sits beside (same padding,
+			radius, size, hover and active colours) rather than the round icon button it
+			was in the right-hand cluster — the point of moving it into the row was that
+			it should not read as a different kind of control.
+
+			Labelled "Config", not "Settings": this menu opens Brands/Categories/
+			Locations/Networks/Owners/Tags, while /settings is a separate page reached
+			from the user dropdown. Two controls both called Settings would be a trap.
+			The visible label replaces the old aria-label rather than sitting alongside
+			it, so the accessible name has exactly one source.
+		-->
 		<button
 			type="button"
 			bind:this={triggerElement}
-			class="inline-flex h-11 w-11 items-center justify-center rounded-full text-neutral-700 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-neutral-300 dark:hover:bg-neutral-800"
+			class="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-150"
+			class:bg-primary-50={isOpen || anyAdminRouteActive}
+			class:text-primary-700={isOpen || anyAdminRouteActive}
+			class:dark:bg-primary-900={isOpen || anyAdminRouteActive}
+			class:dark:text-primary-200={isOpen || anyAdminRouteActive}
+			class:text-neutral-600={!isOpen && !anyAdminRouteActive}
+			class:hover:bg-neutral-100={!isOpen && !anyAdminRouteActive}
+			class:hover:text-neutral-900={!isOpen && !anyAdminRouteActive}
+			class:dark:text-neutral-400={!isOpen && !anyAdminRouteActive}
+			class:dark:hover:bg-neutral-800={!isOpen && !anyAdminRouteActive}
+			class:dark:hover:text-neutral-100={!isOpen && !anyAdminRouteActive}
 			onclick={() => void toggleMenu()}
-			aria-label={t('navigation.configuration')}
 			aria-expanded={isOpen}
 			aria-haspopup="menu"
 			aria-controls="desktop-config-menu"
 		>
-			<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+			<svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={settingsIconPath} />
 			</svg>
+			{t('navigation.config')}
 		</button>
 
 		{#if isOpen}

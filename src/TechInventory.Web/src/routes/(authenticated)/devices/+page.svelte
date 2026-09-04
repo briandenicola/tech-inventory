@@ -29,7 +29,10 @@
 		getDevicesViewMode,
 		setDevicesViewMode,
 		getTableColumns,
+		getTableColumnWidths,
+		setTableColumnWidth,
 		DEFAULT_TABLE_COLUMNS,
+		DEFAULT_TABLE_COLUMN_WIDTHS,
 		type DevicesViewMode,
 		type TableColumnId
 	} from '$lib/stores/userPrefs';
@@ -227,6 +230,23 @@
 	// Table column visibility/order preference
 	let tableColumns = $state<TableColumnId[]>([...DEFAULT_TABLE_COLUMNS]);
 
+	/**
+	 * Desktop table column widths. Seeded from the user's stored preferences on mount;
+	 * the table drives its own live width during a drag and reports back only when the
+	 * gesture ends, so this is written once per resize rather than once per pointer move.
+	 */
+	let columnWidths = $state<Record<TableColumnId, number>>({ ...DEFAULT_TABLE_COLUMN_WIDTHS });
+
+	function handleResizeColumn(column: TableColumnId, width: number) {
+		columnWidths = { ...columnWidths, [column]: width };
+		setTableColumnWidth(currentUser?.id, column, width);
+	}
+
+	function handleResetColumnWidth(column: TableColumnId) {
+		columnWidths = { ...columnWidths, [column]: DEFAULT_TABLE_COLUMN_WIDTHS[column] };
+		setTableColumnWidth(currentUser?.id, column, null);
+	}
+
 	// #145: PWA selection mode — row checkboxes are hidden by default in the
 	// installed PWA. The user opts in via the filter panel's "Enable Selection Mode"
 	// command. Exiting clears the current selection.
@@ -369,6 +389,8 @@
 		if (savedColumns && savedColumns.length > 0) {
 			tableColumns = savedColumns;
 		}
+
+		columnWidths = getTableColumnWidths(currentUser?.id);
 
 		const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 		const updateMotionPreference = () => {
@@ -957,6 +979,9 @@
 			{mobileViewMode}
 			onOpenDevice={openDeviceDetail}
 			visibleColumns={tableColumns}
+			{columnWidths}
+			onResizeColumn={handleResizeColumn}
+			onResetColumnWidth={handleResetColumnWidth}
 			presentation={displayMode.isPwa ? 'pwa' : 'auto'}
 			{currentUser}
 			onChanged={refreshDevicesList}

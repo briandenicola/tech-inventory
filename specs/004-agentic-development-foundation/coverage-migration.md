@@ -264,7 +264,7 @@ existed as executable code.** T101 must revise those two citations to point at
 | `test.todo` | Behaviour intended | Valuable? | Destination | Existing replacement | T102 work |
 | --- | --- | --- | --- | --- | --- |
 | PWA shell loads when the API is offline | `navigateFallback: '/offline'` serves the shell | **Yes** | `COMP` + `MAN` | none — `src/routes/offline/+page.svelte` has **no test** | **C-14** — `/offline` route renders its message, is axe-clean; **C-15** — assert the workbox config contract in `vite.config.ts` (`navigateFallback='/offline'`, denylist `^/api/`, `^/health`, `^/openapi`) · residual real-SW behaviour → **M-06** |
-| cached device data is viewable offline | `StaleWhileRevalidate` on `GET /api/v1/*` | **Yes** | `COMP` + `MAN` | none | folded into **C-15** (cache name, `maxEntries`, `maxAgeSeconds`, `statuses:[0,200]`) · real behaviour → **M-07** |
+| cached device data is viewable offline | `NetworkFirst` on `GET /api/v1/*` (was `StaleWhileRevalidate`, which served every API read from cache first and left the app one fetch behind its own writes) | **Yes** | `COMP` + `MAN` | none | folded into **C-15** (cache name, `maxEntries`, `maxAgeSeconds`, `statuses:[0,200]`) · real behaviour → **M-07** |
 | create/edit/delete are queued or refused gracefully offline | POST/PUT/DELETE are `NetworkOnly` — i.e. **refused, never queued** | **Yes**, and the stub's wording is wrong | `COMP` + `MAN` | none | folded into **C-15** (all three methods `NetworkOnly`) + **C-16** — mutation failure surfaces an error toast, no silent success · real behaviour → **M-08** |
 | user sees a clear offline indication | Offline UX affordance | **Yes** | `COMP` | none | folded into **C-14** |
 | queued actions are processed when the connection returns | **Aspirational — the product has no queue.** `NetworkOnly` means there is nothing to replay | **No** | `DROP` | — | — |
@@ -557,7 +557,7 @@ the single most likely false positive in T101's guard.
 | **C-12** | `DeviceTable` / detail actions hidden for Viewer |
 | **C-13** | `/devices/{id}/edit` guard refuses a Viewer |
 | **C-14** | `/offline` route renders, indicates offline state, axe-clean |
-| **C-15** | Workbox config contract in `vite.config.ts`: `navigateFallback='/offline'`, denylist, `NetworkOnly` for POST/PUT/DELETE, `StaleWhileRevalidate` GET cache options |
+| **C-15** | Workbox config contract in `vite.config.ts`: `navigateFallback='/offline'`, denylist, `NetworkOnly` for POST/PUT/DELETE, `NetworkFirst` GET cache options (incl. `networkTimeoutSeconds`, and that no GET handler reads from cache first) |
 | **C-16** | Offline mutation surfaces an error toast — never a silent success |
 | **C-17** | `PwaUpdatePrompt` renders and dismisses |
 | **C-18** | Route-level axe harnesses for `/devices`, `/devices/{id}`, `/admin/import`, `/admin/export`, `/admin/audit`, `/offline` |

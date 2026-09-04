@@ -51,7 +51,7 @@ as an explicit exception under `plan.md` §2.10, not silently dropped.
 | M-04 | In a **mobile browser tab** (not installed): no bottom bar is present | | |
 | M-05 | After deploying a new build, the update prompt appears and reloads to the new version | | |
 | M-06 | Go offline, navigate to an uncached route: the `/offline` shell is served, not a browser error page | | |
-| M-07 | Offline: a previously viewed device list still renders from cache | | |
+| M-07 | Offline: a previously viewed device list still renders from cache (the `NetworkFirst` fallback). **Online, confirm the opposite:** create a device, and it appears in the list on the *first* refresh — not the second. Same for an edit on the device detail page. This regressed under `StaleWhileRevalidate`, which answered every read from cache and left the app one fetch behind its own writes | | |
 | M-08 | Offline: attempt a create/edit/delete — it fails **visibly** with an error, and no change appears to have been saved | | |
 | M-09 | Restore connectivity: data refreshes without a manual reload | | |
 | M-10 | With dark theme stored, hard-reload: no light flash before first paint | | |

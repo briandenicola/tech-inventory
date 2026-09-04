@@ -384,8 +384,7 @@
 			"unknown": "Unknown",
 			"countBadge": "{count}",
 			"expandGroup": "Expand {label}",
-			"collapseGroup": "Collapse {label}",
-			"pwaDefaultNote": "Grouped by category"
+			"collapseGroup": "Collapse {label}"
 		},
 		"bulk": {
 			"selectAllVisible": "Select all visible devices",

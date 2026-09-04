@@ -31,8 +31,14 @@
 		canSaveDefault?: boolean;
 		/** F045 B2 follow-up: true when the installed PWA's implicit
 		 *  category-grouping default is in effect (no explicit user choice).
-		 *  Presentation-only — never written to the URL or counted toward an
-		 *  active-filter badge. */
+		 *  Selects "Category" in the Group by control so it shows the dimension
+		 *  actually in force. Presentation-only — never written to the URL or
+		 *  counted toward an active-filter badge.
+		 *
+		 *  It used to also render a "Grouped by category" note under the control.
+		 *  That note said what the <select> directly above it already said, and it
+		 *  only ever appeared for the implicit default — picking Owner or Year made
+		 *  it vanish rather than update, so it read as stale rather than helpful. */
 		implicitGroupingActive?: boolean;
 		/** #145: true when running as an installed PWA — reveals the SELECTION
 		 *  section so the user can opt in to row checkboxes. */
@@ -380,20 +386,6 @@
 			<option value="owner">{t('devices.filters.groupByOwner')}</option>
 			<option value="year">{t('devices.filters.groupByYear')}</option>
 		</select>
-		{#if implicitGroupingActive}
-			<!--
-				F045 follow-up: devices.groups.pwaDefaultNote existed in en.json
-				but was never rendered anywhere (a dead key). It belongs here: the
-				<select> above shows "Category" (the effective value) even though
-				no explicit choice was ever made, so a one-line note clarifies that
-				this is the app's default, not a persisted user selection. Purely
-				presentational — never written to the URL or counted in
-				activeFilterCount.
-			-->
-			<p class="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
-				{t('devices.groups.pwaDefaultNote')}
-			</p>
-		{/if}
 
 		<!--
 			Bulk expand/collapse. Immediate actions rather than Apply-gated edits:

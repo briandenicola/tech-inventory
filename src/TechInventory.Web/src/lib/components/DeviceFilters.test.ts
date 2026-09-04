@@ -355,7 +355,7 @@ describe('DeviceFilters', () => {
 				props: { filters: dirtyFilters, onFiltersChange, isOpen: true, onClose: vi.fn() }
 			});
 
-			await user.click(screen.getByRole('button', { name: 'Clear All Filters' }));
+			await user.click(screen.getByRole('button', { name: 'Clear all' }));
 
 			// pageSize and groupBy (F045 B2 user choice) survive Clear All;
 			// every other filter dimension — including status — comes back
@@ -382,7 +382,7 @@ describe('DeviceFilters', () => {
 				}
 			});
 
-			await user.click(screen.getByRole('button', { name: 'Clear All Filters' }));
+			await user.click(screen.getByRole('button', { name: 'Clear all' }));
 
 			expect(onFiltersChange).toHaveBeenCalledWith({
 				page: 1,
@@ -405,7 +405,9 @@ describe('DeviceFilters', () => {
 			});
 
 			expect(screen.queryByRole('region', { name: 'SELECTION' })).not.toBeInTheDocument();
-			expect(screen.queryByRole('button', { name: 'Enable Selection Mode' })).not.toBeInTheDocument();
+			expect(
+				screen.queryByRole('button', { name: 'Enable Selection Mode' })
+			).not.toBeInTheDocument();
 		});
 
 		it('shows the SELECTION section with "Enable Selection Mode" button when isPwa=true and selection is off', () => {
@@ -440,7 +442,9 @@ describe('DeviceFilters', () => {
 			});
 
 			expect(screen.getByRole('button', { name: 'Exit Selection Mode' })).toBeInTheDocument();
-			expect(screen.queryByRole('button', { name: 'Enable Selection Mode' })).not.toBeInTheDocument();
+			expect(
+				screen.queryByRole('button', { name: 'Enable Selection Mode' })
+			).not.toBeInTheDocument();
 		});
 
 		it('calls onEnablePwaSelection and onClose when "Enable Selection Mode" is tapped', async () => {
@@ -594,6 +598,123 @@ describe('DeviceFilters', () => {
 					groupingActive: true
 				}
 			});
+
+			expect(await axe(container)).toHaveNoViolations();
+		});
+	});
+	// The panel's sticky footer was four stacked full-width pills — ~235px of
+	// permanent chrome that hid the options the panel exists to show. It is now
+	// one row of two, with the occasional default-view actions moved into the
+	// scroll area.
+	//
+	// TAMPER-TESTED: reverting the footer row to `flex-col` fails "lays the two
+	//   pinned actions out in a single two-column row"; putting a Save-as-default
+	//   button back in the footer fails "pins only Clear all and Apply" (and the
+	//   two relocation tests); dropping either pinned button to `min-h-9` fails
+	//   "keeps both pinned actions at a 44px-plus tap target".
+	describe('footer density', () => {
+		function footerOf(container: HTMLElement): HTMLElement {
+			const footer = container.querySelector<HTMLElement>('div.sticky.bottom-0');
+			expect(footer, 'sticky footer must exist').toBeTruthy();
+			return footer!;
+		}
+
+		function scrollBodyOf(container: HTMLElement): HTMLElement {
+			const body = container.querySelector<HTMLElement>('div.flex-1.overflow-y-auto');
+			expect(body, 'scrollable body must exist').toBeTruthy();
+			return body!;
+		}
+
+		const withDefaults = {
+			filters: defaultFilters,
+			onFiltersChange: vi.fn(),
+			isOpen: true,
+			onClose: vi.fn(),
+			onSaveDefault: vi.fn(),
+			onClearDefault: vi.fn(),
+			hasStoredDefault: true,
+			canSaveDefault: true
+		};
+
+		it('pins only Clear all and Apply', () => {
+			const { container } = render(DeviceFilters, { props: { ...withDefaults } });
+
+			const footerButtons = Array.from(footerOf(container).querySelectorAll('button')).map(
+				(button) => button.textContent?.trim()
+			);
+
+			expect(footerButtons).toEqual(['Clear all', 'Apply']);
+		});
+
+		it('lays the two pinned actions out in a single two-column row', () => {
+			const { container } = render(DeviceFilters, { props: { ...withDefaults } });
+
+			const row = footerOf(container).querySelector('div.grid');
+			expect(row, 'pinned actions must share one grid row').toBeTruthy();
+			expect(row!.className).toMatch(/\bgrid-cols-2\b/);
+			// A stack would reintroduce the height this change removed.
+			expect(row!.className).not.toMatch(/\bflex-col\b/);
+		});
+
+		it('keeps both pinned actions at a 44px-plus tap target', () => {
+			const { container } = render(DeviceFilters, { props: { ...withDefaults } });
+
+			for (const button of footerOf(container).querySelectorAll('button')) {
+				// min-h-11 is 2.75rem = 46.75px at this app's 17px root (D-137).
+				expect(button.className, button.textContent ?? '').toMatch(/\bmin-h-11\b/);
+			}
+		});
+
+		it('moves Save as default view and Clear saved default into the scroll area', () => {
+			const { container } = render(DeviceFilters, { props: { ...withDefaults } });
+
+			const body = scrollBodyOf(container);
+			const footer = footerOf(container);
+
+			const save = screen.getByRole('button', { name: 'Save as default view' });
+			const clear = screen.getByRole('button', { name: 'Clear saved default' });
+
+			expect(body.contains(save)).toBe(true);
+			expect(footer.contains(save)).toBe(false);
+			expect(body.contains(clear)).toBe(true);
+			expect(footer.contains(clear)).toBe(false);
+		});
+
+		it('still wires the relocated default-view actions to their callbacks', async () => {
+			const user = userEvent.setup();
+			const onSaveDefault = vi.fn();
+			const onClearDefault = vi.fn();
+
+			render(DeviceFilters, {
+				props: { ...withDefaults, onSaveDefault, onClearDefault }
+			});
+
+			await user.click(screen.getByRole('button', { name: 'Save as default view' }));
+			expect(onSaveDefault).toHaveBeenCalledOnce();
+
+			await user.click(screen.getByRole('button', { name: 'Clear saved default' }));
+			expect(onClearDefault).toHaveBeenCalledOnce();
+		});
+
+		it('omits the default-view section entirely when neither callback is supplied', () => {
+			const { container } = render(DeviceFilters, {
+				props: {
+					filters: defaultFilters,
+					onFiltersChange: vi.fn(),
+					isOpen: true,
+					onClose: vi.fn()
+				}
+			});
+
+			expect(
+				screen.queryByRole('button', { name: 'Save as default view' })
+			).not.toBeInTheDocument();
+			expect(screen.queryByRole('button', { name: 'Clear saved default' })).not.toBeInTheDocument();
+			expect(footerOf(container).querySelectorAll('button')).toHaveLength(2);
+		});
+
+		it('has no accessibility violations with the relocated default-view section', async () => {
+			const { container } = render(DeviceFilters, { props: { ...withDefaults } });
 
 			expect(await axe(container)).toHaveNoViolations();
 		});

@@ -580,41 +580,18 @@
 		</div>
 	</fieldset>
 
-		<!-- ARIA live region for results announcement -->
-		<div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
-			<!-- Will be populated by parent component with result count -->
-		</div>
-	</div>
-
-	<div class="sticky bottom-0 z-10 shrink-0 border-t border-neutral-200/70 bg-white/95 backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-950/95">
-		<div class="flex flex-col gap-2 px-7 pt-4" style={`padding-bottom: ${footerPaddingBottom};`}>
-			<!--
-				#128: Apply is the explicit gate that turns `pending` into the
-				applied filters — the ONLY place besides Clear All that calls
-				onFiltersChange. Always enabled (never `disabled`) so it stays in
-				the natural Tab order regardless of pending state; the emphasis
-				classes below are the visual (not focus-gating) distinction
-				between "pending edits waiting" and "nothing to apply".
-			-->
-			<button
-				type="button"
-				onclick={applyFilters}
-				class="inline-flex min-h-11 w-full items-center justify-center rounded-full px-5 py-2.5 text-base font-medium text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 {hasPendingChanges
-					? 'bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600'
-					: 'bg-neutral-400 hover:bg-neutral-500 dark:bg-neutral-600 dark:hover:bg-neutral-500'}"
-			>
-				{t('devices.filters.apply')}
-			</button>
-
-			<button
-				type="button"
-				onclick={clearAll}
-				class="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-neutral-300 px-5 py-2.5 text-base font-medium text-neutral-700 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-			>
-				{t('devices.filters.clearAll')}
-			</button>
-
-			{#if onSaveDefault || onClearDefault}
+		<!--
+			Save/Clear default view live in the scroll area, not the sticky footer.
+			They are occasional actions — set once, rarely revisited — and pinning
+			them cost ~110px of permanent chrome on every phone viewport, hiding the
+			options the panel exists to show. Apply and Clear all stay pinned
+			because they are what you reach for on the way out.
+		-->
+		{#if onSaveDefault || onClearDefault}
+			<section aria-label={t('devices.filters.defaultViewSection')} class="mb-6">
+				<p class="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+					{t('devices.filters.defaultViewSection')}
+				</p>
 				<div class="flex flex-col gap-2">
 					{#if onSaveDefault}
 						<button
@@ -648,7 +625,50 @@
 						</button>
 					{/if}
 				</div>
-			{/if}
+			</section>
+		{/if}
+
+		<!-- ARIA live region for results announcement -->
+		<div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
+			<!-- Will be populated by parent component with result count -->
+		</div>
+	</div>
+
+	<div class="sticky bottom-0 z-10 shrink-0 border-t border-neutral-200/70 bg-white/95 backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-950/95">
+		<!--
+			One row, not a stack: two 46.75px pills side by side cost one row of
+			height instead of two, and the panel's whole job is showing the options
+			above them. Clear sits left and Apply right so the destructive-ish
+			action is not under the thumb that just reached for Apply.
+			`min-w-0` on both so a long localized label truncates its own button
+			rather than forcing the row wider than the panel at 320px.
+		-->
+		<div class="grid grid-cols-2 gap-2 px-7 pt-3" style={`padding-bottom: ${footerPaddingBottom};`}>
+			<button
+				type="button"
+				onclick={clearAll}
+				class="inline-flex min-h-11 w-full min-w-0 items-center justify-center rounded-full border border-neutral-300 px-4 py-2.5 text-base font-medium text-neutral-700 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+			>
+				<span class="truncate">{t('devices.filters.clearAll')}</span>
+			</button>
+
+			<!--
+				#128: Apply is the explicit gate that turns `pending` into the
+				applied filters — the ONLY place besides Clear All that calls
+				onFiltersChange. Always enabled (never `disabled`) so it stays in
+				the natural Tab order regardless of pending state; the emphasis
+				classes below are the visual (not focus-gating) distinction
+				between "pending edits waiting" and "nothing to apply".
+			-->
+			<button
+				type="button"
+				onclick={applyFilters}
+				class="inline-flex min-h-11 w-full min-w-0 items-center justify-center rounded-full px-4 py-2.5 text-base font-medium text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 {hasPendingChanges
+					? 'bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600'
+					: 'bg-neutral-400 hover:bg-neutral-500 dark:bg-neutral-600 dark:hover:bg-neutral-500'}"
+			>
+				<span class="truncate">{t('devices.filters.apply')}</span>
+			</button>
 		</div>
 	</div>
 </div>

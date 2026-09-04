@@ -47,6 +47,12 @@ services:
       # ── Local break-glass JWT signing key (required) ─────────────────
       Auth__Local__SigningKey:      ${Auth__Local__SigningKey:?Set Auth__Local__SigningKey in .env (openssl rand -base64 48)}
 
+      # ── API key verifier pepper (required, #149 / ADR 0003) ─────────
+      # Must be distinct from Auth__Local__SigningKey: reusing one secret for
+      # both JWT signing and key verification means a leak of either
+      # compromises both, and the API refuses to start if they match.
+      ApiKeys__HmacPepper:          ${ApiKeys__HmacPepper:?Set ApiKeys__HmacPepper in .env (openssl rand -base64 48)}
+
       # ── Break-glass seed (first-boot only — defaults safe-off) ──────
       Auth__Local__SeedEnabled:     ${Auth__Local__SeedEnabled:-false}
       Auth__Local__SeedAllowInProd: ${Auth__Local__SeedAllowInProd:-false}

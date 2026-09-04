@@ -3,6 +3,215 @@ info:
   title: Tech Inventory API
   version: v1
 paths:
+  /api/v1/api-keys:
+    get:
+      tags:
+        - ApiKeys
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 25
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ApiKeyResponsePagedResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyResponsePagedResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyResponsePagedResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '403':
+          description: Forbidden
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    post:
+      tags:
+        - ApiKeys
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateApiKeyRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/CreateApiKeyRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/CreateApiKeyRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/CreatedApiKeyResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatedApiKeyResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/CreatedApiKeyResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '403':
+          description: Forbidden
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/api-keys/all:
+    get:
+      tags:
+        - ApiKeys
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 25
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ApiKeyResponsePagedResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyResponsePagedResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyResponsePagedResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+        '403':
+          description: Forbidden
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  '/api/v1/api-keys/{id}':
+    delete:
+      tags:
+        - ApiKeys
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: No Content
+        '403':
+          description: Forbidden
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
   /api/v1/audit-events:
     get:
       tags:
@@ -4250,6 +4459,59 @@ components:
           type: string
           format: uuid
       additionalProperties: false
+    ApiKeyResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          nullable: true
+        selector:
+          type: string
+          nullable: true
+        scope:
+          $ref: '#/components/schemas/ApiKeyScope'
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        revokedAt:
+          type: string
+          format: date-time
+          nullable: true
+        isActive:
+          type: boolean
+        ownerDisplayName:
+          type: string
+          nullable: true
+      additionalProperties: false
+    ApiKeyResponsePagedResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApiKeyResponse'
+          nullable: true
+        totalCount:
+          type: integer
+          format: int32
+        page:
+          type: integer
+          format: int32
+        pageSize:
+          type: integer
+          format: int32
+      additionalProperties: false
+    ApiKeyScope:
+      enum:
+        - Read
+        - Write
+      type: string
     AuditAction:
       enum:
         - Created
@@ -4542,6 +4804,20 @@ components:
             $ref: '#/components/schemas/ImportRowError'
           nullable: true
       additionalProperties: false
+    CreateApiKeyRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+        scope:
+          type: string
+          nullable: true
+        expiresInDays:
+          type: integer
+          format: int32
+          nullable: true
+      additionalProperties: false
     CreateBrandRequest:
       type: object
       properties:
@@ -4683,6 +4959,30 @@ components:
           type: string
           nullable: true
         color:
+          type: string
+          nullable: true
+      additionalProperties: false
+    CreatedApiKeyResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          nullable: true
+        selector:
+          type: string
+          nullable: true
+        scope:
+          $ref: '#/components/schemas/ApiKeyScope'
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        key:
           type: string
           nullable: true
       additionalProperties: false
@@ -5774,3 +6074,9 @@ components:
             $ref: '#/components/schemas/WarrantyReportItem'
           nullable: true
       additionalProperties: false
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      description: 'API key authentication. Send as: Authorization: ApiKey <selector>.<secret>. Scoped to inventory operations only.'
+      name: Authorization
+      in: header

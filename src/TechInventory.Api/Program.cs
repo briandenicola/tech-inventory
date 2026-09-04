@@ -353,6 +353,19 @@ builder.Services.AddSwaggerGen(options =>
         Title = "Tech Inventory API",
         Version = "v1",
     });
+
+    // #149 / ADR 0003. Declared here rather than hand-edited into openapi.yaml so the
+    // committed spec stays reproducible from `task openapi:export` and the drift test
+    // keeps passing.
+    options.AddSecurityDefinition("ApiKeyAuth", new OpenApiSecurityScheme
+    {
+        Type = SecuritySchemeType.ApiKey,
+        In = ParameterLocation.Header,
+        Name = "Authorization",
+        Description =
+            "API key authentication. Send as: Authorization: ApiKey <selector>.<secret>. "
+            + "Scoped to inventory operations only.",
+    });
 });
 builder.Services.AddHealthChecks();
 

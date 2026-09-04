@@ -127,7 +127,7 @@ public sealed class CreateApiKeyCommandHandler(
                 apiKey.Id,
                 apiKey.Name,
                 apiKey.Selector,
-                apiKey.Scope,
+                ApiKeyScopeNames.ToWireValue(apiKey.Scope),
                 apiKey.CreatedAt,
                 apiKey.ExpiresAt,
                 $"{selector}.{secret}"));

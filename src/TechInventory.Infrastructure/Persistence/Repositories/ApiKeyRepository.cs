@@ -75,19 +75,23 @@ public sealed class ApiKeyRepository(AppDbContext dbContext) : Repository<ApiKey
         DateTimeOffset asOf,
         CancellationToken cancellationToken)
     {
+        // The revoked filter runs in SQL (IS NULL translates cleanly); the expiry
+        // comparison does not — the SQLite provider cannot translate a DateTimeOffset
+        // ordering comparison, and attempting it throws at query time rather than
+        // degrading. Evaluating expiry in memory is safe here because the candidate set
+        // is one principal's unrevoked keys, bounded in practice by the 5-key quota.
         var persisted = await AllQuery
             .Where(key => key.PrincipalType == principalType
                 && key.PrincipalId == principalId
-                && key.RevokedAt == null
-                && key.ExpiresAt > asOf)
-            .Select(key => key.Id)
+                && key.RevokedAt == null)
+            .Select(key => new { key.Id, key.ExpiresAt })
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
         // Union with the change tracker so a key added earlier in the same scope
         // counts toward the quota — otherwise two creates in one unit of work
         // could both pass a check that only sees committed rows.
-        var ids = new HashSet<Guid>(persisted);
+        var ids = new HashSet<Guid>(persisted.Where(key => key.ExpiresAt > asOf).Select(key => key.Id));
         foreach (var local in Entities.Local.Where(key => key.PrincipalType == principalType
             && key.PrincipalId == principalId
             && key.IsActive(asOf)))

@@ -52,7 +52,12 @@ public sealed class HmacApiKeyHasher : IApiKeyHasher
     {
         // Deliberately ignores the outcome: this overload exists purely so the
         // unknown-selector path performs the same HMAC + FixedTimeEquals work.
-        FixedTimeCompare(string.IsNullOrEmpty(presentedSecret) ? "\0" : presentedSecret, _dummyVerifier);
+        //
+        // The substitution covers whitespace, not just empty: ComputeVerifier rejects
+        // a whitespace-only secret, and letting that throw here would turn a failed
+        // authentication into a 500 — re-exposing the very "does this selector exist?"
+        // signal this method exists to hide.
+        FixedTimeCompare(string.IsNullOrWhiteSpace(presentedSecret) ? "\0" : presentedSecret, _dummyVerifier);
         return false;
     }
 

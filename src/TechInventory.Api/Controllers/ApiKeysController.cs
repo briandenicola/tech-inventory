@@ -1,7 +1,6 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.RateLimiting;
 using TechInventory.Api.Authentication;
 using TechInventory.Api.Common;
 using TechInventory.Application.ApiKeys;
@@ -54,7 +53,6 @@ public sealed class ApiKeysController(ISender sender) : ControllerBase
     /// that will ever exist — it is not stored and cannot be retrieved again.
     /// </summary>
     [HttpPost]
-    [EnableRateLimiting(ApiKeyRateLimiting.PolicyName)]
     [ProducesResponseType(typeof(CreatedApiKeyResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
@@ -87,15 +85,5 @@ public sealed record CreateApiKeyRequest(string Name, string Scope, int? Expires
     public CreateApiKeyCommand ToCommand()
         => new(Name, ParseScope(Scope), ExpiresInDays);
 
-    /// <summary>
-    /// Maps the wire value to the enum. An unrecognised value maps to a sentinel that
-    /// fails the <c>IsInEnum</c> validator, so a typo yields a 400 naming the field
-    /// rather than silently defaulting to a scope the caller did not ask for.
-    /// </summary>
-    private static ApiKeyScope ParseScope(string? scope) => scope switch
-    {
-        ApiKeyScopeNames.Read => ApiKeyScope.Read,
-        ApiKeyScopeNames.Write => ApiKeyScope.Write,
-        _ => (ApiKeyScope)0,
-    };
+    private static ApiKeyScope ParseScope(string? scope) => ApiKeyScopeNames.FromWireValue(scope);
 }

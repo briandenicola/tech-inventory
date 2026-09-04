@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Authorization;
-using TechInventory.Domain.Enums;
 
 namespace TechInventory.Api.Authentication;
 
@@ -28,18 +27,6 @@ public sealed class ApiKeyScopeRequirement : IAuthorizationRequirement;
 public sealed class ApiKeyScopeAuthorizationHandler(IHttpContextAccessor httpContextAccessor)
     : AuthorizationHandler<ApiKeyScopeRequirement>
 {
-    /// <summary>Reference data an <c>inventory.read</c> key may GET.</summary>
-    private static readonly string[] ReadableCollections =
-    [
-        "/api/v1/devices",
-        "/api/v1/brands",
-        "/api/v1/categories",
-        "/api/v1/locations",
-        "/api/v1/networks",
-        "/api/v1/owners",
-        "/api/v1/tags",
-    ];
-
     protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, ApiKeyScopeRequirement requirement)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -59,73 +46,11 @@ public sealed class ApiKeyScopeAuthorizationHandler(IHttpContextAccessor httpCon
             return Task.CompletedTask;
         }
 
-        if (IsWithinScope(scopeClaim, httpContext.Request.Method, httpContext.Request.Path))
+        if (ApiKeyScopePolicy.IsWithinScope(scopeClaim, httpContext.Request.Method, httpContext.Request.Path))
         {
             context.Succeed(requirement);
         }
 
         return Task.CompletedTask;
     }
-
-    internal static bool IsWithinScope(string scopeClaim, string method, PathString path)
-    {
-        if (!path.HasValue)
-        {
-            return false;
-        }
-
-        var value = path.Value!;
-
-        // Key management is bearer-only: a key must never be able to mint or revoke
-        // keys, including its own (N-10). Checked before anything else so no
-        // collection prefix below can accidentally admit it.
-        if (value.StartsWith("/api/v1/api-keys", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        if (!TryMatchCollection(value, out var collection))
-        {
-            return false;
-        }
-
-        var isDeviceRoute = string.Equals(collection, "/api/v1/devices", StringComparison.OrdinalIgnoreCase);
-
-        if (HttpMethods.IsGet(method) || HttpMethods.IsHead(method))
-        {
-            return true;
-        }
-
-        // Writes are devices-only, and only for a write-scoped key. Reference data stays
-        // read-only for keys: renaming a brand from a script is not what these are for.
-        // PATCH is deliberately absent — ADR 0003 grants POST/PUT/DELETE and nothing else.
-        var isWriteMethod = HttpMethods.IsPost(method) || HttpMethods.IsPut(method) || HttpMethods.IsDelete(method);
-
-        return isDeviceRoute
-            && isWriteMethod
-            && string.Equals(scopeClaim, ApiKeyScopeNames.Write, StringComparison.Ordinal);
-    }
-
-    /// <summary>
-    /// Matches a path against the allow-list on segment boundaries, so
-    /// <c>/api/v1/devices-secret</c> cannot pass as <c>/api/v1/devices</c>.
-    /// </summary>
-    private static bool TryMatchCollection(string path, out string collection)
-    {
-        foreach (var candidate in ReadableCollections)
-        {
-            if (path.Equals(candidate, StringComparison.OrdinalIgnoreCase)
-                || path.StartsWith(candidate + "/", StringComparison.OrdinalIgnoreCase))
-            {
-                collection = candidate;
-                return true;
-            }
-        }
-
-        collection = string.Empty;
-        return false;
-    }
-
-    /// <summary>Maps the enum to its claim value; used by tests and the handler alike.</summary>
-    internal static string ToClaimValue(ApiKeyScope scope) => ApiKeyScopeNames.ToClaimValue(scope);
 }

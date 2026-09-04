@@ -65,11 +65,13 @@ public sealed class ApiKey : AggregateRoot
         PrincipalType = principalType;
         PrincipalId = Guard.AgainstDefault(principalId, nameof(principalId));
 
-        if (expiresAt <= CreatedAt)
-        {
-            throw new ArgumentOutOfRangeException(nameof(expiresAt), "expiresAt must be in the future.");
-        }
-
+        // Deliberately NOT validated as "must be in the future". EF materialises rows
+        // through this constructor, and an expired key is a perfectly valid ApiKey — it
+        // still has to be readable so the auth handler can reject it and the Settings
+        // list can show it. Enforcing a creation-time rule here made every naturally
+        // expired key unreadable, turning a clean 401 into a 500. "New keys expire
+        // between 1 and 365 days out" is a rule about creating a key, and lives in
+        // CreateApiKeyCommandValidator.
         ExpiresAt = expiresAt;
         CreatedBy = Guard.AgainstMaxLength(createdBy, nameof(createdBy), 256);
         ModifiedBy = CreatedBy;

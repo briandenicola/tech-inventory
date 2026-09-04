@@ -4472,7 +4472,8 @@ components:
           type: string
           nullable: true
         scope:
-          $ref: '#/components/schemas/ApiKeyScope'
+          type: string
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -4507,11 +4508,6 @@ components:
           type: integer
           format: int32
       additionalProperties: false
-    ApiKeyScope:
-      enum:
-        - Read
-        - Write
-      type: string
     AuditAction:
       enum:
         - Created
@@ -4975,7 +4971,8 @@ components:
           type: string
           nullable: true
         scope:
-          $ref: '#/components/schemas/ApiKeyScope'
+          type: string
+          nullable: true
         createdAt:
           type: string
           format: date-time

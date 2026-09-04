@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using TechInventory.Application.Abstractions.Repositories;
 using TechInventory.Application.Abstractions.Services;
 using TechInventory.Domain.Entities;
+using TechInventory.Application.ApiKeys;
 using TechInventory.Domain.Enums;
 
 namespace TechInventory.Api.Authentication;
@@ -135,7 +136,7 @@ public sealed class ApiKeyAuthenticationHandler(
             new("name", principal.DisplayName),
             new(ClaimTypes.Role, principal.Role.ToString()),
             new(SelectorClaimType, apiKey.Selector),
-            new(ScopeClaimType, ApiKeyScopeNames.ToClaimValue(apiKey.Scope)),
+            new(ScopeClaimType, ApiKeyScopeNames.ToWireValue(apiKey.Scope)),
         };
 
         if (apiKey.PrincipalType == ApiKeyPrincipalType.LocalUser)
@@ -222,20 +223,6 @@ public sealed class ApiKeyAuthenticationHandler(
 }
 
 public sealed class ApiKeyAuthenticationOptions : AuthenticationSchemeOptions;
-
-/// <summary>Claim-value names for <see cref="ApiKeyScope"/>, matching the API contract.</summary>
-public static class ApiKeyScopeNames
-{
-    public const string Read = "inventory.read";
-    public const string Write = "inventory.write";
-
-    public static string ToClaimValue(ApiKeyScope scope) => scope switch
-    {
-        ApiKeyScope.Read => Read,
-        ApiKeyScope.Write => Write,
-        _ => throw new ArgumentOutOfRangeException(nameof(scope), scope, "Unknown API key scope."),
-    };
-}
 
 /// <summary>
 /// RFC 7807 bodies for the auth pipeline, which runs before MVC's ProblemDetails

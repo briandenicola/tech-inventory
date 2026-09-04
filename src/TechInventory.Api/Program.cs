@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.Threading.RateLimiting;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Serilog;
@@ -282,7 +283,12 @@ builder.Services.AddOptions<ApiKeyRateLimitOptions>()
 
 builder.Services.AddRateLimiter(rateLimiterOptions =>
 {
-    rateLimiterOptions.AddPolicy(ApiKeyRateLimiting.PolicyName, httpContext =>
+    // Global, not a named policy on one action. The limit must cover every request an
+    // API key can make — the whole inventory surface — and the key-management endpoints
+    // it would otherwise have decorated are bearer-only, where there is no selector to
+    // partition by. Bearer traffic lands in an unlimited partition, so interactive users
+    // are unaffected.
+    rateLimiterOptions.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
         ApiKeyRateLimiting.CreatePartition(
             httpContext,
             httpContext.RequestServices.GetRequiredService<IOptions<ApiKeyRateLimitOptions>>().Value));
@@ -421,6 +427,13 @@ if (!app.Environment.IsDevelopment())
 app.UseCors("ApiCorsPolicy");
 
 app.UseAuthentication();
+
+// #149 — between authentication and authorization. Must be middleware, not only an
+// authorization requirement: [Authorize(Roles = "...")] builds an ad-hoc policy that
+// skips the configured default policy, so a requirement alone leaves every
+// role-attribute controller (Settings, Reports) unguarded against API keys.
+app.UseMiddleware<ApiKeyScopeMiddleware>();
+
 app.UseAuthorization();
 
 // After UseAuthorization: the per-selector partition reads the apikey_selector claim,

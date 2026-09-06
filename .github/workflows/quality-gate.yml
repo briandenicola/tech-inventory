@@ -32,7 +32,7 @@ jobs:
           key: ${{ runner.os }}-pnpm-${{ hashFiles('src/TechInventory.Web/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-
-      - uses: arduino/setup-task@v2
+      - uses: arduino/setup-task@v3
         with: { version: '3.x' }
       # openapi drift comparison parses the freshly-exported document, which
       # OpenApiYamlWriter emits as real YAML — PyYAML is required to read it.

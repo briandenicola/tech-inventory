@@ -82,6 +82,40 @@ public class ApiKeyUnthrottledTestHostFactory : ApiKeyTestHostFactory
     }
 }
 
+/// <summary>An unthrottled host with the default-off MCP endpoint explicitly enabled.</summary>
+public class McpEnabledTestHostFactory : ApiKeyUnthrottledTestHostFactory
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        base.ConfigureWebHost(builder);
+
+        builder.ConfigureAppConfiguration((_, config) =>
+        {
+            config.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Mcp:Enabled"] = "true",
+            });
+        });
+    }
+}
+
+/// <summary>A rate-limited host with MCP enabled for endpoint throttling tests.</summary>
+public class McpThrottledTestHostFactory : ApiKeyTestHostFactory
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        base.ConfigureWebHost(builder);
+
+        builder.ConfigureAppConfiguration((_, config) =>
+        {
+            config.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Mcp:Enabled"] = "true",
+            });
+        });
+    }
+}
+
 /// <summary>Shared setup helpers for the API key suite.</summary>
 public static class ApiKeyTestSupport
 {

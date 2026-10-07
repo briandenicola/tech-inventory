@@ -53,6 +53,10 @@ services:
       # compromises both, and the API refuses to start if they match.
       ApiKeys__HmacPepper:          ${ApiKeys__HmacPepper:?Set ApiKeys__HmacPepper in .env (openssl rand -base64 48)}
 
+      # ── Read-only MCP server (optional, defaults safe-off) ──────────
+      Mcp__Enabled:                 ${Mcp__Enabled:-false}
+      Mcp__MaxRequestBodyBytes:     ${Mcp__MaxRequestBodyBytes:-131072}
+
       # ── Break-glass seed (first-boot only — defaults safe-off) ──────
       Auth__Local__SeedEnabled:     ${Auth__Local__SeedEnabled:-false}
       Auth__Local__SeedAllowInProd: ${Auth__Local__SeedAllowInProd:-false}

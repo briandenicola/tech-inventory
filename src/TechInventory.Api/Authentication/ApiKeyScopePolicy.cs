@@ -44,6 +44,13 @@ public static class ApiKeyScopePolicy
 
         var value = path.Value!;
 
+        if (value.Equals("/api/mcp", StringComparison.OrdinalIgnoreCase))
+        {
+            return HttpMethods.IsPost(method)
+                && (string.Equals(scopeClaim, ApiKeyScopeNames.Read, StringComparison.Ordinal)
+                    || string.Equals(scopeClaim, ApiKeyScopeNames.Write, StringComparison.Ordinal));
+        }
+
         // Key management is bearer-only: a key must never mint or revoke keys, its own
         // included (N-10). Checked first so no prefix below can admit it.
         if (value.StartsWith("/api/v1/api-keys", StringComparison.OrdinalIgnoreCase))

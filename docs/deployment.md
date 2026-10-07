@@ -61,10 +61,19 @@ In `.env`, fill in:
 | `Auth__Entra__Audiences__1`    | `<client-id>` (bare GUID — Entra sometimes stamps this form into `aud`) |
 | `Auth__Local__SigningKey`      | `openssl rand -base64 48` — paste the output |
 | `Cors__AllowedOrigins__0`      | `https://inventory.denicolafamily.com` (already the default) |
+| `Mcp__Enabled`                | `false` unless the read-only MCP endpoint is intentionally enabled |
+| `Mcp__MaxRequestBodyBytes`    | `131072` (128 KiB default) |
 | `IMAGE_TAG`                    | `latest` for now; you'll pin in §7 |
 
 Leave the seed knobs (`Auth__Local__Seed*`) at their defaults for now — §5
 covers turning them on for the very first sign-in.
+
+When MCP is enabled, no extra container or port is added. The web nginx
+container forwards exact-path `/api/mcp` requests to the API with response
+buffering disabled. NPM must preserve the `Authorization`, `Content-Type`, and
+`Accept` headers; its default proxy behavior does so. Keep Force SSL enabled
+because API keys must not cross plaintext networks. Client setup and endpoint
+verification are in `docs/mcp-client-setup.md`.
 
 ---
 

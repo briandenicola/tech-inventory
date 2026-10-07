@@ -6,6 +6,27 @@ in `docs/architecture.md`.
 
 ---
 
+## Read-only MCP server
+
+The MCP endpoint is an opt-in integration for remote agents. Set
+`Mcp__Enabled=true` on the API and restart the stack; rollback is the inverse
+and writes no data. The endpoint shares the API's existing API-key expiry,
+revocation, live-owner, scope, and per-selector rate-limit controls.
+
+Use a dedicated `inventory.read` key for each MCP client. Rotation procedure:
+
+1. Create a replacement key in **Settings → API keys**.
+2. Update the client's secret environment variable.
+3. Restart the client and verify tool discovery.
+4. Revoke the old key.
+
+Never place the key in logs, tickets, screenshots, source control, or client
+configuration committed to a repository. A `401` deliberately does not reveal
+whether the selector, secret, expiry, revocation, or owner state failed. See
+`docs/mcp-client-setup.md` for client configuration and status-code guidance.
+
+---
+
 ## Break-Glass Local Admin (F025 v1b)
 
 Entra ID is the primary identity provider. If Entra is unreachable — tenant

@@ -14,6 +14,7 @@ A self-hosted family device and appliance inventory tracker. Single-household, a
 - **Database**: SQLite via EF Core code-first migrations
 - **Deployment**: Docker Compose (API + Web + DB). The web container is an nginx reverse proxy that serves the SvelteKit static bundle and forwards `/api/*` to the API on the internal network — browsers see a single origin in production. An external proxy (Nginx Proxy Manager) terminates TLS in front of it. See [`docs/architecture.md`](docs/architecture.md), [`docs/deployment.md`](docs/deployment.md), and ADR **D-139**.
 - **Auth**: Microsoft Entra ID (workforce tenant) via OIDC + PKCE as the primary identity provider, with a local-account break-glass fallback (F025 v1b — Argon2id + HS256 JWT). See [`docs/auth-design.md`](docs/auth-design.md) and [`docs/operations.md`](docs/operations.md#break-glass-local-admin-f025-v1b).
+- **MCP**: Optional, default-off read-only Streamable HTTP server for Hermes Agent and compatible clients. See [`docs/mcp-client-setup.md`](docs/mcp-client-setup.md).
 
 ### Recent shipped slices
 
@@ -117,6 +118,7 @@ Pin a release by setting `IMAGE_TAG=v1.0.0` in `.env`. See [`docs/deployment.md`
 - [Threat Model](docs/threat-model.md)
 - [Operations Runbook](docs/operations.md) — break-glass admin, day-2 operations
 - [Deployment Runbook](docs/deployment.md) — production deploy, NPM, backups, rollback
+- [MCP Client Setup](docs/mcp-client-setup.md) — Hermes Agent, tools, key handling, troubleshooting
 - [Testing Guide](docs/testing.md)
 - [Constitution](.specify/memory/constitution.md)
 - [Architecture Decisions](.squad/decisions.md) — append-only ADR ledger (D-001 …)

@@ -36,4 +36,30 @@ public sealed class SettingsAuthorizationTests(MemberRoleIntegrationTestFactory<
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
+
+    [Fact]
+    public async Task GetMcpSettings_WhenCallerIsMember_ReturnsForbidden()
+    {
+        await ResetDatabaseAsync();
+        await SeedAsync(entities: [new Household(Guid.NewGuid(), "Primary Household", Currency.From("USD"))]);
+        using var client = CreateClient();
+
+        var response = await client.GetAsync("/api/v1/settings/mcp");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task PutMcpSettings_WhenCallerIsMember_ReturnsForbidden()
+    {
+        await ResetDatabaseAsync();
+        await SeedAsync(entities: [new Household(Guid.NewGuid(), "Primary Household", Currency.From("USD"))]);
+        using var client = CreateClient();
+
+        var response = await client.PutAsync(
+            "/api/v1/settings/mcp",
+            CreateJsonContent(new { enabled = true }));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
 }

@@ -11,8 +11,8 @@ using static TechInventory.IntegrationTests.ApiKeys.ApiKeyTestSupport;
 namespace TechInventory.IntegrationTests.Mcp;
 
 [Collection("Mcp")]
-public sealed class McpEndpointTests(McpEnabledTestHostFactory factory)
-    : IClassFixture<McpEnabledTestHostFactory>
+public sealed class McpEndpointTests(McpTestHostFactory factory)
+    : IClassFixture<McpTestHostFactory>
 {
     private const string Username = "mcp-admin";
     private const string Password = "Str0ng!TestPassword";
@@ -68,6 +68,7 @@ public sealed class McpEndpointTests(McpEnabledTestHostFactory factory)
     [Fact]
     public async Task MissingCredential_IsRejected()
     {
+        await EnableMcpAsync();
         using var httpClient = factory.CreateClient();
 
         var action = async () =>
@@ -82,6 +83,7 @@ public sealed class McpEndpointTests(McpEnabledTestHostFactory factory)
     [Fact]
     public async Task InvalidApiKey_IsRejected()
     {
+        await EnableMcpAsync();
         using var httpClient = factory.CreateClient();
         UseApiKey(httpClient, "bm90LWEtcmVhbC1zZWxlY3Rvcg.bm90LWEtcmVhbC1zZWNyZXQ");
 
@@ -135,12 +137,7 @@ public sealed class McpEndpointTests(McpEnabledTestHostFactory factory)
     [Fact]
     public async Task BearerCredential_IsRejected()
     {
-        await ResetDatabaseAsync(factory);
-        await EnsureHouseholdAsync(factory);
-        await ResetAndSeedLocalUserAsync(factory, OwnerRole.Admin, Username, Password);
-
-        using var httpClient = factory.CreateClient();
-        UseBearer(httpClient, await LoginAsync(httpClient, Username, Password));
+        using var httpClient = await EnableMcpAsync();
 
         var action = async () =>
         {
@@ -165,6 +162,7 @@ public sealed class McpEndpointTests(McpEnabledTestHostFactory factory)
     [Fact]
     public async Task OversizedRequest_IsRejected()
     {
+        using var adminClient = await EnableMcpAsync();
         using var httpClient = factory.CreateClient();
         using var content = new StringContent(
             new string('x', 131073),
@@ -203,12 +201,7 @@ public sealed class McpEndpointTests(McpEnabledTestHostFactory factory)
 
     private async Task<CreatedKeyDto> CreateApiKeyAsync(string scope, string name)
     {
-        await ResetDatabaseAsync(factory);
-        await EnsureHouseholdAsync(factory);
-        await ResetAndSeedLocalUserAsync(factory, OwnerRole.Admin, Username, Password);
-
-        using var adminClient = factory.CreateClient();
-        UseBearer(adminClient, await LoginAsync(adminClient, Username, Password));
+        using var adminClient = await EnableMcpAsync();
         var response = await adminClient.PostAsJsonAsync(
             "/api/v1/api-keys",
             new { name, scope, expiresInDays = (int?)null },
@@ -216,6 +209,22 @@ public sealed class McpEndpointTests(McpEnabledTestHostFactory factory)
 
         response.StatusCode.Should().Be(HttpStatusCode.Created, await response.Content.ReadAsStringAsync());
         return (await response.Content.ReadFromJsonAsync<CreatedKeyDto>(JsonOptions))!;
+    }
+
+    private async Task<HttpClient> EnableMcpAsync()
+    {
+        await ResetDatabaseAsync(factory);
+        await EnsureHouseholdAsync(factory);
+        await ResetAndSeedLocalUserAsync(factory, OwnerRole.Admin, Username, Password);
+
+        var adminClient = factory.CreateClient();
+        UseBearer(adminClient, await LoginAsync(adminClient, Username, Password));
+        var response = await adminClient.PutAsJsonAsync(
+            "/api/v1/settings/mcp",
+            new { enabled = true },
+            JsonOptions);
+        response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
+        return adminClient;
     }
 
     private static Task<McpClient> CreateMcpClientAsync(HttpClient httpClient)
@@ -245,6 +254,11 @@ public sealed class McpRateLimitTests(McpThrottledTestHostFactory factory)
 
         using var adminClient = factory.CreateClient();
         UseBearer(adminClient, await LoginAsync(adminClient, Username, Password));
+        var settingsResponse = await adminClient.PutAsJsonAsync(
+            "/api/v1/settings/mcp",
+            new { enabled = true },
+            JsonOptions);
+        settingsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var createResponse = await adminClient.PostAsJsonAsync(
             "/api/v1/api-keys",
             new { name = "MCP rate test", scope = "inventory.read", expiresInDays = (int?)null },

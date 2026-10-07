@@ -9,9 +9,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/svelte';
 import type { AuthState, CurrentUser } from '$lib/stores/auth';
 
-const { ownersMeMock, updateMyProfileMock } = vi.hoisted(() => ({
+const { ownersMeMock, updateMyProfileMock, getMcpSettingsMock, updateMcpSettingsMock } = vi.hoisted(() => ({
 	ownersMeMock: vi.fn(),
-	updateMyProfileMock: vi.fn()
+	updateMyProfileMock: vi.fn(),
+	getMcpSettingsMock: vi.fn(),
+	updateMcpSettingsMock: vi.fn()
 }));
 
 vi.mock('$lib/stores/auth', async () => {
@@ -35,6 +37,10 @@ vi.mock('$lib/api/client', async () => {
 	const actual = await vi.importActual<typeof import('$lib/api/client')>('$lib/api/client');
 	return {
 		...actual,
+		mcpSettings: {
+			get: getMcpSettingsMock,
+			update: updateMcpSettingsMock
+		},
 		default: {
 			...actual.default,
 			owners: { ...actual.default.owners, me: ownersMeMock, updateMyProfile: updateMyProfileMock }
@@ -56,6 +62,8 @@ describe('/settings (#135 placeholder removal)', () => {
 	beforeEach(() => {
 		ownersMeMock.mockReset().mockResolvedValue({ id: 'owner-1', displayName: 'Brian' });
 		updateMyProfileMock.mockReset();
+		getMcpSettingsMock.mockReset().mockResolvedValue({ enabled: false });
+		updateMcpSettingsMock.mockReset();
 		authStore.set({
 			currentUser: adminUser,
 			isAuthenticated: true,
@@ -96,6 +104,7 @@ describe('/settings (#135 placeholder removal)', () => {
 
 		expect(await screen.findByRole('heading', { name: 'Profile' })).toBeInTheDocument();
 		expect(screen.getByRole('heading', { name: 'Appearance' })).toBeInTheDocument();
+		expect(screen.getByRole('heading', { name: 'MCP Server' })).toBeInTheDocument();
 		expect(screen.getByLabelText('Display name')).toBeInTheDocument();
 	});
 });

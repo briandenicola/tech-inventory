@@ -20,7 +20,8 @@ into a broad remote-control surface.
 Phase 1 embeds the official `ModelContextProtocol.AspNetCore` SDK in the
 existing API and maps stateless Streamable HTTP at `POST /api/mcp`.
 
-- The endpoint is disabled by default with `Mcp:Enabled=false`.
+- The endpoint is disabled by default through the persisted household setting
+  `mcp-enabled`; only an Admin can change it in the Settings UI.
 - It accepts only existing `Authorization: ApiKey <selector>.<secret>`
   credentials carrying `inventory.read` or `inventory.write`.
 - Existing expiry, revocation, live-principal, scope, and per-selector
@@ -42,7 +43,8 @@ General-purpose external agent spawning remains out of scope.
 
 ## Consequences
 
-Deployments opt in explicitly and can roll back by setting
-`Mcp__Enabled=false`. Existing REST clients and authentication behavior remain
-unchanged. MCP protocol evolution is delegated to the pinned official SDK, and
-upgrades require dependency review plus protocol-level regression tests.
+Admins opt in explicitly under **Settings → MCP Server** and can disable the
+endpoint there immediately without restarting the API. Existing REST clients
+and authentication behavior remain unchanged. MCP protocol evolution is
+delegated to the pinned official SDK, and upgrades require dependency review
+plus protocol-level regression tests.

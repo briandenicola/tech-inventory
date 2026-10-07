@@ -30,6 +30,26 @@ public sealed class SettingsController(ISender sender) : ControllerBase
         CancellationToken cancellationToken)
         => this.OkResult(await sender.Send(request.ToCommand(), cancellationToken));
 
+    [HttpGet("mcp")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(McpSettingsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<McpSettingsResponse>> GetMcpSettings(CancellationToken cancellationToken)
+        => this.OkResult(await sender.Send(new GetMcpSettingsQuery(), cancellationToken));
+
+    [HttpPut("mcp")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(McpSettingsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<McpSettingsResponse>> UpdateMcpSettings(
+        [FromBody] UpdateMcpSettingsRequest request,
+        CancellationToken cancellationToken)
+        => this.OkResult(await sender.Send(new UpdateMcpSettingsCommand(request.Enabled), cancellationToken));
+
     public sealed record UpdateDisplaySettingsRequest
     {
         public string[] DeviceListColumns { get; init; } = [];
@@ -38,4 +58,6 @@ public sealed class SettingsController(ISender sender) : ControllerBase
 
         public UpdateDisplaySettingsCommand ToCommand() => new(DeviceListColumns, DeviceDetailFields);
     }
+
+    public sealed record UpdateMcpSettingsRequest(bool Enabled);
 }

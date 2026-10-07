@@ -71,4 +71,49 @@ public sealed class SettingsControllerTests(IntegrationTestFactory<SettingsContr
         problem.Errors.Keys.Should().Contain(key => string.Equals(key, "DeviceListColumns", StringComparison.OrdinalIgnoreCase));
         problem.Errors.Keys.Should().Contain(key => string.Equals(key, "DeviceDetailFields", StringComparison.OrdinalIgnoreCase));
     }
+
+    [Fact]
+    public async Task GetMcpSettings_WhenNoSettingExists_ReturnsDisabledWithoutCreatingRow()
+    {
+        await ResetDatabaseAsync();
+        await SeedAsync(entities: [new Household(Guid.NewGuid(), "Primary Household", Currency.From("USD"))]);
+        using var client = CreateClient();
+
+        var response = await client.GetAsync("/api/v1/settings/mcp");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await ReadJsonAsync<McpSettingsResponse>(response)).Enabled.Should().BeFalse();
+        var settingCount = await WithDbContextAsync(async dbContext =>
+            await dbContext.HouseholdSettings.CountAsync(setting => setting.Key == McpSettingsCatalog.EnabledKey));
+        settingCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task PutMcpSettings_WhenEnabled_PersistsSettingAndWritesAuditEvent()
+    {
+        await ResetDatabaseAsync();
+        await SeedAsync(entities: [new Household(Guid.NewGuid(), "Primary Household", Currency.From("USD"))]);
+        using var client = CreateClient();
+
+        var response = await client.PutAsync(
+            "/api/v1/settings/mcp",
+            CreateJsonContent(new { enabled = true }));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await ReadJsonAsync<McpSettingsResponse>(response)).Enabled.Should().BeTrue();
+
+        var reloadResponse = await client.GetAsync("/api/v1/settings/mcp");
+        (await ReadJsonAsync<McpSettingsResponse>(reloadResponse)).Enabled.Should().BeTrue();
+
+        var settingValue = await WithDbContextAsync(async dbContext =>
+            await dbContext.HouseholdSettings
+                .Where(setting => setting.Key == McpSettingsCatalog.EnabledKey)
+                .Select(setting => setting.Value)
+                .SingleAsync());
+        settingValue.Should().Be("true");
+
+        var auditCount = await WithDbContextAsync(async dbContext =>
+            await dbContext.AuditEvents.CountAsync(eventRow => eventRow.EntityType == nameof(HouseholdSetting)));
+        auditCount.Should().Be(1);
+    }
 }

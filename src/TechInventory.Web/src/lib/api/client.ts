@@ -750,6 +750,19 @@ export const apiKeys = {
 		})
 };
 
+// Admin-only MCP endpoint control. The server remains disabled when no persisted
+// setting exists; updating this value takes effect without restarting the API.
+export const mcpSettings = {
+		get: async () =>
+			apiFetch<GetResponse<paths['/api/v1/settings/mcp']>>(`/api/v1/settings/mcp`),
+
+		update: async (body: PutRequestBody<paths['/api/v1/settings/mcp']>) =>
+			apiFetch<PutResponse<paths['/api/v1/settings/mcp']>>(`/api/v1/settings/mcp`, {
+				method: 'PUT',
+				body: JSON.stringify(body)
+			})
+};
+
 const api = {
 	devices,
 	brands,
@@ -764,6 +777,7 @@ const api = {
 	reports,
 	localAuth,
 	apiKeys,
+	mcpSettings,
 	setApiConfig
 };
 

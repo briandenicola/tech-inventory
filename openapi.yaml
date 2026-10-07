@@ -4123,6 +4123,122 @@ paths:
             text/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/settings/mcp:
+    get:
+      tags:
+        - Settings
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/McpSettingsResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/McpSettingsResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/McpSettingsResponse'
+        '403':
+          description: Forbidden
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      tags:
+        - Settings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMcpSettingsRequest'
+          text/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMcpSettingsRequest'
+          application/*+json:
+            schema:
+              $ref: '#/components/schemas/UpdateMcpSettingsRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/McpSettingsResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/McpSettingsResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/McpSettingsResponse'
+        '403':
+          description: Forbidden
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not Found
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
   /api/v1/tags:
     get:
       tags:
@@ -5476,6 +5592,12 @@ components:
         - Storage
         - External
       type: string
+    McpSettingsResponse:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+      additionalProperties: false
     MergeBrandRequest:
       type: object
       properties:
@@ -5968,6 +6090,12 @@ components:
           nullable: true
         type:
           $ref: '#/components/schemas/LocationType'
+      additionalProperties: false
+    UpdateMcpSettingsRequest:
+      type: object
+      properties:
+        enabled:
+          type: boolean
       additionalProperties: false
     UpdateMyProfileRequest:
       type: object

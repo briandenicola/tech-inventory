@@ -1089,6 +1089,21 @@
 				"revoked": "API key revoked."
 			}
 		},
+		"mcp": {
+			"heading": "MCP Server",
+			"subheading": "Allow authenticated MCP clients, such as Hermes Agent, to read approved inventory data.",
+			"loading": "Loading MCP settings…",
+			"enableLabel": "Enable MCP server",
+			"enableHelp": "Only active API keys with inventory access can connect. Changes take effect immediately.",
+			"errors": {
+				"load": "Could not load the MCP setting.",
+				"save": "Could not update the MCP setting."
+			},
+			"toast": {
+				"enabled": "MCP server enabled.",
+				"disabled": "MCP server disabled."
+			}
+		},
 		"tableColumns": {
 			"heading": "Table Columns",
 			"subheading": "Choose which columns to display in the devices table and their order. Drag to reorder.",

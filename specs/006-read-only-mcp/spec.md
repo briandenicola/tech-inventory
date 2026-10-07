@@ -23,10 +23,12 @@ default-off, API-key-authenticated, read-only protocol adapter.
    product URL, and audit metadata.
 6. Search returns at most 50 devices per call. Reference data returns at most
    100 entries. Inputs are explicitly bounded and validated.
-7. Disabled deployments return 503. Missing or invalid credentials return 401;
+7. The endpoint defaults to disabled. Admins can enable or disable it from the
+   Settings UI, with changes taking effect immediately and no restart.
+8. Disabled requests return 503. Missing or invalid credentials return 401;
    authenticated non-API-key credentials and insufficient scopes return 403;
    oversized requests return 413; rate limits return 429.
-8. Deployment and client documentation covers opt-in configuration, HTTPS,
+9. Deployment and client documentation covers UI enablement, HTTPS,
    proxy behavior, key lifecycle, Hermes Agent, generic clients, and
    troubleshooting.
 
@@ -42,7 +44,8 @@ default-off, API-key-authenticated, read-only protocol adapter.
 ## Acceptance
 
 - Protocol integration tests prove authentication, discovery, representative
-  calls, stateless method handling, default-off behavior, and mutation absence.
+  calls, stateless method handling, UI-controlled default-off behavior, and
+  mutation absence.
 - Existing API-key negative and rate-limit suites remain green.
 - The official SDK is pinned and dependency scanning reports no known
   vulnerabilities.

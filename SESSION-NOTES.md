@@ -4,6 +4,30 @@ Append-only log. Newest entries at the top.
 
 ---
 
+## 2026-10-06 — MCP enablement corrected to Admin Settings UI
+
+Corrected #198 on `feature/read-only-mcp-server` after deployment-only
+enablement did not match the requested UI configuration.
+
+- Removed `Mcp__Enabled` from application, Compose, environment, deployment,
+  and test configuration.
+- Added Admin-only `GET/PUT /api/v1/settings/mcp`, backed by the existing
+  audited `HouseholdSetting` store.
+- Added **Settings → MCP Server** with an accessible 44px switch, immediate
+  save behavior, loading/error states, and localized copy.
+- The MCP request guard now reads the persisted setting for every request;
+  a missing setting remains disabled and changes require no restart.
+- Regenerated `openapi.yaml` and the TypeScript API types; updated the ADR,
+  spec, deployment, operations, and client setup documentation.
+- Focused validation passed: 21 backend integration tests, 7 frontend tests,
+  Svelte type-check, ESLint, and `dotnet format --verify-no-changes`.
+- Tamper test: changing the missing-setting default to enabled made
+  `Endpoint_IsDisabledByDefault` fail with 401 instead of expected 503; the
+  guard was restored and the test passed.
+- Full `task verify` passed after the backend/UI implementation.
+
+---
+
 ## 2026-10-06 — Read-only MCP server for Hermes Agent completed
 
 Completed #198 on `feature/read-only-mcp-server`.

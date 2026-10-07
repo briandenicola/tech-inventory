@@ -8,10 +8,11 @@ in `docs/architecture.md`.
 
 ## Read-only MCP server
 
-The MCP endpoint is an opt-in integration for remote agents. Set
-`Mcp__Enabled=true` on the API and restart the stack; rollback is the inverse
-and writes no data. The endpoint shares the API's existing API-key expiry,
-revocation, live-owner, scope, and per-selector rate-limit controls.
+The MCP endpoint is an opt-in integration for remote agents. An Admin enables
+or disables it under **Settings → MCP Server**; the change takes effect
+immediately and defaults to disabled when no setting has been saved. The
+endpoint shares the API's existing API-key expiry, revocation, live-owner,
+scope, and per-selector rate-limit controls.
 
 Use a dedicated `inventory.read` key for each MCP client. Rotation procedure:
 

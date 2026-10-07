@@ -23,6 +23,7 @@
 	import TableColumnSettings from '$lib/components/TableColumnSettings.svelte';
 	import GroupDefaultSettings from '$lib/components/GroupDefaultSettings.svelte';
 	import ApiKeysSettings from '$lib/components/ApiKeysSettings.svelte';
+	import McpSettings from '$lib/components/McpSettings.svelte';
 	import { getApiErrorMessage } from '$lib/utils/apiErrors';
 
 	const currentUser = $derived($authStore.currentUser);
@@ -244,6 +245,10 @@
 		</section>
 
 		<ApiKeysSettings />
+
+		{#if currentUser.role === 'Admin'}
+			<McpSettings />
+		{/if}
 
 		<!-- Table column configuration -->
 		<div class="mt-6">

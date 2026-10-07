@@ -54,7 +54,6 @@ services:
       ApiKeys__HmacPepper:          ${ApiKeys__HmacPepper:?Set ApiKeys__HmacPepper in .env (openssl rand -base64 48)}
 
       # ── Read-only MCP server (optional, defaults safe-off) ──────────
-      Mcp__Enabled:                 ${Mcp__Enabled:-false}
       Mcp__MaxRequestBodyBytes:     ${Mcp__MaxRequestBodyBytes:-131072}
 
       # ── Break-glass seed (first-boot only — defaults safe-off) ──────

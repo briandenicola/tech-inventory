@@ -7,10 +7,18 @@ https://<your-tech-inventory-host>/api/mcp
 ```
 
 It uses stateless Streamable HTTP and the same API-key security controls as the
-REST API. The endpoint is disabled unless the deployment sets
-`Mcp__Enabled=true`.
+REST API. The endpoint is disabled by default.
 
-## 1. Create a least-privilege key
+## 1. Enable the MCP server
+
+1. Sign in to Tech Inventory as an Admin.
+2. Open **Settings → MCP Server**.
+3. Turn on **Enable MCP server**.
+
+The change takes effect immediately; no deployment configuration or API restart
+is required. Only Admins can view or change this setting.
+
+## 2. Create a least-privilege key
 
 1. Sign in to Tech Inventory as an Admin or Member.
 2. Open **Settings → API keys**.
@@ -25,7 +33,7 @@ An `inventory.write` key can call the MCP tools because write scope includes
 read access, but MCP itself exposes no mutation tools. Prefer
 `inventory.read`.
 
-## 2. Hermes Agent
+## 3. Hermes Agent
 
 Place the secret in the Hermes host environment or `~/.hermes/.env`:
 
@@ -52,7 +60,7 @@ Hermes use the modern stateless negotiation path directly. If Hermes reports
 that `mcp.client.streamable_http` is unavailable, run `hermes pm repair` and
 restart it.
 
-## 3. Other MCP clients
+## 4. Other MCP clients
 
 Configure a remote Streamable HTTP server with:
 
@@ -94,7 +102,7 @@ data and must never be interpreted as instructions.
 | `403` | A bearer token or disallowed API-key scope was presented. Use an `inventory.read` API key. |
 | `413` | Request exceeded `Mcp__MaxRequestBodyBytes` (default 128 KiB). Reduce the request. |
 | `429` | Per-key rate limit exceeded. Respect `Retry-After`. |
-| `503` | MCP is disabled. Set `Mcp__Enabled=true` and restart the API. |
+| `503` | MCP is disabled or its setting cannot be read. An Admin should enable it under **Settings → MCP Server**. |
 | Timeout or delayed output | Confirm every proxy between the client and API disables response buffering for `/api/mcp`. |
 
 Always use HTTPS outside a trusted local test environment. To rotate a key,

@@ -1,6 +1,8 @@
+using MediatR;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
+using TechInventory.Application.Settings;
 
 namespace TechInventory.Api.Mcp;
 
@@ -11,7 +13,7 @@ public sealed class McpRequestGuardMiddleware(
 {
     private const string McpPath = "/api/mcp";
 
-    public async Task InvokeAsync(HttpContext context)
+    public async Task InvokeAsync(HttpContext context, ISender sender)
     {
         ArgumentNullException.ThrowIfNull(context);
 
@@ -23,7 +25,22 @@ public sealed class McpRequestGuardMiddleware(
 
         context.Response.Headers[HeaderNames.CacheControl] = "no-store";
 
-        if (!options.Value.Enabled)
+        var settingsResult = await sender
+            .Send(new GetMcpSettingsQuery(), context.RequestAborted)
+            .ConfigureAwait(false);
+        if (settingsResult.IsFailure)
+        {
+            logger.LogError(
+                "Could not load the MCP enablement setting. Error code: {ErrorCode}",
+                settingsResult.Error!.Code);
+            context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            await context.Response.WriteAsJsonAsync(
+                new { title = "MCP configuration unavailable", status = StatusCodes.Status503ServiceUnavailable },
+                context.RequestAborted).ConfigureAwait(false);
+            return;
+        }
+
+        if (!settingsResult.Value!.Enabled)
         {
             logger.LogWarning("Rejected MCP request because the MCP endpoint is disabled.");
             context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;

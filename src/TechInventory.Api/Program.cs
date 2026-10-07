@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using ModelContextProtocol.AspNetCore;
 using System.Threading.RateLimiting;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -16,9 +17,11 @@ using Serilog;
 using TechInventory.Api.Authentication;
 using TechInventory.Api.ExceptionHandling;
 using TechInventory.Api.Http;
+using TechInventory.Api.Mcp;
 using TechInventory.Api.OpenApi;
 using TechInventory.Application;
 using TechInventory.Application.Abstractions.Services;
+using TechInventory.Application.ApiKeys;
 using TechInventory.Domain.Entities;
 using TechInventory.Domain.ValueObjects;
 using TechInventory.Infrastructure;
@@ -46,6 +49,13 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddScoped<ICurrentUserService, HttpContextCurrentUserService>();
 builder.Services.AddMediatR(configuration => configuration.RegisterServicesFromAssembly(typeof(Program).Assembly));
 builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
+builder.Services.AddOptions<McpOptions>()
+    .Bind(builder.Configuration.GetSection(McpOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddMcpServer()
+    .WithHttpTransport(options => options.SessionMode = HttpServerSessionMode.Stateless)
+    .WithTools<TechInventoryMcpTools>();
 
 // Auth registration. Two real bearer schemes — Entra (cloud SSO) and
 // F025 Local HS256 (break-glass username/password). If Entra is configured,
@@ -335,7 +345,15 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy(AuthorizationPolicies.AdminOrMember, policy => policy
         .RequireAuthenticatedUser()
         .AddRequirements(new ApiKeyScopeRequirement())
-        .RequireRole("Admin", "Member"));
+        .RequireRole("Admin", "Member"))
+    .AddPolicy(AuthorizationPolicies.McpRead, policy => policy
+        .RequireAuthenticatedUser()
+        .AddRequirements(new ApiKeyScopeRequirement())
+        .RequireClaim(ApiKeyAuthenticationHandler.SelectorClaimType)
+        .RequireClaim(
+            ApiKeyAuthenticationHandler.ScopeClaimType,
+            ApiKeyScopeNames.Read,
+            ApiKeyScopeNames.Write));
 
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options =>
@@ -413,6 +431,7 @@ app.UseMiddleware<NoStoreCacheHeaderMiddleware>();
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();
+app.UseMiddleware<McpRequestGuardMiddleware>();
 
 if (app.Environment.IsDevelopment() ||
     bool.TryParse(app.Configuration["Features:SwaggerInProduction"], out var enableSwagger) && enableSwagger)
@@ -478,6 +497,7 @@ app.Use(async (httpContext, next) =>
 
 app.MapHealthChecks("/health").AllowAnonymous();
 app.MapHealthChecks("/health/ready").AllowAnonymous();
+app.MapMcp("/api/mcp").RequireAuthorization(AuthorizationPolicies.McpRead);
 app.MapControllers();
 
 try

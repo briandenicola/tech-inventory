@@ -33,7 +33,8 @@ public sealed class NoStoreCacheHeaderMiddleware(RequestDelegate next)
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        if (context.Request.Path.StartsWithSegments("/api/v1", StringComparison.OrdinalIgnoreCase))
+        if (context.Request.Path.StartsWithSegments("/api/v1", StringComparison.OrdinalIgnoreCase)
+            || context.Request.Path.Equals("/api/mcp", StringComparison.OrdinalIgnoreCase))
         {
             // OnStarting, not a direct assignment: headers must be set before the
             // response begins, and an endpoint that streams (export downloads) may

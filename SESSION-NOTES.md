@@ -4,6 +4,41 @@ Append-only log. Newest entries at the top.
 
 ---
 
+## 2026-10-06 — Read-only MCP server for Hermes Agent completed
+
+Completed #198 on `feature/read-only-mcp-server`.
+
+- Added the official pinned `ModelContextProtocol.AspNetCore` 2.2.0 SDK and an
+  embedded stateless Streamable HTTP endpoint at `POST /api/mcp`.
+- Kept MCP default-off and API-key-only; existing expiry, revocation,
+  live-principal, scope, and per-selector rate-limit controls remain
+  authoritative.
+- Added eight bounded read-only tools backed by existing MediatR queries:
+  device search/detail, combined reference data, inventory summary, warranty,
+  spending, era, and timeline reports.
+- Sanitized device contracts omit serial numbers, IP/MAC addresses, notes,
+  product URLs, and audit fields. Every structured result labels persisted
+  strings as untrusted inventory data.
+- Added exact nginx Streamable HTTP proxy behavior, Compose/env configuration,
+  ADR 0004, spec 006, Hermes Agent setup, operations/deployment docs, and the
+  portable `.github/skills/using-tech-inventory-mcp/SKILL.md`.
+- Added 12 protocol/auth integration tests covering read/write scopes,
+  discovery, representative calls, disabled mode, missing/invalid/revoked/
+  bearer credentials, non-POST denial, request size, rate limiting, and the
+  sanitized contract.
+- Tamper-tested default-off, API-key-only, request-size, and read-only
+  discovery guards; each dedicated test failed when its control was weakened.
+- Independent security review found no blockers. Its one medium
+  prompt-injection defense-in-depth finding was fixed with untrusted-data
+  envelopes plus skill/client guidance.
+- Full `task verify` passed after the implementation and security correction.
+  A later redundant rerun encountered one unrelated transient SQLite test
+  failure that passed immediately in isolation; the next rerun passed every
+  gate through vulnerability scanning and was stopped after the repo security
+  scan ran for 15 minutes.
+
+---
+
 ## 2026-09-02 — T105 Agentic development foundation completed and pushed + final QC review gate
 
 **Agentic development foundation (specs/004-agentic-development-foundation) — COMPLETE and APPROVED**

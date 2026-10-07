@@ -22,4 +22,10 @@ public static class AuthorizationPolicies
     /// satisfied by this policy.
     /// </summary>
     public const string AdminOrMember = "AdminOrMember";
+
+    /// <summary>
+    /// Requires an API-key principal carrying read or write inventory scope.
+    /// The MCP endpoint uses this policy to reject interactive bearer tokens.
+    /// </summary>
+    public const string McpRead = "McpRead";
 }

@@ -9,6 +9,10 @@ Append-only log. Newest entries at the top.
 Corrected #198 on `feature/read-only-mcp-server` after deployment-only
 enablement did not match the requested UI configuration.
 
+PR #199 merged the original MCP commit while this correction was in progress.
+The correction was then cherry-picked onto current `main` as `76a185d` on
+`fix/mcp-settings-ui`, where a fresh full `task verify` also passed.
+
 - Removed `Mcp__Enabled` from application, Compose, environment, deployment,
   and test configuration.
 - Added Admin-only `GET/PUT /api/v1/settings/mcp`, backed by the existing

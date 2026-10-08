@@ -1,9 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 using FluentAssertions;
 using ModelContextProtocol.Client;
 using TechInventory.Api.Mcp;
+using TechInventory.Application.Reports;
 using TechInventory.Domain.Enums;
 using TechInventory.IntegrationTests.ApiKeys;
 using static TechInventory.IntegrationTests.ApiKeys.ApiKeyTestSupport;
@@ -63,6 +65,119 @@ public sealed class McpEndpointTests(McpTestHostFactory factory)
             new Dictionary<string, object?> { ["type"] = "brands" });
         references.IsError.Should().NotBeTrue();
         references.StructuredContent.Should().NotBeNull();
+
+        var eras = await mcpClient.CallToolAsync("era_report");
+        eras.IsError.Should().NotBeTrue();
+        eras.StructuredContent.Should().NotBeNull();
+        var appliedCategoryId = eras.StructuredContent!.Value
+            .GetProperty("data")
+            .GetProperty("appliedCategoryId");
+        appliedCategoryId.ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task PublishedOutputSchemas_AcceptNullableFieldsEmittedAsNull()
+    {
+        var key = await CreateReadKeyAsync();
+        using var httpClient = factory.CreateClient();
+        UseApiKey(httpClient, key);
+
+        await using var mcpClient = await CreateMcpClientAsync(httpClient);
+        var tools = (await mcpClient.ListToolsAsync()).ToDictionary(tool => tool.Name, StringComparer.Ordinal);
+        var date = new DateOnly(2026, 10, 7);
+        var device = new DeviceMcpResponse(
+            Guid.NewGuid(),
+            "Nullable device",
+            null,
+            null,
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            null,
+            null,
+            null,
+            null,
+            "USD",
+            "Active",
+            null,
+            null,
+            null,
+            null,
+            null);
+        var examples = new Dictionary<string, object>(StringComparer.Ordinal)
+        {
+            ["search_devices"] = new UntrustedDataEnvelope<McpPage<DeviceMcpResponse>>(
+                "test",
+                new McpPage<DeviceMcpResponse>([device], 1, 1, 25)),
+            ["get_device"] = new UntrustedDataEnvelope<DeviceMcpResponse>("test", device),
+            ["list_reference_data"] = new UntrustedDataEnvelope<ReferenceDataMcpResponse>(
+                "test",
+                new ReferenceDataMcpResponse(
+                    "brands",
+                    [new ReferenceItemMcpResponse(Guid.NewGuid(), "Tatybo", null)])),
+            ["inventory_summary"] = new UntrustedDataEnvelope<SummaryReportResponse>(
+                "test",
+                new SummaryReportResponse(0, 0, [], [], [])),
+            ["warranty_report"] = new UntrustedDataEnvelope<WarrantyMcpResponse>(
+                "test",
+                new WarrantyMcpResponse(
+                    date,
+                    365,
+                    [new WarrantyReportItem("Nullable warranty device", null, null, date, 0)],
+                    1,
+                    false)),
+            ["spending_report"] = new UntrustedDataEnvelope<SpendingMcpResponse>(
+                "test",
+                new SpendingMcpResponse(SpendingGroupBy.Month, null, null, [], 0, false)),
+            ["era_report"] = new UntrustedDataEnvelope<EraReportResponse>(
+                "test",
+                new EraReportResponse([], date, null)),
+            ["timeline_report"] = new UntrustedDataEnvelope<TimelineMcpResponse>(
+                "test",
+                new TimelineMcpResponse(
+                    [new TimelineReportEntry("Nullable timeline device", null, date, null, "Other", 0)],
+                    date,
+                    TimelineGroupBy.Category,
+                    null,
+                    1,
+                    false)),
+        };
+        var serializerOptions = McpJsonSerializerOptions.Create();
+
+        foreach (var (toolName, example) in examples)
+        {
+            var schema = tools[toolName].ProtocolTool.OutputSchema;
+            schema.Should().NotBeNull($"{toolName} publishes structured content");
+            var payload = JsonSerializer.SerializeToElement(example, example.GetType(), serializerOptions);
+
+            ValidateRequiredProperties(schema!.Value, payload, toolName);
+        }
+    }
+
+    [Fact]
+    public async Task WarrantyReport_DaysArgumentIsHonored()
+    {
+        var key = await CreateReadKeyAsync();
+        using var httpClient = factory.CreateClient();
+        UseApiKey(httpClient, key);
+
+        await using var mcpClient = await CreateMcpClientAsync(httpClient);
+        var warrantyTool = (await mcpClient.ListToolsAsync()).Single(tool => tool.Name == "warranty_report");
+        var inputProperties = warrantyTool.ProtocolTool.InputSchema.GetProperty("properties");
+        inputProperties.TryGetProperty("days", out _).Should().BeTrue();
+        inputProperties.TryGetProperty("expiringWithinDays", out _).Should().BeFalse();
+        var result = await mcpClient.CallToolAsync(
+            "warranty_report",
+            new Dictionary<string, object?> { ["days"] = 365 });
+
+        result.IsError.Should().NotBeTrue();
+        result.StructuredContent.Should().NotBeNull();
+        result.StructuredContent!.Value
+            .GetProperty("data")
+            .GetProperty("expiringWithinDays")
+            .GetInt32()
+            .Should()
+            .Be(365);
     }
 
     [Fact]
@@ -237,6 +352,48 @@ public sealed class McpEndpointTests(McpTestHostFactory factory)
                     TransportMode = HttpTransportMode.StreamableHttp,
                 },
                 httpClient));
+
+    private static void ValidateRequiredProperties(JsonElement schema, JsonElement instance, string path)
+    {
+        if (schema.TryGetProperty("required", out var required))
+        {
+            instance.ValueKind.Should().Be(JsonValueKind.Object, $"{path} is described as an object");
+            foreach (var requiredProperty in required.EnumerateArray())
+            {
+                var propertyName = requiredProperty.GetString()!;
+                instance.TryGetProperty(propertyName, out _)
+                    .Should()
+                    .BeTrue($"{path}.{propertyName} is required by the published schema");
+            }
+        }
+
+        if (instance.ValueKind == JsonValueKind.Object
+            && schema.TryGetProperty("properties", out var properties))
+        {
+            foreach (var propertySchema in properties.EnumerateObject())
+            {
+                if (instance.TryGetProperty(propertySchema.Name, out var propertyValue)
+                    && propertyValue.ValueKind is not JsonValueKind.Null)
+                {
+                    ValidateRequiredProperties(
+                        propertySchema.Value,
+                        propertyValue,
+                        $"{path}.{propertySchema.Name}");
+                }
+            }
+        }
+
+        if (instance.ValueKind == JsonValueKind.Array
+            && schema.TryGetProperty("items", out var itemSchema))
+        {
+            var index = 0;
+            foreach (var item in instance.EnumerateArray())
+            {
+                ValidateRequiredProperties(itemSchema, item, $"{path}[{index}]");
+                index++;
+            }
+        }
+    }
 }
 
 public sealed class McpRateLimitTests(McpThrottledTestHostFactory factory)

@@ -135,16 +135,16 @@ public sealed class TechInventoryMcpTools(ISender sender)
     [McpServerTool(Name = "warranty_report", Title = "Warranty report", ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Return devices with warranties expiring within the requested number of days.")]
     public async Task<UntrustedDataEnvelope<WarrantyMcpResponse>> GetWarrantyReportAsync(
-        [Description("Future window in days, from 1 through 365.")] int expiringWithinDays = 30,
+        [Description("Future window in days, from 1 through 365.")] int days = 30,
         CancellationToken cancellationToken = default)
     {
-        if (expiringWithinDays is < 1 or > 365)
+        if (days is < 1 or > 365)
         {
-            throw new McpException("expiringWithinDays must be between 1 and 365.");
+            throw new McpException("days must be between 1 and 365.");
         }
 
         var report = GetValueOrThrow(
-            await sender.Send(new GetWarrantyReportQuery(expiringWithinDays), cancellationToken).ConfigureAwait(false));
+            await sender.Send(new GetWarrantyReportQuery(days), cancellationToken).ConfigureAwait(false));
         return Wrap(new WarrantyMcpResponse(
             report.AsOfDate,
             report.ExpiringWithinDays,

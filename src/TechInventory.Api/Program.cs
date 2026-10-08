@@ -55,7 +55,7 @@ builder.Services.AddOptions<McpOptions>()
     .ValidateOnStart();
 builder.Services.AddMcpServer()
     .WithHttpTransport(options => options.SessionMode = HttpServerSessionMode.Stateless)
-    .WithTools<TechInventoryMcpTools>();
+    .WithTools<TechInventoryMcpTools>(McpJsonSerializerOptions.Create());
 
 // Auth registration. Two real bearer schemes — Entra (cloud SSO) and
 // F025 Local HS256 (break-glass username/password). If Entra is configured,

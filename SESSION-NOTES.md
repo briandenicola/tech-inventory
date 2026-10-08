@@ -4,6 +4,19 @@ Append-only log. Newest entries at the top.
 
 ---
 
+## 2026-10-08 — MCP structured-result schema correction
+
+- Corrected the SDK default `WhenWritingNull` mismatch: MCP tools now use
+  dedicated serializer options with `JsonIgnoreCondition.Never`, so required
+  nullable fields are emitted explicitly as JSON `null`. REST serialization is
+  unchanged.
+- Renamed the warranty MCP input from `expiringWithinDays` to `days`, matching
+  client usage and the tool description; non-default `days=365` is covered.
+- Added a schema-conformance integration test with null-bearing examples for
+  all eight tools plus a real `era_report` null-emission assertion.
+
+---
+
 ## 2026-10-06 — MCP enablement corrected to Admin Settings UI
 
 Corrected #198 on `feature/read-only-mcp-server` after deployment-only

@@ -12,3 +12,5 @@
 - [x] T010 Complete independent security and quality reviews.
 - [x] T011 Update handoff state, commit, and push.
 - [x] T012 Replace deployment enablement with an Admin-only Settings UI toggle.
+- [x] T013 Align nullable structured results with their schemas and honor the
+  `warranty_report.days` argument.

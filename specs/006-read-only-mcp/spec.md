@@ -31,6 +31,10 @@ default-off, API-key-authenticated, read-only protocol adapter.
 9. Deployment and client documentation covers UI enablement, HTTPS,
    proxy behavior, key lifecycle, Hermes Agent, generic clients, and
    troubleshooting.
+10. Structured results conform to their published JSON Schemas. Nullable
+    fields that the schema marks as required are emitted explicitly as `null`.
+11. `warranty_report` accepts a `days` argument from 1 through 365 and returns
+    the applied value as `expiringWithinDays`.
 
 ## Non-goals
 
@@ -49,4 +53,6 @@ default-off, API-key-authenticated, read-only protocol adapter.
 - Existing API-key negative and rate-limit suites remain green.
 - The official SDK is pinned and dependency scanning reports no known
   vulnerabilities.
+- Every tool has a schema-conformance example covering its nullable output
+  fields, and the warranty argument is exercised with a non-default value.
 - `task verify` passes.

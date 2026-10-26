@@ -7,6 +7,7 @@ using TechInventory.Application.BulkOperations;
 using TechInventory.Application.Common.Paging;
 using TechInventory.Application.Devices;
 using TechInventory.Application.Devices.Commands;
+using TechInventory.Application.Devices.Feed;
 using TechInventory.Application.Devices.Queries;
 using TechInventory.Application.Tags;
 using TechInventory.Domain.Enums;
@@ -23,6 +24,16 @@ public sealed class DevicesController(ISender sender) : ControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<PagedResponse<DeviceResponse>>> GetDevices([FromQuery] ListDevicesRequest request, CancellationToken cancellationToken)
         => this.OkResult(await sender.Send(request.ToQuery(), cancellationToken));
+
+    /// <summary>
+    /// Every device, any status, oldest first, for the household life store (spec 007).
+    /// Pass the previous page's <c>next</c> as <c>page</c>; <c>next</c> is null on the last page.
+    /// </summary>
+    [HttpGet("feed")]
+    [ProducesResponseType(typeof(DeviceFeedResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<DeviceFeedResponse>> GetDeviceFeed([FromQuery] string? page, [FromQuery] int limit = 25, CancellationToken cancellationToken = default)
+        => this.OkResult(await sender.Send(new ListDeviceFeedQuery(page, limit), cancellationToken));
 
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(DeviceResponse), StatusCodes.Status200OK)]

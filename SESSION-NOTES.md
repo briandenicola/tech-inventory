@@ -4,6 +4,18 @@ Append-only log. Newest entries at the top.
 
 ---
 
+## 2026-10-26 — Read-only device feed for the life store (spec 007)
+
+- Added `GET /api/v1/devices/feed`: every device, any status, oldest first, paged
+  (`limit` 1–200, `next` token), with reference names resolved. Read with an
+  existing `inventory.read` key; it sits under `/api/v1/devices`, so the ADR 0003
+  allow-list is unchanged.
+- Serial number, IP, MAC, notes, product URL and audit actors are left out, as for
+  MCP (ADR 0004).
+- Unit and real-HTTP integration tests; OpenAPI and generated client regenerated.
+
+---
+
 ## 2026-10-08 — MCP structured-result schema correction
 
 - Corrected the SDK default `WhenWritingNull` mismatch: MCP tools now use

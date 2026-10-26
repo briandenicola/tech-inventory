@@ -1417,6 +1417,46 @@ paths:
             text/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/devices/feed:
+    get:
+      tags:
+        - Devices
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 25
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/DeviceFeedResponse'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceFeedResponse'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/DeviceFeedResponse'
+        '400':
+          description: Bad Request
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
+            text/json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblemDetails'
   '/api/v1/devices/{id}':
     get:
       tags:
@@ -5108,6 +5148,109 @@ components:
         retiredDate:
           type: string
           format: date
+          nullable: true
+      additionalProperties: false
+    DeviceFeedItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          nullable: true
+        model:
+          type: string
+          nullable: true
+        brand:
+          type: string
+          nullable: true
+        category:
+          type: string
+          nullable: true
+        owner:
+          type: string
+          nullable: true
+        location:
+          type: string
+          nullable: true
+        network:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+          nullable: true
+        status:
+          type: string
+          nullable: true
+        purchaseDate:
+          type: string
+          format: date
+          nullable: true
+        purchasePrice:
+          type: number
+          format: double
+          nullable: true
+        currencyCode:
+          type: string
+          nullable: true
+        warrantyExpiry:
+          type: string
+          format: date
+          nullable: true
+        retiredDate:
+          type: string
+          format: date
+          nullable: true
+        disposalMethod:
+          type: string
+          nullable: true
+        purpose:
+          type: string
+          nullable: true
+        operatingSystem:
+          type: string
+          nullable: true
+        version:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        modifiedAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    DeviceFeedRecord:
+      type: object
+      properties:
+        kind:
+          type: string
+          nullable: true
+        id:
+          type: string
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+        data:
+          $ref: '#/components/schemas/DeviceFeedItem'
+      additionalProperties: false
+    DeviceFeedResponse:
+      type: object
+      properties:
+        schema:
+          type: string
+          nullable: true
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeviceFeedRecord'
+          nullable: true
+        next:
+          type: string
           nullable: true
       additionalProperties: false
     DeviceResponse:

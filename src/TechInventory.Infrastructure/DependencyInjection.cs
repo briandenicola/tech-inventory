@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using TechInventory.Application.Abstractions.Persistence;
 using TechInventory.Application.Abstractions.Repositories;
 using TechInventory.Application.Abstractions.Services;
+using TechInventory.Application.Devices.Feed;
 using TechInventory.Application.Exports;
 using TechInventory.Infrastructure.Persistence;
 using TechInventory.Infrastructure.Persistence.Interceptors;
@@ -34,6 +35,7 @@ public static class DependencyInjection
         services.AddScoped<DeviceRepository>();
         services.AddScoped<IDeviceRepository>(serviceProvider => serviceProvider.GetRequiredService<DeviceRepository>());
         services.AddScoped<IDeviceExportService>(serviceProvider => serviceProvider.GetRequiredService<DeviceRepository>());
+        services.AddScoped<IDeviceFeedReader>(serviceProvider => serviceProvider.GetRequiredService<DeviceRepository>());
         services.AddScoped<IReportingRepository, ReportingRepository>();
         services.AddScoped<IHouseholdRepository, HouseholdRepository>();
         services.AddScoped<IHouseholdSettingRepository, HouseholdSettingRepository>();

@@ -128,6 +128,7 @@ This system has seven security-relevant surfaces. Each is analyzed below using S
   - Error responses (ProblemDetails) never include stack traces or database details in production.
   - API logs structured; no hard-coded secrets in source (gitleaks + Trivy scan).
   - Secrets injected via environment variables (Docker secrets / KeyVault-style abstraction).
+  - The life store feed (`GET /api/v1/devices/feed`, spec 007) leaves out serial numbers, IP and MAC addresses, notes, product URLs and audit actors, as MCP does (ADR 0004), because its consumer passes what it reads to agents.
 - **Residual Risk**: Low. Serilog destructuring + ProblemDetails + environment injection mitigate most vectors.
 
 #### Denial of Service (Availability / Rate Limiting)

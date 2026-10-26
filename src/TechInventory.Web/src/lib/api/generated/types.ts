@@ -1512,6 +1512,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/devices/feed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    page?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DeviceFeedResponse"];
+                        "application/json": components["schemas"]["DeviceFeedResponse"];
+                        "text/json": components["schemas"]["DeviceFeedResponse"];
+                    };
+                };
+                /** @description Bad Request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ValidationProblemDetails"];
+                        "application/json": components["schemas"]["ValidationProblemDetails"];
+                        "text/json": components["schemas"]["ValidationProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/devices/{id}": {
         parameters: {
             query?: never;
@@ -5278,6 +5329,48 @@ export interface components {
             disposalMethod?: string | null;
             /** Format: date */
             retiredDate?: string | null;
+        };
+        DeviceFeedItem: {
+            /** Format: uuid */
+            id?: string;
+            name?: string | null;
+            model?: string | null;
+            brand?: string | null;
+            category?: string | null;
+            owner?: string | null;
+            location?: string | null;
+            network?: string | null;
+            tags?: string[] | null;
+            status?: string | null;
+            /** Format: date */
+            purchaseDate?: string | null;
+            /** Format: double */
+            purchasePrice?: number | null;
+            currencyCode?: string | null;
+            /** Format: date */
+            warrantyExpiry?: string | null;
+            /** Format: date */
+            retiredDate?: string | null;
+            disposalMethod?: string | null;
+            purpose?: string | null;
+            operatingSystem?: string | null;
+            version?: string | null;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            modifiedAt?: string;
+        };
+        DeviceFeedRecord: {
+            kind?: string | null;
+            id?: string | null;
+            /** Format: date-time */
+            updatedAt?: string;
+            data?: components["schemas"]["DeviceFeedItem"];
+        };
+        DeviceFeedResponse: {
+            schema?: string | null;
+            records?: components["schemas"]["DeviceFeedRecord"][] | null;
+            next?: string | null;
         };
         DeviceResponse: {
             /** Format: uuid */

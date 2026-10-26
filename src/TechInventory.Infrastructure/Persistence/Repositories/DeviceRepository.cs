@@ -2,13 +2,14 @@ using Microsoft.EntityFrameworkCore;
 using TechInventory.Application.Abstractions.Repositories;
 using TechInventory.Application.Common.Paging;
 using TechInventory.Application.Common.Results;
+using TechInventory.Application.Devices.Feed;
 using TechInventory.Application.Exports;
 using TechInventory.Domain.Entities;
 using TechInventory.Domain.Enums;
 
 namespace TechInventory.Infrastructure.Persistence.Repositories;
 
-public sealed class DeviceRepository(AppDbContext dbContext) : Repository<Device, Guid>(dbContext), IDeviceRepository, IDeviceExportService
+public sealed class DeviceRepository(AppDbContext dbContext) : Repository<Device, Guid>(dbContext), IDeviceRepository, IDeviceExportService, IDeviceFeedReader
 {
     protected override IQueryable<Device> DefaultQuery => DbContext.Devices;
 
@@ -89,6 +90,66 @@ public sealed class DeviceRepository(AppDbContext dbContext) : Repository<Device
 
     public Task<Result<int>> ReassignNetworkReferencesAsync(Guid sourceId, Guid targetId, CancellationToken cancellationToken)
         => ReassignReferencesAsync(device => device.NetworkId == sourceId, device => device.ReassignNetwork(targetId), cancellationToken);
+
+    public async Task<PagedResult<DeviceFeedItem>> ReadPageAsync(PageRequest pageRequest, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(pageRequest);
+
+        // Every status, oldest first: devices are only ever added (deletion is a status),
+        // so a page already read never shifts. Ordered in memory, as the export is,
+        // because SQLite cannot order DateTimeOffset columns.
+        var all = await DbContext.Devices.AsNoTracking().ToListAsync(cancellationToken).ConfigureAwait(false);
+        var devices = all
+            .OrderBy(device => device.CreatedAt)
+            .ThenBy(device => device.Id)
+            .Skip((pageRequest.Page - 1) * pageRequest.PageSize)
+            .Take(pageRequest.PageSize)
+            .ToArray();
+
+        var brandIds = devices.Where(device => device.BrandId.HasValue).Select(device => device.BrandId!.Value).Distinct().ToArray();
+        var brands = await DbContext.Set<Brand>().AsNoTracking()
+            .Where(brand => brandIds.Contains(brand.Id))
+            .ToDictionaryAsync(brand => brand.Id, brand => brand.Name, cancellationToken).ConfigureAwait(false);
+        var categories = await DbContext.Categories.AsNoTracking().ToDictionaryAsync(category => category.Id, category => category.Name, cancellationToken).ConfigureAwait(false);
+        var owners = await DbContext.Owners.AsNoTracking().ToDictionaryAsync(owner => owner.Id, owner => owner.DisplayName, cancellationToken).ConfigureAwait(false);
+        var locations = await DbContext.Locations.AsNoTracking().ToDictionaryAsync(location => location.Id, location => location.Name, cancellationToken).ConfigureAwait(false);
+        var networks = await DbContext.Networks.AsNoTracking().ToDictionaryAsync(network => network.Id, network => network.Name, cancellationToken).ConfigureAwait(false);
+
+        var deviceIds = devices.Select(device => device.Id).ToArray();
+        var tagRows = await DbContext.DeviceTags.AsNoTracking()
+            .Where(deviceTag => deviceTag.IsActive && deviceIds.Contains(deviceTag.DeviceId))
+            .Join(DbContext.Tags.AsNoTracking().Where(tag => tag.IsActive), deviceTag => deviceTag.TagId, tag => tag.Id, (deviceTag, tag) => new { deviceTag.DeviceId, tag.Name })
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+        var tags = tagRows
+            .GroupBy(row => row.DeviceId)
+            .ToDictionary(group => group.Key, group => (IReadOnlyList<string>)group.Select(row => row.Name).Order(StringComparer.Ordinal).ToArray());
+
+        var items = devices.Select(device => new DeviceFeedItem(
+                device.Id,
+                device.Name,
+                device.Model,
+                device.BrandId is { } brandId && brands.TryGetValue(brandId, out var brandName) ? brandName : null,
+                categories[device.CategoryId],
+                owners[device.OwnerId],
+                locations[device.LocationId],
+                device.NetworkId is { } networkId && networks.TryGetValue(networkId, out var networkName) ? networkName : null,
+                tags.TryGetValue(device.Id, out var deviceTags) ? deviceTags : [],
+                device.Status.ToString(),
+                device.PurchaseDate,
+                device.PurchasePrice,
+                device.Currency.Code,
+                device.WarrantyExpiry,
+                device.RetiredDate,
+                device.DisposalMethod,
+                device.Purpose,
+                device.OperatingSystem,
+                device.Version,
+                device.CreatedAt,
+                device.ModifiedAt))
+            .ToArray();
+
+        return new PagedResult<DeviceFeedItem>(items, all.Count, pageRequest.Page, pageRequest.PageSize);
+    }
 
     public async IAsyncEnumerable<DeviceExportRow> StreamExportAsync(DeviceListCriteria criteria)
     {
